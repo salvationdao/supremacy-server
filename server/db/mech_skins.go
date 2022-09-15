@@ -129,6 +129,7 @@ type MechSkinListOpts struct {
 	IncludeMarketListed      bool
 	DisplayGenesisAndLimited bool
 	ExcludeIDs               []string `json:"exclude_ids"`
+	IncludeIDs               []string `json:"include_ids"`
 	FilterRarities           []string `json:"rarities"`
 	FilterSkinCompatibility  []string `json:"skin_compatibility"`
 	FilterEquippedStatuses   []string `json:"equipped_statuses"`
@@ -240,6 +241,9 @@ func MechSkinList(opts *MechSkinListOpts) (int64, []*server.MechSkin, error) {
 
 	if len(opts.ExcludeIDs) > 0 {
 		queryMods = append(queryMods, boiler.MechSkinWhere.ID.NIN(opts.ExcludeIDs))
+	}
+	if len(opts.IncludeIDs) > 0 {
+		queryMods = append(queryMods, boiler.MechSkinWhere.BlueprintID.IN(opts.IncludeIDs))
 	}
 	if len(opts.FilterRarities) > 0 {
 		vals := []interface{}{}

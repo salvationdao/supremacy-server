@@ -417,6 +417,39 @@ func GetBlueprintWeaponsIDsWithCompatibleSkinInheritanceFromMechID(conn boil.Exe
 	return ids, nil
 }
 
+func GetCompatibleBlueprintMechSkinIDsFromMechID(conn boil.Executor, mechID string) ([]string, error) {
+	// select
+	// mmsc.blueprint_mech_skin_id
+	// from mechs m
+	// inner join mech_model_skin_compatibilities mmsc on mmsc.mech_model_id = m.blueprint_id
+	// where m.id = 'cda9cff8-4c03-45f8-b59c-2cefd68e1386';
+
+	var result []struct {
+		ID string `boil:"id"`
+	}
+	err := boiler.NewQuery(
+		qm.Select(fmt.Sprintf("%s as id", boiler.MechModelSkinCompatibilityTableColumns.BlueprintMechSkinID)),
+		qm.From(boiler.TableNames.Mechs),
+		qm.InnerJoin(fmt.Sprintf("%s on %s = %s",
+			boiler.TableNames.MechModelSkinCompatibilities,
+			boiler.MechModelSkinCompatibilityTableColumns.MechModelID,
+			boiler.MechTableColumns.BlueprintID,
+		)),
+		qm.Where(fmt.Sprintf("%s = ?", boiler.MechTableColumns.ID),
+			mechID),
+	).Bind(nil, conn, &result)
+	if err != nil {
+		return []string{}, err
+	}
+
+	ids := []string{}
+	for _, i := range result {
+		ids = append(ids, i.ID)
+	}
+
+	return ids, nil
+}
+
 func Mech(conn boil.Executor, mechID string) (*server.Mech, error) {
 	bm := benchmark.New()
 	bm.Start("db Mech")
@@ -521,9 +554,15 @@ func Mech(conn boil.Executor, mechID string) (*server.Mech, error) {
 
 	compatibleWeapons, err := GetBlueprintWeaponsIDsWithCompatibleSkinInheritanceFromMechID(gamedb.StdConn, mc.ID)
 	if err != nil {
-		return nil, fmt.Errorf("unable to find skin inherited weapon models for mech with id %s", mechID)
+		return nil, fmt.Errorf("unable to find skin inherited weapon models for mech with id %s", mc.ID)
 	}
 	mc.BlueprintWeaponIDsWithSkinInheritance = compatibleWeapons
+
+	compatibleSkins, err := GetCompatibleBlueprintMechSkinIDsFromMechID(gamedb.StdConn, mc.ID)
+	if err != nil {
+		return nil, fmt.Errorf("unable to find compatible skins for mech with id %s", mc.ID)
+	}
+	mc.CompatibleBlueprintMechSkinIDs = compatibleSkins
 
 	if mc.ChassisSkin.Images == nil {
 		mc.ChassisSkin.Images = mc.Images

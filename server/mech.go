@@ -72,6 +72,7 @@ type Mech struct {
 	UpdatedAt                             time.Time      `json:"updated_at"`
 	CreatedAt                             time.Time      `json:"created_at"`
 	BlueprintWeaponIDsWithSkinInheritance []string       `json:"blueprint_weapon_ids_with_skin_inheritance"`
+	CompatibleBlueprintMechSkinIDs        []string       `json:"compatible_blueprint_mech_skin_ids"`
 }
 
 type BlueprintMech struct {
