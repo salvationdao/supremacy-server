@@ -1794,26 +1794,6 @@ type PlayerAssetMechSubmodelListResp struct {
 	Submodels []*server.MechSkin `json:"submodels"`
 }
 
-type PlayerAssetMechSubmodel struct {
-	Images              *server.Images `json:"images"`
-	CollectionSlug      string         `json:"collection_slug"`
-	Hash                string         `json:"hash"`
-	TokenID             int64          `json:"token_id"`
-	Tier                string         `json:"tier"`
-	OwnerID             string         `json:"owner_id"`
-	MarketLocked        bool           `json:"market_locked"`
-	XsynLocked          bool           `json:"xsyn_locked"`
-	LockedToMarketplace bool           `json:"locked_to_marketplace"`
-	Level               int            `json:"level"`
-
-	EquippedOn string `json:"equipped_on"`
-	ID         string `json:"id"`
-	Label      string `json:"label"`
-
-	UpdatedAt time.Time `json:"updated_at"`
-	CreatedAt time.Time `json:"created_at"`
-}
-
 func (pac *PlayerAssetsControllerWS) playerAssetMechSubmodelListHandler(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
 	l := gamelog.L.With().Str("func", "playerAssetMechSubmodelListHandler").Str("user_id", user.ID).Logger()
 
