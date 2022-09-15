@@ -504,7 +504,7 @@ func (am *ArenaManager) PlayerAbilityUse(ctx context.Context, user *boiler.Playe
 		swm := 0
 		for _, wm := range btl.SpawnedAI {
 			// add if mini mech && alive && same faction as owner
-			if wm.AIType != nil && *wm.AIType == "Mini Mech" && wm.Health > 0 && pa.R.Owner.FactionID == null.StringFrom(wm.FactionID) {
+			if wm.AIType != nil && *wm.AIType == MiniMech && wm.Health > 0 && pa.R.Owner.FactionID == null.StringFrom(wm.FactionID) {
 				swm++
 			}
 		}
