@@ -626,6 +626,7 @@ func (am *ArenaManager) QueueLeaveHandler(ctx context.Context, user *boiler.Play
 	}
 
 	// refund queue fee
+	leftMechIDs := []string{}
 	for _, nbq := range notInBattleQueues {
 		if nbq.R == nil || nbq.R.Fee == nil || !nbq.R.Fee.PaidTXID.Valid {
 			continue
@@ -654,6 +655,7 @@ func (am *ArenaManager) QueueLeaveHandler(ctx context.Context, user *boiler.Play
 				gamelog.L.Error().Err(err).Str("transaction id", refundTXID).Msg("Failed to refund sups")
 			}
 		})
+		leftMechIDs = append(leftMechIDs, nbq.MechID)
 	}
 
 	// delete queues
@@ -677,7 +679,23 @@ func (am *ArenaManager) QueueLeaveHandler(ctx context.Context, user *boiler.Play
 	go CalcNextQueueStatus(factionID)
 
 	// send queue update signal
-	ws.PublishMessage(fmt.Sprintf("/faction/%s/queue-update", factionID), WSPlayerAssetMechQueueUpdateSubscribe, true)
+	go func(factionID string, collectionItems []*boiler.CollectionItem, mechIDs []string) {
+
+		for _, ci := range collectionItems {
+			// skip, if the mech is not on the list
+			if slices.Index(mechIDs, ci.ItemID) == -1 {
+				continue
+			}
+
+			mechStatus, err := db.GetCollectionItemStatus(*ci)
+			if err != nil {
+				gamelog.L.Error().Err(err).Str("mech id", ci.ItemID).Msg("Failed to load new mech status")
+				return
+			}
+
+			ws.PublishMessage(fmt.Sprintf("/faction/%s/queue/%s", factionID, ci.ItemID), WSPlayerAssetMechQueueSubscribe, mechStatus)
+		}
+	}(factionID, mcis, leftMechIDs)
 
 	return nil
 }
