@@ -192,11 +192,19 @@ func getDefaultMechQueryMods() []qm.QueryMod {
 		)),
 		// inner join skin
 		qm.InnerJoin(fmt.Sprintf(`(
-					SELECT _ms.*, _ci.hash, _ci.token_id, _bpms.tier, _ci.owner_id, _bpms.label
-					FROM mech_skin _ms
-					INNER JOIN collection_items _ci on _ci.item_id = _ms.id
-					INNER JOIN blueprint_mech_skin _bpms on _bpms.id = _ms.blueprint_id
-				 )%s ON %s = %s`, // TODO: make this boiler/typesafe
+			SELECT
+				_ms.*,
+				_ci.hash,
+				_ci.token_id,
+				_ci.tier,
+				_ci.owner_id,
+				_bpms.label,
+				_bpms.default_level
+			FROM
+				mech_skin _ms
+				INNER JOIN collection_items _ci ON _ci.item_id = _ms.id
+				INNER JOIN blueprint_mech_skin _bpms ON _bpms.id = _ms.blueprint_id
+			)%s ON %s = %s`, // TODO: make this boiler/typesafe
 			boiler.TableNames.MechSkin,
 			qm.Rels(boiler.TableNames.MechSkin, boiler.MechSkinColumns.ID),
 			qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.ChassisSkinID),

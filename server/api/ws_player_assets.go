@@ -1790,8 +1790,8 @@ type PlayerAssetMechSubmodelListRequest struct {
 }
 
 type PlayerAssetMechSubmodelListResp struct {
-	Total     int64                      `json:"total"`
-	Submodels []*PlayerAssetMechSubmodel `json:"submodels"`
+	Total     int64              `json:"total"`
+	Submodels []*server.MechSkin `json:"submodels"`
 }
 
 type PlayerAssetMechSubmodel struct {
@@ -1857,51 +1857,9 @@ func (pac *PlayerAssetsControllerWS) playerAssetMechSubmodelListHandler(ctx cont
 		return terror.Error(err, "Failed to find your war machine skin assets, please try again or contact support.")
 	}
 
-	playerAssetMechSubmodel := []*PlayerAssetMechSubmodel{}
-
-	for _, s := range submodels {
-		pams := &PlayerAssetMechSubmodel{
-			Images: &server.Images{
-				ImageURL:         s.SkinSwatch.ImageURL,
-				CardAnimationURL: s.SkinSwatch.CardAnimationURL,
-				AvatarURL:        s.SkinSwatch.AvatarURL,
-				AnimationURL:     s.SkinSwatch.AnimationURL,
-				BackgroundColor:  s.SkinSwatch.BackgroundColor,
-				YoutubeURL:       s.SkinSwatch.YoutubeURL,
-				LargeImageURL:    s.SkinSwatch.LargeImageURL,
-			},
-			ID:                  s.ID,
-			Label:               s.Label,
-			EquippedOn:          s.EquippedOn.String,
-			CreatedAt:           s.CreatedAt,
-			CollectionSlug:      s.CollectionItem.CollectionSlug,
-			Hash:                s.CollectionItem.Hash,
-			TokenID:             s.CollectionItem.TokenID,
-			Tier:                s.Tier,
-			OwnerID:             s.CollectionItem.OwnerID,
-			XsynLocked:          s.CollectionItem.XsynLocked,
-			MarketLocked:        s.CollectionItem.MarketLocked,
-			LockedToMarketplace: s.CollectionItem.LockedToMarketplace,
-			Level:               s.Level,
-		}
-
-		//if there isnt any image url (which skin swatch should have) return image from weapon model compatibility tables
-		if !pams.Images.ImageURL.Valid || pams.Images.ImageURL.String == "" {
-			pams.Images.ImageURL = s.Images.ImageURL
-			pams.Images.CardAnimationURL = s.Images.CardAnimationURL
-			pams.Images.AvatarURL = s.Images.AvatarURL
-			pams.Images.AnimationURL = s.Images.AnimationURL
-			pams.Images.BackgroundColor = s.Images.BackgroundColor
-			pams.Images.YoutubeURL = s.Images.YoutubeURL
-			pams.Images.LargeImageURL = s.Images.LargeImageURL
-		}
-
-		playerAssetMechSubmodel = append(playerAssetMechSubmodel, pams)
-	}
-
 	reply(&PlayerAssetMechSubmodelListResp{
 		Total:     total,
-		Submodels: playerAssetMechSubmodel,
+		Submodels: submodels,
 	})
 	return nil
 }

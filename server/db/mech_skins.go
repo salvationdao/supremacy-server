@@ -2,14 +2,15 @@ package db
 
 import (
 	"fmt"
-	"github.com/gofrs/uuid"
-	"github.com/ninja-software/terror/v2"
-	"github.com/volatiletech/sqlboiler/v4/boil"
-	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 	"server"
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
+
+	"github.com/gofrs/uuid"
+	"github.com/ninja-software/terror/v2"
+	"github.com/volatiletech/sqlboiler/v4/boil"
+	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 )
 
 // InsertNewMechSkin if modelID is nil it will return images of a random mech in this skin
@@ -201,7 +202,7 @@ func MechSkinList(opts *MechSkinListOpts) (int64, []*server.MechSkin, error) {
 			),
 		)
 	}
-	
+
 	if !opts.DisplayXsyn || !opts.IncludeMarketListed {
 		queryMods = append(queryMods, GenerateListFilterQueryMod(ListFilterRequestItem{
 			Table:    boiler.TableNames.CollectionItems,
@@ -305,6 +306,7 @@ func MechSkinList(opts *MechSkinListOpts) (int64, []*server.MechSkin, error) {
 			qm.Rels(boiler.TableNames.MechSkin, boiler.MechSkinColumns.Level),
 			qm.Rels(boiler.TableNames.BlueprintMechSkin, boiler.BlueprintMechSkinColumns.ID),
 			qm.Rels(boiler.TableNames.BlueprintMechSkin, boiler.BlueprintMechSkinColumns.Label),
+			qm.Rels(boiler.TableNames.BlueprintMechSkin, boiler.BlueprintMechSkinColumns.DefaultLevel),
 			qm.Rels(boiler.TableNames.BlueprintMechSkin, boiler.BlueprintMechSkinColumns.Tier),
 			qm.Rels(boiler.TableNames.BlueprintMechSkin, boiler.BlueprintMechSkinColumns.ImageURL),
 			qm.Rels(boiler.TableNames.BlueprintMechSkin, boiler.BlueprintMechSkinColumns.CardAnimationURL),
@@ -345,6 +347,7 @@ func MechSkinList(opts *MechSkinListOpts) (int64, []*server.MechSkin, error) {
 					qm.Rels(boiler.TableNames.BlueprintMechSkin, boiler.BlueprintMechSkinColumns.Label),
 				)))
 	}
+
 	rows, err := boiler.NewQuery(
 		queryMods...,
 	).Query(gamedb.StdConn)
@@ -379,6 +382,7 @@ func MechSkinList(opts *MechSkinListOpts) (int64, []*server.MechSkin, error) {
 			&mc.Level,
 			&mc.BlueprintID,
 			&mc.Label,
+			&mc.DefaultLevel,
 			&mc.Tier,
 			&mc.SkinSwatch.ImageURL,
 			&mc.SkinSwatch.CardAnimationURL,
@@ -400,6 +404,15 @@ func MechSkinList(opts *MechSkinListOpts) (int64, []*server.MechSkin, error) {
 		if err != nil {
 			gamelog.L.Error().Err(err).Msg("failed to scan mech skins")
 			return total, mechSkins, err
+		}
+		if !mc.SkinSwatch.ImageURL.Valid &&
+			!mc.SkinSwatch.CardAnimationURL.Valid &&
+			!mc.SkinSwatch.AvatarURL.Valid &&
+			!mc.SkinSwatch.LargeImageURL.Valid &&
+			!mc.SkinSwatch.AnimationURL.Valid &&
+			!mc.SkinSwatch.YoutubeURL.Valid &&
+			!mc.SkinSwatch.BackgroundColor.Valid {
+			mc.SkinSwatch = nil
 		}
 		mechSkins = append(mechSkins, mc)
 	}
