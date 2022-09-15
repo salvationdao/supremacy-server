@@ -577,9 +577,3 @@ func BroadcastRepairBay(playerID string) {
 
 	ws.PublishMessage(fmt.Sprintf("/secure/user/%s/repair_bay", playerID), server.HubKeyMechRepairSlots, resp)
 }
-
-// RestartRepairCases unclose all the repair cases and related system offers
-func (am *ArenaManager) RestartRepairCases(mechIDs []string) error {
-
-	return nil
-}
