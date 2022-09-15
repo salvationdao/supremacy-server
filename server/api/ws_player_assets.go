@@ -1783,6 +1783,7 @@ type PlayerAssetMechSubmodelListRequest struct {
 		ExcludeMarketLocked      bool                  `json:"exclude_market_locked"`
 		IncludeMarketListed      bool                  `json:"include_market_listed"`
 		DisplayGenesisAndLimited bool                  `json:"display_genesis_and_limited"`
+		ExcludeIDs               []string              `json:"exclude_ids"`
 		FilterRarities           []string              `json:"rarities"`
 		FilterSkinCompatibility  []string              `json:"skin_compatibility"`
 		FilterEquippedStatuses   []string              `json:"equipped_statuses"`
@@ -1818,6 +1819,7 @@ func (pac *PlayerAssetsControllerWS) playerAssetMechSubmodelListHandler(ctx cont
 		DisplayXsyn:              req.Payload.DisplayXsyn,
 		ExcludeMarketLocked:      req.Payload.ExcludeMarketLocked,
 		IncludeMarketListed:      req.Payload.IncludeMarketListed,
+		ExcludeIDs:               req.Payload.ExcludeIDs,
 		FilterRarities:           req.Payload.FilterRarities,
 		FilterEquippedStatuses:   req.Payload.FilterEquippedStatuses,
 		SortBy:                   req.Payload.SortBy,
