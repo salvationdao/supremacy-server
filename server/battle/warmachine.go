@@ -12,17 +12,26 @@ import (
 )
 
 type WarMachine struct {
-	ID            string  `json:"id"`
-	Hash          string  `json:"hash"`
-	OwnedByID     string  `json:"ownedByID"`
-	OwnerUsername string  `json:"ownerUsername"`
-	Name          string  `json:"name"`
-	Label         string  `json:"label"`
-	ParticipantID byte    `json:"participantID"`
-	MaxHealth     uint32  `json:"maxHealth"`
-	MaxShield     uint32  `json:"maxShield"`
-	Health        uint32  `json:"health"`
-	AIType        *AIType `json:"aiType"`
+	ID            string `json:"id"`
+	Hash          string `json:"hash"`
+	OwnedByID     string `json:"ownedByID"`
+	OwnerUsername string `json:"ownerUsername"`
+	Name          string `json:"name"`
+	Label         string `json:"label"`
+	ParticipantID byte   `json:"participantID"`
+	MaxHealth     uint32 `json:"maxHealth"`
+	MaxShield     uint32 `json:"maxShield"`
+	Health        uint32 `json:"health"`
+
+	AIType *AIType `json:"aiType"`
+
+	// shield
+	Shield                  uint32 `json:"shield"`
+	ShieldRechargeRate      uint32 `json:"shieldRechargeRate"`
+	ShieldRechargePowerCost uint32 `json:"shieldRechargePowerCost"`
+	ShieldTypeID            string `json:"shieldTypeID"`
+	ShieldTypeLabel         string `json:"shieldTypeLabel"`
+	ShieldTypeDescription   string `json:"shieldTypeDescription"`
 
 	ModelID string `json:"modelID"`
 	Model   string `json:"model"`
@@ -45,20 +54,8 @@ type WarMachine struct {
 	Position    *server.Vector3 `json:"position"`
 	Rotation    int             `json:"rotation"`
 	IsHidden    bool            `json:"isHidden"`
-	//Durability         int             `json:"durability"`
-	//PowerGrid          int             `json:"powerGrid"`
-	//CPU                int             `json:"cpu"`
-	//WeaponHardpoint    int             `json:"weaponHardpoint"`
-	//TurretHardpoint    int             `json:"turretHardpoint"`
-	//UtilitySlots       int             `json:"utilitySlots"`
-	//Description   *string         `json:"description"`
-	//ExternalUrl   string          `json:"externalUrl"`
-	Shield             uint32 `json:"shield"`
-	ShieldRechargeRate uint32 `json:"shieldRechargeRate"`
 
 	Stats *Stats `json:"stats"`
-	//Energy        uint32          `json:"energy"`
-	//Stat          *Stat           `json:"stat"`
 
 	Status *Status `json:"status"`
 
@@ -88,10 +85,17 @@ type WarMachineGameClient struct {
 	Weapons       []*Weapon               `json:"weapons"`
 	Customisation WarMachineCustomisation `json:"customisation"`
 
-	Health             uint32 `json:"health"`
-	HealthMax          uint32 `json:"health_max"`
-	ShieldMax          uint32 `json:"shield_max"`
-	ShieldRechargeRate uint32 `json:"shield_recharge_rate"`
+	Health    uint32 `json:"health"`
+	HealthMax uint32 `json:"health_max"`
+
+	// shield
+	Shield                  uint32 `json:"shield"`
+	ShieldMax               uint32 `json:"shield_max"`
+	ShieldRechargeRate      uint32 `json:"shield_recharge_rate"`
+	ShieldRechargePowerCost uint32 `json:"shield_recharge_power_cost"`
+	ShieldTypeID            string `json:"shield_type_id"`
+	ShieldTypeLabel         string `json:"shield_type_label"`
+	ShieldTypeDescription   string `json:"shield_type_description"`
 
 	Speed                int     `json:"speed"`
 	SprintSpreadModifier float32 `json:"sprint_spread_modifier"`
@@ -191,7 +195,6 @@ type Utility struct {
 	Type  string `json:"type"`
 	Label string `json:"label"`
 
-	Shield      *UtilityShield      `json:"shield,omitempty"`
 	AttackDrone *UtilityAttackDrone `json:"attack_drone,omitempty"`
 	RepairDrone *UtilityRepairDrone `json:"repair_drone,omitempty"`
 	Accelerator *UtilityAccelerator `json:"accelerator,omitempty"`
@@ -205,13 +208,6 @@ type UtilityAttackDrone struct {
 	Hitpoints        int    `json:"hitpoints"`
 	LifespanSeconds  int    `json:"lifespan_seconds"`
 	DeployEnergyCost int    `json:"deploy_energy_cost"`
-}
-
-type UtilityShield struct {
-	UtilityID          string `json:"utility_id"`
-	Hitpoints          int    `json:"hitpoints"`
-	RechargeRate       int    `json:"recharge_rate"`
-	RechargeEnergyCost int    `json:"recharge_energy_cost"`
 }
 
 type UtilityRepairDrone struct {
@@ -258,10 +254,14 @@ func WarMachineToClient(wm *WarMachine) *WarMachineGameClient {
 
 		Weapons: wm.Weapons,
 
-		Health:             wm.Health,
-		HealthMax:          wm.MaxHealth,
-		ShieldMax:          wm.MaxShield,
-		ShieldRechargeRate: wm.ShieldRechargeRate,
+		Health:                  wm.Health,
+		HealthMax:               wm.MaxHealth,
+		ShieldMax:               wm.MaxShield,
+		ShieldRechargeRate:      wm.ShieldRechargeRate,
+		ShieldRechargePowerCost: wm.ShieldRechargePowerCost,
+		ShieldTypeID:            wm.ShieldTypeID,
+		ShieldTypeLabel:         wm.ShieldTypeLabel,
+		ShieldTypeDescription:   wm.ShieldTypeDescription,
 
 		Speed: wm.Speed,
 
@@ -334,7 +334,6 @@ func UtilityFromServer(util *server.Utility) *Utility {
 	return &Utility{
 		Type:        util.Type,
 		Label:       util.Label,
-		Shield:      UtilityShieldFromServer(util.Shield),
 		AttackDrone: UtilityAttackDroneFromServer(util.AttackDrone),
 		RepairDrone: UtilityRepairDroneFromServer(util.RepairDrone),
 		Accelerator: UtilityAcceleratorFromServer(util.Accelerator),
@@ -375,18 +374,6 @@ func UtilityRepairDroneFromServer(util *server.UtilityRepairDrone) *UtilityRepai
 		RepairAmount:     util.RepairAmount,
 		DeployEnergyCost: util.DeployEnergyCost,
 		LifespanSeconds:  util.LifespanSeconds,
-	}
-}
-
-func UtilityShieldFromServer(util *server.UtilityShield) *UtilityShield {
-	if util == nil {
-		return nil
-	}
-	return &UtilityShield{
-		UtilityID:          util.UtilityID,
-		Hitpoints:          util.Hitpoints,
-		RechargeRate:       util.RechargeRate,
-		RechargeEnergyCost: util.BoostedRechargeRate,
 	}
 }
 

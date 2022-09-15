@@ -156,20 +156,20 @@ var BlueprintUtilityWhere = struct {
 
 // BlueprintUtilityRels is where relationship names are stored.
 var BlueprintUtilityRels = struct {
-	Brand                  string
-	BlueprintUtilityShield string
-	BlueprintUtilities     string
+	Brand                     string
+	BlueprintUtilityShieldOld string
+	BlueprintUtilities        string
 }{
-	Brand:                  "Brand",
-	BlueprintUtilityShield: "BlueprintUtilityShield",
-	BlueprintUtilities:     "BlueprintUtilities",
+	Brand:                     "Brand",
+	BlueprintUtilityShieldOld: "BlueprintUtilityShieldOld",
+	BlueprintUtilities:        "BlueprintUtilities",
 }
 
 // blueprintUtilityR is where relationships are stored.
 type blueprintUtilityR struct {
-	Brand                  *Brand                  `boiler:"Brand" boil:"Brand" json:"Brand" toml:"Brand" yaml:"Brand"`
-	BlueprintUtilityShield *BlueprintUtilityShield `boiler:"BlueprintUtilityShield" boil:"BlueprintUtilityShield" json:"BlueprintUtilityShield" toml:"BlueprintUtilityShield" yaml:"BlueprintUtilityShield"`
-	BlueprintUtilities     UtilitySlice            `boiler:"BlueprintUtilities" boil:"BlueprintUtilities" json:"BlueprintUtilities" toml:"BlueprintUtilities" yaml:"BlueprintUtilities"`
+	Brand                     *Brand                     `boiler:"Brand" boil:"Brand" json:"Brand" toml:"Brand" yaml:"Brand"`
+	BlueprintUtilityShieldOld *BlueprintUtilityShieldOld `boiler:"BlueprintUtilityShieldOld" boil:"BlueprintUtilityShieldOld" json:"BlueprintUtilityShieldOld" toml:"BlueprintUtilityShieldOld" yaml:"BlueprintUtilityShieldOld"`
+	BlueprintUtilities        UtilitySlice               `boiler:"BlueprintUtilities" boil:"BlueprintUtilities" json:"BlueprintUtilities" toml:"BlueprintUtilities" yaml:"BlueprintUtilities"`
 }
 
 // NewStruct creates a new relationship struct
@@ -445,8 +445,8 @@ func (o *BlueprintUtility) Brand(mods ...qm.QueryMod) brandQuery {
 	return query
 }
 
-// BlueprintUtilityShield pointed to by the foreign key.
-func (o *BlueprintUtility) BlueprintUtilityShield(mods ...qm.QueryMod) blueprintUtilityShieldQuery {
+// BlueprintUtilityShieldOld pointed to by the foreign key.
+func (o *BlueprintUtility) BlueprintUtilityShieldOld(mods ...qm.QueryMod) blueprintUtilityShieldOldQuery {
 	queryMods := []qm.QueryMod{
 		qm.Where("\"blueprint_utility_id\" = ?", o.ID),
 		qmhelper.WhereIsNull("deleted_at"),
@@ -454,8 +454,8 @@ func (o *BlueprintUtility) BlueprintUtilityShield(mods ...qm.QueryMod) blueprint
 
 	queryMods = append(queryMods, mods...)
 
-	query := BlueprintUtilityShields(queryMods...)
-	queries.SetFrom(query.Query, "\"blueprint_utility_shield\"")
+	query := BlueprintUtilityShieldOlds(queryMods...)
+	queries.SetFrom(query.Query, "\"blueprint_utility_shield_old\"")
 
 	return query
 }
@@ -591,9 +591,9 @@ func (blueprintUtilityL) LoadBrand(e boil.Executor, singular bool, maybeBlueprin
 	return nil
 }
 
-// LoadBlueprintUtilityShield allows an eager lookup of values, cached into the
+// LoadBlueprintUtilityShieldOld allows an eager lookup of values, cached into the
 // loaded structs of the objects. This is for a 1-1 relationship.
-func (blueprintUtilityL) LoadBlueprintUtilityShield(e boil.Executor, singular bool, maybeBlueprintUtility interface{}, mods queries.Applicator) error {
+func (blueprintUtilityL) LoadBlueprintUtilityShieldOld(e boil.Executor, singular bool, maybeBlueprintUtility interface{}, mods queries.Applicator) error {
 	var slice []*BlueprintUtility
 	var object *BlueprintUtility
 
@@ -631,9 +631,9 @@ func (blueprintUtilityL) LoadBlueprintUtilityShield(e boil.Executor, singular bo
 	}
 
 	query := NewQuery(
-		qm.From(`blueprint_utility_shield`),
-		qm.WhereIn(`blueprint_utility_shield.blueprint_utility_id in ?`, args...),
-		qmhelper.WhereIsNull(`blueprint_utility_shield.deleted_at`),
+		qm.From(`blueprint_utility_shield_old`),
+		qm.WhereIn(`blueprint_utility_shield_old.blueprint_utility_id in ?`, args...),
+		qmhelper.WhereIsNull(`blueprint_utility_shield_old.deleted_at`),
 	)
 	if mods != nil {
 		mods.Apply(query)
@@ -641,19 +641,19 @@ func (blueprintUtilityL) LoadBlueprintUtilityShield(e boil.Executor, singular bo
 
 	results, err := query.Query(e)
 	if err != nil {
-		return errors.Wrap(err, "failed to eager load BlueprintUtilityShield")
+		return errors.Wrap(err, "failed to eager load BlueprintUtilityShieldOld")
 	}
 
-	var resultSlice []*BlueprintUtilityShield
+	var resultSlice []*BlueprintUtilityShieldOld
 	if err = queries.Bind(results, &resultSlice); err != nil {
-		return errors.Wrap(err, "failed to bind eager loaded slice BlueprintUtilityShield")
+		return errors.Wrap(err, "failed to bind eager loaded slice BlueprintUtilityShieldOld")
 	}
 
 	if err = results.Close(); err != nil {
-		return errors.Wrap(err, "failed to close results of eager load for blueprint_utility_shield")
+		return errors.Wrap(err, "failed to close results of eager load for blueprint_utility_shield_old")
 	}
 	if err = results.Err(); err != nil {
-		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for blueprint_utility_shield")
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for blueprint_utility_shield_old")
 	}
 
 	if len(blueprintUtilityAfterSelectHooks) != 0 {
@@ -670,9 +670,9 @@ func (blueprintUtilityL) LoadBlueprintUtilityShield(e boil.Executor, singular bo
 
 	if singular {
 		foreign := resultSlice[0]
-		object.R.BlueprintUtilityShield = foreign
+		object.R.BlueprintUtilityShieldOld = foreign
 		if foreign.R == nil {
-			foreign.R = &blueprintUtilityShieldR{}
+			foreign.R = &blueprintUtilityShieldOldR{}
 		}
 		foreign.R.BlueprintUtility = object
 	}
@@ -680,9 +680,9 @@ func (blueprintUtilityL) LoadBlueprintUtilityShield(e boil.Executor, singular bo
 	for _, local := range slice {
 		for _, foreign := range resultSlice {
 			if local.ID == foreign.BlueprintUtilityID {
-				local.R.BlueprintUtilityShield = foreign
+				local.R.BlueprintUtilityShieldOld = foreign
 				if foreign.R == nil {
-					foreign.R = &blueprintUtilityShieldR{}
+					foreign.R = &blueprintUtilityShieldOldR{}
 				}
 				foreign.R.BlueprintUtility = local
 				break
@@ -871,10 +871,10 @@ func (o *BlueprintUtility) RemoveBrand(exec boil.Executor, related *Brand) error
 	return nil
 }
 
-// SetBlueprintUtilityShield of the blueprintUtility to the related item.
-// Sets o.R.BlueprintUtilityShield to related.
+// SetBlueprintUtilityShieldOld of the blueprintUtility to the related item.
+// Sets o.R.BlueprintUtilityShieldOld to related.
 // Adds o to related.R.BlueprintUtility.
-func (o *BlueprintUtility) SetBlueprintUtilityShield(exec boil.Executor, insert bool, related *BlueprintUtilityShield) error {
+func (o *BlueprintUtility) SetBlueprintUtilityShieldOld(exec boil.Executor, insert bool, related *BlueprintUtilityShieldOld) error {
 	var err error
 
 	if insert {
@@ -885,9 +885,9 @@ func (o *BlueprintUtility) SetBlueprintUtilityShield(exec boil.Executor, insert 
 		}
 	} else {
 		updateQuery := fmt.Sprintf(
-			"UPDATE \"blueprint_utility_shield\" SET %s WHERE %s",
+			"UPDATE \"blueprint_utility_shield_old\" SET %s WHERE %s",
 			strmangle.SetParamNames("\"", "\"", 1, []string{"blueprint_utility_id"}),
-			strmangle.WhereClause("\"", "\"", 2, blueprintUtilityShieldPrimaryKeyColumns),
+			strmangle.WhereClause("\"", "\"", 2, blueprintUtilityShieldOldPrimaryKeyColumns),
 		)
 		values := []interface{}{o.ID, related.BlueprintUtilityID}
 
@@ -905,14 +905,14 @@ func (o *BlueprintUtility) SetBlueprintUtilityShield(exec boil.Executor, insert 
 
 	if o.R == nil {
 		o.R = &blueprintUtilityR{
-			BlueprintUtilityShield: related,
+			BlueprintUtilityShieldOld: related,
 		}
 	} else {
-		o.R.BlueprintUtilityShield = related
+		o.R.BlueprintUtilityShieldOld = related
 	}
 
 	if related.R == nil {
-		related.R = &blueprintUtilityShieldR{
+		related.R = &blueprintUtilityShieldOldR{
 			BlueprintUtility: o,
 		}
 	} else {

@@ -35,6 +35,7 @@ type CollectionItem struct {
 	XsynLocked          bool        `boiler:"xsyn_locked" boil:"xsyn_locked" json:"xsyn_locked" toml:"xsyn_locked" yaml:"xsyn_locked"`
 	LockedToMarketplace bool        `boiler:"locked_to_marketplace" boil:"locked_to_marketplace" json:"locked_to_marketplace" toml:"locked_to_marketplace" yaml:"locked_to_marketplace"`
 	AssetHidden         null.String `boiler:"asset_hidden" boil:"asset_hidden" json:"asset_hidden,omitempty" toml:"asset_hidden" yaml:"asset_hidden,omitempty"`
+	DeletedAt           null.Time   `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
 
 	R *collectionItemR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L collectionItemL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -53,6 +54,7 @@ var CollectionItemColumns = struct {
 	XsynLocked          string
 	LockedToMarketplace string
 	AssetHidden         string
+	DeletedAt           string
 }{
 	ID:                  "id",
 	CollectionSlug:      "collection_slug",
@@ -66,6 +68,7 @@ var CollectionItemColumns = struct {
 	XsynLocked:          "xsyn_locked",
 	LockedToMarketplace: "locked_to_marketplace",
 	AssetHidden:         "asset_hidden",
+	DeletedAt:           "deleted_at",
 }
 
 var CollectionItemTableColumns = struct {
@@ -81,6 +84,7 @@ var CollectionItemTableColumns = struct {
 	XsynLocked          string
 	LockedToMarketplace string
 	AssetHidden         string
+	DeletedAt           string
 }{
 	ID:                  "collection_items.id",
 	CollectionSlug:      "collection_items.collection_slug",
@@ -94,6 +98,7 @@ var CollectionItemTableColumns = struct {
 	XsynLocked:          "collection_items.xsyn_locked",
 	LockedToMarketplace: "collection_items.locked_to_marketplace",
 	AssetHidden:         "collection_items.asset_hidden",
+	DeletedAt:           "collection_items.deleted_at",
 }
 
 // Generated where
@@ -111,6 +116,7 @@ var CollectionItemWhere = struct {
 	XsynLocked          whereHelperbool
 	LockedToMarketplace whereHelperbool
 	AssetHidden         whereHelpernull_String
+	DeletedAt           whereHelpernull_Time
 }{
 	ID:                  whereHelperstring{field: "\"collection_items\".\"id\""},
 	CollectionSlug:      whereHelperstring{field: "\"collection_items\".\"collection_slug\""},
@@ -124,6 +130,7 @@ var CollectionItemWhere = struct {
 	XsynLocked:          whereHelperbool{field: "\"collection_items\".\"xsyn_locked\""},
 	LockedToMarketplace: whereHelperbool{field: "\"collection_items\".\"locked_to_marketplace\""},
 	AssetHidden:         whereHelpernull_String{field: "\"collection_items\".\"asset_hidden\""},
+	DeletedAt:           whereHelpernull_Time{field: "\"collection_items\".\"deleted_at\""},
 }
 
 // CollectionItemRels is where relationship names are stored.
@@ -150,9 +157,9 @@ func (*collectionItemR) NewStruct() *collectionItemR {
 type collectionItemL struct{}
 
 var (
-	collectionItemAllColumns            = []string{"id", "collection_slug", "hash", "token_id", "item_type", "item_id", "tier", "owner_id", "market_locked", "xsyn_locked", "locked_to_marketplace", "asset_hidden"}
+	collectionItemAllColumns            = []string{"id", "collection_slug", "hash", "token_id", "item_type", "item_id", "tier", "owner_id", "market_locked", "xsyn_locked", "locked_to_marketplace", "asset_hidden", "deleted_at"}
 	collectionItemColumnsWithoutDefault = []string{"token_id", "item_type", "item_id", "owner_id"}
-	collectionItemColumnsWithDefault    = []string{"id", "collection_slug", "hash", "tier", "market_locked", "xsyn_locked", "locked_to_marketplace", "asset_hidden"}
+	collectionItemColumnsWithDefault    = []string{"id", "collection_slug", "hash", "tier", "market_locked", "xsyn_locked", "locked_to_marketplace", "asset_hidden", "deleted_at"}
 	collectionItemPrimaryKeyColumns     = []string{"id"}
 	collectionItemGeneratedColumns      = []string{}
 )
@@ -740,7 +747,7 @@ func (o *CollectionItem) AddItemSales(exec boil.Executor, insert bool, related .
 
 // CollectionItems retrieves all the records using an executor.
 func CollectionItems(mods ...qm.QueryMod) collectionItemQuery {
-	mods = append(mods, qm.From("\"collection_items\""))
+	mods = append(mods, qm.From("\"collection_items\""), qmhelper.WhereIsNull("\"collection_items\".\"deleted_at\""))
 	return collectionItemQuery{NewQuery(mods...)}
 }
 
@@ -754,7 +761,7 @@ func FindCollectionItem(exec boil.Executor, iD string, selectCols ...string) (*C
 		sel = strings.Join(strmangle.IdentQuoteSlice(dialect.LQ, dialect.RQ, selectCols), ",")
 	}
 	query := fmt.Sprintf(
-		"select %s from \"collection_items\" where \"id\"=$1", sel,
+		"select %s from \"collection_items\" where \"id\"=$1 and \"deleted_at\" is null", sel,
 	)
 
 	q := queries.Raw(query, iD)
@@ -1095,7 +1102,7 @@ func (o *CollectionItem) Upsert(exec boil.Executor, updateOnConflict bool, confl
 
 // Delete deletes a single CollectionItem record with an executor.
 // Delete will match against the primary key column to find the record to delete.
-func (o *CollectionItem) Delete(exec boil.Executor) (int64, error) {
+func (o *CollectionItem) Delete(exec boil.Executor, hardDelete bool) (int64, error) {
 	if o == nil {
 		return 0, errors.New("boiler: no CollectionItem provided for delete")
 	}
@@ -1104,8 +1111,26 @@ func (o *CollectionItem) Delete(exec boil.Executor) (int64, error) {
 		return 0, err
 	}
 
-	args := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(o)), collectionItemPrimaryKeyMapping)
-	sql := "DELETE FROM \"collection_items\" WHERE \"id\"=$1"
+	var (
+		sql  string
+		args []interface{}
+	)
+	if hardDelete {
+		args = queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(o)), collectionItemPrimaryKeyMapping)
+		sql = "DELETE FROM \"collection_items\" WHERE \"id\"=$1"
+	} else {
+		currTime := time.Now().In(boil.GetLocation())
+		o.DeletedAt = null.TimeFrom(currTime)
+		wl := []string{"deleted_at"}
+		sql = fmt.Sprintf("UPDATE \"collection_items\" SET %s WHERE \"id\"=$2",
+			strmangle.SetParamNames("\"", "\"", 1, wl),
+		)
+		valueMapping, err := queries.BindMapping(collectionItemType, collectionItemMapping, append(wl, collectionItemPrimaryKeyColumns...))
+		if err != nil {
+			return 0, err
+		}
+		args = queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(o)), valueMapping)
+	}
 
 	if boil.DebugMode {
 		fmt.Fprintln(boil.DebugWriter, sql)
@@ -1129,12 +1154,17 @@ func (o *CollectionItem) Delete(exec boil.Executor) (int64, error) {
 }
 
 // DeleteAll deletes all matching rows.
-func (q collectionItemQuery) DeleteAll(exec boil.Executor) (int64, error) {
+func (q collectionItemQuery) DeleteAll(exec boil.Executor, hardDelete bool) (int64, error) {
 	if q.Query == nil {
 		return 0, errors.New("boiler: no collectionItemQuery provided for delete all")
 	}
 
-	queries.SetDelete(q.Query)
+	if hardDelete {
+		queries.SetDelete(q.Query)
+	} else {
+		currTime := time.Now().In(boil.GetLocation())
+		queries.SetUpdate(q.Query, M{"deleted_at": currTime})
+	}
 
 	result, err := q.Query.Exec(exec)
 	if err != nil {
@@ -1150,7 +1180,7 @@ func (q collectionItemQuery) DeleteAll(exec boil.Executor) (int64, error) {
 }
 
 // DeleteAll deletes all rows in the slice, using an executor.
-func (o CollectionItemSlice) DeleteAll(exec boil.Executor) (int64, error) {
+func (o CollectionItemSlice) DeleteAll(exec boil.Executor, hardDelete bool) (int64, error) {
 	if len(o) == 0 {
 		return 0, nil
 	}
@@ -1163,14 +1193,31 @@ func (o CollectionItemSlice) DeleteAll(exec boil.Executor) (int64, error) {
 		}
 	}
 
-	var args []interface{}
-	for _, obj := range o {
-		pkeyArgs := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(obj)), collectionItemPrimaryKeyMapping)
-		args = append(args, pkeyArgs...)
+	var (
+		sql  string
+		args []interface{}
+	)
+	if hardDelete {
+		for _, obj := range o {
+			pkeyArgs := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(obj)), collectionItemPrimaryKeyMapping)
+			args = append(args, pkeyArgs...)
+		}
+		sql = "DELETE FROM \"collection_items\" WHERE " +
+			strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), 1, collectionItemPrimaryKeyColumns, len(o))
+	} else {
+		currTime := time.Now().In(boil.GetLocation())
+		for _, obj := range o {
+			pkeyArgs := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(obj)), collectionItemPrimaryKeyMapping)
+			args = append(args, pkeyArgs...)
+			obj.DeletedAt = null.TimeFrom(currTime)
+		}
+		wl := []string{"deleted_at"}
+		sql = fmt.Sprintf("UPDATE \"collection_items\" SET %s WHERE "+
+			strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), 2, collectionItemPrimaryKeyColumns, len(o)),
+			strmangle.SetParamNames("\"", "\"", 1, wl),
+		)
+		args = append([]interface{}{currTime}, args...)
 	}
-
-	sql := "DELETE FROM \"collection_items\" WHERE " +
-		strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), 1, collectionItemPrimaryKeyColumns, len(o))
 
 	if boil.DebugMode {
 		fmt.Fprintln(boil.DebugWriter, sql)
@@ -1224,7 +1271,8 @@ func (o *CollectionItemSlice) ReloadAll(exec boil.Executor) error {
 	}
 
 	sql := "SELECT \"collection_items\".* FROM \"collection_items\" WHERE " +
-		strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), 1, collectionItemPrimaryKeyColumns, len(*o))
+		strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), 1, collectionItemPrimaryKeyColumns, len(*o)) +
+		"and \"deleted_at\" is null"
 
 	q := queries.Raw(sql, args...)
 
@@ -1241,7 +1289,7 @@ func (o *CollectionItemSlice) ReloadAll(exec boil.Executor) error {
 // CollectionItemExists checks if the CollectionItem row exists.
 func CollectionItemExists(exec boil.Executor, iD string) (bool, error) {
 	var exists bool
-	sql := "select exists(select 1 from \"collection_items\" where \"id\"=$1 limit 1)"
+	sql := "select exists(select 1 from \"collection_items\" where \"id\"=$1 and \"deleted_at\" is null limit 1)"
 
 	if boil.DebugMode {
 		fmt.Fprintln(boil.DebugWriter, sql)
