@@ -504,29 +504,6 @@ func (am *ArenaManager) QueueLeaveHandler(ctx context.Context, user *boiler.Play
 
 	// check ownership and availability
 	for _, mci := range mcis {
-		if mci.XsynLocked {
-			err := fmt.Errorf("mech is locked to xsyn locked")
-			gamelog.L.Error().Str("log_name", "battle arena").Str("mech_id", mci.ItemID).Err(err).Msg("war machine is xsyn locked")
-			return err
-		}
-
-		if mci.LockedToMarketplace {
-			err := fmt.Errorf("mech is listed in marketplace")
-			gamelog.L.Error().Str("log_name", "battle arena").Str("mech_id", mci.ItemID).Err(err).Msg("war machine is listed in marketplace")
-			return err
-		}
-
-		battleReady, err := db.MechBattleReady(mci.ItemID)
-		if err != nil {
-			gamelog.L.Error().Err(err).Msg("Failed to load battle ready status")
-			return err
-		}
-
-		if !battleReady {
-			gamelog.L.Error().Str("log_name", "battle arena").Str("mech_id", mci.ItemID).Msg("war machine is not available for queuing")
-			return fmt.Errorf("mech is cannot be used")
-		}
-
 		if mci.OwnerID != user.ID {
 			return terror.Error(fmt.Errorf("does not own the mech"), "This mech is not owned by you")
 		}
