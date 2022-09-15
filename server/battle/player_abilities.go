@@ -510,8 +510,8 @@ func (am *ArenaManager) PlayerAbilityUse(ctx context.Context, user *boiler.Playe
 		}
 
 		if swm >= 3 {
-			gamelog.L.Error().Str("log_name", "battle arena").Err(err).Interface("playerAbility", pa).Msg("failed to use player abiltiy, already 3 support machines in this battle for")
-			return terror.Error(fmt.Errorf("too many support warmachines"), "there are already 3 support war machines for your faction in battle")
+			gamelog.L.Error().Str("log_name", "battle arena").Err(err).Interface("playerAbility", pa).Msg("failed to use player abiltiy, already 3 support machines in this battle for this faction")
+			return terror.Error(fmt.Errorf("too many support warmachines"), "Only 3 active support war machines allowed in battle at one time")
 		}
 
 	}
