@@ -23,13 +23,13 @@ import (
 
 // MechUtility is an object representing the database table.
 type MechUtility struct {
-	ID         string    `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
-	ChassisID  string    `boiler:"chassis_id" boil:"chassis_id" json:"chassis_id" toml:"chassis_id" yaml:"chassis_id"`
-	UtilityID  string    `boiler:"utility_id" boil:"utility_id" json:"utility_id" toml:"utility_id" yaml:"utility_id"`
-	SlotNumber int       `boiler:"slot_number" boil:"slot_number" json:"slot_number" toml:"slot_number" yaml:"slot_number"`
-	DeletedAt  null.Time `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
-	UpdatedAt  time.Time `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
-	CreatedAt  time.Time `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
+	ID         string      `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
+	ChassisID  string      `boiler:"chassis_id" boil:"chassis_id" json:"chassis_id" toml:"chassis_id" yaml:"chassis_id"`
+	UtilityID  null.String `boiler:"utility_id" boil:"utility_id" json:"utility_id,omitempty" toml:"utility_id" yaml:"utility_id,omitempty"`
+	SlotNumber int         `boiler:"slot_number" boil:"slot_number" json:"slot_number" toml:"slot_number" yaml:"slot_number"`
+	DeletedAt  null.Time   `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
+	UpdatedAt  time.Time   `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
+	CreatedAt  time.Time   `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
 
 	R *mechUtilityR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L mechUtilityL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -76,7 +76,7 @@ var MechUtilityTableColumns = struct {
 var MechUtilityWhere = struct {
 	ID         whereHelperstring
 	ChassisID  whereHelperstring
-	UtilityID  whereHelperstring
+	UtilityID  whereHelpernull_String
 	SlotNumber whereHelperint
 	DeletedAt  whereHelpernull_Time
 	UpdatedAt  whereHelpertime_Time
@@ -84,7 +84,7 @@ var MechUtilityWhere = struct {
 }{
 	ID:         whereHelperstring{field: "\"mech_utility\".\"id\""},
 	ChassisID:  whereHelperstring{field: "\"mech_utility\".\"chassis_id\""},
-	UtilityID:  whereHelperstring{field: "\"mech_utility\".\"utility_id\""},
+	UtilityID:  whereHelpernull_String{field: "\"mech_utility\".\"utility_id\""},
 	SlotNumber: whereHelperint{field: "\"mech_utility\".\"slot_number\""},
 	DeletedAt:  whereHelpernull_Time{field: "\"mech_utility\".\"deleted_at\""},
 	UpdatedAt:  whereHelpertime_Time{field: "\"mech_utility\".\"updated_at\""},
@@ -116,8 +116,8 @@ type mechUtilityL struct{}
 
 var (
 	mechUtilityAllColumns            = []string{"id", "chassis_id", "utility_id", "slot_number", "deleted_at", "updated_at", "created_at"}
-	mechUtilityColumnsWithoutDefault = []string{"chassis_id", "utility_id", "slot_number"}
-	mechUtilityColumnsWithDefault    = []string{"id", "deleted_at", "updated_at", "created_at"}
+	mechUtilityColumnsWithoutDefault = []string{"chassis_id", "slot_number"}
+	mechUtilityColumnsWithDefault    = []string{"id", "utility_id", "deleted_at", "updated_at", "created_at"}
 	mechUtilityPrimaryKeyColumns     = []string{"id"}
 	mechUtilityGeneratedColumns      = []string{}
 )
@@ -516,7 +516,9 @@ func (mechUtilityL) LoadUtility(e boil.Executor, singular bool, maybeMechUtility
 		if object.R == nil {
 			object.R = &mechUtilityR{}
 		}
-		args = append(args, object.UtilityID)
+		if !queries.IsNil(object.UtilityID) {
+			args = append(args, object.UtilityID)
+		}
 
 	} else {
 	Outer:
@@ -526,12 +528,14 @@ func (mechUtilityL) LoadUtility(e boil.Executor, singular bool, maybeMechUtility
 			}
 
 			for _, a := range args {
-				if a == obj.UtilityID {
+				if queries.Equal(a, obj.UtilityID) {
 					continue Outer
 				}
 			}
 
-			args = append(args, obj.UtilityID)
+			if !queries.IsNil(obj.UtilityID) {
+				args = append(args, obj.UtilityID)
+			}
 
 		}
 	}
@@ -590,7 +594,7 @@ func (mechUtilityL) LoadUtility(e boil.Executor, singular bool, maybeMechUtility
 
 	for _, local := range slice {
 		for _, foreign := range resultSlice {
-			if local.UtilityID == foreign.ID {
+			if queries.Equal(local.UtilityID, foreign.ID) {
 				local.R.Utility = foreign
 				if foreign.R == nil {
 					foreign.R = &utilityR{}
@@ -676,7 +680,7 @@ func (o *MechUtility) SetUtility(exec boil.Executor, insert bool, related *Utili
 		return errors.Wrap(err, "failed to update local table")
 	}
 
-	o.UtilityID = related.ID
+	queries.Assign(&o.UtilityID, related.ID)
 	if o.R == nil {
 		o.R = &mechUtilityR{
 			Utility: related,
@@ -693,6 +697,28 @@ func (o *MechUtility) SetUtility(exec boil.Executor, insert bool, related *Utili
 		related.R.MechUtility = o
 	}
 
+	return nil
+}
+
+// RemoveUtility relationship.
+// Sets o.R.Utility to nil.
+// Removes o from all passed in related items' relationships struct (Optional).
+func (o *MechUtility) RemoveUtility(exec boil.Executor, related *Utility) error {
+	var err error
+
+	queries.SetScanner(&o.UtilityID, nil)
+	if _, err = o.Update(exec, boil.Whitelist("utility_id")); err != nil {
+		return errors.Wrap(err, "failed to update local table")
+	}
+
+	if o.R != nil {
+		o.R.Utility = nil
+	}
+	if related == nil || related.R == nil {
+		return nil
+	}
+
+	related.R.MechUtility = nil
 	return nil
 }
 

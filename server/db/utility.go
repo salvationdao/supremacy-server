@@ -51,21 +51,12 @@ func Utility(tx boil.Executor, id string) (*server.Utility, error) {
 	if err != nil {
 		return nil, err
 	}
-	boilerMechCollectionDetails, err := boiler.CollectionItems(boiler.CollectionItemWhere.ItemID.EQ(id)).One(tx)
+	_, err = boiler.CollectionItems(boiler.CollectionItemWhere.ItemID.EQ(id)).One(tx)
 	if err != nil {
 		return nil, err
 	}
 
 	switch boilerUtility.Type {
-	case boiler.UtilityTypeSHIELD:
-		boilerShield, err := boiler.BlueprintUtilityShields(
-			boiler.BlueprintUtilityShieldWhere.BlueprintUtilityID.EQ(boilerUtility.BlueprintID),
-
-			).One(tx)
-		if err != nil {
-			return nil, err
-		}
-		return server.UtilityShieldFromBoiler(boilerUtility, boilerShield, boilerMechCollectionDetails), nil
 	}
 
 	return nil, fmt.Errorf("invalid utility type %s", boilerUtility.Type)
@@ -79,18 +70,12 @@ func Utilities(id ...string) ([]*server.Utility, error) {
 	}
 
 	for _, util := range boilerUtilities {
-		boilerMechCollectionDetails, err := boiler.CollectionItems(boiler.CollectionItemWhere.ItemID.EQ(util.ID)).One(gamedb.StdConn)
+		_, err := boiler.CollectionItems(boiler.CollectionItemWhere.ItemID.EQ(util.ID)).One(gamedb.StdConn)
 		if err != nil {
 			return nil, err
 		}
 
 		switch util.Type {
-		case boiler.UtilityTypeSHIELD:
-			boilerShield, err := boiler.BlueprintUtilityShields(boiler.BlueprintUtilityShieldWhere.BlueprintUtilityID.EQ(util.BlueprintID)).One(gamedb.StdConn)
-			if err != nil {
-				return nil, err
-			}
-			utilities = append(utilities, server.UtilityShieldFromBoiler(util, boilerShield, boilerMechCollectionDetails))
 		}
 	}
 	return utilities, nil
@@ -148,7 +133,7 @@ func AttachUtilityToMech(tx boil.Executor, ownerID, mechID, utilityID string, lo
 	}
 
 	// check utility isn't already equipped to another war machine
-	exists, err := boiler.MechUtilities(boiler.MechUtilityWhere.UtilityID.EQ(utilityID)).Exists(tx)
+	exists, err := boiler.MechUtilities(boiler.MechUtilityWhere.UtilityID.EQ(null.NewString(utilityID, utilityID != ""))).Exists(tx)
 	if err != nil {
 		gamelog.L.Error().Err(err).Str("utilityID", utilityID).Msg("failed to check if a mech and utility join already exists")
 		return terror.Error(err)
@@ -170,7 +155,7 @@ func AttachUtilityToMech(tx boil.Executor, ownerID, mechID, utilityID string, lo
 
 	utilityMechJoin := boiler.MechUtility{
 		ChassisID:  mech.ID,
-		UtilityID:  utility.ID,
+		UtilityID:  null.NewString(utility.ID, utility.ID != ""),
 		SlotNumber: len(mech.R.ChassisMechUtilities), // slot number starts at 0, so if we currently have 2 equipped and this is the 3rd, it will be slot 2.
 	}
 

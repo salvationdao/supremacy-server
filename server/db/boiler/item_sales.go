@@ -479,6 +479,7 @@ func (q itemSaleQuery) Exists(exec boil.Executor) (bool, error) {
 func (o *ItemSale) CollectionItem(mods ...qm.QueryMod) collectionItemQuery {
 	queryMods := []qm.QueryMod{
 		qm.Where("\"id\" = ?", o.CollectionItemID),
+		qmhelper.WhereIsNull("deleted_at"),
 	}
 
 	queryMods = append(queryMods, mods...)
@@ -620,6 +621,7 @@ func (itemSaleL) LoadCollectionItem(e boil.Executor, singular bool, maybeItemSal
 	query := NewQuery(
 		qm.From(`collection_items`),
 		qm.WhereIn(`collection_items.id in ?`, args...),
+		qmhelper.WhereIsNull(`collection_items.deleted_at`),
 	)
 	if mods != nil {
 		mods.Apply(query)

@@ -429,8 +429,8 @@ WITH toupdate AS (SELECT m.id
                            INNER JOIN blueprint_mechs_old bpmo ON bpmo.id = m.blueprint_id)
 UPDATE mechs m
 SET blueprint_id_old = blueprint_id, blueprint_id = (SELECT bpmo.model_id
-                    FROM blueprint_mechs_old bpmo
-                    WHERE bpmo.id = m.blueprint_id)
+                                                     FROM blueprint_mechs_old bpmo
+                                                     WHERE bpmo.id = m.blueprint_id)
 FROM toupdate
 WHERE m.id = toupdate.id;
 
@@ -444,11 +444,11 @@ ALTER TABLE weapons
 
 WITH toupdate AS (SELECT w.id
                   FROM weapons w
-                    INNER JOIN blueprint_weapons_old bwo ON bwo.id = w.blueprint_id)
+                           INNER JOIN blueprint_weapons_old bwo ON bwo.id = w.blueprint_id)
 UPDATE weapons w
 SET blueprint_id_old = w.blueprint_id, blueprint_id = (SELECT bpwo.weapon_model_id
-                    FROM blueprint_weapons_old bpwo
-                    WHERE bpwo.id = w.blueprint_id)
+                                                       FROM blueprint_weapons_old bpwo
+                                                       WHERE bpwo.id = w.blueprint_id)
 FROM toupdate
 WHERE w.id = toupdate.id;
 
@@ -460,47 +460,10 @@ ALTER TABLE utility
 
 -- rm faction id 98bf7bb3-1a7c-4f21-8843-458d62884060
 -- RM 0551d044-b8ff-47ac-917e-80c3fce37378
-WITH toupdate AS (SELECT f.id AS fac_id, u.id AS u_id
-                  FROM utility u
-                           INNER JOIN mechs m ON m.id = u.equipped_on
-                           INNER JOIN blueprint_mechs bm ON m.blueprint_id = bm.id
-                           INNER JOIN brands b ON bm.brand_id = b.id
-                           INNER JOIN factions f ON b.faction_id = f.id)
-UPDATE utility u
-SET blueprint_id_old = blueprint_id, blueprint_id = '0551d044-b8ff-47ac-917e-80c3fce37378'
-FROM toupdate
-WHERE u.id = toupdate.u_id
-  AND toupdate.fac_id = '98bf7bb3-1a7c-4f21-8843-458d62884060';
-
--- ZAI 1e9a8bd4-b6c3-4a46-86e9-4c68a95f09b8
--- zai faction id 880db344-e405-428d-84e5-6ebebab1fe6d
-WITH toupdate AS (SELECT f.id AS fac_id, u.id AS u_id
-                  FROM utility u
-                           INNER JOIN mechs m ON m.id = u.equipped_on
-                           INNER JOIN blueprint_mechs bm ON m.blueprint_id = bm.id
-                           INNER JOIN brands b ON bm.brand_id = b.id
-                           INNER JOIN factions f ON b.faction_id = f.id)
-UPDATE utility u
-SET blueprint_id_old = blueprint_id, blueprint_id = '1e9a8bd4-b6c3-4a46-86e9-4c68a95f09b8'
-FROM toupdate
-WHERE u.id = toupdate.u_id
-  AND toupdate.fac_id = '880db344-e405-428d-84e5-6ebebab1fe6d';
-
 -- BC d429be75-6f98-4231-8315-a86db8477d05
 -- bc faction id 7c6dde21-b067-46cf-9e56-155c88a520e2
-WITH toupdate AS (SELECT f.id AS fac_id, u.id AS u_id
-                  FROM utility u
-                           INNER JOIN mechs m ON m.id = u.equipped_on
-                           INNER JOIN blueprint_mechs bm ON m.blueprint_id = bm.id
-                           INNER JOIN brands b ON bm.brand_id = b.id
-                           INNER JOIN factions f ON b.faction_id = f.id)
-UPDATE utility u
-SET blueprint_id_old = blueprint_id, blueprint_id = 'd429be75-6f98-4231-8315-a86db8477d05'
-FROM toupdate
-WHERE u.id = toupdate.u_id
-  AND toupdate.fac_id = '7c6dde21-b067-46cf-9e56-155c88a520e2';
 
-UPDATE blueprint_utility_shield
+UPDATE blueprint_utility_shield_old
 SET deleted_at = NOW()
 WHERE blueprint_utility_id NOT IN (
                                    'd429be75-6f98-4231-8315-a86db8477d05',
@@ -528,7 +491,7 @@ DROP TABLE IF EXISTS utility_repair_drone;
 
 WITH toupdate AS (SELECT tbp.id, t.label
                   FROM templates t
-                   INNER JOIN template_blueprints tbp ON tbp.template_id = t.id
+                           INNER JOIN template_blueprints tbp ON tbp.template_id = t.id
                   WHERE tbp.type = 'UTILITY'
                     AND t.label ILIKE '%Boston%')
 UPDATE template_blueprints tbp
@@ -547,12 +510,12 @@ FROM toupdate
 WHERE tbp.id = toupdate.id;
 
 WITH toupdate AS (
-        SELECT tbp.id, t.label
-        FROM templates t
-        INNER JOIN template_blueprints tbp ON tbp.template_id = t.id
-        WHERE tbp.type = 'UTILITY'
-        AND t.label ILIKE '%zai%'
-        )
+    SELECT tbp.id, t.label
+    FROM templates t
+             INNER JOIN template_blueprints tbp ON tbp.template_id = t.id
+    WHERE tbp.type = 'UTILITY'
+      AND t.label ILIKE '%zai%'
+)
 UPDATE template_blueprints tbp
 SET blueprint_id_old = blueprint_id, blueprint_id = '1e9a8bd4-b6c3-4a46-86e9-4c68a95f09b8'
 FROM toupdate
