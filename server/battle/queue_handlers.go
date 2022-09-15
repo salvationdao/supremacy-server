@@ -671,6 +671,8 @@ func (am *ArenaManager) QueueLeaveHandler(ctx context.Context, user *boiler.Play
 		return terror.Error(err, "Failed to leave queue")
 	}
 
+	reply(true)
+
 	return nil
 }
 
