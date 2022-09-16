@@ -272,20 +272,12 @@ func Utility(tx boil.Executor, id string) (*server.Utility, error) {
 	if err != nil {
 		return nil, err
 	}
-	boilerMechCollectionDetails, err := boiler.CollectionItems(boiler.CollectionItemWhere.ItemID.EQ(id)).One(tx)
+	_, err = boiler.CollectionItems(boiler.CollectionItemWhere.ItemID.EQ(id)).One(tx)
 	if err != nil {
 		return nil, err
 	}
 
 	switch boilerUtility.Type {
-	case boiler.UtilityTypeSHIELD:
-		boilerShield, err := boiler.BlueprintUtilityShields(
-			boiler.BlueprintUtilityShieldWhere.BlueprintUtilityID.EQ(boilerUtility.BlueprintID),
-		).One(tx)
-		if err != nil {
-			return nil, err
-		}
-		return server.UtilityShieldFromBoiler(boilerUtility, boilerUtility.R.Blueprint, boilerShield, boilerMechCollectionDetails), nil
 	}
 
 	return nil, fmt.Errorf("invalid utility type %s", boilerUtility.Type)
@@ -299,18 +291,12 @@ func Utilities(id ...string) ([]*server.Utility, error) {
 	}
 
 	for _, util := range boilerUtilities {
-		boilerMechCollectionDetails, err := boiler.CollectionItems(boiler.CollectionItemWhere.ItemID.EQ(util.ID)).One(gamedb.StdConn)
+		_, err := boiler.CollectionItems(boiler.CollectionItemWhere.ItemID.EQ(util.ID)).One(gamedb.StdConn)
 		if err != nil {
 			return nil, err
 		}
 
 		switch util.Type {
-		case boiler.UtilityTypeSHIELD:
-			boilerShield, err := boiler.BlueprintUtilityShields(boiler.BlueprintUtilityShieldWhere.BlueprintUtilityID.EQ(util.BlueprintID)).One(gamedb.StdConn)
-			if err != nil {
-				return nil, err
-			}
-			utilities = append(utilities, server.UtilityShieldFromBoiler(util, util.R.Blueprint, boilerShield, boilerMechCollectionDetails))
 		}
 	}
 	return utilities, nil

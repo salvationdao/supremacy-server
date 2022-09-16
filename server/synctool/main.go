@@ -47,6 +47,16 @@ func SyncTool(dt *StaticSyncTool) error {
 	}
 	f.Close()
 
+	f, err = readFile(fmt.Sprintf("%sshield_types.csv", dt.FilePath))
+	if err != nil {
+		return err
+	}
+	err = SyncShieldTypes(f, dt.DB)
+	if err != nil {
+		return err
+	}
+	f.Close()
+
 	f, err = readFile(fmt.Sprintf("%sweapon_skins.csv", dt.FilePath))
 	if err != nil {
 		return err
@@ -91,16 +101,6 @@ func SyncTool(dt *StaticSyncTool) error {
 	//if err != nil {
 	//	return err
 	//}
-
-	f, err = readFile(fmt.Sprintf("%sweapon_skins.csv", dt.FilePath))
-	if err != nil {
-		return err
-	}
-	err = SyncWeaponSkins(f, dt.DB)
-	if err != nil {
-		return err
-	}
-	f.Close()
 
 	f, err = readFile(fmt.Sprintf("%sweapons.csv", dt.FilePath))
 	if err != nil {
@@ -167,16 +167,6 @@ func SyncTool(dt *StaticSyncTool) error {
 		return err
 	}
 	err = SyncStaticQuest(f, dt.DB)
-	if err != nil {
-		return err
-	}
-	f.Close()
-
-	f, err = readFile(fmt.Sprintf("%sutility_shields.csv", dt.FilePath))
-	if err != nil {
-		return err
-	}
-	err = SyncStaticUtilityShields(f, dt.DB)
 	if err != nil {
 		return err
 	}
@@ -288,19 +278,23 @@ func SyncMechModels(f io.Reader, db *sql.DB) error {
 	var MechModels []types.MechModel
 	for _, record := range records {
 		mechModel := &types.MechModel{
-			ID:                   record[0],
-			Label:                record[1],
-			DefaultChassisSkinID: record[3],
-			BrandID:              record[4],
-			MechType:             record[5],
-			BoostStat:            record[6],
-			WeaponHardpoints:     record[7],
-			UtilitySlots:         record[8],
-			Speed:                record[9],
-			MaxHitpoints:         record[10],
-			PowerCoreSize:        record[11],
-			Collection:           record[12],
-			AvailabilityID:       null.NewString(record[13], record[13] != ""),
+			ID:                      record[0],
+			Label:                   record[1],
+			DefaultChassisSkinID:    record[3],
+			BrandID:                 record[4],
+			MechType:                record[5],
+			BoostStat:               record[6],
+			WeaponHardpoints:        record[7],
+			UtilitySlots:            record[8],
+			Speed:                   record[9],
+			MaxHitpoints:            record[10],
+			PowerCoreSize:           record[11],
+			Collection:              record[12],
+			AvailabilityID:          null.NewString(record[13], record[13] != ""),
+			ShieldMax:               record[14],
+			ShieldRechargeRate:      record[15],
+			ShieldRechargePowerCost: record[16],
+			ShieldTypeID:            record[17],
 		}
 
 		MechModels = append(MechModels, *mechModel)
@@ -323,9 +317,13 @@ func SyncMechModels(f io.Reader, db *sql.DB) error {
 												max_hitpoints,
 												power_core_size,
 			                             		collection,
-			                             		availability_id
+			                             		availability_id,
+												shield_max,
+												shield_recharge_rate,
+												shield_recharge_power_cost,
+			                             		shield_type_id
 			                                   )
-			VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
+			VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)
 			ON CONFLICT (id)
 			DO
 				UPDATE SET 
@@ -341,7 +339,11 @@ func SyncMechModels(f io.Reader, db *sql.DB) error {
 							max_hitpoints=$10,
 							power_core_size=$11,
 							collection=$12,
-							availability_id=$13;
+							availability_id=$13,
+							shield_max=$14,
+							shield_recharge_rate=$15,
+							shield_recharge_power_cost=$16,
+							shield_type_id=$17;
 		`,
 			mechModel.ID,
 			mechModel.Label,
@@ -356,6 +358,10 @@ func SyncMechModels(f io.Reader, db *sql.DB) error {
 			mechModel.PowerCoreSize,
 			mechModel.Collection,
 			mechModel.AvailabilityID,
+			mechModel.ShieldMax,
+			mechModel.ShieldRechargeRate,
+			mechModel.ShieldRechargePowerCost,
+			mechModel.ShieldTypeID,
 		)
 		if err != nil {
 			fmt.Println("ERROR: " + err.Error())
@@ -449,6 +455,52 @@ func SyncMechModelSkinCompatibilities(f io.Reader, db *sql.DB) error {
 	fmt.Println("Finish syncing mech_model_skin_compatibilities Count: " + strconv.Itoa(count))
 
 	return nil
+}
+
+func SyncShieldTypes(f io.Reader, db *sql.DB) error {
+	r := csv.NewReader(f)
+
+	if _, err := r.Read(); err != nil {
+		return err
+	}
+
+	records, err := r.ReadAll()
+	if err != nil {
+		return err
+	}
+
+	for _, record := range records {
+		blueprintShield := &boiler.BlueprintShieldType{
+			ID:          record[0],
+			Label:       record[1],
+			Description: record[2],
+		}
+
+		// upsert blueprint quest
+		err = blueprintShield.Upsert(
+			db,
+			true,
+			[]string{
+				boiler.BlueprintShieldTypeColumns.ID,
+			},
+			boil.Whitelist(
+				boiler.BlueprintShieldTypeColumns.Label,
+				boiler.BlueprintShieldTypeColumns.Description,
+			),
+			boil.Infer(),
+		)
+		if err != nil {
+			fmt.Printf("%s: %s %s", err.Error(), blueprintShield.ID, blueprintShield.Label)
+			return err
+		}
+
+		fmt.Printf("UPDATED: %s\n", blueprintShield.Label)
+	}
+
+	fmt.Println("Finish syncing blueprint shield types")
+
+	return nil
+
 }
 
 func SyncMechSkins(f io.Reader, db *sql.DB) error {
@@ -1470,108 +1522,6 @@ func SyncPowerCores(f io.Reader, db *sql.DB) error {
 	return nil
 }
 
-func SyncStaticMech(f io.Reader, db *sql.DB) error {
-	r := csv.NewReader(f)
-
-	if _, err := r.Read(); err != nil {
-		return err
-	}
-
-	records, err := r.ReadAll()
-	if err != nil {
-		return err
-	}
-
-	var BlueprintMechs []types.BlueprintMechs
-	for _, record := range records {
-		blueprintMechs := &types.BlueprintMechs{
-			ID:               record[0],
-			Label:            record[1],
-			Slug:             record[2],
-			WeaponHardpoints: record[3],
-			UtilitySlots:     record[4],
-			Speed:            record[5],
-			MaxHitpoints:     record[6],
-			DeletedAt:        record[7],
-			UpdatedAt:        record[8],
-			CreatedAt:        record[9],
-			ModelID:          record[10],
-			Collection:       record[11],
-			PowerCoreSize:    record[12],
-			Tier:             record[13],
-		}
-
-		BlueprintMechs = append(BlueprintMechs, *blueprintMechs)
-	}
-
-	for _, blueprintMech := range BlueprintMechs {
-		deletedAt := &blueprintMech.DeletedAt
-		if blueprintMech.DeletedAt == "" {
-			deletedAt = nil
-		}
-
-		_, err = db.Exec(`
-			INSERT INTO blueprint_mechs(
-			                            id, 
-			                            label, 
-			                            slug, 
-			                            weapon_hardpoints, 
-			                            utility_slots, 
-			                            speed, 
-			                            max_hitpoints, 
-			                            deleted_at, 
-			                            updated_at, 
-			                            created_at, 
-			                            model_id, 
-			                            collection, 
-			                            power_core_size, 
-			                            tier
-			                            )
-			VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
-			ON CONFLICT (id)
-			DO 
-			    UPDATE SET id=$1, 
-			               label=$2, 
-			               slug=$3, 
-			               weapon_hardpoints=$4, 
-			               utility_slots=$5, 
-			               speed=$6, 
-			               max_hitpoints=$7, 
-			               deleted_at=$8, 
-			               updated_at=$9, 
-			               created_at=$10, 
-			               model_id=$11, 
-			               collection=$12, 
-			               power_core_size=$13, 
-			               tier=$14;
-		`,
-			blueprintMech.ID,
-			blueprintMech.Label,
-			blueprintMech.Slug,
-			blueprintMech.WeaponHardpoints,
-			blueprintMech.UtilitySlots,
-			blueprintMech.Speed,
-			blueprintMech.MaxHitpoints,
-			deletedAt,
-			blueprintMech.UpdatedAt,
-			blueprintMech.CreatedAt,
-			blueprintMech.ModelID,
-			blueprintMech.Collection,
-			blueprintMech.PowerCoreSize,
-			blueprintMech.Tier)
-		if err != nil {
-			fmt.Println(err.Error()+blueprintMech.ID, blueprintMech.Label)
-			return err
-		}
-
-		fmt.Println("UPDATED: "+blueprintMech.ID, blueprintMech.Label)
-	}
-
-	fmt.Println("Finish syncing static mech")
-
-	return nil
-}
-
 func SyncStaticQuest(f io.Reader, db *sql.DB) error {
 	r := csv.NewReader(f)
 
@@ -1626,88 +1576,6 @@ func SyncStaticQuest(f io.Reader, db *sql.DB) error {
 	}
 
 	fmt.Println("Finish syncing static quest")
-
-	return nil
-}
-
-func SyncStaticUtilityShields(f io.Reader, db *sql.DB) error {
-	r := csv.NewReader(f)
-
-	if _, err := r.Read(); err != nil {
-		return err
-	}
-
-	records, err := r.ReadAll()
-	if err != nil {
-		return err
-	}
-
-	for _, record := range records {
-		blueprintUtil := &boiler.BlueprintUtility{
-			ID:         record[0],
-			Label:      record[4],
-			Collection: record[5],
-			Type:       boiler.UtilityTypeSHIELD,
-			AvatarURL:  null.NewString(record[6], record[6] != ""),
-		}
-		blueprintUtilShield := &boiler.BlueprintUtilityShield{
-			BlueprintUtilityID: record[0],
-		}
-		blueprintUtilShield.Hitpoints, err = strconv.Atoi(record[1])
-		if err != nil {
-			return err
-		}
-		blueprintUtilShield.RechargeRate, err = strconv.Atoi(record[2])
-		if err != nil {
-			return err
-		}
-		blueprintUtilShield.RechargeEnergyCost, err = strconv.Atoi(record[3])
-		if err != nil {
-			return err
-		}
-
-		// upsert blueprint quest
-		err = blueprintUtil.Upsert(
-			db,
-			true,
-			[]string{
-				boiler.BlueprintUtilityColumns.ID,
-			},
-			boil.Whitelist(
-				boiler.BlueprintUtilityColumns.Label,
-				boiler.BlueprintUtilityColumns.Collection,
-				boiler.BlueprintUtilityColumns.AvatarURL,
-			),
-			boil.Infer(),
-		)
-		if err != nil {
-			fmt.Println(err.Error(), blueprintUtil.ID, blueprintUtil.Label)
-			return err
-		}
-		// upsert blueprint quest
-		err = blueprintUtilShield.Upsert(
-			db,
-			true,
-			[]string{
-				boiler.BlueprintUtilityShieldColumns.BlueprintUtilityID,
-			},
-			boil.Whitelist(
-				boiler.BlueprintUtilityShieldColumns.Hitpoints,
-				boiler.BlueprintUtilityShieldColumns.RechargeRate,
-				boiler.BlueprintUtilityShieldColumns.RechargeEnergyCost,
-			),
-			boil.Infer(),
-		)
-		if err != nil {
-			fmt.Println(err.Error(), blueprintUtilShield.ID)
-			return err
-		}
-
-		fmt.Println("UPDATED: "+blueprintUtil.ID, blueprintUtil.Label)
-
-	}
-
-	fmt.Println("Finish syncing static utilities")
 
 	return nil
 }

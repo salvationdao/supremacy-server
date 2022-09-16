@@ -66,6 +66,12 @@ func getDefaultMechQueryMods() []qm.QueryMod {
 			qm.Rels(boiler.TableNames.BlueprintMechs, boiler.BlueprintMechColumns.UtilitySlots),
 			qm.Rels(boiler.TableNames.BlueprintMechs, boiler.BlueprintMechColumns.Speed),
 			qm.Rels(boiler.TableNames.BlueprintMechs, boiler.BlueprintMechColumns.MaxHitpoints),
+			qm.Rels(boiler.TableNames.BlueprintMechs, boiler.BlueprintMechColumns.ShieldMax),
+			qm.Rels(boiler.TableNames.BlueprintMechs, boiler.BlueprintMechColumns.ShieldRechargeRate),
+			qm.Rels(boiler.TableNames.BlueprintMechs, boiler.BlueprintMechColumns.ShieldRechargePowerCost),
+			qm.Rels(boiler.TableNames.BlueprintMechs, boiler.BlueprintMechColumns.ShieldTypeID),
+			qm.Rels(boiler.TableNames.BlueprintShieldTypes, boiler.BlueprintShieldTypeColumns.Label),
+			qm.Rels(boiler.TableNames.BlueprintShieldTypes, boiler.BlueprintShieldTypeColumns.Description),
 			qm.Rels(boiler.TableNames.BlueprintMechs, boiler.BlueprintMechColumns.RepairBlocks),
 			qm.Rels(boiler.TableNames.BlueprintMechs, boiler.BlueprintMechColumns.BoostStat),
 			qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.IsDefault),
@@ -183,6 +189,12 @@ func getDefaultMechQueryMods() []qm.QueryMod {
 			boiler.TableNames.BlueprintMechs,
 			qm.Rels(boiler.TableNames.BlueprintMechs, boiler.BlueprintMechColumns.ID),
 			qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.BlueprintID),
+		)),
+		// inner join mech shield type details
+		qm.InnerJoin(fmt.Sprintf("%s ON %s = %s",
+			boiler.TableNames.BlueprintShieldTypes,
+			qm.Rels(boiler.TableNames.BlueprintShieldTypes, boiler.BlueprintShieldTypeColumns.ID),
+			qm.Rels(boiler.TableNames.BlueprintMechs, boiler.BlueprintMechColumns.ShieldTypeID),
 		)),
 		// inner join brand
 		qm.InnerJoin(fmt.Sprintf("%s ON %s = %s",
@@ -320,12 +332,12 @@ func getDefaultMechQueryMods() []qm.QueryMod {
 								_bpu.card_animation_url as card_animation_url,
 								_bpu.animation_url as animation_url,
 								_bpu.label as label,
-								to_json(_us) as shield,
-								_mu.slot_number AS slot_number
+								_mu.slot_number AS slot_number,
+								--to_json(_us) as shield
 						FROM utility _u
 						INNER JOIN collection_items _ci on _ci.item_id = _u.id
 						INNER JOIN blueprint_utility _bpu on _bpu.id = _u.blueprint_id
-						INNER JOIN blueprint_utility_shield _us ON _us.blueprint_utility_id = _u.blueprint_id
+						-- INNER JOIN blueprint_utility_shield _us ON _us.blueprint_utility_id = _u.blueprint_id
 						INNER JOIN mech_utility _mu ON _mu.utility_id = _u.id
 					) _u ON mu.utility_id = _u.id
 					GROUP BY
@@ -516,6 +528,12 @@ func Mech(conn boil.Executor, mechID string) (*server.Mech, error) {
 			&mc.UtilitySlots,
 			&mc.Speed,
 			&mc.MaxHitpoints,
+			&mc.Shield,
+			&mc.ShieldRechargeRate,
+			&mc.ShieldRechargePowerCost,
+			&mc.ShieldTypeID,
+			&mc.ShieldTypeLabel,
+			&mc.ShieldTypeDescription,
 			&mc.RepairBlocks,
 			&mc.BoostedStat,
 			&mc.IsDefault,
@@ -641,6 +659,12 @@ func Mechs(mechIDs ...string) ([]*server.Mech, error) {
 			&mc.UtilitySlots,
 			&mc.Speed,
 			&mc.MaxHitpoints,
+			&mc.Shield,
+			&mc.ShieldRechargeRate,
+			&mc.ShieldRechargePowerCost,
+			&mc.ShieldTypeID,
+			&mc.ShieldTypeLabel,
+			&mc.ShieldTypeDescription,
 			&mc.RepairBlocks,
 			&mc.BoostedStat,
 			&mc.IsDefault,
@@ -919,6 +943,12 @@ func MechList(opts *MechListOpts) (int64, []*server.Mech, error) {
 			qm.Rels(boiler.TableNames.BlueprintMechs, boiler.BlueprintMechColumns.ID),
 			qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.BlueprintID),
 		)),
+		// inner join mech shield type details
+		qm.InnerJoin(fmt.Sprintf("%s ON %s = %s",
+			boiler.TableNames.BlueprintShieldTypes,
+			qm.Rels(boiler.TableNames.BlueprintShieldTypes, boiler.BlueprintShieldTypeColumns.ID),
+			qm.Rels(boiler.TableNames.BlueprintMechs, boiler.BlueprintMechColumns.ShieldTypeID),
+		)),
 	)
 
 	if !opts.DisplayXsynMechs || !opts.IncludeMarketListed {
@@ -1148,6 +1178,12 @@ func MechList(opts *MechListOpts) (int64, []*server.Mech, error) {
 			qm.Rels(boiler.TableNames.BlueprintMechs, boiler.BlueprintMechColumns.UtilitySlots),
 			qm.Rels(boiler.TableNames.BlueprintMechs, boiler.BlueprintMechColumns.Speed),
 			qm.Rels(boiler.TableNames.BlueprintMechs, boiler.BlueprintMechColumns.MaxHitpoints),
+			qm.Rels(boiler.TableNames.BlueprintMechs, boiler.BlueprintMechColumns.ShieldMax),
+			qm.Rels(boiler.TableNames.BlueprintMechs, boiler.BlueprintMechColumns.ShieldRechargeRate),
+			qm.Rels(boiler.TableNames.BlueprintMechs, boiler.BlueprintMechColumns.ShieldRechargePowerCost),
+			qm.Rels(boiler.TableNames.BlueprintMechs, boiler.BlueprintMechColumns.ShieldTypeID),
+			qm.Rels(boiler.TableNames.BlueprintShieldTypes, boiler.BlueprintShieldTypeColumns.Label),
+			qm.Rels(boiler.TableNames.BlueprintShieldTypes, boiler.BlueprintShieldTypeColumns.Description),
 			qm.Rels(boiler.TableNames.BlueprintMechs, boiler.BlueprintMechColumns.RepairBlocks),
 			qm.Rels(boiler.TableNames.BlueprintMechs, boiler.BlueprintMechColumns.BoostStat),
 			qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.IsDefault),
@@ -1240,6 +1276,12 @@ func MechList(opts *MechListOpts) (int64, []*server.Mech, error) {
 			&mc.UtilitySlots,
 			&mc.Speed,
 			&mc.MaxHitpoints,
+			&mc.Shield,
+			&mc.ShieldRechargeRate,
+			&mc.ShieldRechargePowerCost,
+			&mc.ShieldTypeID,
+			&mc.ShieldTypeLabel,
+			&mc.ShieldTypeDescription,
 			&mc.RepairBlocks,
 			&mc.BoostedStat,
 			&mc.IsDefault,

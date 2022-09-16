@@ -29,6 +29,7 @@ import (
 
 const IncognitoGameAbilityID = 15
 const BlackoutGameAbilityID = 16
+const SupportMechGameAbility = 18
 
 const BlackoutDurationSeconds = 15 // has to match duration specified in supremacy-gameclient/abilities.json
 
@@ -321,6 +322,7 @@ func (am *ArenaManager) PlayerAbilityUse(ctx context.Context, user *boiler.Playe
 		boiler.PlayerAbilityWhere.BlueprintID.EQ(req.Payload.BlueprintAbilityID),
 		boiler.PlayerAbilityWhere.OwnerID.EQ(player.ID),
 		qm.Load(boiler.PlayerAbilityRels.Blueprint),
+		qm.Load(boiler.PlayerAbilityRels.Owner),
 	).One(gamedb.StdConn)
 	if err != nil {
 		gamelog.L.Warn().Err(err).Str("func", "PlayerAbilityUse").Str("blueprintAbilityID", req.Payload.BlueprintAbilityID).Msg("failed to get player ability")
@@ -494,6 +496,27 @@ func (am *ArenaManager) PlayerAbilityUse(ctx context.Context, user *boiler.Playe
 		return terror.Error(err, "Issue purchasing player ability, please try again or contact support.")
 	}
 	defer tx.Rollback()
+
+	// check if using support war machine
+	if bpa.GameClientAbilityID == SupportMechGameAbility {
+		btl := arena.CurrentBattle()
+
+		swm := 0
+		for _, wm := range btl.SpawnedAI {
+			// add if mini mech && alive && same faction as owner
+			isMiniMech := wm.AIType != nil && *wm.AIType == MiniMech
+			isAlive := wm.Health > 0
+			inOwnersFaction := pa.R != nil && pa.R.Owner.FactionID == null.StringFrom(wm.FactionID)
+			if isMiniMech && isAlive && inOwnersFaction {
+				swm++
+			}
+		}
+
+		if swm >= 3 {
+			gamelog.L.Debug().Msg("too many support warmachines for this faction")
+			return terror.Error(fmt.Errorf("too many support warmachines for this faction"), "Only 3 active support war machines allowed in battle at one time for your faction")
+		}
+	}
 
 	// Create consumed_abilities entry
 	ca := boiler.ConsumedAbility{

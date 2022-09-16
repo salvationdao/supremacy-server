@@ -479,6 +479,7 @@ func (o *Utility) MechUtility(mods ...qm.QueryMod) mechUtilityQuery {
 func (o *Utility) UtilityShieldDontUse(mods ...qm.QueryMod) utilityShieldDontUseQuery {
 	queryMods := []qm.QueryMod{
 		qm.Where("\"utility_id\" = ?", o.ID),
+		qmhelper.WhereIsNull("deleted_at"),
 	}
 
 	queryMods = append(queryMods, mods...)
@@ -956,6 +957,7 @@ func (utilityL) LoadUtilityShieldDontUse(e boil.Executor, singular bool, maybeUt
 	query := NewQuery(
 		qm.From(`utility_shield_dont_use`),
 		qm.WhereIn(`utility_shield_dont_use.utility_id in ?`, args...),
+		qmhelper.WhereIsNull(`utility_shield_dont_use.deleted_at`),
 	)
 	if mods != nil {
 		mods.Apply(query)

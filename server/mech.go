@@ -33,16 +33,28 @@ type Mech struct {
 	LimitedReleaseTokenID null.Int64 `json:"limited_release_token_id,omitempty"`
 	CollectionItemID      string     `json:"-"`
 
-	// stats
-	Speed               int    `json:"speed"`
-	BoostedSpeed        int    `json:"boosted_speed"`
-	MaxHitpoints        int    `json:"max_hitpoints"`
-	BoostedMaxHitpoints int    `json:"boosted_max_hitpoints"`
-	WeaponHardpoints    int    `json:"weapon_hardpoints"`
-	UtilitySlots        int    `json:"utility_slots"`
-	RepairBlocks        int    `json:"repair_blocks"`
-	PowerCoreSize       string `json:"power_core_size"`
-	BoostedStat         string `json:"boosted_stat"`
+	//// stats
+	// speed
+	Speed        int `json:"speed"`
+	BoostedSpeed int `json:"boosted_speed"`
+	// hit points
+	MaxHitpoints        int `json:"max_hitpoints"`
+	BoostedMaxHitpoints int `json:"boosted_max_hitpoints"`
+	// shield
+	Shield                    int    `json:"shield"`
+	ShieldRechargeRate        int    `json:"shield_recharge_rate"`
+	BoostedShieldRechargeRate int    `json:"boosted_shield_recharge_rate"`
+	ShieldRechargePowerCost   int    `json:"shield_recharge_power_cost"`
+	ShieldTypeID              string `json:"shield_type"`
+	ShieldTypeLabel           string `json:"shield_type_label"`
+	ShieldTypeDescription     string `json:"shield_type_description"`
+	// slots
+	WeaponHardpoints int `json:"weapon_hardpoints"`
+	UtilitySlots     int `json:"utility_slots"`
+	// other
+	RepairBlocks  int    `json:"repair_blocks"`
+	PowerCoreSize string `json:"power_core_size"`
+	BoostedStat   string `json:"boosted_stat"`
 
 	// state
 	QueuePosition null.Int    `json:"queue_position"`
@@ -242,15 +254,10 @@ func (m *Mech) SetBoostedStats() error {
 	} else {
 		m.BoostedMaxHitpoints = m.MaxHitpoints
 	}
-
-	for _, util := range m.Utility {
-		if util.Shield != nil {
-			if m.BoostedStat == boiler.BoostStatSHIELD_REGEN {
-				util.Shield.BoostedRechargeRate = int(boostPercent * float32(util.Shield.RechargeRate))
-			} else {
-				util.Shield.BoostedRechargeRate = util.Shield.RechargeRate
-			}
-		}
+	if m.BoostedStat == boiler.BoostStatSHIELD_REGEN {
+		m.BoostedShieldRechargeRate = int(boostPercent * float32(m.ShieldRechargeRate))
+	} else {
+		m.BoostedShieldRechargeRate = m.ShieldRechargeRate
 	}
 
 	return nil
