@@ -1328,24 +1328,57 @@ func MechBattleReady(mechID string) (bool, error) {
 }
 
 type MechBrief struct {
-	ID                  string    `json:"id" db:"id"`
-	OwnerID             string    `json:"owner_id" db:"owner_id"`
-	MarketLocked        bool      `json:"market_locked" db:"market_locked"`
-	XsynLocked          bool      `json:"xsyn_locked" db:"xsyn_locked"`
-	LockedToMarketplace bool      `json:"locked_to_marketplace" db:"locked_to_marketplace"`
-	Name                string    `json:"name" db:"name"`
-	Label               string    `json:"label" db:"label"`
-	RepairBlocks        int       `json:"repair_blocks" db:"repair_blocks"`
-	Tier                string    `json:"tier" db:"tier"`
-	ImageUrl            string    `json:"image_url" db:"image_url"`
-	AvatarUrl           string    `json:"avatar_url" db:"avatar_url"`
-	LobbyLockedAt       null.Time `json:"lobby_locked_at" db:"lobby_locked_at"`
-	LobbyNumber         null.Int  `json:"lobby_number" db:"lobby_number"`
-	DamagedBlocks       int       `json:"damaged_blocks" db:"damaged_blocks"`
-	BattleReady         bool      `json:"battle_ready" db:"battle_ready"`
+	ID                  string      `json:"id" db:"id"`
+	OwnerID             string      `json:"owner_id" db:"owner_id"`
+	MarketLocked        bool        `json:"market_locked" db:"market_locked"`
+	XsynLocked          bool        `json:"xsyn_locked" db:"xsyn_locked"`
+	LockedToMarketplace bool        `json:"locked_to_marketplace" db:"locked_to_marketplace"`
+	Name                string      `json:"name" db:"name"`
+	Label               string      `json:"label" db:"label"`
+	RepairBlocks        int         `json:"repair_blocks" db:"repair_blocks"`
+	Tier                string      `json:"tier" db:"tier"`
+	ImageUrl            string      `json:"image_url" db:"image_url"`
+	AvatarUrl           string      `json:"avatar_url" db:"avatar_url"`
+	LobbyLockedAt       null.Time   `json:"lobby_locked_at,omitempty" db:"lobby_locked_at"`
+	AssignedToBattleID  null.String `json:"assigned_to_battle_id,omitempty" db:"assigned_to_battle_id"`
+	LobbyNumber         null.Int    `json:"lobby_number,omitempty" db:"lobby_number"`
+	DamagedBlocks       int         `json:"damaged_blocks" db:"damaged_blocks"`
+	IsBattleReady       bool        `json:"is_battle_ready" db:"is_battle_ready"`
+	InMarketPlace       bool        `json:"in_market_place" db:"in_market_place"`
+
+	Status    server.MechArenaStatus `json:"status"` // "QUEUE" | "BATTLE" | "MARKET" | "IDLE"
+	CanDeploy bool                   `json:"can_deploy"`
 }
 
-func OwnedMechsBrief(playerID string) ([]*MechBrief, error) {
+// OwnedMechsBrief return list for mech for quick deploy
+func OwnedMechsBrief(playerID string, mechIDs ...string) ([]*MechBrief, error) {
+	// prevent sql injection, check player id is in uuid format
+	_, err := uuid.FromString(playerID)
+	if err != nil {
+		return nil, terror.Error(err, "The player id is not in uuid format.")
+	}
+
+	mechIDInQuery := ""
+	if len(mechIDs) > 0 {
+		mechIDInQuery += fmt.Sprintf("AND %s IN(", boiler.CollectionItemColumns.ItemID)
+
+		for i, mechID := range mechIDs {
+			// prevent sql injection, check each mech id is in uuid format
+			_, err := uuid.FromString(mechID)
+			if err != nil {
+				return nil, terror.Error(err, "The mech id is not in uuid format.")
+			}
+
+			mechIDInQuery += "'" + mechID + "'"
+			if i < len(mechIDs)-1 {
+				mechIDInQuery += ","
+				continue
+			}
+
+			mechIDInQuery += ")"
+		}
+	}
+
 	queries := []qm.QueryMod{
 		qm.Select(
 			fmt.Sprintf("_m.%s", boiler.MechColumns.ID),
@@ -1360,9 +1393,10 @@ func OwnedMechsBrief(playerID string) ([]*MechBrief, error) {
 			fmt.Sprintf("_mmsc.%s", boiler.MechModelSkinCompatibilityColumns.ImageURL),
 			fmt.Sprintf("_mmsc.%s", boiler.MechModelSkinCompatibilityColumns.AvatarURL),
 			fmt.Sprintf("_blm.%s", boiler.BattleLobbiesMechColumns.LockedAt),
-			"_blm.lobby_number",
+			fmt.Sprintf("_blm.%s", boiler.BattleLobbiesMechColumns.AssignedToBattleID),
+			fmt.Sprintf("_blm.%s", boiler.BattleLobbyColumns.Number),
 			fmt.Sprintf(
-				"COALESCE((SELECT _rc.%s - _rc.%s FROM %s rc WHERE _rc.%s = _ci.%s AND _rc.%s ISNULL LIMIT 1), 0) AS damaged_blocks",
+				"COALESCE((SELECT _rc.%s - _rc.%s FROM %s _rc WHERE _rc.%s = _ci.%s AND _rc.%s ISNULL LIMIT 1), 0) AS damaged_blocks",
 				boiler.RepairCaseColumns.BlocksRequiredRepair,
 				boiler.RepairCaseColumns.BlocksRepaired,
 				boiler.TableNames.RepairCases,
@@ -1371,16 +1405,26 @@ func OwnedMechsBrief(playerID string) ([]*MechBrief, error) {
 				boiler.RepairCaseColumns.CompletedAt,
 			),
 			fmt.Sprintf(
-				"COALESCE((SELECT _a.%s <= now() FROM %s _a WHERE _a.%s = _bm.%s), TRUE) AS battle_ready",
+				"COALESCE((SELECT _a.%s <= now() FROM %s _a WHERE _a.%s = _bm.%s), TRUE) AS is_battle_ready",
 				boiler.AvailabilityColumns.AvailableAt,
 				boiler.TableNames.Availabilities,
 				boiler.AvailabilityColumns.ID,
 				boiler.BlueprintMechColumns.AvailabilityID,
 			),
+			fmt.Sprintf(
+				"COALESCE((SELECT TRUE FROM %s _is WHERE _is.%s = _ci.%s AND _is.%s > NOW() AND _is.%s ISNULL AND _is.%s ISNULL), FALSE) AS in_market_place",
+				boiler.TableNames.ItemSales,
+				boiler.ItemSaleColumns.CollectionItemID,
+				boiler.CollectionItemColumns.ID,
+				boiler.ItemSaleColumns.EndAt,
+				boiler.ItemSaleColumns.SoldAt,
+				boiler.ItemSaleColumns.DeletedAt,
+			),
 		),
 
 		qm.From(fmt.Sprintf(
-			"(SELECT %s, %s, %s, %s, %s FROM %s WHERE %s = 'mech' AND %s = %s AND %s IS NULL) ci",
+			"(SELECT %s, %s, %s, %s, %s, %s FROM %s WHERE %s = 'mech' AND %s = '%s' AND %s IS NULL %s) _ci",
+			boiler.CollectionItemColumns.ID,
 			boiler.CollectionItemColumns.ItemID,
 			boiler.CollectionItemColumns.OwnerID,
 			boiler.CollectionItemColumns.MarketLocked,
@@ -1391,6 +1435,7 @@ func OwnedMechsBrief(playerID string) ([]*MechBrief, error) {
 			boiler.CollectionItemColumns.OwnerID,
 			playerID,
 			boiler.CollectionItemColumns.DeletedAt,
+			mechIDInQuery,
 		)),
 
 		qm.InnerJoin(fmt.Sprintf(
@@ -1434,7 +1479,7 @@ func OwnedMechsBrief(playerID string) ([]*MechBrief, error) {
 		)),
 
 		qm.InnerJoin(fmt.Sprintf(
-			"(SELECT %s, %s, %s, %s FROM %s) _mmsc ON _mmsc.%s = _ms.%s AND _mmsc.%s = _ms.%s",
+			"(SELECT %s, %s, %s, %s FROM %s) _mmsc ON _mmsc.%s = _m.%s AND _mmsc.%s = _ms.%s",
 			boiler.MechModelSkinCompatibilityColumns.MechModelID,
 			boiler.MechModelSkinCompatibilityColumns.BlueprintMechSkinID,
 			boiler.MechModelSkinCompatibilityColumns.ImageURL,
@@ -1451,12 +1496,14 @@ func OwnedMechsBrief(playerID string) ([]*MechBrief, error) {
 				SELECT 
 					%s,
 					%s,
-					(SELECT %s FROM %s WHERE %s = %s) AS lobby_number
+					%s,
+					(SELECT %s FROM %s WHERE %s = %s)
 				FROM %s
 				WHERE %s ISNULL AND %s ISNULL
 			) _blm ON _blm.%s = _ci.%s`,
 			boiler.BattleLobbiesMechTableColumns.MechID,
 			boiler.BattleLobbiesMechTableColumns.LockedAt,
+			boiler.BattleLobbiesMechTableColumns.AssignedToBattleID,
 			boiler.BattleLobbyTableColumns.Number,
 			boiler.TableNames.BattleLobbies,
 			boiler.BattleLobbyTableColumns.ID,
@@ -1493,13 +1540,36 @@ func OwnedMechsBrief(playerID string) ([]*MechBrief, error) {
 			&mb.ImageUrl,
 			&mb.AvatarUrl,
 			&mb.LobbyLockedAt,
+			&mb.AssignedToBattleID,
 			&mb.LobbyNumber,
 			&mb.DamagedBlocks,
-			&mb.BattleReady,
+			&mb.IsBattleReady,
+			&mb.InMarketPlace,
 		)
 		if err != nil {
 			gamelog.L.Error().Err(err).Msg("Failed to scan player battle spectated from db.")
 			return nil, terror.Error(err, "Failed to load player battles spectated.")
+		}
+
+		// parse queue stat
+		mb.Status = server.MechArenaStatusIdle
+		mb.CanDeploy = true
+		if mb.InMarketPlace {
+			mb.Status = server.MechArenaStatusMarket
+			mb.CanDeploy = false
+		} else if mb.AssignedToBattleID.Valid {
+			mb.Status = server.MechArenaStatusBattle
+			mb.CanDeploy = false
+		} else if mb.LobbyNumber.Valid {
+			mb.Status = server.MechArenaStatusQueue
+			mb.CanDeploy = false
+		} else if mb.DamagedBlocks > 0 {
+			mb.Status = server.MechArenaStatusDamaged
+			mb.CanDeploy = false
+			// if repair more than half of the blocks
+			if mb.DamagedBlocks*2 > mb.RepairBlocks {
+				mb.CanDeploy = true
+			}
 		}
 
 		resp = append(resp, mb)

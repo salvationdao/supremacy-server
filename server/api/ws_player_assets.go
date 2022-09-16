@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
-	"github.com/davecgh/go-spew/spew"
 	"net/http"
 	"regexp"
 	"server"
@@ -1738,19 +1737,10 @@ func (pac *PlayerAssetsControllerWS) playerWeaponBlueprintListHandler(ctx contex
 }
 
 func (api *API) PlayerMechs(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
-	fmt.Println("11111111111111111111111111111111111")
-	fmt.Println("11111111111111111111111111111111111")
-	fmt.Println("11111111111111111111111111111111111")
-	fmt.Println("11111111111111111111111111111111111")
-
 	resp, err := db.OwnedMechsBrief(user.ID)
 	if err != nil {
 		return err
 	}
-
-	spew.Dump(resp)
-
 	reply(resp)
-
 	return nil
 }

@@ -482,6 +482,13 @@ func (api *API) BattleLobbyJoin(ctx context.Context, user *boiler.Player, factio
 
 		// broadcast mech queue position
 		go func(battleLobby *boiler.BattleLobby, currentDeployedMechIDs []string, allLobbyMechs []*boiler.BattleLobbiesMech) {
+			mechInfo, err := db.OwnedMechsBrief(user.ID, deployedMechIDs...)
+			if err != nil {
+				return
+			}
+
+			ws.PublishMessage(fmt.Sprintf("/secure/user/%s/owned_mechs", user.ID), server.HubKeyPlayerMechsBrief, mechInfo)
+
 			mai := &server.MechArenaInfo{
 				Status:            server.MechArenaStatusQueue,
 				CanDeploy:         false,

@@ -24,7 +24,7 @@ import (
 
 func (am *ArenaManager) SendRepairFunc(fn func() error) error {
 	am.RepairFuncMx.Lock()
-	defer am.Unlock()
+	defer am.RepairFuncMx.Unlock()
 	return fn()
 }
 

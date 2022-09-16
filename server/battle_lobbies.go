@@ -114,7 +114,16 @@ func BattleLobbiesFromBoiler(bls []*boiler.BattleLobby) ([]*BattleLobby, error) 
 			boiler.MechTableColumns.Name,
 			boiler.BlueprintMechTableColumns.Label,
 			boiler.BlueprintMechSkinTableColumns.Tier,
-			boiler.BlueprintMechSkinTableColumns.AvatarURL,
+			fmt.Sprintf(
+				"(SELECT %s FROM %s WHERE %s = %s AND %s = %s) AS %s",
+				boiler.MechModelSkinCompatibilityTableColumns.AvatarURL,
+				boiler.TableNames.MechModelSkinCompatibilities,
+				boiler.MechModelSkinCompatibilityTableColumns.MechModelID,
+				boiler.MechTableColumns.BlueprintID,
+				boiler.MechModelSkinCompatibilityTableColumns.BlueprintMechSkinID,
+				boiler.MechSkinTableColumns.BlueprintID,
+				boiler.BlueprintMechSkinColumns.AvatarURL,
+			),
 
 			// owner info
 			fmt.Sprintf("_ci.%s", boiler.CollectionItemColumns.OwnerID),
