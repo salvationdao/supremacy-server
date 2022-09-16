@@ -96,15 +96,6 @@ func MechSkinFromBoiler(skin *boiler.MechSkin, collection *boiler.CollectionItem
 			XsynLocked:     collection.XsynLocked,
 			AssetHidden:    collection.AssetHidden,
 		},
-		Images: &Images{
-			ImageURL:         blueprintMechSkinDetails.ImageURL,
-			CardAnimationURL: blueprintMechSkinDetails.CardAnimationURL,
-			AvatarURL:        blueprintMechSkinDetails.AvatarURL,
-			LargeImageURL:    blueprintMechSkinDetails.LargeImageURL,
-			BackgroundColor:  blueprintMechSkinDetails.BackgroundColor,
-			AnimationURL:     blueprintMechSkinDetails.AnimationURL,
-			YoutubeURL:       blueprintMechSkinDetails.YoutubeURL,
-		},
 		Label:          skin.R.Blueprint.Label,
 		ID:             skin.ID,
 		BlueprintID:    skin.BlueprintID,
@@ -116,7 +107,7 @@ func MechSkinFromBoiler(skin *boiler.MechSkin, collection *boiler.CollectionItem
 	}
 
 	if skinDetails != nil {
-		mskin.SkinSwatch = &Images{
+		mskin.Images = &Images{
 			ImageURL:         skinDetails.ImageURL,
 			CardAnimationURL: skinDetails.CardAnimationURL,
 			AvatarURL:        skinDetails.AvatarURL,
@@ -124,6 +115,18 @@ func MechSkinFromBoiler(skin *boiler.MechSkin, collection *boiler.CollectionItem
 			BackgroundColor:  skinDetails.BackgroundColor,
 			AnimationURL:     skinDetails.AnimationURL,
 			YoutubeURL:       skinDetails.YoutubeURL,
+		}
+	}
+
+	if blueprintMechSkinDetails != nil {
+		mskin.SkinSwatch = &Images{
+			ImageURL:         blueprintMechSkinDetails.ImageURL,
+			CardAnimationURL: blueprintMechSkinDetails.CardAnimationURL,
+			AvatarURL:        blueprintMechSkinDetails.AvatarURL,
+			LargeImageURL:    blueprintMechSkinDetails.LargeImageURL,
+			BackgroundColor:  blueprintMechSkinDetails.BackgroundColor,
+			AnimationURL:     blueprintMechSkinDetails.AnimationURL,
+			YoutubeURL:       blueprintMechSkinDetails.YoutubeURL,
 		}
 	}
 

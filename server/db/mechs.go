@@ -62,6 +62,7 @@ func getDefaultMechQueryMods() []qm.QueryMod {
 			qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.ID),
 			qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.Name),
 			qm.Rels(boiler.TableNames.BlueprintMechs, boiler.BlueprintMechColumns.Label),
+			qm.Rels(boiler.TableNames.BlueprintMechs, boiler.BlueprintMechColumns.MechType),
 			qm.Rels(boiler.TableNames.BlueprintMechs, boiler.BlueprintMechColumns.WeaponHardpoints),
 			qm.Rels(boiler.TableNames.BlueprintMechs, boiler.BlueprintMechColumns.UtilitySlots),
 			qm.Rels(boiler.TableNames.BlueprintMechs, boiler.BlueprintMechColumns.Speed),
@@ -178,7 +179,7 @@ func getDefaultMechQueryMods() []qm.QueryMod {
 			FROM
 				power_cores _pc
 				INNER JOIN collection_items _ci ON _ci.item_id = _pc.id
-				INNER JOIN blueprint_power_cores _bppc ON _pc.blueprint_id = _bppc.id		
+				INNER JOIN blueprint_power_cores _bppc ON _pc.blueprint_id = _bppc.id
 			) %s ON %s = %s`, // TODO: make this boiler/typesafe
 			boiler.TableNames.PowerCores,
 			qm.Rels(boiler.TableNames.PowerCores, boiler.PowerCoreColumns.ID),
@@ -211,7 +212,16 @@ func getDefaultMechQueryMods() []qm.QueryMod {
 				_ci.tier,
 				_ci.owner_id,
 				_bpms.label,
-				_bpms.default_level
+				_bpms.default_level,
+				json_build_object(
+					'image_url', _bpms.image_url,
+					'card_animation_url', _bpms.card_animation_url,
+					'avatar_url', _bpms.avatar_url,
+					'large_image_url', _bpms.large_image_url,
+					'background_color', _bpms.background_color,
+					'animation_url', _bpms.animation_url,
+					'youtube_url', _bpms.youtube_url
+				) AS swatch_images
 			FROM
 				mech_skin _ms
 				INNER JOIN collection_items _ci ON _ci.item_id = _ms.id
@@ -524,6 +534,7 @@ func Mech(conn boil.Executor, mechID string) (*server.Mech, error) {
 			&mc.ID,
 			&mc.Name,
 			&mc.Label,
+			&mc.MechType,
 			&mc.WeaponHardpoints,
 			&mc.UtilitySlots,
 			&mc.Speed,
@@ -654,6 +665,7 @@ func Mechs(mechIDs ...string) ([]*server.Mech, error) {
 			&mc.Stats.TotalLosses,
 			&mc.ID,
 			&mc.Name,
+			&mc.MechType,
 			&mc.Label,
 			&mc.WeaponHardpoints,
 			&mc.UtilitySlots,

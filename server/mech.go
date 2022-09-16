@@ -33,6 +33,8 @@ type Mech struct {
 	LimitedReleaseTokenID null.Int64 `json:"limited_release_token_id,omitempty"`
 	CollectionItemID      string     `json:"-"`
 
+	MechType string `json:"mech_type"`
+
 	//// stats
 	// speed
 	Speed        int `json:"speed"`
@@ -68,7 +70,6 @@ type Mech struct {
 	FactionID                             null.String    `json:"faction_id"`
 	Faction                               *Faction       `json:"faction,omitempty"`
 	BlueprintID                           string         `json:"blueprint_id"`
-	Blueprint                             *BlueprintMech `json:"blueprint_mech,omitempty"`
 	BrandID                               string         `json:"brand_id"`
 	Brand                                 *Brand         `json:"brand"`
 	ChassisSkinID                         string         `json:"chassis_skin_id,omitempty"`
