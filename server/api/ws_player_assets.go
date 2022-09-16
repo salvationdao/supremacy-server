@@ -1646,6 +1646,11 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetMechEquipHandler(ctx context.Con
 				return terror.Error(err, errorMsg)
 			}
 
+			if weapon.R.Blueprint.IsMelee && mech.Blueprint.MechType != boiler.MechTypeHUMANOID {
+				l.Error().Msg(fmt.Sprintf("weapon in slot %d cannot be equipped because this mech does not support melee weapons", ew.SlotNumber))
+				return terror.Error(terror.ErrForbidden, fmt.Sprintf("The selected weapon in slot %d cannot be equipped: Mech does not support melee weapons", ew.SlotNumber))
+			}
+
 			if weapon.EquippedOn.Valid {
 				// If weapon is equipped on another mech, remove it from that mech
 				unequipMechWeapon, err := boiler.MechWeapons(
