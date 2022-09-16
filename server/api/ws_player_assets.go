@@ -1742,7 +1742,145 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetMechEquipHandler(ctx context.Con
 		}
 	}
 	if req.Payload.EquipMechSkin != "" {
+		// Check if mech skin can be equipped
+		canEquip, reason, err := db.CanAssetBeModifiedOrMoved(tx, req.Payload.EquipMechSkin, boiler.ItemTypeMechSkin, user.ID)
+		if err != nil {
+			l.Error().Err(err).Msg("failed to check if mech skin can be modified or moved (db.CanAssetBeModifiedOrMoved)")
+			return terror.Error(err, errorMsg)
+		}
+		if !canEquip {
+			l.Error().Msg(fmt.Sprintf("cannot equip mech skin: %s", reason.String()))
+			return terror.Error(terror.ErrForbidden, fmt.Sprintf("The selected submodel cannot be equipped: %s", reason.String()))
+		}
 
+		// Check if previous skin can be removed
+		canRemove, reason, err := db.CanAssetBeModifiedOrMoved(tx, mech.ChassisSkinID, boiler.ItemTypeMechSkin, user.ID)
+		if err != nil {
+			l.Error().Err(err).Msg("failed to check if previous power core can be removed (db.CanAssetBeModifiedOrMoved)")
+			return terror.Error(err, errorMsg)
+		}
+		if !canRemove {
+			l.Error().Msg(fmt.Sprintf("cannot remove previous power core: %s", reason.String()))
+			return terror.Error(terror.ErrForbidden, fmt.Sprintf("The previous power core cannot be removed: %s", reason.String()))
+		}
+
+		// Get previous skin
+		previousSkin, err := boiler.MechSkins(
+			boiler.MechSkinWhere.ID.EQ(mech.ChassisSkinID),
+		).One(tx)
+		if err != nil {
+			l.Error().Err(err).Msg("failed to get previous mech skin")
+			return terror.Error(err, errorMsg)
+		}
+
+		// Check if specified mech skin exists
+		mechSkin, err := boiler.MechSkins(
+			boiler.MechSkinWhere.ID.EQ(req.Payload.EquipMechSkin),
+		).One(tx)
+		if err != nil {
+			l.Error().Err(err).Msg("failed to get mech skin")
+			return terror.Error(err, errorMsg)
+		}
+
+		if mechSkin.EquippedOn.Valid {
+			// If mech skin is equipped on another mech, swap skin with that mech
+			unequipMech, err := boiler.FindMech(tx, mechSkin.EquippedOn.String)
+			if err != nil {
+				l.Error().Err(err).Msg("failed to unequip selected mech skin from its mech")
+				return terror.Error(err, errorMsg)
+			}
+			l = l.With().Interface("unequipMech", unequipMech).Logger()
+
+			compatibleSkins, err := db.GetCompatibleBlueprintMechSkinIDsFromMechID(tx, unequipMech.ID)
+			if err != nil {
+				l.Error().Err(err).Msg("failed to get compatible skins for unequip mech")
+				return terror.Error(err, errorMsg)
+			}
+
+			compatible := false
+			for _, cs := range compatibleSkins {
+				if cs == previousSkin.BlueprintID {
+					compatible = true
+					break
+				}
+			}
+			if !compatible {
+				return terror.Error(fmt.Errorf("previous skin is not compatible with unequip mech"), "The selected skin cannot be swapped with its mech.")
+			}
+
+			unequipMech.ChassisSkinID = previousSkin.ID
+			updated, err := unequipMech.Update(tx, boil.Infer())
+			if err != nil {
+				l.Error().Err(err).Msg("failed to unequip selected mech skin from its mech")
+				return terror.Error(err, errorMsg)
+			}
+			if updated < 1 {
+				l.Error().Msg("failed to unequip selected mech skin from its mech 2")
+				return terror.Error(fmt.Errorf("failed to unequip selected mech skin from mech"), errorMsg)
+			}
+
+			previousSkin.EquippedOn = null.StringFrom(unequipMech.ID)
+		} else {
+			// Else, just unlink the previous skin from the mech
+			previousSkin.EquippedOn = null.String{}
+		}
+
+		updated, err := previousSkin.Update(tx, boil.Infer())
+		if err != nil {
+			l.Error().Err(err).Msg("failed to update previous mech skin")
+			return terror.Error(err, errorMsg)
+		}
+		if updated < 1 {
+			l.Error().Msg("failed to update previous mech skin 2")
+			return terror.Error(fmt.Errorf("failed to update previous mech skin"), errorMsg)
+		}
+
+		// Equip mech skin to mech
+		equipMech, err := boiler.FindMech(tx, mech.ID)
+		if err != nil {
+			l.Error().Err(err).Msg("failed to get mech to equip skin on")
+			return terror.Error(err, errorMsg)
+		}
+		l = l.With().Interface("equipMech", equipMech).Logger()
+
+		compatibleSkins, err := db.GetCompatibleBlueprintMechSkinIDsFromMechID(tx, equipMech.ID)
+		if err != nil {
+			l.Error().Err(err).Msg("failed to get compatible skins for equip mech")
+			return terror.Error(err, errorMsg)
+		}
+
+		compatible := false
+		for _, cs := range compatibleSkins {
+			if cs == mechSkin.BlueprintID {
+				compatible = true
+				break
+			}
+		}
+		if !compatible {
+			return terror.Error(fmt.Errorf("selected skin is not compatible with mech"), "The selected skin is not compatible with this mech.")
+		}
+
+		equipMech.ChassisSkinID = mechSkin.ID
+		updated2, err := equipMech.Update(tx, boil.Infer())
+		if err != nil {
+			l.Error().Err(err).Msg("failed to update mech with new mech skin")
+			return terror.Error(err, errorMsg)
+		}
+		if updated2 < 1 {
+			l.Error().Msg("failed to update mech with new mech skin 2")
+			return terror.Error(fmt.Errorf("failed to update mech with new mech skin"), errorMsg)
+		}
+
+		mechSkin.EquippedOn = null.StringFrom(mech.ID)
+		updated3, err := mechSkin.Update(tx, boil.Infer())
+		if err != nil {
+			l.Error().Err(err).Msg("failed to update mech skin with new mech")
+			return terror.Error(err, errorMsg)
+		}
+		if updated3 < 1 {
+			l.Error().Msg("failed to update mech skin with new mech 2")
+			return terror.Error(fmt.Errorf("failed to update mech skin with new mech"), errorMsg)
+		}
 	}
 
 	err = tx.Commit()

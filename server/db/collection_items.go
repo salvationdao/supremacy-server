@@ -140,7 +140,20 @@ func CanAssetBeModifiedOrMoved(exec boil.Executor, itemID string, itemType strin
 			l.Debug().Msg("mech is in queue")
 			return false, ForbiddenAssetModificationReasonQueue, nil
 		}
-	// case boiler.ItemTypeMechSkin:
+	case boiler.ItemTypeMechSkin:
+		mechSkin, err := boiler.FindMechSkin(exec, itemID)
+		if err != nil {
+			l.Error().Err(err).Msg("failed to get mech skin")
+			return false, -1, err
+		}
+		l = l.With().Interface("mechSkin", mechSkin).Logger()
+		if mechSkin.LockedToMech {
+			l.Debug().Msg("mech skin is locked to mech")
+			return false, ForbiddenAssetModificationReasonMechLocked, nil
+		}
+		if mechSkin.EquippedOn.Valid {
+			return CanAssetBeModifiedOrMoved(exec, mechSkin.EquippedOn.String, boiler.ItemTypeMech)
+		}
 	// case boiler.ItemTypeMechAnimation:
 	case boiler.ItemTypePowerCore:
 		powerCore, err := boiler.FindPowerCore(exec, itemID)
