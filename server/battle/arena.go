@@ -61,6 +61,7 @@ type ArenaManager struct {
 	NewBattleChan            chan *NewBattleChan
 	SystemMessagingManager   *system_messages.SystemMessagingManager
 	RepairOfferFuncChan      chan func()
+	BattleQueueFuncMx        *deadlock.Mutex
 	QuestManager             *quest.System
 
 	arenas           map[string]*Arena
@@ -92,6 +93,7 @@ func NewArenaManager(opts *Opts) (*ArenaManager, error) {
 		NewBattleChan:            make(chan *NewBattleChan),
 		SystemMessagingManager:   opts.SystemMessagingManager,
 		RepairOfferFuncChan:      make(chan func()),
+		BattleQueueFuncMx:        &deadlock.Mutex{},
 		QuestManager:             opts.QuestManager,
 		arenas:                   make(map[string]*Arena),
 
@@ -357,6 +359,7 @@ func (am *ArenaManager) NewArena(wsConn *websocket.Conn) (*Arena, error) {
 		SystemBanManager:         am.SystemBanManager,
 		SystemMessagingManager:   am.SystemMessagingManager,
 		NewBattleChan:            am.NewBattleChan,
+		BattleQueueFuncMx:        am.BattleQueueFuncMx,
 		QuestManager:             am.QuestManager,
 		ChallengeFundUpdateChan:  am.ChallengeFundUpdateChan,
 		isIdle:                   *atomic.NewBool(true),
@@ -398,7 +401,8 @@ type Arena struct {
 
 	LastBattleResult *BattleEndDetail
 
-	QuestManager *quest.System
+	BattleQueueFuncMx *deadlock.Mutex
+	QuestManager      *quest.System
 
 	gameClientJsonDataChan chan []byte
 
@@ -1959,23 +1963,29 @@ func (arena *Arena) BeginBattle() {
 		},
 	}
 
-	// load war machines first
-	err = btl.Load()
-	if err != nil {
-		gamelog.L.Warn().Err(err).Msg("unable to load out mechs")
-	}
+	// lock battle load to prevent race condition from queue leave handlers
+	func(arena *Arena, battle *Battle) {
+		arena.BattleQueueFuncMx.Lock()
+		defer arena.BattleQueueFuncMx.Unlock()
 
-	// skip, if idle
-	if arena.isIdle.Load() {
-		return
-	}
+		// load war machines first
+		err = battle.Load()
+		if err != nil {
+			gamelog.L.Warn().Err(err).Msg("unable to load out mechs")
+		}
 
-	// then set battle queue
-	err = btl.setBattleQueue()
-	if err != nil {
-		gamelog.L.Error().Err(err).Msg("battle start load out has failed")
-		return
-	}
+		// skip, if idle
+		if arena.isIdle.Load() {
+			return
+		}
+
+		// then set battle queue
+		err = battle.setBattleQueue()
+		if err != nil {
+			gamelog.L.Error().Err(err).Msg("battle start load out has failed")
+			return
+		}
+	}(arena, btl)
 
 	al, err := db.AbilityLabelList()
 	if err != nil {

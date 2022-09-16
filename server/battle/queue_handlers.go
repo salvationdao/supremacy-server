@@ -29,7 +29,7 @@ type QueueJoinHandlerResponse struct {
 	Success bool `json:"success"`
 }
 
-type QueueJoinRequest struct {
+type QueueRequest struct {
 	Payload struct {
 		MechIDs []string `json:"mech_ids"`
 	} `json:"payload"`
@@ -52,7 +52,7 @@ func CalcNextQueueStatus(factionID string) {
 const WSQueueJoin = "BATTLE:QUEUE:JOIN"
 
 func (am *ArenaManager) QueueJoinHandler(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
-	req := &QueueJoinRequest{}
+	req := &QueueRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
 		gamelog.L.Error().Str("log_name", "battle arena").Str("msg", string(payload)).Err(err).Msg("unable to unmarshal queue join")
@@ -254,15 +254,22 @@ func (am *ArenaManager) QueueJoinHandler(ctx context.Context, user *boiler.Playe
 			// stop repair offers, if there is any
 			if index := slices.IndexFunc(rcs, func(rc *boiler.RepairCase) bool { return rc.MechID == mci.ItemID }); index != -1 {
 				rc := rcs[index]
-				// cancel all the existing offer
+				// pause repair case
 				if rc.R != nil && rc.R.RepairOffers != nil {
-					ids := []string{}
-					for _, ro := range rc.R.RepairOffers {
-						ids = append(ids, ro.ID)
-					}
-
 					err = am.SendRepairFunc(func() error {
-						err = am.CloseRepairOffers(ids, boiler.RepairFinishReasonSTOPPED, boiler.RepairAgentFinishReasonEXPIRED)
+						rc.PausedAt = null.TimeFrom(time.Now())
+						_, err = rc.Update(gamedb.StdConn, boil.Whitelist(boiler.RepairCaseColumns.PausedAt))
+						if err != nil {
+							gamelog.L.Error().Err(err).Interface("repair case", rc).Msg("Failed to pause repair case")
+							return terror.Error(err, "Failed to pause repair case")
+						}
+
+						repairOfferIDs := []string{}
+						for _, ro := range rc.R.RepairOffers {
+							repairOfferIDs = append(repairOfferIDs, ro.ID)
+						}
+
+						err = am.CloseRepairOffers(repairOfferIDs, boiler.RepairFinishReasonSTOPPED, boiler.RepairAgentFinishReasonEXPIRED)
 						if err != nil {
 							return err
 						}
@@ -464,6 +471,208 @@ func (am *ArenaManager) QueueJoinHandler(ctx context.Context, user *boiler.Playe
 	reply(QueueJoinHandlerResponse{
 		Success: true,
 	})
+
+	return nil
+}
+
+const WSQueueLeave = "BATTLE:QUEUE:LEAVE"
+
+func (am *ArenaManager) QueueLeaveHandler(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
+	req := &QueueRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		gamelog.L.Error().Str("log_name", "battle arena").Str("msg", string(payload)).Err(err).Msg("unable to unmarshal queue join")
+		return err
+	}
+
+	if len(req.Payload.MechIDs) == 0 {
+		return terror.Error(fmt.Errorf("mech id list not provided"), "Mech id list is not provided.")
+	}
+
+	mcis, err := boiler.CollectionItems(
+		boiler.CollectionItemWhere.ItemID.IN(req.Payload.MechIDs),
+		boiler.CollectionItemWhere.ItemType.EQ(boiler.ItemTypeMech),
+	).All(gamedb.StdConn)
+	if err != nil {
+		gamelog.L.Error().Str("log_name", "battle arena").Strs("mech ids", req.Payload.MechIDs).Err(err).Msg("unable to retrieve mech collection item from hash")
+		return err
+	}
+
+	if len(mcis) != len(req.Payload.MechIDs) {
+		return terror.Error(fmt.Errorf("contain non-mech assest"), "The list contains non-mech asset.")
+	}
+
+	// check ownership and availability
+	for _, mci := range mcis {
+		if mci.OwnerID != user.ID {
+			return terror.Error(fmt.Errorf("does not own the mech"), "This mech is not owned by you")
+		}
+	}
+
+	// lock to prevent unqueue the mechs already in battle
+	am.BattleQueueFuncMx.Lock()
+	defer am.BattleQueueFuncMx.Unlock()
+
+	// load the battle queue which are not in battle yet
+	bqs, err := boiler.BattleQueues(
+		boiler.BattleQueueWhere.MechID.IN(req.Payload.MechIDs),
+		qm.Load(boiler.BattleQueueRels.Fee),
+	).All(gamedb.StdConn)
+	if err != nil {
+		gamelog.L.Error().Err(err).Strs("mech id list", req.Payload.MechIDs).Msg("Failed to load battle queues.")
+		return terror.Error(err, "Failed to load battle queues.")
+	}
+
+	if bqs == nil || len(bqs) == 0 {
+		return terror.Error(fmt.Errorf("no mech in queue"), "The mech are not in queue.")
+	}
+
+	// filter out all the mechs in battle
+	var notInBattleQueues boiler.BattleQueueSlice
+	for _, bq := range bqs {
+		if bq.BattleID.Valid {
+			continue
+		}
+		notInBattleQueues = append(notInBattleQueues, bq)
+	}
+
+	if notInBattleQueues == nil || len(notInBattleQueues) == 0 {
+		return terror.Error(fmt.Errorf("mechs in battle"), "The mech are already in battle.")
+	}
+
+	// load mechs repair cases
+	repairCases, err := boiler.RepairCases(
+		boiler.RepairCaseWhere.MechID.IN(req.Payload.MechIDs),
+		boiler.RepairCaseWhere.CompletedAt.IsNull(),                                               // not completed
+		boiler.RepairCaseWhere.PausedAt.IsNotNull(),                                               // is paused
+		qm.Load(boiler.RepairCaseRels.RepairOffers, boiler.RepairOfferWhere.OfferedByID.IsNull()), // get system offer
+	).All(gamedb.StdConn)
+	if err != nil {
+		gamelog.L.Error().Err(err).Strs("mech id list", req.Payload.MechIDs).Msg("Failed to load repair cases of the mechs")
+		return terror.Error(err, "Failed to load reqpir case")
+	}
+
+	tx, err := gamedb.StdConn.Begin()
+	if err != nil {
+		gamelog.L.Error().Err(err).Msg("Failed to start db transaction")
+		return terror.Error(err, "Failed to leave queue")
+	}
+
+	defer tx.Rollback()
+
+	// restart repair case
+	if repairCases != nil {
+		// restart repair cases
+		_, err = repairCases.UpdateAll(tx, boiler.M{boiler.RepairCaseColumns.PausedAt: null.TimeFromPtr(nil)})
+		if err != nil {
+			gamelog.L.Error().Err(err).Interface("repair cases", repairCases).Msg("Failed to restart repair cases.")
+			return terror.Error(err, "Failed to restart mech repair.")
+		}
+
+		// collect all the system repair offers id
+		repairOfferIDs := []string{}
+		for _, rc := range repairCases {
+			if rc.R == nil || rc.R.RepairOffers == nil {
+				continue
+			}
+			for _, ro := range rc.R.RepairOffers {
+				repairOfferIDs = append(repairOfferIDs, ro.ID)
+			}
+		}
+
+		// restart all the related system offers
+		_, err = boiler.RepairOffers(
+			boiler.RepairOfferWhere.ID.IN(repairOfferIDs),
+		).UpdateAll(tx,
+			boiler.M{
+				boiler.RepairOfferColumns.ClosedAt:       null.TimeFromPtr(nil),
+				boiler.RepairOfferColumns.FinishedReason: null.StringFromPtr(nil),
+			},
+		)
+		if err != nil {
+			gamelog.L.Error().Err(err).Msg("Failed to restart system repair offer.")
+			return terror.Error(err, "Failed to restart mech repair.")
+		}
+	}
+
+	var refundFns []func()
+	refund := func(fns []func()) {
+		for _, fn := range fns {
+			fn()
+		}
+	}
+
+	// refund queue fee
+	leftMechIDs := []string{}
+	for _, nbq := range notInBattleQueues {
+		if nbq.R == nil || nbq.R.Fee == nil || !nbq.R.Fee.PaidTXID.Valid {
+			continue
+		}
+
+		refundTXID, err := am.RPCClient.RefundSupsMessage(nbq.R.Fee.PaidTXID.String)
+		if err != nil {
+			refund(refundFns)
+			gamelog.L.Error().Err(err).Msg("Failed to refund battle queue fee.")
+			return terror.Error(err, "Failed to refund sups")
+		}
+
+		// update battle queue fee
+		nbq.R.Fee.RefundTXID = null.StringFrom(refundTXID)
+		_, err = nbq.R.Fee.Update(tx, boil.Whitelist(boiler.BattleQueueFeeColumns.RefundTXID))
+		if err != nil {
+			refund(refundFns)
+			gamelog.L.Error().Err(err).Msg("Failed to update refund transaction id in battle queue fee.")
+			return terror.Error(err, "Failed to refund sups")
+		}
+
+		// append refund functions
+		refundFns = append(refundFns, func() {
+			_, err := am.RPCClient.RefundSupsMessage(refundTXID)
+			if err != nil {
+				gamelog.L.Error().Err(err).Str("transaction id", refundTXID).Msg("Failed to refund sups")
+			}
+		})
+		leftMechIDs = append(leftMechIDs, nbq.MechID)
+	}
+
+	// delete queues
+	_, err = notInBattleQueues.DeleteAll(tx)
+	if err != nil {
+		refund(refundFns)
+		gamelog.L.Error().Err(err).Msg("Failed to delete battle queue.")
+		return terror.Error(err, "Failed to delete queue")
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		refund(refundFns)
+		gamelog.L.Error().Err(err).Msg("Failed to commit db transaction")
+		return terror.Error(err, "Failed to leave queue")
+	}
+
+	reply(true)
+
+	// Send updated battle queue status to all subscribers
+	go CalcNextQueueStatus(factionID)
+
+	// send queue update signal
+	go func(factionID string, collectionItems []*boiler.CollectionItem, mechIDs []string) {
+
+		for _, ci := range collectionItems {
+			// skip, if the mech is not on the list
+			if slices.Index(mechIDs, ci.ItemID) == -1 {
+				continue
+			}
+
+			mechStatus, err := db.GetCollectionItemStatus(*ci)
+			if err != nil {
+				gamelog.L.Error().Err(err).Str("mech id", ci.ItemID).Msg("Failed to load new mech status")
+				return
+			}
+
+			ws.PublishMessage(fmt.Sprintf("/faction/%s/queue/%s", factionID, ci.ItemID), WSPlayerAssetMechQueueSubscribe, mechStatus)
+		}
+	}(factionID, mcis, leftMechIDs)
 
 	return nil
 }
