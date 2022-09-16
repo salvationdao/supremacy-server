@@ -2212,7 +2212,7 @@ func (btl *Battle) AISpawned(payload *AISpawnedRequest) error {
 		Status:        &Status{},
 	}
 
-	if spawnedAI.Position ==nil{
+	if spawnedAI.Position == nil {
 		spawnedAI.Position = &server.Vector3{}
 	}
 
