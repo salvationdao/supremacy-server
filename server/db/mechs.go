@@ -1,6 +1,7 @@
 package db
 
 import (
+	"database/sql"
 	"errors"
 	"fmt"
 	"server"
@@ -1324,4 +1325,185 @@ func MechBattleReady(mechID string) (bool, error) {
 	}
 
 	return battleReady, nil
+}
+
+type MechBrief struct {
+	ID                  string    `json:"id" db:"id"`
+	OwnerID             string    `json:"owner_id" db:"owner_id"`
+	MarketLocked        bool      `json:"market_locked" db:"market_locked"`
+	XsynLocked          bool      `json:"xsyn_locked" db:"xsyn_locked"`
+	LockedToMarketplace bool      `json:"locked_to_marketplace" db:"locked_to_marketplace"`
+	Name                string    `json:"name" db:"name"`
+	Label               string    `json:"label" db:"label"`
+	RepairBlocks        int       `json:"repair_blocks" db:"repair_blocks"`
+	Tier                string    `json:"tier" db:"tier"`
+	ImageUrl            string    `json:"image_url" db:"image_url"`
+	AvatarUrl           string    `json:"avatar_url" db:"avatar_url"`
+	LobbyLockedAt       null.Time `json:"lobby_locked_at" db:"lobby_locked_at"`
+	LobbyNumber         null.Int  `json:"lobby_number" db:"lobby_number"`
+	DamagedBlocks       int       `json:"damaged_blocks" db:"damaged_blocks"`
+	BattleReady         bool      `json:"battle_ready" db:"battle_ready"`
+}
+
+func OwnedMechsBrief(playerID string) ([]*MechBrief, error) {
+	queries := []qm.QueryMod{
+		qm.Select(
+			fmt.Sprintf("_m.%s", boiler.MechColumns.ID),
+			fmt.Sprintf("_ci.%s", boiler.CollectionItemColumns.OwnerID),
+			fmt.Sprintf("_ci.%s", boiler.CollectionItemColumns.MarketLocked),
+			fmt.Sprintf("_ci.%s", boiler.CollectionItemColumns.XsynLocked),
+			fmt.Sprintf("_ci.%s", boiler.CollectionItemColumns.LockedToMarketplace),
+			fmt.Sprintf("_m.%s", boiler.MechColumns.Name),
+			fmt.Sprintf("_bm.%s", boiler.BlueprintMechColumns.Label),
+			fmt.Sprintf("_bm.%s", boiler.BlueprintMechColumns.RepairBlocks),
+			fmt.Sprintf("_bms.%s", boiler.BlueprintMechSkinColumns.Tier),
+			fmt.Sprintf("_mmsc.%s", boiler.MechModelSkinCompatibilityColumns.ImageURL),
+			fmt.Sprintf("_mmsc.%s", boiler.MechModelSkinCompatibilityColumns.AvatarURL),
+			fmt.Sprintf("_blm.%s", boiler.BattleLobbiesMechColumns.LockedAt),
+			"_blm.lobby_number",
+			fmt.Sprintf(
+				"COALESCE((SELECT _rc.%s - _rc.%s FROM %s rc WHERE _rc.%s = _ci.%s AND _rc.%s ISNULL LIMIT 1), 0) AS damaged_blocks",
+				boiler.RepairCaseColumns.BlocksRequiredRepair,
+				boiler.RepairCaseColumns.BlocksRepaired,
+				boiler.TableNames.RepairCases,
+				boiler.RepairCaseColumns.MechID,
+				boiler.CollectionItemColumns.ItemID,
+				boiler.RepairCaseColumns.CompletedAt,
+			),
+			fmt.Sprintf(
+				"COALESCE((SELECT _a.%s <= now() FROM %s _a WHERE _a.%s = _bm.%s), TRUE) AS battle_ready",
+				boiler.AvailabilityColumns.AvailableAt,
+				boiler.TableNames.Availabilities,
+				boiler.AvailabilityColumns.ID,
+				boiler.BlueprintMechColumns.AvailabilityID,
+			),
+		),
+
+		qm.From(fmt.Sprintf(
+			"(SELECT %s, %s, %s, %s, %s FROM %s WHERE %s = 'mech' AND %s = %s AND %s IS NULL) ci",
+			boiler.CollectionItemColumns.ItemID,
+			boiler.CollectionItemColumns.OwnerID,
+			boiler.CollectionItemColumns.MarketLocked,
+			boiler.CollectionItemColumns.XsynLocked,
+			boiler.CollectionItemColumns.LockedToMarketplace,
+			boiler.TableNames.CollectionItems,
+			boiler.CollectionItemColumns.ItemType,
+			boiler.CollectionItemColumns.OwnerID,
+			playerID,
+			boiler.CollectionItemColumns.DeletedAt,
+		)),
+
+		qm.InnerJoin(fmt.Sprintf(
+			"(SELECT %s, %s, %s, %s FROM %s) _m ON _m.%s = _ci.%s",
+			boiler.MechColumns.ID,
+			boiler.MechColumns.BlueprintID,
+			boiler.MechColumns.ChassisSkinID,
+			boiler.MechColumns.Name,
+			boiler.TableNames.Mechs,
+			boiler.MechColumns.ID,
+			boiler.CollectionItemColumns.ItemID,
+		)),
+
+		qm.InnerJoin(fmt.Sprintf(
+			"(SELECT %s, %s, %s, %s FROM %s) _bm ON _bm.%s = _m.%s",
+			boiler.BlueprintMechColumns.ID,
+			boiler.BlueprintMechColumns.Label,
+			boiler.BlueprintMechColumns.RepairBlocks,
+			boiler.BlueprintMechColumns.AvailabilityID,
+			boiler.TableNames.BlueprintMechs,
+			boiler.BlueprintMechColumns.ID,
+			boiler.MechColumns.BlueprintID,
+		)),
+
+		qm.InnerJoin(fmt.Sprintf(
+			"(SELECT %s, %s FROM %s) _ms ON _ms.%s = _m.%s",
+			boiler.MechSkinColumns.ID,
+			boiler.MechSkinColumns.BlueprintID,
+			boiler.TableNames.MechSkin,
+			boiler.MechSkinColumns.ID,
+			boiler.MechColumns.ChassisSkinID,
+		)),
+
+		qm.InnerJoin(fmt.Sprintf(
+			"(SELECT %s, %s FROM %s) _bms ON _bms.%s = _ms.%s",
+			boiler.BlueprintMechSkinColumns.ID,
+			boiler.BlueprintMechSkinColumns.Tier,
+			boiler.TableNames.BlueprintMechSkin,
+			boiler.BlueprintMechSkinColumns.ID,
+			boiler.MechSkinColumns.BlueprintID,
+		)),
+
+		qm.InnerJoin(fmt.Sprintf(
+			"(SELECT %s, %s, %s, %s FROM %s) _mmsc ON _mmsc.%s = _ms.%s AND _mmsc.%s = _ms.%s",
+			boiler.MechModelSkinCompatibilityColumns.MechModelID,
+			boiler.MechModelSkinCompatibilityColumns.BlueprintMechSkinID,
+			boiler.MechModelSkinCompatibilityColumns.ImageURL,
+			boiler.MechModelSkinCompatibilityColumns.AvatarURL,
+			boiler.TableNames.MechModelSkinCompatibilities,
+			boiler.MechModelSkinCompatibilityColumns.MechModelID,
+			boiler.MechColumns.BlueprintID,
+			boiler.MechModelSkinCompatibilityColumns.BlueprintMechSkinID,
+			boiler.MechSkinColumns.BlueprintID,
+		)),
+
+		qm.LeftOuterJoin(fmt.Sprintf(
+			`(
+				SELECT 
+					%s,
+					%s,
+					(SELECT %s FROM %s WHERE %s = %s) AS lobby_number
+				FROM %s
+				WHERE %s ISNULL AND %s ISNULL
+			) _blm ON _blm.%s = _ci.%s`,
+			boiler.BattleLobbiesMechTableColumns.MechID,
+			boiler.BattleLobbiesMechTableColumns.LockedAt,
+			boiler.BattleLobbyTableColumns.Number,
+			boiler.TableNames.BattleLobbies,
+			boiler.BattleLobbyTableColumns.ID,
+			boiler.BattleLobbiesMechTableColumns.BattleLobbyID,
+			boiler.TableNames.BattleLobbiesMechs,
+			boiler.BattleLobbiesMechTableColumns.EndedAt,
+			boiler.BattleLobbiesMechTableColumns.DeletedAt,
+			boiler.BattleLobbiesMechColumns.MechID,
+			boiler.CollectionItemColumns.ItemID,
+		)),
+	}
+
+	rows, err := boiler.NewQuery(queries...).Query(gamedb.StdConn)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		gamelog.L.Error().Err(err).Msg("Failed to load mechs")
+		return nil, terror.Error(err, "Failed to load mechs")
+	}
+
+	defer rows.Close()
+
+	resp := []*MechBrief{}
+	for rows.Next() {
+		mb := &MechBrief{}
+		err = rows.Scan(
+			&mb.ID,
+			&mb.OwnerID,
+			&mb.MarketLocked,
+			&mb.XsynLocked,
+			&mb.LockedToMarketplace,
+			&mb.Name,
+			&mb.Label,
+			&mb.RepairBlocks,
+			&mb.Tier,
+			&mb.ImageUrl,
+			&mb.AvatarUrl,
+			&mb.LobbyLockedAt,
+			&mb.LobbyNumber,
+			&mb.DamagedBlocks,
+			&mb.BattleReady,
+		)
+		if err != nil {
+			gamelog.L.Error().Err(err).Msg("Failed to scan player battle spectated from db.")
+			return nil, terror.Error(err, "Failed to load player battles spectated.")
+		}
+
+		resp = append(resp, mb)
+	}
+
+	return resp, nil
 }
