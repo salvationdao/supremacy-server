@@ -332,8 +332,8 @@ func getDefaultMechQueryMods() []qm.QueryMod {
 								_bpu.card_animation_url as card_animation_url,
 								_bpu.animation_url as animation_url,
 								_bpu.label as label,
-								_mu.slot_number AS slot_number,
-								--to_json(_us) as shield
+								_mu.slot_number AS slot_number
+								-- to_json(_us) as shield
 						FROM utility _u
 						INNER JOIN collection_items _ci on _ci.item_id = _u.id
 						INNER JOIN blueprint_utility _bpu on _bpu.id = _u.blueprint_id
