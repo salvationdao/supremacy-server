@@ -1537,6 +1537,11 @@ func (btl *Battle) Tick(payload []byte) {
 			Shield:        warmachine.Shield,
 			IsHidden:      false,
 		}
+
+		if wms.Position == nil {
+			wms.Position = &server.Vector3{}
+		}
+
 		// Position + Yaw
 		if booleans[0] {
 			x := int(helpers.BytesToInt(payload[offset : offset+4]))

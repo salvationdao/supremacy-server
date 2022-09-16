@@ -2212,6 +2212,10 @@ func (btl *Battle) AISpawned(payload *AISpawnedRequest) error {
 		Status:        &Status{},
 	}
 
+	if spawnedAI.Position ==nil{
+		spawnedAI.Position = &server.Vector3{}
+	}
+
 	gamelog.L.Info().Msgf("Battle Update: %s - AI Spawned: %d", payload.BattleID, spawnedAI.ParticipantID)
 
 	btl.spawnedAIMux.Lock()
