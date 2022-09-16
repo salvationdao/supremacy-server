@@ -1184,6 +1184,7 @@ type PlayerAssetWeaponListRequest struct {
 		PageSize                      int                       `json:"page_size"`
 		Page                          int                       `json:"page"`
 		DisplayXsynMechs              bool                      `json:"display_xsyn_mechs"`
+		DisplayGenesisAndLimited      bool                      `json:"display_genesis_and_limited"`
 		ExcludeMarketLocked           bool                      `json:"exclude_market_locked"`
 		IncludeMarketListed           bool                      `json:"include_market_listed"`
 		ExcludeMechLocked             bool                      `json:"exclude_mech_locked"`
@@ -1246,6 +1247,7 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetWeaponListHandler(ctx context.Co
 		Page:                          req.Payload.Page,
 		OwnerID:                       user.ID,
 		DisplayXsynMechs:              req.Payload.DisplayXsynMechs,
+		DisplayGenesisAndLimited:      req.Payload.DisplayGenesisAndLimited,
 		ExcludeMarketLocked:           req.Payload.ExcludeMarketLocked,
 		IncludeMarketListed:           req.Payload.IncludeMarketListed,
 		ExcludeMechLocked:             req.Payload.ExcludeMechLocked,
