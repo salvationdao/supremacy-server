@@ -2,7 +2,7 @@ DROP TYPE IF EXISTS VOICE_SENDER_TYPE;
 CREATE TYPE VOICE_SENDER_TYPE AS ENUM ( 'MECH_OWNER', 'FACTION_COMMANDER');
 
 
-CREATE TABLE  voice_streams
+CREATE TABLE voice_streams
 (
     id UUID PRIMARY KEY default gen_random_uuid(),
     arena_id UUID REFERENCES battle_arena(id) NOT NULL,
