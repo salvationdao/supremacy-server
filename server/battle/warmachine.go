@@ -172,23 +172,23 @@ type Weapon struct {
 	Skin                string     `json:"skin"`  // Unused for built-in mech weapons
 	Name                string     `json:"name"`
 	Damage              int        `json:"damage"`
-	DamageFalloff       int        `json:"damageFalloff"`       // Distance at which damage starts decreasing
-	DamageFalloffRate   int        `json:"damageFalloffRate"`   // How much the damage decreases by per km
-	DamageRadius        int        `json:"damageRadius"`        // Enemies within this radius when the projectile hits something is damaged
-	RadiusDamageFalloff int        `json:"damageRadiusFalloff"` // Distance at which damage starts decreasing (must be greater than 0 and less than damageRadius to have any affect)
-	DamageType          DamageType `json:"damageType"`          // For calculating damage weakness/resistance (eg: shields take 25% extra damage from energy weapons)
-	Spread              float64    `json:"spread"`              // Projectiles are randomly offset inside a cone. Spread is the half-angle of the cone, in degrees.
-	RateOfFire          float64    `json:"rateOfFire"`          // Rounds per minute
-	ProjectileSpeed     int        `json:"projectileSpeed"`     // cm/s
-	MaxAmmo             int        `json:"maxAmmo"`             // The max amount of ammo this weapon can hold
-	PowerCost           float64    `json:"powerCost"`
-	PowerInstantDrain   bool       `json:"powerInstantDrain"`
-	ProjectileAmount    int        `json:"projectileAmount"`
-	DotTickDamage       float64    `json:"dotTickDamage"`
-	DotMaxTicks         int        `json:"dotMaxTicks"`
-	IsArced             bool       `json:"isArced"`
-	ChargeTimeSeconds   float64    `json:"chargeTime"`
-	BurstRateOfFire     float64    `json:"burstRateOfFire"`
+	DamageFalloff       int        `json:"damage_falloff"`        // Distance at which damage starts decreasing
+	DamageFalloffRate   int        `json:"damage_falloff_rate"`   // How much the damage decreases by per km
+	DamageRadius        int        `json:"damage_radius"`         // Enemies within this radius when the projectile hits something is damaged
+	RadiusDamageFalloff int        `json:"damage_radius_falloff"` // Distance at which damage starts decreasing (must be greater than 0 and less than damageRadius to have any affect)
+	DamageType          DamageType `json:"damage_type"`           // For calculating damage weakness/resistance (eg: shields take 25% extra damage from energy weapons)
+	Spread              float64    `json:"spread"`                // Projectiles are randomly offset inside a cone. Spread is the half-angle of the cone, in degrees.
+	RateOfFire          float64    `json:"rate_of_fire"`          // Rounds per minute
+	ProjectileSpeed     int        `json:"projectile_speed"`      // cm/s
+	MaxAmmo             int        `json:"max_ammo"`              // The max amount of ammo this weapon can hold
+	PowerCost           float64    `json:"power_cost"`
+	PowerInstantDrain   bool       `json:"power_instant_drain"`
+	ProjectileAmount    int        `json:"projectile_amount"`
+	DotTickDamage       float64    `json:"dot_tick_damage"`
+	DotMaxTicks         int        `json:"dot_max_ticks"`
+	IsArced             bool       `json:"is_arced"`
+	ChargeTimeSeconds   float64    `json:"charge_time"`
+	BurstRateOfFire     float64    `json:"burst_rate_of_fire"`
 }
 
 type Utility struct {
