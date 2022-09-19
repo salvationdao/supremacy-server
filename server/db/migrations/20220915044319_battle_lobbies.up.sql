@@ -31,7 +31,7 @@ CREATE TABLE battle_lobbies
     second_faction_cut       DECIMAL     NOT NULL DEFAULT 0,
     third_faction_cut        DECIMAL     NOT NULL DEFAULT 0,
     each_faction_mech_amount INT         NOT NULL DEFAULT 3,
-    game_map_id              UUID        NOT NULL REFERENCES game_maps (id),
+    game_map_id              UUID        REFERENCES game_maps (id),
     generated_by_system      BOOL        NOT NULL DEFAULT FALSE,
     password                 TEXT,
 

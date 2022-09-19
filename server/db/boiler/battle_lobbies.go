@@ -32,7 +32,7 @@ type BattleLobby struct {
 	SecondFactionCut      decimal.Decimal `boiler:"second_faction_cut" boil:"second_faction_cut" json:"second_faction_cut" toml:"second_faction_cut" yaml:"second_faction_cut"`
 	ThirdFactionCut       decimal.Decimal `boiler:"third_faction_cut" boil:"third_faction_cut" json:"third_faction_cut" toml:"third_faction_cut" yaml:"third_faction_cut"`
 	EachFactionMechAmount int             `boiler:"each_faction_mech_amount" boil:"each_faction_mech_amount" json:"each_faction_mech_amount" toml:"each_faction_mech_amount" yaml:"each_faction_mech_amount"`
-	GameMapID             string          `boiler:"game_map_id" boil:"game_map_id" json:"game_map_id" toml:"game_map_id" yaml:"game_map_id"`
+	GameMapID             null.String     `boiler:"game_map_id" boil:"game_map_id" json:"game_map_id,omitempty" toml:"game_map_id" yaml:"game_map_id,omitempty"`
 	GeneratedBySystem     bool            `boiler:"generated_by_system" boil:"generated_by_system" json:"generated_by_system" toml:"generated_by_system" yaml:"generated_by_system"`
 	Password              null.String     `boiler:"password" boil:"password" json:"password,omitempty" toml:"password" yaml:"password,omitempty"`
 	ReadyAt               null.Time       `boiler:"ready_at" boil:"ready_at" json:"ready_at,omitempty" toml:"ready_at" yaml:"ready_at,omitempty"`
@@ -133,7 +133,7 @@ var BattleLobbyWhere = struct {
 	SecondFactionCut      whereHelperdecimal_Decimal
 	ThirdFactionCut       whereHelperdecimal_Decimal
 	EachFactionMechAmount whereHelperint
-	GameMapID             whereHelperstring
+	GameMapID             whereHelpernull_String
 	GeneratedBySystem     whereHelperbool
 	Password              whereHelpernull_String
 	ReadyAt               whereHelpernull_Time
@@ -151,7 +151,7 @@ var BattleLobbyWhere = struct {
 	SecondFactionCut:      whereHelperdecimal_Decimal{field: "\"battle_lobbies\".\"second_faction_cut\""},
 	ThirdFactionCut:       whereHelperdecimal_Decimal{field: "\"battle_lobbies\".\"third_faction_cut\""},
 	EachFactionMechAmount: whereHelperint{field: "\"battle_lobbies\".\"each_faction_mech_amount\""},
-	GameMapID:             whereHelperstring{field: "\"battle_lobbies\".\"game_map_id\""},
+	GameMapID:             whereHelpernull_String{field: "\"battle_lobbies\".\"game_map_id\""},
 	GeneratedBySystem:     whereHelperbool{field: "\"battle_lobbies\".\"generated_by_system\""},
 	Password:              whereHelpernull_String{field: "\"battle_lobbies\".\"password\""},
 	ReadyAt:               whereHelpernull_Time{field: "\"battle_lobbies\".\"ready_at\""},
@@ -196,8 +196,8 @@ type battleLobbyL struct{}
 
 var (
 	battleLobbyAllColumns            = []string{"id", "host_by_id", "number", "entry_fee", "first_faction_cut", "second_faction_cut", "third_faction_cut", "each_faction_mech_amount", "game_map_id", "generated_by_system", "password", "ready_at", "assigned_to_battle_id", "ended_at", "created_at", "updated_at", "deleted_at"}
-	battleLobbyColumnsWithoutDefault = []string{"host_by_id", "game_map_id"}
-	battleLobbyColumnsWithDefault    = []string{"id", "number", "entry_fee", "first_faction_cut", "second_faction_cut", "third_faction_cut", "each_faction_mech_amount", "generated_by_system", "password", "ready_at", "assigned_to_battle_id", "ended_at", "created_at", "updated_at", "deleted_at"}
+	battleLobbyColumnsWithoutDefault = []string{"host_by_id"}
+	battleLobbyColumnsWithDefault    = []string{"id", "number", "entry_fee", "first_faction_cut", "second_faction_cut", "third_faction_cut", "each_faction_mech_amount", "game_map_id", "generated_by_system", "password", "ready_at", "assigned_to_battle_id", "ended_at", "created_at", "updated_at", "deleted_at"}
 	battleLobbyPrimaryKeyColumns     = []string{"id"}
 	battleLobbyGeneratedColumns      = []string{}
 )
@@ -656,7 +656,9 @@ func (battleLobbyL) LoadGameMap(e boil.Executor, singular bool, maybeBattleLobby
 		if object.R == nil {
 			object.R = &battleLobbyR{}
 		}
-		args = append(args, object.GameMapID)
+		if !queries.IsNil(object.GameMapID) {
+			args = append(args, object.GameMapID)
+		}
 
 	} else {
 	Outer:
@@ -666,12 +668,14 @@ func (battleLobbyL) LoadGameMap(e boil.Executor, singular bool, maybeBattleLobby
 			}
 
 			for _, a := range args {
-				if a == obj.GameMapID {
+				if queries.Equal(a, obj.GameMapID) {
 					continue Outer
 				}
 			}
 
-			args = append(args, obj.GameMapID)
+			if !queries.IsNil(obj.GameMapID) {
+				args = append(args, obj.GameMapID)
+			}
 
 		}
 	}
@@ -729,7 +733,7 @@ func (battleLobbyL) LoadGameMap(e boil.Executor, singular bool, maybeBattleLobby
 
 	for _, local := range slice {
 		for _, foreign := range resultSlice {
-			if local.GameMapID == foreign.ID {
+			if queries.Equal(local.GameMapID, foreign.ID) {
 				local.R.GameMap = foreign
 				if foreign.R == nil {
 					foreign.R = &gameMapR{}
@@ -1151,7 +1155,7 @@ func (o *BattleLobby) SetGameMap(exec boil.Executor, insert bool, related *GameM
 		return errors.Wrap(err, "failed to update local table")
 	}
 
-	o.GameMapID = related.ID
+	queries.Assign(&o.GameMapID, related.ID)
 	if o.R == nil {
 		o.R = &battleLobbyR{
 			GameMap: related,
@@ -1168,6 +1172,39 @@ func (o *BattleLobby) SetGameMap(exec boil.Executor, insert bool, related *GameM
 		related.R.BattleLobbies = append(related.R.BattleLobbies, o)
 	}
 
+	return nil
+}
+
+// RemoveGameMap relationship.
+// Sets o.R.GameMap to nil.
+// Removes o from all passed in related items' relationships struct (Optional).
+func (o *BattleLobby) RemoveGameMap(exec boil.Executor, related *GameMap) error {
+	var err error
+
+	queries.SetScanner(&o.GameMapID, nil)
+	if _, err = o.Update(exec, boil.Whitelist("game_map_id")); err != nil {
+		return errors.Wrap(err, "failed to update local table")
+	}
+
+	if o.R != nil {
+		o.R.GameMap = nil
+	}
+	if related == nil || related.R == nil {
+		return nil
+	}
+
+	for i, ri := range related.R.BattleLobbies {
+		if queries.Equal(o.GameMapID, ri.GameMapID) {
+			continue
+		}
+
+		ln := len(related.R.BattleLobbies)
+		if ln > 1 && i < ln-1 {
+			related.R.BattleLobbies[i] = related.R.BattleLobbies[ln-1]
+		}
+		related.R.BattleLobbies = related.R.BattleLobbies[:ln-1]
+		break
+	}
 	return nil
 }
 

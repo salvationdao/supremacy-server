@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"math/rand"
 	"net"
 	"net/http"
 	"server"
@@ -1628,6 +1629,8 @@ func (arena *Arena) BeginBattle() {
 		gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("not able to load previous battle")
 	}
 
+	var gameMap *boiler.GameMap
+
 	// if last battle is ended or does not exist, create a new battle
 	if lastBattle == nil || lastBattle.EndedAt.Valid {
 		// load new battle lobby
@@ -1638,6 +1641,7 @@ func (arena *Arena) BeginBattle() {
 		).One(gamedb.StdConn)
 		if err != nil && !errors.Is(err, sql.ErrNoRows) {
 			gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("Failed to load new battle lobby.")
+			arena.UpdateArenaStatus(true)
 			return
 		}
 
@@ -1647,16 +1651,53 @@ func (arena *Arena) BeginBattle() {
 			return
 		}
 
+		// generate game map for the lobby, if there isn't one
+		if !battleLobby.GameMapID.Valid {
+			gms, err := boiler.GameMaps().All(gamedb.StdConn)
+			if err != nil {
+				gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("Failed to load game maps.")
+				arena.UpdateArenaStatus(true)
+				return
+			}
+
+			if gms == nil {
+				gamelog.L.Warn().Str("log_name", "battle arena").Msg("No available game maps in db.")
+				arena.UpdateArenaStatus(true)
+				return
+			}
+
+			// randomly assign game map to battle lobby
+			rand.Seed(time.Now().UnixNano())
+			gameMap = gms[rand.Intn(len(gms))]
+
+			battleLobby.GameMapID = null.StringFrom(gameMap.ID)
+			_, err = battleLobby.Update(gamedb.StdConn, boil.Whitelist(boiler.BattleLobbyColumns.GameMapID))
+			if err != nil {
+				gamelog.L.Error().Str("log_name", "battle arena").Interface("game map", gameMap).Interface("battle lobby", battleLobby).Err(err).Msg("Failed to assign game map to battle lobby.")
+				arena.UpdateArenaStatus(true)
+				return
+			}
+		} else {
+			// load game map from last battle
+			gameMap, err = battleLobby.GameMap().One(gamedb.StdConn)
+			if err != nil {
+				gamelog.L.Error().Err(err).Interface("battle lobby", battle).Msg("Failed to load game map from battle lobby")
+				arena.UpdateArenaStatus(true)
+				return
+			}
+		}
+
 		// insert new battle
 		battle = &boiler.Battle{
 			ID:        uuid.Must(uuid.NewV4()).String(),
-			GameMapID: battleLobby.GameMapID,
+			GameMapID: gameMap.ID,
 			StartedAt: time.Now(),
 			ArenaID:   arena.ID,
 		}
 		err := battle.Insert(gamedb.StdConn, boil.Infer())
 		if err != nil {
 			gamelog.L.Error().Err(err).Interface("battle", battle).Msg("unable to insert Battle into database")
+			arena.UpdateArenaStatus(true)
 			return
 		}
 
@@ -1665,6 +1706,7 @@ func (arena *Arena) BeginBattle() {
 		_, err = battleLobby.Update(gamedb.StdConn, boil.Whitelist(boiler.BattleLobbyColumns.AssignedToBattleID))
 		if err != nil {
 			gamelog.L.Error().Err(err).Interface("battle lobby", battleLobby).Msg("unable to update battle lobby")
+			arena.UpdateArenaStatus(true)
 			return
 		}
 
@@ -1682,6 +1724,15 @@ func (arena *Arena) BeginBattle() {
 		battleLobby, err = lastBattle.AssignedToBattleBattleLobbies().One(gamedb.StdConn)
 		if err != nil && !errors.Is(err, sql.ErrNoRows) {
 			gamelog.L.Error().Err(err).Str("battle id", lastBattle.ID).Msg("Failed to load battle lobby of the last battle")
+			arena.UpdateArenaStatus(true)
+			return
+		}
+
+		// load game map from last battle
+		gameMap, err = lastBattle.GameMap().One(gamedb.StdConn)
+		if err != nil {
+			gamelog.L.Error().Err(err).Interface("battle lobby", battle).Msg("Failed to load game map from battle lobby")
+			arena.UpdateArenaStatus(true)
 			return
 		}
 
@@ -1692,14 +1743,6 @@ func (arena *Arena) BeginBattle() {
 
 	// broadcast battle lobby change
 	go BroadcastBattleLobbyUpdate(battleLobby.ID)
-
-	// load game map from battle lobby
-	gameMap, err := battleLobby.GameMap().One(gamedb.StdConn)
-	if err != nil {
-		gamelog.L.Error().Err(err).Interface("battle lobby", battleLobby).Msg("Failed to load game map from battle lobby")
-		arena.UpdateArenaStatus(true)
-		return
-	}
 
 	events := []*RecordingEvents{}
 

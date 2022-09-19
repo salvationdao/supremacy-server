@@ -457,7 +457,7 @@ func (gameMapL) LoadBattleLobbies(e boil.Executor, singular bool, maybeGameMap i
 			}
 
 			for _, a := range args {
-				if a == obj.ID {
+				if queries.Equal(a, obj.ID) {
 					continue Outer
 				}
 			}
@@ -516,7 +516,7 @@ func (gameMapL) LoadBattleLobbies(e boil.Executor, singular bool, maybeGameMap i
 
 	for _, foreign := range resultSlice {
 		for _, local := range slice {
-			if local.ID == foreign.GameMapID {
+			if queries.Equal(local.ID, foreign.GameMapID) {
 				local.R.BattleLobbies = append(local.R.BattleLobbies, foreign)
 				if foreign.R == nil {
 					foreign.R = &battleLobbyR{}
@@ -734,7 +734,7 @@ func (o *GameMap) AddBattleLobbies(exec boil.Executor, insert bool, related ...*
 	var err error
 	for _, rel := range related {
 		if insert {
-			rel.GameMapID = o.ID
+			queries.Assign(&rel.GameMapID, o.ID)
 			if err = rel.Insert(exec, boil.Infer()); err != nil {
 				return errors.Wrap(err, "failed to insert into foreign table")
 			}
@@ -754,7 +754,7 @@ func (o *GameMap) AddBattleLobbies(exec boil.Executor, insert bool, related ...*
 				return errors.Wrap(err, "failed to update foreign table")
 			}
 
-			rel.GameMapID = o.ID
+			queries.Assign(&rel.GameMapID, o.ID)
 		}
 	}
 
@@ -775,6 +775,79 @@ func (o *GameMap) AddBattleLobbies(exec boil.Executor, insert bool, related ...*
 			rel.R.GameMap = o
 		}
 	}
+	return nil
+}
+
+// SetBattleLobbies removes all previously related items of the
+// game_map replacing them completely with the passed
+// in related items, optionally inserting them as new records.
+// Sets o.R.GameMap's BattleLobbies accordingly.
+// Replaces o.R.BattleLobbies with related.
+// Sets related.R.GameMap's BattleLobbies accordingly.
+func (o *GameMap) SetBattleLobbies(exec boil.Executor, insert bool, related ...*BattleLobby) error {
+	query := "update \"battle_lobbies\" set \"game_map_id\" = null where \"game_map_id\" = $1"
+	values := []interface{}{o.ID}
+	if boil.DebugMode {
+		fmt.Fprintln(boil.DebugWriter, query)
+		fmt.Fprintln(boil.DebugWriter, values)
+	}
+	_, err := exec.Exec(query, values...)
+	if err != nil {
+		return errors.Wrap(err, "failed to remove relationships before set")
+	}
+
+	if o.R != nil {
+		for _, rel := range o.R.BattleLobbies {
+			queries.SetScanner(&rel.GameMapID, nil)
+			if rel.R == nil {
+				continue
+			}
+
+			rel.R.GameMap = nil
+		}
+
+		o.R.BattleLobbies = nil
+	}
+	return o.AddBattleLobbies(exec, insert, related...)
+}
+
+// RemoveBattleLobbies relationships from objects passed in.
+// Removes related items from R.BattleLobbies (uses pointer comparison, removal does not keep order)
+// Sets related.R.GameMap.
+func (o *GameMap) RemoveBattleLobbies(exec boil.Executor, related ...*BattleLobby) error {
+	if len(related) == 0 {
+		return nil
+	}
+
+	var err error
+	for _, rel := range related {
+		queries.SetScanner(&rel.GameMapID, nil)
+		if rel.R != nil {
+			rel.R.GameMap = nil
+		}
+		if _, err = rel.Update(exec, boil.Whitelist("game_map_id")); err != nil {
+			return err
+		}
+	}
+	if o.R == nil {
+		return nil
+	}
+
+	for _, rel := range related {
+		for i, ri := range o.R.BattleLobbies {
+			if rel != ri {
+				continue
+			}
+
+			ln := len(o.R.BattleLobbies)
+			if ln > 1 && i < ln-1 {
+				o.R.BattleLobbies[i] = o.R.BattleLobbies[ln-1]
+			}
+			o.R.BattleLobbies = o.R.BattleLobbies[:ln-1]
+			break
+		}
+	}
+
 	return nil
 }
 

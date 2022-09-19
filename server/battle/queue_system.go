@@ -128,17 +128,8 @@ func (am *ArenaManager) DefaultPublicLobbiesCheck() error {
 		return nil
 	}
 
-	// load game maps
-	gameMaps, err := boiler.GameMaps().All(gamedb.StdConn)
-	if err != nil {
-		gamelog.L.Error().Err(err).Msg("Failed to load game map.")
-		return terror.Error(err, "Failed to load game map.")
-	}
-
 	// fill up battle lobbies
 	for i := 0; i < publicLobbiesCount-count; i++ {
-		gameMap := gameMaps[i%len(gameMaps)]
-
 		bl := &boiler.BattleLobby{
 			HostByID:              server.SupremacyBattleUserID,
 			EntryFee:              decimal.Zero, // free to join
@@ -146,7 +137,6 @@ func (am *ArenaManager) DefaultPublicLobbiesCheck() error {
 			SecondFactionCut:      decimal.NewFromFloat(0.25),
 			ThirdFactionCut:       decimal.Zero,
 			EachFactionMechAmount: 3,
-			GameMapID:             gameMap.ID,
 			GeneratedBySystem:     true,
 		}
 
