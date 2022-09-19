@@ -105,36 +105,3 @@ CREATE TABLE battle_bounties
 );
 
 CREATE INDEX IF NOT EXISTS idx_battle_bounties_available_check ON battle_bounties (battle_lobby_id, payout_tx_id, refund_tx_id, deleted_at);
-
--- refactor repair block check
-CREATE OR REPLACE FUNCTION check_repair_block() RETURNS TRIGGER AS
-$check_repair_block$
-DECLARE
-    can_write_block BOOLEAN DEFAULT FALSE;
-BEGIN
-
-    SELECT (SELECT rc.completed_at IS NULL AND rc.paused_at ISNULL AND ro.expires_at > NOW() AND
-                   ro.closed_at IS NULL AND ro.deleted_at IS NULL AND
-                   (SELECT COUNT(*) FROM repair_blocks rb WHERE rb.repair_case_id = rc.id) < rc.blocks_required_repair
-            FROM repair_offers ro
-                     INNER JOIN repair_cases rc ON ro.repair_case_id = rc.id
-            WHERE ro.id = new.repair_offer_id)
-    INTO can_write_block;
--- update blocks required in repair cases and continue the process
-    IF can_write_block THEN
-        UPDATE repair_cases SET blocks_repaired = blocks_repaired + 1 WHERE id = new.repair_case_id;
-        UPDATE repair_agents SET finished_at = NOW(), finished_reason = 'SUCCEEDED' WHERE id = new.repair_agent_id;
-        RETURN new;
-    ELSE
-        RAISE EXCEPTION 'unable to write block';
-    END IF;
-END
-$check_repair_block$ LANGUAGE plpgsql;
-
-DROP TRIGGER IF EXISTS trigger_check_repair_block ON repair_blocks;
-
-CREATE TRIGGER trigger_check_repair_block
-    BEFORE INSERT
-    ON repair_blocks
-    FOR EACH ROW
-EXECUTE PROCEDURE check_repair_block();
