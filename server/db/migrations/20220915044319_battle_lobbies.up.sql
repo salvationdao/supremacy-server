@@ -52,9 +52,9 @@ CREATE INDEX idx_battle_lobby_queue_position_check ON battle_lobbies (ready_at, 
 
 CREATE TABLE battle_lobbies_mechs
 (
+    id                    UUID PRIMARY KEY     DEFAULT gen_random_uuid(),
     battle_lobby_id       UUID        NOT NULL REFERENCES battle_lobbies (id),
     mech_id               UUID        NOT NULL REFERENCES mechs (id),
-    PRIMARY KEY (battle_lobby_id, mech_id),
 
     paid_tx_id            TEXT,
     refund_tx_id          TEXT,
@@ -98,7 +98,7 @@ CREATE TABLE battle_bounties
     paid_tx_id       TEXT,
     payout_tx_id     TEXT,
     refund_tx_id     TEXT,
-    tax_tx_id TEXT,
+    tax_tx_id        TEXT,
     created_at       TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at       TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     deleted_at       TIMESTAMPTZ
@@ -113,26 +113,23 @@ DECLARE
     can_write_block BOOLEAN DEFAULT FALSE;
 BEGIN
 
-SELECT (
-           SELECT rc.completed_at IS NULL AND rc.paused_at ISNULL AND
-                  ro.expires_at > NOW() AND ro.closed_at IS NULL AND ro.deleted_at IS NULL AND
-                  (SELECT COUNT(*) FROM repair_blocks rb WHERE rb.repair_case_id = rc.id) < rc.blocks_required_repair
-           FROM repair_offers ro
-           INNER JOIN repair_cases rc ON ro.repair_case_id = rc.id
-           WHERE ro.id = NEW.repair_offer_id
-       )
-INTO can_write_block;
+    SELECT (SELECT rc.completed_at IS NULL AND rc.paused_at ISNULL AND ro.expires_at > NOW() AND
+                   ro.closed_at IS NULL AND ro.deleted_at IS NULL AND
+                   (SELECT COUNT(*) FROM repair_blocks rb WHERE rb.repair_case_id = rc.id) < rc.blocks_required_repair
+            FROM repair_offers ro
+                     INNER JOIN repair_cases rc ON ro.repair_case_id = rc.id
+            WHERE ro.id = new.repair_offer_id)
+    INTO can_write_block;
 -- update blocks required in repair cases and continue the process
-IF can_write_block THEN
-    UPDATE repair_cases SET blocks_repaired = blocks_repaired + 1 WHERE id = NEW.repair_case_id;
-    UPDATE repair_agents SET finished_at = now(), finished_reason = 'SUCCEEDED' WHERE id = NEW.repair_agent_id;
-    RETURN NEW;
-ELSE
-    RAISE EXCEPTION 'unable to write block';
-END IF;
+    IF can_write_block THEN
+        UPDATE repair_cases SET blocks_repaired = blocks_repaired + 1 WHERE id = new.repair_case_id;
+        UPDATE repair_agents SET finished_at = NOW(), finished_reason = 'SUCCEEDED' WHERE id = new.repair_agent_id;
+        RETURN new;
+    ELSE
+        RAISE EXCEPTION 'unable to write block';
+    END IF;
 END
-$check_repair_block$
-    LANGUAGE plpgsql;
+$check_repair_block$ LANGUAGE plpgsql;
 
 DROP TRIGGER IF EXISTS trigger_check_repair_block ON repair_blocks;
 

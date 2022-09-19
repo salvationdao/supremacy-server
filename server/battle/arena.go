@@ -1688,6 +1688,8 @@ func (arena *Arena) BeginBattle() {
 		gamelog.L.Info().Msg("Running unfinished battle map")
 	}
 
+	arena.UpdateArenaStatus(false)
+
 	// broadcast battle lobby change
 	go BroadcastBattleLobbyUpdate(battleLobby.ID)
 
@@ -1734,9 +1736,22 @@ func (arena *Arena) BeginBattle() {
 		return
 	}
 
-	// check mech join battle quest for each mech owner
+	playerMechMap := make(map[string][]string)
 	for _, wm := range btl.WarMachines {
+		pm, ok := playerMechMap[wm.OwnedByID]
+		if !ok {
+			pm = []string{}
+		}
+		pm = append(pm, wm.ID)
+		playerMechMap[wm.OwnedByID] = pm
+
+		// check mech join battle quest for each mech owner
 		arena.QuestManager.MechJoinBattleQuestCheck(wm.OwnedByID)
+	}
+
+	// broadcast mech status change
+	for playerID, mechIDs := range playerMechMap {
+		go BroadcastMechQueueStatus(playerID, mechIDs...)
 	}
 
 	al, err := db.AbilityLabelList()

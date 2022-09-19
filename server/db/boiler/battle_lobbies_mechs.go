@@ -23,6 +23,7 @@ import (
 
 // BattleLobbiesMech is an object representing the database table.
 type BattleLobbiesMech struct {
+	ID                 string      `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
 	BattleLobbyID      string      `boiler:"battle_lobby_id" boil:"battle_lobby_id" json:"battle_lobby_id" toml:"battle_lobby_id" yaml:"battle_lobby_id"`
 	MechID             string      `boiler:"mech_id" boil:"mech_id" json:"mech_id" toml:"mech_id" yaml:"mech_id"`
 	PaidTXID           null.String `boiler:"paid_tx_id" boil:"paid_tx_id" json:"paid_tx_id,omitempty" toml:"paid_tx_id" yaml:"paid_tx_id,omitempty"`
@@ -47,6 +48,7 @@ type BattleLobbiesMech struct {
 }
 
 var BattleLobbiesMechColumns = struct {
+	ID                 string
 	BattleLobbyID      string
 	MechID             string
 	PaidTXID           string
@@ -66,6 +68,7 @@ var BattleLobbiesMechColumns = struct {
 	UpdatedAt          string
 	DeletedAt          string
 }{
+	ID:                 "id",
 	BattleLobbyID:      "battle_lobby_id",
 	MechID:             "mech_id",
 	PaidTXID:           "paid_tx_id",
@@ -87,6 +90,7 @@ var BattleLobbiesMechColumns = struct {
 }
 
 var BattleLobbiesMechTableColumns = struct {
+	ID                 string
 	BattleLobbyID      string
 	MechID             string
 	PaidTXID           string
@@ -106,6 +110,7 @@ var BattleLobbiesMechTableColumns = struct {
 	UpdatedAt          string
 	DeletedAt          string
 }{
+	ID:                 "battle_lobbies_mechs.id",
 	BattleLobbyID:      "battle_lobbies_mechs.battle_lobby_id",
 	MechID:             "battle_lobbies_mechs.mech_id",
 	PaidTXID:           "battle_lobbies_mechs.paid_tx_id",
@@ -129,6 +134,7 @@ var BattleLobbiesMechTableColumns = struct {
 // Generated where
 
 var BattleLobbiesMechWhere = struct {
+	ID                 whereHelperstring
 	BattleLobbyID      whereHelperstring
 	MechID             whereHelperstring
 	PaidTXID           whereHelpernull_String
@@ -148,6 +154,7 @@ var BattleLobbiesMechWhere = struct {
 	UpdatedAt          whereHelpertime_Time
 	DeletedAt          whereHelpernull_Time
 }{
+	ID:                 whereHelperstring{field: "\"battle_lobbies_mechs\".\"id\""},
 	BattleLobbyID:      whereHelperstring{field: "\"battle_lobbies_mechs\".\"battle_lobby_id\""},
 	MechID:             whereHelperstring{field: "\"battle_lobbies_mechs\".\"mech_id\""},
 	PaidTXID:           whereHelpernull_String{field: "\"battle_lobbies_mechs\".\"paid_tx_id\""},
@@ -201,10 +208,10 @@ func (*battleLobbiesMechR) NewStruct() *battleLobbiesMechR {
 type battleLobbiesMechL struct{}
 
 var (
-	battleLobbiesMechAllColumns            = []string{"battle_lobby_id", "mech_id", "paid_tx_id", "refund_tx_id", "owner_id", "faction_id", "is_notified", "notified_tx_id", "bonus_sups_tx_id", "payout_tx_id", "tax_tx_id", "challenge_fund_tx_id", "locked_at", "ended_at", "assigned_to_battle_id", "created_at", "updated_at", "deleted_at"}
+	battleLobbiesMechAllColumns            = []string{"id", "battle_lobby_id", "mech_id", "paid_tx_id", "refund_tx_id", "owner_id", "faction_id", "is_notified", "notified_tx_id", "bonus_sups_tx_id", "payout_tx_id", "tax_tx_id", "challenge_fund_tx_id", "locked_at", "ended_at", "assigned_to_battle_id", "created_at", "updated_at", "deleted_at"}
 	battleLobbiesMechColumnsWithoutDefault = []string{"battle_lobby_id", "mech_id", "owner_id", "faction_id"}
-	battleLobbiesMechColumnsWithDefault    = []string{"paid_tx_id", "refund_tx_id", "is_notified", "notified_tx_id", "bonus_sups_tx_id", "payout_tx_id", "tax_tx_id", "challenge_fund_tx_id", "locked_at", "ended_at", "assigned_to_battle_id", "created_at", "updated_at", "deleted_at"}
-	battleLobbiesMechPrimaryKeyColumns     = []string{"battle_lobby_id", "mech_id"}
+	battleLobbiesMechColumnsWithDefault    = []string{"id", "paid_tx_id", "refund_tx_id", "is_notified", "notified_tx_id", "bonus_sups_tx_id", "payout_tx_id", "tax_tx_id", "challenge_fund_tx_id", "locked_at", "ended_at", "assigned_to_battle_id", "created_at", "updated_at", "deleted_at"}
+	battleLobbiesMechPrimaryKeyColumns     = []string{"id"}
 	battleLobbiesMechGeneratedColumns      = []string{}
 )
 
@@ -1068,7 +1075,7 @@ func (o *BattleLobbiesMech) SetAssignedToBattle(exec boil.Executor, insert bool,
 		strmangle.SetParamNames("\"", "\"", 1, []string{"assigned_to_battle_id"}),
 		strmangle.WhereClause("\"", "\"", 2, battleLobbiesMechPrimaryKeyColumns),
 	)
-	values := []interface{}{related.ID, o.BattleLobbyID, o.MechID}
+	values := []interface{}{related.ID, o.ID}
 
 	if boil.DebugMode {
 		fmt.Fprintln(boil.DebugWriter, updateQuery)
@@ -1147,7 +1154,7 @@ func (o *BattleLobbiesMech) SetBattleLobby(exec boil.Executor, insert bool, rela
 		strmangle.SetParamNames("\"", "\"", 1, []string{"battle_lobby_id"}),
 		strmangle.WhereClause("\"", "\"", 2, battleLobbiesMechPrimaryKeyColumns),
 	)
-	values := []interface{}{related.ID, o.BattleLobbyID, o.MechID}
+	values := []interface{}{related.ID, o.ID}
 
 	if boil.DebugMode {
 		fmt.Fprintln(boil.DebugWriter, updateQuery)
@@ -1193,7 +1200,7 @@ func (o *BattleLobbiesMech) SetFaction(exec boil.Executor, insert bool, related 
 		strmangle.SetParamNames("\"", "\"", 1, []string{"faction_id"}),
 		strmangle.WhereClause("\"", "\"", 2, battleLobbiesMechPrimaryKeyColumns),
 	)
-	values := []interface{}{related.ID, o.BattleLobbyID, o.MechID}
+	values := []interface{}{related.ID, o.ID}
 
 	if boil.DebugMode {
 		fmt.Fprintln(boil.DebugWriter, updateQuery)
@@ -1239,7 +1246,7 @@ func (o *BattleLobbiesMech) SetMech(exec boil.Executor, insert bool, related *Me
 		strmangle.SetParamNames("\"", "\"", 1, []string{"mech_id"}),
 		strmangle.WhereClause("\"", "\"", 2, battleLobbiesMechPrimaryKeyColumns),
 	)
-	values := []interface{}{related.ID, o.BattleLobbyID, o.MechID}
+	values := []interface{}{related.ID, o.ID}
 
 	if boil.DebugMode {
 		fmt.Fprintln(boil.DebugWriter, updateQuery)
@@ -1285,7 +1292,7 @@ func (o *BattleLobbiesMech) SetOwner(exec boil.Executor, insert bool, related *P
 		strmangle.SetParamNames("\"", "\"", 1, []string{"owner_id"}),
 		strmangle.WhereClause("\"", "\"", 2, battleLobbiesMechPrimaryKeyColumns),
 	)
-	values := []interface{}{related.ID, o.BattleLobbyID, o.MechID}
+	values := []interface{}{related.ID, o.ID}
 
 	if boil.DebugMode {
 		fmt.Fprintln(boil.DebugWriter, updateQuery)
@@ -1323,7 +1330,7 @@ func BattleLobbiesMechs(mods ...qm.QueryMod) battleLobbiesMechQuery {
 
 // FindBattleLobbiesMech retrieves a single record by ID with an executor.
 // If selectCols is empty Find will return all columns.
-func FindBattleLobbiesMech(exec boil.Executor, battleLobbyID string, mechID string, selectCols ...string) (*BattleLobbiesMech, error) {
+func FindBattleLobbiesMech(exec boil.Executor, iD string, selectCols ...string) (*BattleLobbiesMech, error) {
 	battleLobbiesMechObj := &BattleLobbiesMech{}
 
 	sel := "*"
@@ -1331,10 +1338,10 @@ func FindBattleLobbiesMech(exec boil.Executor, battleLobbyID string, mechID stri
 		sel = strings.Join(strmangle.IdentQuoteSlice(dialect.LQ, dialect.RQ, selectCols), ",")
 	}
 	query := fmt.Sprintf(
-		"select %s from \"battle_lobbies_mechs\" where \"battle_lobby_id\"=$1 AND \"mech_id\"=$2 and \"deleted_at\" is null", sel,
+		"select %s from \"battle_lobbies_mechs\" where \"id\"=$1 and \"deleted_at\" is null", sel,
 	)
 
-	q := queries.Raw(query, battleLobbyID, mechID)
+	q := queries.Raw(query, iD)
 
 	err := q.Bind(nil, exec, battleLobbiesMechObj)
 	if err != nil {
@@ -1705,12 +1712,12 @@ func (o *BattleLobbiesMech) Delete(exec boil.Executor, hardDelete bool) (int64, 
 	)
 	if hardDelete {
 		args = queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(o)), battleLobbiesMechPrimaryKeyMapping)
-		sql = "DELETE FROM \"battle_lobbies_mechs\" WHERE \"battle_lobby_id\"=$1 AND \"mech_id\"=$2"
+		sql = "DELETE FROM \"battle_lobbies_mechs\" WHERE \"id\"=$1"
 	} else {
 		currTime := time.Now().In(boil.GetLocation())
 		o.DeletedAt = null.TimeFrom(currTime)
 		wl := []string{"deleted_at"}
-		sql = fmt.Sprintf("UPDATE \"battle_lobbies_mechs\" SET %s WHERE \"battle_lobby_id\"=$2 AND \"mech_id\"=$3",
+		sql = fmt.Sprintf("UPDATE \"battle_lobbies_mechs\" SET %s WHERE \"id\"=$2",
 			strmangle.SetParamNames("\"", "\"", 1, wl),
 		)
 		valueMapping, err := queries.BindMapping(battleLobbiesMechType, battleLobbiesMechMapping, append(wl, battleLobbiesMechPrimaryKeyColumns...))
@@ -1835,7 +1842,7 @@ func (o BattleLobbiesMechSlice) DeleteAll(exec boil.Executor, hardDelete bool) (
 // Reload refetches the object from the database
 // using the primary keys with an executor.
 func (o *BattleLobbiesMech) Reload(exec boil.Executor) error {
-	ret, err := FindBattleLobbiesMech(exec, o.BattleLobbyID, o.MechID)
+	ret, err := FindBattleLobbiesMech(exec, o.ID)
 	if err != nil {
 		return err
 	}
@@ -1875,15 +1882,15 @@ func (o *BattleLobbiesMechSlice) ReloadAll(exec boil.Executor) error {
 }
 
 // BattleLobbiesMechExists checks if the BattleLobbiesMech row exists.
-func BattleLobbiesMechExists(exec boil.Executor, battleLobbyID string, mechID string) (bool, error) {
+func BattleLobbiesMechExists(exec boil.Executor, iD string) (bool, error) {
 	var exists bool
-	sql := "select exists(select 1 from \"battle_lobbies_mechs\" where \"battle_lobby_id\"=$1 AND \"mech_id\"=$2 and \"deleted_at\" is null limit 1)"
+	sql := "select exists(select 1 from \"battle_lobbies_mechs\" where \"id\"=$1 and \"deleted_at\" is null limit 1)"
 
 	if boil.DebugMode {
 		fmt.Fprintln(boil.DebugWriter, sql)
-		fmt.Fprintln(boil.DebugWriter, battleLobbyID, mechID)
+		fmt.Fprintln(boil.DebugWriter, iD)
 	}
-	row := exec.QueryRow(sql, battleLobbyID, mechID)
+	row := exec.QueryRow(sql, iD)
 
 	err := row.Scan(&exists)
 	if err != nil {

@@ -1066,13 +1066,16 @@ func MechList(opts *MechListOpts) (int64, []*server.Mech, error) {
 	// Sort
 	if opts.QueueSort != nil {
 		queryMods = append(queryMods,
-			qm.Select(fmt.Sprintf(`(SELECT %s FROM %s WHERE %s = %s) AS lobby_locked_at`,
-				boiler.BattleLobbiesMechTableColumns.LockedAt,
+			qm.LeftOuterJoin(fmt.Sprintf(`%s ON %s = %s AND %s ISNULL AND %s ISNULL AND %s ISNULL`,
 				boiler.TableNames.BattleLobbiesMechs,
 				boiler.BattleLobbiesMechTableColumns.MechID,
 				boiler.MechTableColumns.ID,
+				boiler.BattleLobbiesMechTableColumns.EndedAt,
+				boiler.BattleLobbiesMechTableColumns.RefundTXID,
+				boiler.BattleLobbiesMechTableColumns.DeletedAt,
 			)),
-			qm.OrderBy(fmt.Sprintf("lobby_locked_at %s NULLS LAST, %s, %s",
+			qm.OrderBy(fmt.Sprintf("%s %s NULLS LAST, %s, %s",
+				boiler.BattleLobbiesMechTableColumns.LockedAt,
 				opts.QueueSort.SortDir,
 				qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.Name),
 				qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.ID),
@@ -1150,9 +1153,6 @@ func MechList(opts *MechListOpts) (int64, []*server.Mech, error) {
 			&mc.ChassisSkinID,
 			&mc.IntroAnimationID,
 			&mc.OutroAnimationID,
-		}
-		if opts.QueueSort != nil {
-			scanArgs = append(scanArgs, &mc.QueuePosition)
 		}
 		err = rows.Scan(scanArgs...)
 		if err != nil {
@@ -1567,7 +1567,7 @@ func OwnedMechsBrief(playerID string, mechIDs ...string) ([]*MechBrief, error) {
 			mb.Status = server.MechArenaStatusDamaged
 			mb.CanDeploy = false
 			// if repair more than half of the blocks
-			if mb.DamagedBlocks*2 > mb.RepairBlocks {
+			if mb.DamagedBlocks*2 < mb.RepairBlocks {
 				mb.CanDeploy = true
 			}
 		}

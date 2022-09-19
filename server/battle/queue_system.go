@@ -181,3 +181,16 @@ func BroadcastBattleBountiesUpdate(battleBountyIDs ...string) {
 
 	ws.PublishMessage("/secure/battle_bounties", server.HubKeyBattleBountyListUpdate, server.BattleBountiesFromBoiler(bbs))
 }
+
+func BroadcastMechQueueStatus(playerID string, mechIDs ...string) {
+	if len(mechIDs) == 0 {
+		return
+	}
+
+	mechInfo, err := db.OwnedMechsBrief(playerID, mechIDs...)
+	if err != nil {
+		return
+	}
+
+	ws.PublishMessage(fmt.Sprintf("/secure/user/%s/owned_mechs", playerID), server.HubKeyPlayerMechsBrief, mechInfo)
+}

@@ -499,8 +499,19 @@ func (btl *Battle) handleBattleEnd(payload *BattleEndPayload) {
 			Err(err).Msg("unable to retrieve winning faction battle mechs from database")
 	}
 
+	// prepare mech status update map
+	playerMechMap := make(map[string][]string)
+
 	// start updating
 	for _, bm := range battleMechs {
+		// build player mech status broadcast map
+		pm, ok := playerMechMap[bm.OwnerID]
+		if !ok {
+			pm = []string{}
+		}
+		pm = append(pm, bm.MechID)
+		playerMechMap[bm.OwnerID] = pm
+
 		// get mech
 		idx := slices.IndexFunc(btl.WarMachines, func(wm *WarMachine) bool { return wm.ID == bm.MechID })
 		if idx == -1 {
@@ -674,6 +685,11 @@ func (btl *Battle) handleBattleEnd(payload *BattleEndPayload) {
 
 	// cache battle end detail
 	btl.arena.LastBattleResult = endInfo
+
+	// broadcast player mech status change
+	for playerID, mechIDs := range playerMechMap {
+		go BroadcastMechQueueStatus(playerID, mechIDs...)
+	}
 
 	// broadcast battle changed battle lobby
 	go BroadcastBattleLobbyUpdate(btl.lobby.ID)

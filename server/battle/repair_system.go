@@ -49,6 +49,8 @@ func broadcastMechQueueStatus(pmrs *boiler.PlayerMechRepairSlot, rc *boiler.Repa
 
 	// broadcast current mech stat if damage blocks is less than or equal to deploy ratio
 	if decimal.NewFromInt(int64(rc.BlocksRequiredRepair - rc.BlocksRepaired)).Div(decimal.NewFromInt(int64(totalBlocks))).LessThanOrEqual(canDeployRatio) {
+		go BroadcastMechQueueStatus(pmrs.PlayerID, rc.MechID)
+
 		owner, err := boiler.FindPlayer(gamedb.StdConn, pmrs.PlayerID)
 		if err != nil {
 			gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("Failed to load owner")

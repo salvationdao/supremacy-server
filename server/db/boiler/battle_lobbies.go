@@ -1287,7 +1287,7 @@ func (o *BattleLobby) AddBattleLobbiesMechs(exec boil.Executor, insert bool, rel
 				strmangle.SetParamNames("\"", "\"", 1, []string{"battle_lobby_id"}),
 				strmangle.WhereClause("\"", "\"", 2, battleLobbiesMechPrimaryKeyColumns),
 			)
-			values := []interface{}{o.ID, rel.BattleLobbyID, rel.MechID}
+			values := []interface{}{o.ID, rel.ID}
 
 			if boil.DebugMode {
 				fmt.Fprintln(boil.DebugWriter, updateQuery)

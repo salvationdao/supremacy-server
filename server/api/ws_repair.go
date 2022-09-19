@@ -841,6 +841,8 @@ func BroadcastMechQueueStat(mechID string) {
 		return
 	}
 
+	go battle.BroadcastMechQueueStatus(ci.OwnerID, ci.ItemID)
+
 	if ci != nil && ci.R != nil && ci.R.Owner != nil && ci.R.Owner.FactionID.Valid {
 		owner := ci.R.Owner
 		queueDetails, err := db.GetCollectionItemStatus(*ci)

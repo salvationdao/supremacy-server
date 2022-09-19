@@ -233,6 +233,8 @@ func (api *API) BattleLobbyCreate(ctx context.Context, user *boiler.Player, fact
 		// broadcast lobby
 		go battle.BroadcastBattleLobbyUpdate(bl.ID)
 
+		go battle.BroadcastMechQueueStatus(user.ID, deployedMechIDs...)
+
 		return nil
 	})
 	if err != nil {
@@ -297,6 +299,8 @@ func (api *API) BattleLobbyJoin(ctx context.Context, user *boiler.Player, factio
 	if bl.Password.Valid && req.Payload.Password != bl.Password.String {
 		return terror.Error(fmt.Errorf("incorrect password"), "The password is incorrect.")
 	}
+
+	affectedLobbyIDs := []string{bl.ID}
 
 	err = api.ArenaManager.SendBattleQueueFunc(func() error {
 		now := time.Now()
@@ -441,7 +445,7 @@ func (api *API) BattleLobbyJoin(ctx context.Context, user *boiler.Player, factio
 				return terror.Error(err, "Failed to mark battle lobby to ready.")
 			}
 
-			_, err := bl.BattleLobbiesMechs(
+			_, err = bl.BattleLobbiesMechs(
 				boiler.BattleLobbiesMechWhere.RefundTXID.IsNull(),
 			).UpdateAll(tx, boiler.M{boiler.BattleLobbiesMechColumns.LockedAt: null.TimeFrom(now)})
 			if err != nil {
@@ -469,6 +473,8 @@ func (api *API) BattleLobbyJoin(ctx context.Context, user *boiler.Player, factio
 					gamelog.L.Error().Err(err).Msg("Failed to insert public battle lobbies.")
 					return terror.Error(err, "Failed to insert new system battle lobby.")
 				}
+
+				affectedLobbyIDs = append(affectedLobbyIDs, newBattleLobby.ID)
 			}
 
 		}
@@ -480,14 +486,15 @@ func (api *API) BattleLobbyJoin(ctx context.Context, user *boiler.Player, factio
 			return terror.Error(err, "Failed to queue your mech.")
 		}
 
+		// pause mechs repair case
+		err = api.ArenaManager.PauseRepairCases(deployedMechIDs)
+		if err != nil {
+			return err
+		}
+
 		// broadcast mech queue position
 		go func(battleLobby *boiler.BattleLobby, currentDeployedMechIDs []string, allLobbyMechs []*boiler.BattleLobbiesMech) {
-			mechInfo, err := db.OwnedMechsBrief(user.ID, deployedMechIDs...)
-			if err != nil {
-				return
-			}
-
-			ws.PublishMessage(fmt.Sprintf("/secure/user/%s/owned_mechs", user.ID), server.HubKeyPlayerMechsBrief, mechInfo)
+			battle.BroadcastMechQueueStatus(user.ID, deployedMechIDs...)
 
 			mai := &server.MechArenaInfo{
 				Status:            server.MechArenaStatusQueue,
@@ -532,20 +539,14 @@ func (api *API) BattleLobbyJoin(ctx context.Context, user *boiler.Player, factio
 		}(bl, deployedMechIDs, battleLobbyMechs)
 
 		// broadcast battle lobby
-		go battle.BroadcastBattleLobbyUpdate(bl.ID)
-
-		// pause mechs repair case
-		err = api.ArenaManager.PauseRepairCases(deployedMechIDs)
-		if err != nil {
-			return err
-		}
+		go battle.BroadcastBattleLobbyUpdate(affectedLobbyIDs...)
 
 		// terminate repair bay
 		// wrap it in go routine, the channel will not slow down the deployment process
 		go func(playerID string, mechIDs []string) {
 			// clean up repair slots, if any mechs are successfully deployed and in the bay
 			nextRepairDurationSeconds := db.GetIntWithDefault(db.KeyAutoRepairDurationSeconds, 600)
-			now := time.Now()
+			now = time.Now()
 			_ = api.ArenaManager.SendRepairFunc(func() error {
 				tx, err = gamedb.StdConn.Begin()
 				if err != nil {
@@ -654,6 +655,12 @@ func (api *API) BattleLobbyJoin(ctx context.Context, user *boiler.Player, factio
 	})
 	if err != nil {
 		return err
+	}
+
+	// restart idle arenas, if it is not prod env or the time has passed reopen date
+	for _, arena := range api.ArenaManager.IdleArenas() {
+		// trigger begin battle when arena is idle
+		go arena.BeginBattle()
 	}
 
 	reply(true)
@@ -828,6 +835,8 @@ func (api *API) BattleLobbyLeave(ctx context.Context, user *boiler.Player, facti
 
 		// broadcast new mech stat
 		go func() {
+			battle.BroadcastMechQueueStatus(user.ID, leftMechIDs...)
+
 			cis, err := boiler.CollectionItems(
 				boiler.CollectionItemWhere.ItemID.IN(leftMechIDs),
 			).All(gamedb.StdConn)
