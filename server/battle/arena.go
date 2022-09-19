@@ -17,6 +17,7 @@ import (
 	"server/replay"
 	"server/system_messages"
 	"server/telegram"
+	"server/voice_chat"
 	"server/xsyn_rpcclient"
 	"strconv"
 	"strings"
@@ -411,6 +412,8 @@ type Arena struct {
 
 	beginBattleMux sync.Mutex
 	isIdle         atomic.Bool
+
+	voiceChannel *voice_chat.VoiceChannel
 }
 
 type MechCommandCheckMap struct {
