@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"github.com/shopspring/decimal"
 	"server"
 	"server/benchmark"
 	"server/db/boiler"
@@ -1334,17 +1335,47 @@ type MechBrief struct {
 	XsynLocked          bool        `json:"xsyn_locked" db:"xsyn_locked"`
 	LockedToMarketplace bool        `json:"locked_to_marketplace" db:"locked_to_marketplace"`
 	Name                string      `json:"name" db:"name"`
+	ChassisSkinID       string      `json:"chassis_skin_id" db:"chassis_skin_id"`
+	PowerCoreID         null.String `json:"power_core_id,omitempty" db:"power_core_id,omitempty"`
+	IntroAnimationID    null.String `json:"intro_animation_id,omitempty" db:"intro_animation_id,omitempty"`
+	OutroAnimationID    null.String `json:"outro_animation_id,omitempty" db:"outro_animation_id,omitempty"`
 	Label               string      `json:"label" db:"label"`
 	RepairBlocks        int         `json:"repair_blocks" db:"repair_blocks"`
 	Tier                string      `json:"tier" db:"tier"`
 	ImageUrl            string      `json:"image_url" db:"image_url"`
 	AvatarUrl           string      `json:"avatar_url" db:"avatar_url"`
-	LobbyLockedAt       null.Time   `json:"lobby_locked_at,omitempty" db:"lobby_locked_at"`
-	AssignedToBattleID  null.String `json:"assigned_to_battle_id,omitempty" db:"assigned_to_battle_id"`
-	LobbyNumber         null.Int    `json:"lobby_number,omitempty" db:"lobby_number"`
-	DamagedBlocks       int         `json:"damaged_blocks" db:"damaged_blocks"`
-	IsBattleReady       bool        `json:"is_battle_ready" db:"is_battle_ready"`
-	InMarketPlace       bool        `json:"in_market_place" db:"in_market_place"`
+
+	MechType         string      `json:"mech_type" db:"mech_type"`
+	BoostStat        null.String `json:"boost_stat,omitempty" db:"boost_stat,omitempty"`
+	WeaponHardpoints int         `json:"weapon_hardpoints" db:"weapon_hardpoints"`
+	PowerCoreSize    string      `json:"power_core_size" db:"power_core_size"`
+	UtilitySlots     int         `json:"utility_slots" db:"utility_slots"`
+	Speed            int64       `json:"speed" db:"speed"`
+	BoostedSpeed     int64       `json:"boosted_speed"`
+
+	MaxHitpoints        int64 `json:"max_hitpoints" db:"max_hitpoints"`
+	BoostedMaxHitpoints int64 `json:"boosted_max_hitpoints"`
+
+	Collection                string `json:"collection" db:"collection"`
+	ShieldMax                 int    `json:"shield" db:"shield_max"`
+	ShieldRechargeRate        int64  `json:"shield_recharge_rate" db:"shield_recharge_rate"`
+	BoostedShieldRechargeRate int64  `json:"boosted_shield_recharge_rate"`
+
+	ShieldRechargePowerCost int   `json:"shield_recharge_power_cost" db:"shield_recharge_power_cost"`
+	MechSkinLevel           int64 `json:"mech_skin_level" db:"level"`
+
+	LobbyLockedAt         null.Time           `json:"lobby_locked_at,omitempty" db:"lobby_locked_at"`
+	AssignedToBattleID    null.String         `json:"assigned_to_battle_id,omitempty" db:"assigned_to_battle_id"`
+	LobbyNumber           null.Int            `json:"lobby_number,omitempty" db:"lobby_number"`
+	PowerCoreCapacity     decimal.NullDecimal `json:"power_core_capacity,omitempty" db:"capacity,omitempty"`
+	PowerCoreRechargeRate decimal.NullDecimal `json:"power_core_recharge_rate,omitempty" db:"recharge_rate,omitempty"`
+
+	DamagedBlocks int  `json:"damaged_blocks" db:"damaged_blocks"`
+	IsBattleReady bool `json:"is_battle_ready" db:"is_battle_ready"`
+	InMarketPlace bool `json:"in_market_place" db:"in_market_place"`
+
+	EquippedWeaponCount  int `json:"equipped_weapon_count" db:"equipped_weapon_count"`
+	EquippedUtilityCount int `json:"equipped_utility_count" db:"equipped_utility_count"`
 
 	Status    server.MechArenaStatus `json:"status"` // "QUEUE" | "BATTLE" | "MARKET" | "IDLE"
 	CanDeploy bool                   `json:"can_deploy"`
@@ -1387,14 +1418,32 @@ func OwnedMechsBrief(playerID string, mechIDs ...string) ([]*MechBrief, error) {
 			fmt.Sprintf("_ci.%s", boiler.CollectionItemColumns.XsynLocked),
 			fmt.Sprintf("_ci.%s", boiler.CollectionItemColumns.LockedToMarketplace),
 			fmt.Sprintf("_m.%s", boiler.MechColumns.Name),
+			fmt.Sprintf("_m.%s", boiler.MechColumns.ChassisSkinID),
+			fmt.Sprintf("_m.%s", boiler.MechColumns.PowerCoreID),
+			fmt.Sprintf("_m.%s", boiler.MechColumns.IntroAnimationID),
+			fmt.Sprintf("_m.%s", boiler.MechColumns.OutroAnimationID),
 			fmt.Sprintf("_bm.%s", boiler.BlueprintMechColumns.Label),
 			fmt.Sprintf("_bm.%s", boiler.BlueprintMechColumns.RepairBlocks),
+			fmt.Sprintf("_bm.%s", boiler.BlueprintMechColumns.MechType),
+			fmt.Sprintf("_bm.%s", boiler.BlueprintMechColumns.BoostStat),
+			fmt.Sprintf("_bm.%s", boiler.BlueprintMechColumns.WeaponHardpoints),
+			fmt.Sprintf("_bm.%s", boiler.BlueprintMechColumns.PowerCoreSize),
+			fmt.Sprintf("_bm.%s", boiler.BlueprintMechColumns.UtilitySlots),
+			fmt.Sprintf("_bm.%s", boiler.BlueprintMechColumns.Speed),
+			fmt.Sprintf("_bm.%s", boiler.BlueprintMechColumns.MaxHitpoints),
+			fmt.Sprintf("_bm.%s", boiler.BlueprintMechColumns.Collection),
+			fmt.Sprintf("_bm.%s", boiler.BlueprintMechColumns.ShieldMax),
+			fmt.Sprintf("_bm.%s", boiler.BlueprintMechColumns.ShieldRechargeRate),
+			fmt.Sprintf("_bm.%s", boiler.BlueprintMechColumns.ShieldRechargePowerCost),
+			fmt.Sprintf("_ms.%s", boiler.MechSkinColumns.Level),
 			fmt.Sprintf("_bms.%s", boiler.BlueprintMechSkinColumns.Tier),
 			fmt.Sprintf("_mmsc.%s", boiler.MechModelSkinCompatibilityColumns.ImageURL),
 			fmt.Sprintf("_mmsc.%s", boiler.MechModelSkinCompatibilityColumns.AvatarURL),
 			fmt.Sprintf("_blm.%s", boiler.BattleLobbiesMechColumns.LockedAt),
 			fmt.Sprintf("_blm.%s", boiler.BattleLobbiesMechColumns.AssignedToBattleID),
 			fmt.Sprintf("_blm.%s", boiler.BattleLobbyColumns.Number),
+			fmt.Sprintf("_pc.%s", boiler.PowerCoreColumns.Capacity),
+			fmt.Sprintf("_pc.%s", boiler.PowerCoreColumns.RechargeRate),
 			fmt.Sprintf(
 				"COALESCE((SELECT _rc.%s - _rc.%s FROM %s _rc WHERE _rc.%s = _ci.%s AND _rc.%s ISNULL LIMIT 1), 0) AS damaged_blocks",
 				boiler.RepairCaseColumns.BlocksRequiredRepair,
@@ -1420,6 +1469,20 @@ func OwnedMechsBrief(playerID string, mechIDs ...string) ([]*MechBrief, error) {
 				boiler.ItemSaleColumns.SoldAt,
 				boiler.ItemSaleColumns.DeletedAt,
 			),
+			fmt.Sprintf(
+				"COALESCE((SELECT COUNT(_w.%s) FROM %s _w WHERE _w.%s = _m.%s), 0) AS equipped_weapon_count",
+				boiler.WeaponColumns.ID,
+				boiler.TableNames.Weapons,
+				boiler.WeaponColumns.EquippedOn,
+				boiler.MechColumns.ID,
+			),
+			fmt.Sprintf(
+				"COALESCE((SELECT COUNT(_u.%s) FROM %s _u WHERE _u.%s = _m.%s), 0) AS equipped_utility_count",
+				boiler.UtilityColumns.ID,
+				boiler.TableNames.Utility,
+				boiler.UtilityColumns.EquippedOn,
+				boiler.MechColumns.ID,
+			),
 		),
 
 		qm.From(fmt.Sprintf(
@@ -1439,31 +1502,31 @@ func OwnedMechsBrief(playerID string, mechIDs ...string) ([]*MechBrief, error) {
 		)),
 
 		qm.InnerJoin(fmt.Sprintf(
-			"(SELECT %s, %s, %s, %s FROM %s) _m ON _m.%s = _ci.%s",
+			"(SELECT %s, %s, %s, %s, %s, %s, %s FROM %s) _m ON _m.%s = _ci.%s",
 			boiler.MechColumns.ID,
 			boiler.MechColumns.BlueprintID,
 			boiler.MechColumns.ChassisSkinID,
 			boiler.MechColumns.Name,
+			boiler.MechColumns.PowerCoreID,
+			boiler.MechColumns.IntroAnimationID,
+			boiler.MechColumns.OutroAnimationID,
 			boiler.TableNames.Mechs,
 			boiler.MechColumns.ID,
 			boiler.CollectionItemColumns.ItemID,
 		)),
 
 		qm.InnerJoin(fmt.Sprintf(
-			"(SELECT %s, %s, %s, %s FROM %s) _bm ON _bm.%s = _m.%s",
-			boiler.BlueprintMechColumns.ID,
-			boiler.BlueprintMechColumns.Label,
-			boiler.BlueprintMechColumns.RepairBlocks,
-			boiler.BlueprintMechColumns.AvailabilityID,
+			"%s _bm ON _bm.%s = _m.%s",
 			boiler.TableNames.BlueprintMechs,
 			boiler.BlueprintMechColumns.ID,
 			boiler.MechColumns.BlueprintID,
 		)),
 
 		qm.InnerJoin(fmt.Sprintf(
-			"(SELECT %s, %s FROM %s) _ms ON _ms.%s = _m.%s",
+			"(SELECT %s, %s, %s FROM %s) _ms ON _ms.%s = _m.%s",
 			boiler.MechSkinColumns.ID,
 			boiler.MechSkinColumns.BlueprintID,
+			boiler.MechSkinColumns.Level,
 			boiler.TableNames.MechSkin,
 			boiler.MechSkinColumns.ID,
 			boiler.MechColumns.ChassisSkinID,
@@ -1514,6 +1577,19 @@ func OwnedMechsBrief(playerID string, mechIDs ...string) ([]*MechBrief, error) {
 			boiler.BattleLobbiesMechColumns.MechID,
 			boiler.CollectionItemColumns.ItemID,
 		)),
+
+		// outer join power cores
+		qm.LeftOuterJoin(fmt.Sprintf(`(
+					SELECT %s,%s, %s
+					FROM %s
+					) _pc ON _pc.%s = _m.%s`,
+			boiler.PowerCoreColumns.ID,
+			boiler.PowerCoreColumns.Capacity,
+			boiler.PowerCoreColumns.RechargeRate,
+			boiler.TableNames.PowerCores,
+			boiler.PowerCoreColumns.ID,
+			boiler.MechColumns.PowerCoreID,
+		)),
 	}
 
 	rows, err := boiler.NewQuery(queries...).Query(gamedb.StdConn)
@@ -1534,17 +1610,40 @@ func OwnedMechsBrief(playerID string, mechIDs ...string) ([]*MechBrief, error) {
 			&mb.XsynLocked,
 			&mb.LockedToMarketplace,
 			&mb.Name,
+			&mb.ChassisSkinID,
+			&mb.PowerCoreID,
+			&mb.IntroAnimationID,
+			&mb.OutroAnimationID,
 			&mb.Label,
 			&mb.RepairBlocks,
+			&mb.MechType,
+			&mb.BoostStat,
+			&mb.WeaponHardpoints,
+			&mb.PowerCoreSize,
+			&mb.UtilitySlots,
+			&mb.Speed,
+			&mb.MaxHitpoints,
+			&mb.Collection,
+			&mb.ShieldMax,
+			&mb.ShieldRechargeRate,
+			&mb.ShieldRechargePowerCost,
+			&mb.MechSkinLevel,
 			&mb.Tier,
 			&mb.ImageUrl,
 			&mb.AvatarUrl,
 			&mb.LobbyLockedAt,
 			&mb.AssignedToBattleID,
 			&mb.LobbyNumber,
+
+			&mb.PowerCoreCapacity,
+			&mb.PowerCoreRechargeRate,
+
 			&mb.DamagedBlocks,
 			&mb.IsBattleReady,
 			&mb.InMarketPlace,
+
+			&mb.EquippedWeaponCount,
+			&mb.EquippedUtilityCount,
 		)
 		if err != nil {
 			gamelog.L.Error().Err(err).Msg("Failed to scan player battle spectated from db.")
@@ -1569,6 +1668,23 @@ func OwnedMechsBrief(playerID string, mechIDs ...string) ([]*MechBrief, error) {
 			// if repair more than half of the blocks
 			if mb.DamagedBlocks*2 < mb.RepairBlocks {
 				mb.CanDeploy = true
+			}
+		}
+
+		mb.BoostedSpeed = mb.Speed
+		mb.BoostedMaxHitpoints = mb.MaxHitpoints
+		mb.BoostedShieldRechargeRate = mb.ShieldRechargeRate
+
+		if mb.BoostStat.Valid {
+			boostPercent := decimal.NewFromInt(mb.MechSkinLevel).Div(decimal.NewFromInt(100)).Add(decimal.NewFromInt(1))
+			// mech boosted stat
+			switch mb.BoostStat.String {
+			case boiler.BoostStatMECH_SPEED:
+				mb.BoostedSpeed = decimal.NewFromInt(mb.Speed).Mul(boostPercent).IntPart()
+			case boiler.BoostStatMECH_HEALTH:
+				mb.BoostedMaxHitpoints = decimal.NewFromInt(mb.MaxHitpoints).Mul(boostPercent).IntPart()
+			case boiler.BoostStatSHIELD_REGEN:
+				mb.BoostedShieldRechargeRate = decimal.NewFromInt(mb.ShieldRechargeRate).Mul(boostPercent).IntPart()
 			}
 		}
 
