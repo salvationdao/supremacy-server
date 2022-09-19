@@ -14,6 +14,7 @@ type PowerCore struct {
 	*CollectionItem
 	*Images
 	ID                    string          `json:"id"`
+	BlueprintID           null.String     `json:"blueprint_id"`
 	Label                 string          `json:"label"`
 	Size                  string          `json:"size"`
 	Capacity              decimal.Decimal `json:"capacity"`
@@ -115,6 +116,7 @@ func PowerCoreFromBoiler(skin *boiler.PowerCore, collection *boiler.CollectionIt
 			YoutubeURL:       skin.R.Blueprint.YoutubeURL,
 		},
 		ID:           skin.ID,
+		BlueprintID:  skin.BlueprintID,
 		Label:        skin.R.Blueprint.Label,
 		Size:         skin.R.Blueprint.Size,
 		Capacity:     skin.R.Blueprint.Capacity,
