@@ -70,3 +70,7 @@ const HubKeyBattleArenaClosedSubscribe = "BATTLE:ARENA:CLOSED"
 // battle abilities
 
 const HubKeyMiniMapAbilityDisplayList = "MINI:MAP:ABILITY:DISPLAY:LIST"
+
+// voice streams
+
+const HubKeyVoiceStreamJoinFactionCommander = "VOICE:JOIN:FACTION:COMMANDER"

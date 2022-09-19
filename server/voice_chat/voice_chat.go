@@ -3,8 +3,10 @@ package voice_chat
 import (
 	"crypto/hmac"
 	"crypto/sha1"
+	"database/sql"
 	"encoding/base64"
 	"fmt"
+	"github.com/friendsofgo/errors"
 	"github.com/ninja-software/terror/v2"
 	"github.com/ninja-syndicate/ws"
 	"github.com/volatiletech/sqlboiler/v4/boil"
@@ -12,6 +14,7 @@ import (
 	"golang.org/x/exp/slices"
 	"net/url"
 	"server"
+	"server/api"
 	"server/battle"
 	"server/db"
 	"server/db/boiler"
@@ -129,16 +132,41 @@ func UpdateVoiceChannel(warMachines []battle.WarMachine, arenaID string) error {
 	}
 
 	for _, p := range ps {
-		vcs := []*boiler.VoiceStream{}
+		vcs := []*api.VoiceStreamResp{}
 		switch p.FactionID.String {
 		case server.ZaibatsuFactionID:
 			for _, zc := range zaiChannel {
-				vc := &boiler.VoiceStream{
-					ListenStreamURL: zc.ListenStreamURL,
+				vc := &api.VoiceStreamResp{
+					ListenURL:          zc.ListenStreamURL,
+					IsFactionCommander: false,
 				}
 
 				if zc.OwnerID == p.ID {
-					vc.SendStreamURL = zc.SendStreamURL
+					vc.SendURL = zc.SendStreamURL
+				}
+
+				vcs = append(vcs, vc)
+			}
+
+			factionCommander, err := boiler.VoiceStreams(
+				boiler.VoiceStreamWhere.ArenaID.EQ(arenaID),
+				boiler.VoiceStreamWhere.IsActive.EQ(true),
+				boiler.VoiceStreamWhere.SenderType.EQ(boiler.VoiceSenderTypeFACTION_COMMANDER),
+				boiler.VoiceStreamWhere.FactionID.EQ(server.ZaibatsuFactionID),
+			).One(gamedb.StdConn)
+			if err != nil && !errors.Is(err, sql.ErrNoRows) {
+				gamelog.L.Error().Msg("Failed to find faction commander")
+				continue
+			}
+
+			if factionCommander != nil {
+				vc := &api.VoiceStreamResp{
+					ListenURL:          factionCommander.ListenStreamURL,
+					IsFactionCommander: true,
+				}
+
+				if factionCommander.OwnerID == p.ID {
+					vc.SendURL = factionCommander.SendStreamURL
 				}
 
 				vcs = append(vcs, vc)
@@ -147,29 +175,79 @@ func UpdateVoiceChannel(warMachines []battle.WarMachine, arenaID string) error {
 			ws.PublishMessage(fmt.Sprintf("/secure/user/%s/faction_commander/%s", p.ID, server.ZaibatsuFactionID), server.HubKeyVoiceStreams, vcs)
 		case server.RedMountainFactionID:
 			for _, rc := range rmChannel {
-				vc := &boiler.VoiceStream{
-					ListenStreamURL: rc.ListenStreamURL,
+				vc := &api.VoiceStreamResp{
+					ListenURL: rc.ListenStreamURL,
 				}
 
 				if rc.OwnerID == p.ID {
-					vc.SendStreamURL = rc.SendStreamURL
+					vc.SendURL = rc.SendStreamURL
 				}
 
 				vcs = append(vcs, vc)
 			}
+
+			factionCommander, err := boiler.VoiceStreams(
+				boiler.VoiceStreamWhere.ArenaID.EQ(arenaID),
+				boiler.VoiceStreamWhere.IsActive.EQ(true),
+				boiler.VoiceStreamWhere.SenderType.EQ(boiler.VoiceSenderTypeFACTION_COMMANDER),
+				boiler.VoiceStreamWhere.FactionID.EQ(server.RedMountainFactionID),
+			).One(gamedb.StdConn)
+			if err != nil && !errors.Is(err, sql.ErrNoRows) {
+				gamelog.L.Error().Msg("Failed to find faction commander")
+				continue
+			}
+
+			if factionCommander != nil {
+				vc := &api.VoiceStreamResp{
+					ListenURL:          factionCommander.ListenStreamURL,
+					IsFactionCommander: true,
+				}
+
+				if factionCommander.OwnerID == p.ID {
+					vc.SendURL = factionCommander.SendStreamURL
+				}
+
+				vcs = append(vcs, vc)
+			}
+
 			ws.PublishMessage(fmt.Sprintf("/secure/user/%s/faction_commander/%s", p.ID, server.RedMountainFactionID), server.HubKeyVoiceStreams, vcs)
 		case server.BostonCyberneticsFactionID:
 			for _, bc := range bostonChannel {
-				vc := &boiler.VoiceStream{
-					ListenStreamURL: bc.ListenStreamURL,
+				vc := &api.VoiceStreamResp{
+					ListenURL: bc.ListenStreamURL,
 				}
 
 				if bc.OwnerID == p.ID {
-					vc.SendStreamURL = bc.SendStreamURL
+					vc.SendURL = bc.SendStreamURL
 				}
 
 				vcs = append(vcs, vc)
 			}
+
+			factionCommander, err := boiler.VoiceStreams(
+				boiler.VoiceStreamWhere.ArenaID.EQ(arenaID),
+				boiler.VoiceStreamWhere.IsActive.EQ(true),
+				boiler.VoiceStreamWhere.SenderType.EQ(boiler.VoiceSenderTypeFACTION_COMMANDER),
+				boiler.VoiceStreamWhere.FactionID.EQ(server.BostonCyberneticsFactionID),
+			).One(gamedb.StdConn)
+			if err != nil && !errors.Is(err, sql.ErrNoRows) {
+				gamelog.L.Error().Msg("Failed to find faction commander")
+				continue
+			}
+
+			if factionCommander != nil {
+				vc := &api.VoiceStreamResp{
+					ListenURL:          factionCommander.ListenStreamURL,
+					IsFactionCommander: true,
+				}
+
+				if factionCommander.OwnerID == p.ID {
+					vc.SendURL = factionCommander.SendStreamURL
+				}
+
+				vcs = append(vcs, vc)
+			}
+
 			ws.PublishMessage(fmt.Sprintf("/secure/user/%s/faction_commander/%s", p.ID, server.BostonCyberneticsFactionID), server.HubKeyVoiceStreams, vcs)
 		}
 	}
