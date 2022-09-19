@@ -144,7 +144,7 @@ func UpdateVoiceChannel(warMachines []battle.WarMachine, arenaID string) error {
 				vcs = append(vcs, vc)
 			}
 
-			ws.PublishMessage(fmt.Sprintf("/secure/user/%s/faction_commander/%s", p.ID, server.ZaibatsuFactionID), "voice_stream", vcs)
+			ws.PublishMessage(fmt.Sprintf("/secure/user/%s/faction_commander/%s", p.ID, server.ZaibatsuFactionID), server.HubKeyVoiceStreams, vcs)
 		case server.RedMountainFactionID:
 			for _, rc := range rmChannel {
 				vc := &boiler.VoiceStream{
@@ -157,7 +157,7 @@ func UpdateVoiceChannel(warMachines []battle.WarMachine, arenaID string) error {
 
 				vcs = append(vcs, vc)
 			}
-			ws.PublishMessage(fmt.Sprintf("/secure/user/%s/faction_commander/%s", p.ID, server.RedMountainFactionID), "voice_stream", vcs)
+			ws.PublishMessage(fmt.Sprintf("/secure/user/%s/faction_commander/%s", p.ID, server.RedMountainFactionID), server.HubKeyVoiceStreams, vcs)
 		case server.BostonCyberneticsFactionID:
 			for _, bc := range bostonChannel {
 				vc := &boiler.VoiceStream{
@@ -170,7 +170,7 @@ func UpdateVoiceChannel(warMachines []battle.WarMachine, arenaID string) error {
 
 				vcs = append(vcs, vc)
 			}
-			ws.PublishMessage(fmt.Sprintf("/secure/user/%s/faction_commander/%s", p.ID, server.BostonCyberneticsFactionID), "voice_stream", vcs)
+			ws.PublishMessage(fmt.Sprintf("/secure/user/%s/faction_commander/%s", p.ID, server.BostonCyberneticsFactionID), server.HubKeyVoiceStreams, vcs)
 		}
 	}
 
