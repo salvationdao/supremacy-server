@@ -1990,6 +1990,10 @@ func (arena *Arena) BeginBattle() {
 		}
 	}(arena, btl)
 
+	// handle voice chat start
+
+	// handle voice chat end
+
 	al, err := db.AbilityLabelList()
 	if err != nil {
 		gamelog.L.Error().Err(err).Msg("Failed to load ability labels")

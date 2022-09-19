@@ -22,101 +22,111 @@ import (
 
 // VoiceStream is an object representing the database table.
 type VoiceStream struct {
-	ID                 string    `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
-	OwnerID            string    `boiler:"owner_id" boil:"owner_id" json:"owner_id" toml:"owner_id" yaml:"owner_id"`
-	FactionID          string    `boiler:"faction_id" boil:"faction_id" json:"faction_id" toml:"faction_id" yaml:"faction_id"`
-	ListenStreamURL    string    `boiler:"listen_stream_url" boil:"listen_stream_url" json:"listen_stream_url" toml:"listen_stream_url" yaml:"listen_stream_url"`
-	SendStreamURL      string    `boiler:"send_stream_url" boil:"send_stream_url" json:"send_stream_url" toml:"send_stream_url" yaml:"send_stream_url"`
-	IsActive           bool      `boiler:"is_active" boil:"is_active" json:"is_active" toml:"is_active" yaml:"is_active"`
-	IsFactionCommander bool      `boiler:"is_faction_commander" boil:"is_faction_commander" json:"is_faction_commander" toml:"is_faction_commander" yaml:"is_faction_commander"`
-	SessionExpireAt    time.Time `boiler:"session_expire_at" boil:"session_expire_at" json:"session_expire_at" toml:"session_expire_at" yaml:"session_expire_at"`
-	CreatedAt          time.Time `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
+	ID              string    `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
+	ArenaID         string    `boiler:"arena_id" boil:"arena_id" json:"arena_id" toml:"arena_id" yaml:"arena_id"`
+	OwnerID         string    `boiler:"owner_id" boil:"owner_id" json:"owner_id" toml:"owner_id" yaml:"owner_id"`
+	FactionID       string    `boiler:"faction_id" boil:"faction_id" json:"faction_id" toml:"faction_id" yaml:"faction_id"`
+	ListenStreamURL string    `boiler:"listen_stream_url" boil:"listen_stream_url" json:"listen_stream_url" toml:"listen_stream_url" yaml:"listen_stream_url"`
+	SendStreamURL   string    `boiler:"send_stream_url" boil:"send_stream_url" json:"send_stream_url" toml:"send_stream_url" yaml:"send_stream_url"`
+	IsActive        bool      `boiler:"is_active" boil:"is_active" json:"is_active" toml:"is_active" yaml:"is_active"`
+	SenderType      string    `boiler:"sender_type" boil:"sender_type" json:"sender_type" toml:"sender_type" yaml:"sender_type"`
+	SessionExpireAt time.Time `boiler:"session_expire_at" boil:"session_expire_at" json:"session_expire_at" toml:"session_expire_at" yaml:"session_expire_at"`
+	CreatedAt       time.Time `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
 
 	R *voiceStreamR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L voiceStreamL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 }
 
 var VoiceStreamColumns = struct {
-	ID                 string
-	OwnerID            string
-	FactionID          string
-	ListenStreamURL    string
-	SendStreamURL      string
-	IsActive           string
-	IsFactionCommander string
-	SessionExpireAt    string
-	CreatedAt          string
+	ID              string
+	ArenaID         string
+	OwnerID         string
+	FactionID       string
+	ListenStreamURL string
+	SendStreamURL   string
+	IsActive        string
+	SenderType      string
+	SessionExpireAt string
+	CreatedAt       string
 }{
-	ID:                 "id",
-	OwnerID:            "owner_id",
-	FactionID:          "faction_id",
-	ListenStreamURL:    "listen_stream_url",
-	SendStreamURL:      "send_stream_url",
-	IsActive:           "is_active",
-	IsFactionCommander: "is_faction_commander",
-	SessionExpireAt:    "session_expire_at",
-	CreatedAt:          "created_at",
+	ID:              "id",
+	ArenaID:         "arena_id",
+	OwnerID:         "owner_id",
+	FactionID:       "faction_id",
+	ListenStreamURL: "listen_stream_url",
+	SendStreamURL:   "send_stream_url",
+	IsActive:        "is_active",
+	SenderType:      "sender_type",
+	SessionExpireAt: "session_expire_at",
+	CreatedAt:       "created_at",
 }
 
 var VoiceStreamTableColumns = struct {
-	ID                 string
-	OwnerID            string
-	FactionID          string
-	ListenStreamURL    string
-	SendStreamURL      string
-	IsActive           string
-	IsFactionCommander string
-	SessionExpireAt    string
-	CreatedAt          string
+	ID              string
+	ArenaID         string
+	OwnerID         string
+	FactionID       string
+	ListenStreamURL string
+	SendStreamURL   string
+	IsActive        string
+	SenderType      string
+	SessionExpireAt string
+	CreatedAt       string
 }{
-	ID:                 "voice_streams.id",
-	OwnerID:            "voice_streams.owner_id",
-	FactionID:          "voice_streams.faction_id",
-	ListenStreamURL:    "voice_streams.listen_stream_url",
-	SendStreamURL:      "voice_streams.send_stream_url",
-	IsActive:           "voice_streams.is_active",
-	IsFactionCommander: "voice_streams.is_faction_commander",
-	SessionExpireAt:    "voice_streams.session_expire_at",
-	CreatedAt:          "voice_streams.created_at",
+	ID:              "voice_streams.id",
+	ArenaID:         "voice_streams.arena_id",
+	OwnerID:         "voice_streams.owner_id",
+	FactionID:       "voice_streams.faction_id",
+	ListenStreamURL: "voice_streams.listen_stream_url",
+	SendStreamURL:   "voice_streams.send_stream_url",
+	IsActive:        "voice_streams.is_active",
+	SenderType:      "voice_streams.sender_type",
+	SessionExpireAt: "voice_streams.session_expire_at",
+	CreatedAt:       "voice_streams.created_at",
 }
 
 // Generated where
 
 var VoiceStreamWhere = struct {
-	ID                 whereHelperstring
-	OwnerID            whereHelperstring
-	FactionID          whereHelperstring
-	ListenStreamURL    whereHelperstring
-	SendStreamURL      whereHelperstring
-	IsActive           whereHelperbool
-	IsFactionCommander whereHelperbool
-	SessionExpireAt    whereHelpertime_Time
-	CreatedAt          whereHelpertime_Time
+	ID              whereHelperstring
+	ArenaID         whereHelperstring
+	OwnerID         whereHelperstring
+	FactionID       whereHelperstring
+	ListenStreamURL whereHelperstring
+	SendStreamURL   whereHelperstring
+	IsActive        whereHelperbool
+	SenderType      whereHelperstring
+	SessionExpireAt whereHelpertime_Time
+	CreatedAt       whereHelpertime_Time
 }{
-	ID:                 whereHelperstring{field: "\"voice_streams\".\"id\""},
-	OwnerID:            whereHelperstring{field: "\"voice_streams\".\"owner_id\""},
-	FactionID:          whereHelperstring{field: "\"voice_streams\".\"faction_id\""},
-	ListenStreamURL:    whereHelperstring{field: "\"voice_streams\".\"listen_stream_url\""},
-	SendStreamURL:      whereHelperstring{field: "\"voice_streams\".\"send_stream_url\""},
-	IsActive:           whereHelperbool{field: "\"voice_streams\".\"is_active\""},
-	IsFactionCommander: whereHelperbool{field: "\"voice_streams\".\"is_faction_commander\""},
-	SessionExpireAt:    whereHelpertime_Time{field: "\"voice_streams\".\"session_expire_at\""},
-	CreatedAt:          whereHelpertime_Time{field: "\"voice_streams\".\"created_at\""},
+	ID:              whereHelperstring{field: "\"voice_streams\".\"id\""},
+	ArenaID:         whereHelperstring{field: "\"voice_streams\".\"arena_id\""},
+	OwnerID:         whereHelperstring{field: "\"voice_streams\".\"owner_id\""},
+	FactionID:       whereHelperstring{field: "\"voice_streams\".\"faction_id\""},
+	ListenStreamURL: whereHelperstring{field: "\"voice_streams\".\"listen_stream_url\""},
+	SendStreamURL:   whereHelperstring{field: "\"voice_streams\".\"send_stream_url\""},
+	IsActive:        whereHelperbool{field: "\"voice_streams\".\"is_active\""},
+	SenderType:      whereHelperstring{field: "\"voice_streams\".\"sender_type\""},
+	SessionExpireAt: whereHelpertime_Time{field: "\"voice_streams\".\"session_expire_at\""},
+	CreatedAt:       whereHelpertime_Time{field: "\"voice_streams\".\"created_at\""},
 }
 
 // VoiceStreamRels is where relationship names are stored.
 var VoiceStreamRels = struct {
+	Arena   string
 	Faction string
 	Owner   string
 }{
+	Arena:   "Arena",
 	Faction: "Faction",
 	Owner:   "Owner",
 }
 
 // voiceStreamR is where relationships are stored.
 type voiceStreamR struct {
-	Faction *Faction `boiler:"Faction" boil:"Faction" json:"Faction" toml:"Faction" yaml:"Faction"`
-	Owner   *Player  `boiler:"Owner" boil:"Owner" json:"Owner" toml:"Owner" yaml:"Owner"`
+	Arena   *BattleArena `boiler:"Arena" boil:"Arena" json:"Arena" toml:"Arena" yaml:"Arena"`
+	Faction *Faction     `boiler:"Faction" boil:"Faction" json:"Faction" toml:"Faction" yaml:"Faction"`
+	Owner   *Player      `boiler:"Owner" boil:"Owner" json:"Owner" toml:"Owner" yaml:"Owner"`
 }
 
 // NewStruct creates a new relationship struct
@@ -128,8 +138,8 @@ func (*voiceStreamR) NewStruct() *voiceStreamR {
 type voiceStreamL struct{}
 
 var (
-	voiceStreamAllColumns            = []string{"id", "owner_id", "faction_id", "listen_stream_url", "send_stream_url", "is_active", "is_faction_commander", "session_expire_at", "created_at"}
-	voiceStreamColumnsWithoutDefault = []string{"owner_id", "faction_id", "listen_stream_url", "send_stream_url", "is_faction_commander", "session_expire_at"}
+	voiceStreamAllColumns            = []string{"id", "arena_id", "owner_id", "faction_id", "listen_stream_url", "send_stream_url", "is_active", "sender_type", "session_expire_at", "created_at"}
+	voiceStreamColumnsWithoutDefault = []string{"arena_id", "owner_id", "faction_id", "listen_stream_url", "send_stream_url", "sender_type", "session_expire_at"}
 	voiceStreamColumnsWithDefault    = []string{"id", "is_active", "created_at"}
 	voiceStreamPrimaryKeyColumns     = []string{"id"}
 	voiceStreamGeneratedColumns      = []string{}
@@ -377,6 +387,21 @@ func (q voiceStreamQuery) Exists(exec boil.Executor) (bool, error) {
 	return count > 0, nil
 }
 
+// Arena pointed to by the foreign key.
+func (o *VoiceStream) Arena(mods ...qm.QueryMod) battleArenaQuery {
+	queryMods := []qm.QueryMod{
+		qm.Where("\"id\" = ?", o.ArenaID),
+		qmhelper.WhereIsNull("deleted_at"),
+	}
+
+	queryMods = append(queryMods, mods...)
+
+	query := BattleArenas(queryMods...)
+	queries.SetFrom(query.Query, "\"battle_arena\"")
+
+	return query
+}
+
 // Faction pointed to by the foreign key.
 func (o *VoiceStream) Faction(mods ...qm.QueryMod) factionQuery {
 	queryMods := []qm.QueryMod{
@@ -405,6 +430,111 @@ func (o *VoiceStream) Owner(mods ...qm.QueryMod) playerQuery {
 	queries.SetFrom(query.Query, "\"players\"")
 
 	return query
+}
+
+// LoadArena allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for an N-1 relationship.
+func (voiceStreamL) LoadArena(e boil.Executor, singular bool, maybeVoiceStream interface{}, mods queries.Applicator) error {
+	var slice []*VoiceStream
+	var object *VoiceStream
+
+	if singular {
+		object = maybeVoiceStream.(*VoiceStream)
+	} else {
+		slice = *maybeVoiceStream.(*[]*VoiceStream)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &voiceStreamR{}
+		}
+		args = append(args, object.ArenaID)
+
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &voiceStreamR{}
+			}
+
+			for _, a := range args {
+				if a == obj.ArenaID {
+					continue Outer
+				}
+			}
+
+			args = append(args, obj.ArenaID)
+
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`battle_arena`),
+		qm.WhereIn(`battle_arena.id in ?`, args...),
+		qmhelper.WhereIsNull(`battle_arena.deleted_at`),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load BattleArena")
+	}
+
+	var resultSlice []*BattleArena
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice BattleArena")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results of eager load for battle_arena")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for battle_arena")
+	}
+
+	if len(voiceStreamAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+
+	if len(resultSlice) == 0 {
+		return nil
+	}
+
+	if singular {
+		foreign := resultSlice[0]
+		object.R.Arena = foreign
+		if foreign.R == nil {
+			foreign.R = &battleArenaR{}
+		}
+		foreign.R.ArenaVoiceStreams = append(foreign.R.ArenaVoiceStreams, object)
+		return nil
+	}
+
+	for _, local := range slice {
+		for _, foreign := range resultSlice {
+			if local.ArenaID == foreign.ID {
+				local.R.Arena = foreign
+				if foreign.R == nil {
+					foreign.R = &battleArenaR{}
+				}
+				foreign.R.ArenaVoiceStreams = append(foreign.R.ArenaVoiceStreams, local)
+				break
+			}
+		}
+	}
+
+	return nil
 }
 
 // LoadFaction allows an eager lookup of values, cached into the
@@ -612,6 +742,52 @@ func (voiceStreamL) LoadOwner(e boil.Executor, singular bool, maybeVoiceStream i
 				break
 			}
 		}
+	}
+
+	return nil
+}
+
+// SetArena of the voiceStream to the related item.
+// Sets o.R.Arena to related.
+// Adds o to related.R.ArenaVoiceStreams.
+func (o *VoiceStream) SetArena(exec boil.Executor, insert bool, related *BattleArena) error {
+	var err error
+	if insert {
+		if err = related.Insert(exec, boil.Infer()); err != nil {
+			return errors.Wrap(err, "failed to insert into foreign table")
+		}
+	}
+
+	updateQuery := fmt.Sprintf(
+		"UPDATE \"voice_streams\" SET %s WHERE %s",
+		strmangle.SetParamNames("\"", "\"", 1, []string{"arena_id"}),
+		strmangle.WhereClause("\"", "\"", 2, voiceStreamPrimaryKeyColumns),
+	)
+	values := []interface{}{related.ID, o.ID}
+
+	if boil.DebugMode {
+		fmt.Fprintln(boil.DebugWriter, updateQuery)
+		fmt.Fprintln(boil.DebugWriter, values)
+	}
+	if _, err = exec.Exec(updateQuery, values...); err != nil {
+		return errors.Wrap(err, "failed to update local table")
+	}
+
+	o.ArenaID = related.ID
+	if o.R == nil {
+		o.R = &voiceStreamR{
+			Arena: related,
+		}
+	} else {
+		o.R.Arena = related
+	}
+
+	if related.R == nil {
+		related.R = &battleArenaR{
+			ArenaVoiceStreams: VoiceStreamSlice{o},
+		}
+	} else {
+		related.R.ArenaVoiceStreams = append(related.R.ArenaVoiceStreams, o)
 	}
 
 	return nil

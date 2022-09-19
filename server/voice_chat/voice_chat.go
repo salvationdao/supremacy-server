@@ -6,18 +6,25 @@ import (
 	"encoding/base64"
 	"fmt"
 	"github.com/ninja-software/terror/v2"
+	"github.com/ninja-syndicate/ws"
+	"github.com/volatiletech/sqlboiler/v4/boil"
+	"github.com/volatiletech/sqlboiler/v4/queries/qm"
+	"golang.org/x/exp/slices"
 	"net/url"
+	"server"
+	"server/battle"
 	"server/db"
 	"server/db/boiler"
+	"server/gamedb"
 	"server/gamelog"
 	"strings"
 	"time"
 )
 
 type VoiceChannel struct {
-	Boston      map[string]*boiler.VoiceStream
-	Zaibatsu    map[string]*boiler.VoiceStream
-	RedMountain map[string]*boiler.VoiceStream
+	Boston      []*boiler.VoiceStream
+	Zaibatsu    []*boiler.VoiceStream
+	RedMountain []*boiler.VoiceStream
 }
 
 type SignedPolicyURL struct {
@@ -52,6 +59,122 @@ func GetSignedPolicyURL(ownerID string) (*SignedPolicyURL, error) {
 	signedPolicyURL.listenURL = listenURL
 
 	return signedPolicyURL, nil
+}
+
+func UpdateVoiceChannel(warMachines []battle.WarMachine, arenaID string) error {
+	_, err := boiler.VoiceStreams(
+		boiler.VoiceStreamWhere.ArenaID.EQ(arenaID),
+		boiler.VoiceStreamWhere.IsActive.EQ(true),
+		boiler.VoiceStreamWhere.SenderType.EQ(boiler.VoiceSenderTypeMECH_OWNER),
+	).UpdateAll(gamedb.StdConn, boiler.M{
+		boiler.VoiceStreamColumns.IsActive: false,
+	})
+	if err != nil {
+		return terror.Error(err, "Failed to update current active")
+	}
+
+	var zaiChannel []*boiler.VoiceStream
+	var bostonChannel []*boiler.VoiceStream
+	var rmChannel []*boiler.VoiceStream
+
+	checkList := []string{}
+
+	for _, machineStream := range warMachines {
+		if slices.Index(checkList, machineStream.OwnedByID) != -1 {
+			continue
+		}
+
+		checkList = append(checkList, machineStream.OwnedByID)
+
+		policyURL, err := GetSignedPolicyURL(machineStream.OwnedByID)
+		if err != nil {
+			gamelog.L.Error().Str("owner_id", machineStream.OwnedByID).Err(err).Msg("Failed to get signed policy url")
+			continue
+		}
+
+		voiceStream := &boiler.VoiceStream{
+			ArenaID:         arenaID,
+			OwnerID:         machineStream.OwnedByID,
+			FactionID:       machineStream.FactionID,
+			IsActive:        true,
+			SenderType:      boiler.VoiceSenderTypeMECH_OWNER,
+			SendStreamURL:   policyURL.sendURL,
+			ListenStreamURL: policyURL.listenURL,
+			SessionExpireAt: policyURL.expiredAt,
+		}
+
+		err = voiceStream.Insert(gamedb.StdConn, boil.Infer())
+		if err != nil {
+			gamelog.L.Error().Str("owner_id", machineStream.OwnedByID).Err(err).Msg("Failed to insert voice stream")
+			continue
+		}
+
+		switch machineStream.FactionID {
+		case server.ZaibatsuFactionID:
+			zaiChannel = append(zaiChannel, voiceStream)
+		case server.RedMountainFactionID:
+			rmChannel = append(rmChannel, voiceStream)
+		case server.BostonCyberneticsFactionID:
+			bostonChannel = append(bostonChannel, voiceStream)
+		}
+	}
+
+	ps, err := boiler.Players(
+		qm.Select(boiler.PlayerColumns.ID, boiler.PlayerColumns.FactionID),
+		boiler.PlayerWhere.ID.IN(ws.TrackedIdents()),
+		boiler.PlayerWhere.FactionID.IsNotNull(),
+	).All(gamedb.StdConn)
+	if err != nil {
+		return err
+	}
+
+	for _, p := range ps {
+		vcs := []*boiler.VoiceStream{}
+		switch p.FactionID.String {
+		case server.ZaibatsuFactionID:
+			for _, zc := range zaiChannel {
+				vc := &boiler.VoiceStream{
+					ListenStreamURL: zc.ListenStreamURL,
+				}
+
+				if zc.OwnerID == p.ID {
+					vc.SendStreamURL = zc.SendStreamURL
+				}
+
+				vcs = append(vcs, vc)
+			}
+
+			ws.PublishMessage(fmt.Sprintf("/secure/user/%s/faction_commander/%s", p.ID, server.ZaibatsuFactionID), "voice_stream", vcs)
+		case server.RedMountainFactionID:
+			for _, rc := range rmChannel {
+				vc := &boiler.VoiceStream{
+					ListenStreamURL: rc.ListenStreamURL,
+				}
+
+				if rc.OwnerID == p.ID {
+					vc.SendStreamURL = rc.SendStreamURL
+				}
+
+				vcs = append(vcs, vc)
+			}
+			ws.PublishMessage(fmt.Sprintf("/secure/user/%s/faction_commander/%s", p.ID, server.RedMountainFactionID), "voice_stream", vcs)
+		case server.BostonCyberneticsFactionID:
+			for _, bc := range bostonChannel {
+				vc := &boiler.VoiceStream{
+					ListenStreamURL: bc.ListenStreamURL,
+				}
+
+				if bc.OwnerID == p.ID {
+					vc.SendStreamURL = bc.SendStreamURL
+				}
+
+				vcs = append(vcs, vc)
+			}
+			ws.PublishMessage(fmt.Sprintf("/secure/user/%s/faction_commander/%s", p.ID, server.BostonCyberneticsFactionID), "voice_stream", vcs)
+		}
+	}
+
+	return nil
 }
 
 func generateSignedURL(baseURL string, expiryTime time.Time, send bool) (string, error) {

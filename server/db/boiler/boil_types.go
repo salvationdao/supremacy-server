@@ -427,3 +427,9 @@ const (
 	SyndicateTypeCORPORATION   = "CORPORATION"
 	SyndicateTypeDECENTRALISED = "DECENTRALISED"
 )
+
+// Enum values for VoiceSenderType
+const (
+	VoiceSenderTypeMECH_OWNER        = "MECH_OWNER"
+	VoiceSenderTypeFACTION_COMMANDER = "FACTION_COMMANDER"
+)
