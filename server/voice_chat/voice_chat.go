@@ -161,12 +161,13 @@ func UpdateVoiceChannel(warMachines []battle.WarMachine, arenaID string) error {
 
 			if factionCommander != nil {
 				vc := &api.VoiceStreamResp{
-					ListenURL:          factionCommander.ListenStreamURL,
 					IsFactionCommander: true,
 				}
 
 				if factionCommander.OwnerID == p.ID {
 					vc.SendURL = factionCommander.SendStreamURL
+				} else {
+					vc.ListenURL = factionCommander.ListenStreamURL
 				}
 
 				vcs = append(vcs, vc)
@@ -199,12 +200,13 @@ func UpdateVoiceChannel(warMachines []battle.WarMachine, arenaID string) error {
 
 			if factionCommander != nil {
 				vc := &api.VoiceStreamResp{
-					ListenURL:          factionCommander.ListenStreamURL,
 					IsFactionCommander: true,
 				}
 
 				if factionCommander.OwnerID == p.ID {
 					vc.SendURL = factionCommander.SendStreamURL
+				} else {
+					vc.ListenURL = factionCommander.ListenStreamURL
 				}
 
 				vcs = append(vcs, vc)
@@ -237,12 +239,13 @@ func UpdateVoiceChannel(warMachines []battle.WarMachine, arenaID string) error {
 
 			if factionCommander != nil {
 				vc := &api.VoiceStreamResp{
-					ListenURL:          factionCommander.ListenStreamURL,
 					IsFactionCommander: true,
 				}
 
 				if factionCommander.OwnerID == p.ID {
 					vc.SendURL = factionCommander.SendStreamURL
+				} else {
+					vc.ListenURL = factionCommander.ListenStreamURL
 				}
 
 				vcs = append(vcs, vc)

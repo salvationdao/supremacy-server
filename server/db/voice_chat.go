@@ -2,6 +2,7 @@ package db
 
 import (
 	"github.com/ninja-software/terror/v2"
+	"golang.org/x/exp/slices"
 	"server/api"
 	"server/db/boiler"
 	"server/gamedb"
@@ -19,14 +20,23 @@ func GetActiveVoiceChat(userID, factionID, arenaID string) ([]*api.VoiceStreamRe
 		return nil, terror.Error(err, "Failed to get active voice streams")
 	}
 
+	checkList := []string{}
+
 	for _, stream := range activeVoiceStreams {
+		if slices.Index(checkList, stream.OwnerID) != -1 {
+			continue
+		}
+
+		checkList = append(checkList, stream.OwnerID)
+
 		rvs := &api.VoiceStreamResp{
-			ListenURL:          stream.ListenStreamURL,
 			IsFactionCommander: stream.SenderType == boiler.VoiceSenderTypeFACTION_COMMANDER,
 		}
 
 		if userID == stream.OwnerID {
 			rvs.SendURL = stream.SendStreamURL
+		} else {
+			rvs.ListenURL = stream.ListenStreamURL
 		}
 
 		vcr = append(vcr, rvs)
