@@ -1983,7 +1983,7 @@ func (arena *Arena) BeginBattle() {
 			return
 		}
 
-		err := arena.VoiceChannel.UpdateVoiceChannel(helpers.UUIDArray2StrArray(battle.warMachineIDs), arena.ID)
+		err := arena.VoiceChannel.UpdateAllVoiceChannel(helpers.UUIDArray2StrArray(battle.warMachineIDs), arena.ID)
 		if err != nil {
 			gamelog.L.Error().Msg("Failed to update voice chat channels")
 		}

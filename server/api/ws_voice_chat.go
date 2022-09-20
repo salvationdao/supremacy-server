@@ -2,14 +2,19 @@ package api
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"fmt"
+	"github.com/friendsofgo/errors"
 	"github.com/ninja-software/terror/v2"
 	"github.com/ninja-syndicate/ws"
+	"github.com/volatiletech/sqlboiler/v4/boil"
 	"server"
 	"server/db"
 	"server/db/boiler"
+	"server/gamedb"
 	"server/gamelog"
+	"server/voice_chat"
 )
 
 func NewVoiceStreamController(api *API) {
@@ -54,10 +59,44 @@ func (api *API) JoinFactionCommander(ctx context.Context, user *boiler.Player, f
 	defer arena.VoiceChannel.Unlock()
 
 	// check if there is a faction commander
+	_, err = boiler.VoiceStreams(
+		boiler.VoiceStreamWhere.IsActive.EQ(true),
+		boiler.VoiceStreamWhere.SenderType.EQ(boiler.VoiceSenderTypeFACTION_COMMANDER),
+		boiler.VoiceStreamWhere.ArenaID.EQ(arena.ID),
+		boiler.VoiceStreamWhere.FactionID.EQ(factionID),
+	).One(gamedb.StdConn)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return terror.Error(err, "Failed to get faction commander voice stream")
+	}
+
+	signedURL, err := voice_chat.GetSignedPolicyURL(user.ID)
+	if err != nil {
+		return terror.Error(err, "Failed to get signed policy url")
+	}
 
 	// create one if there is no faction commander
+	newFactionCommander := &boiler.VoiceStream{
+		ArenaID:         arena.ID,
+		OwnerID:         user.ID,
+		FactionID:       factionID,
+		ListenStreamURL: signedURL.ListenURL,
+		SendStreamURL:   signedURL.SendURL,
+		IsActive:        false,
+		SenderType:      boiler.VoiceSenderTypeFACTION_COMMANDER,
+		SessionExpireAt: signedURL.ExpiredAt,
+	}
 
-	//
+	err = newFactionCommander.Insert(gamedb.StdConn, boil.Infer())
+	if err != nil {
+		return terror.Error(err, "failed to create new faction commander")
+	}
+
+	err = voice_chat.UpdateFactionVoiceChannel(factionID, arena.ID)
+	if err != nil {
+		return terror.Error(err, "failed to update faction voice channel")
+	}
+
+	reply(true)
 
 	return nil
 }

@@ -32,20 +32,20 @@ type VoiceChannel struct {
 }
 
 type SignedPolicyURL struct {
-	listenURL string
-	sendURL   string
-	expiredAt time.Time
+	ListenURL string
+	SendURL   string
+	ExpiredAt time.Time
 }
 
 var VoiceChatSecretKey string
 
-func getSignedPolicyURL(ownerID string) (*SignedPolicyURL, error) {
+func GetSignedPolicyURL(ownerID string) (*SignedPolicyURL, error) {
 	baseURL := fmt.Sprintf("%s/%s", db.GetStrWithDefault(db.KeyOvenmediaAPIBaseUrl, "https://stream2.supremacy.game:8082"), ownerID)
 	urlExpiryTime := db.GetIntWithDefault(db.KeyVoiceExpiryTimeHours, 2)
 	signedPolicyURL := &SignedPolicyURL{}
 
 	expiryTime := time.Now().Add(time.Hour * time.Duration(urlExpiryTime))
-	signedPolicyURL.expiredAt = expiryTime
+	signedPolicyURL.ExpiredAt = expiryTime
 
 	sendURL, err := generateSignedURL(baseURL, expiryTime, true)
 	if err != nil {
@@ -59,13 +59,13 @@ func getSignedPolicyURL(ownerID string) (*SignedPolicyURL, error) {
 		return nil, terror.Error(err, "failed to generate signed url for listening")
 	}
 
-	signedPolicyURL.sendURL = sendURL
-	signedPolicyURL.listenURL = listenURL
+	signedPolicyURL.SendURL = sendURL
+	signedPolicyURL.ListenURL = listenURL
 
 	return signedPolicyURL, nil
 }
 
-func (vc *VoiceChannel) UpdateVoiceChannel(warMachineIDs []string, arenaID string) error {
+func (vc *VoiceChannel) UpdateAllVoiceChannel(warMachineIDs []string, arenaID string) error {
 	vc.Lock()
 	defer vc.Unlock()
 
@@ -102,7 +102,7 @@ func (vc *VoiceChannel) UpdateVoiceChannel(warMachineIDs []string, arenaID strin
 
 		checkList = append(checkList, machineStream.OwnerID)
 
-		policyURL, err := getSignedPolicyURL(machineStream.OwnerID)
+		policyURL, err := GetSignedPolicyURL(machineStream.OwnerID)
 		if err != nil {
 			gamelog.L.Error().Str("owner_id", machineStream.OwnerID).Err(err).Msg("Failed to get signed policy url")
 			continue
@@ -114,9 +114,9 @@ func (vc *VoiceChannel) UpdateVoiceChannel(warMachineIDs []string, arenaID strin
 			FactionID:       machineStream.R.Owner.FactionID.String,
 			IsActive:        true,
 			SenderType:      boiler.VoiceSenderTypeMECH_OWNER,
-			SendStreamURL:   policyURL.sendURL,
-			ListenStreamURL: policyURL.listenURL,
-			SessionExpireAt: policyURL.expiredAt,
+			SendStreamURL:   policyURL.SendURL,
+			ListenStreamURL: policyURL.ListenURL,
+			SessionExpireAt: policyURL.ExpiredAt,
 		}
 
 		err = voiceStream.Insert(gamedb.StdConn, boil.Infer())
@@ -259,6 +259,51 @@ func (vc *VoiceChannel) UpdateVoiceChannel(warMachineIDs []string, arenaID strin
 
 				vcs = append(vcs, vc)
 			}
+		}
+
+		ws.PublishMessage(fmt.Sprintf("/secure/user/%s/arena/%s/faction_commander/%s", p.ID, arenaID, p.FactionID.String), server.HubKeyVoiceStreams, vcs)
+	}
+
+	return nil
+}
+
+func UpdateFactionVoiceChannel(factionID, arenaID string) error {
+	allActiveFactionChannels, err := boiler.VoiceStreams(
+		boiler.VoiceStreamWhere.IsActive.EQ(true),
+		boiler.VoiceStreamWhere.ArenaID.EQ(arenaID),
+		boiler.VoiceStreamWhere.FactionID.EQ(factionID),
+	).All(gamedb.StdConn)
+	if err != nil {
+		return terror.Error(err, "Failed to get all active faction channels")
+	}
+
+	ps, err := boiler.Players(
+		qm.Select(boiler.PlayerColumns.ID, boiler.PlayerColumns.FactionID),
+		boiler.PlayerWhere.ID.IN(ws.TrackedIdents()),
+		boiler.PlayerWhere.FactionID.IsNotNull(),
+	).All(gamedb.StdConn)
+	if err != nil {
+		return err
+	}
+
+	for _, p := range ps {
+		if p.FactionID.Valid || p.FactionID.String != factionID {
+			continue
+		}
+
+		vcs := []*server.VoiceStreamResp{}
+		for _, channel := range allActiveFactionChannels {
+			vc := &server.VoiceStreamResp{
+				IsFactionCommander: channel.SenderType == boiler.VoiceSenderTypeFACTION_COMMANDER,
+			}
+
+			if p.ID == channel.OwnerID {
+				vc.SendURL = channel.SendStreamURL
+			} else {
+				vc.ListenURL = channel.ListenStreamURL
+			}
+
+			vcs = append(vcs, vc)
 		}
 
 		ws.PublishMessage(fmt.Sprintf("/secure/user/%s/arena/%s/faction_commander/%s", p.ID, arenaID, p.FactionID.String), server.HubKeyVoiceStreams, vcs)
