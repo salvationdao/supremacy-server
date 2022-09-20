@@ -251,7 +251,6 @@ func NewAPI(
 				s.WS("/custom_avatar/{avatar_id}/details", HubKeyPlayerCustomAvatarDetails, pc.ProfileCustomAvatarDetailsHandler)
 
 				// battle related endpoint
-				s.WS("/arena/{arena_id}/status", server.HubKeyArenaStatusSubscribe, api.ArenaManager.ArenaStatusSubscribeHandler)
 				s.WS("/arena/{arena_id}/notification", battle.HubKeyGameNotification, nil)
 				s.WS("/arena/{arena_id}/battle_ability", battle.HubKeyBattleAbilityUpdated, api.ArenaManager.PublicBattleAbilityUpdateSubscribeHandler)
 				s.WS("/arena/{arena_id}/minimap", battle.HubKeyMinimapUpdatesSubscribe, api.ArenaManager.MinimapUpdatesSubscribeHandler)

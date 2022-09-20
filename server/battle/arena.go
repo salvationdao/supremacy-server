@@ -144,7 +144,7 @@ func (am *ArenaManager) GetArena(arenaID string) (*Arena, error) {
 	am.RLock()
 	defer am.RUnlock()
 	arena, ok := am.arenas[arenaID]
-	if !ok {
+	if !ok || arena.Stage.Load() == ArenaStageBacklog {
 		return nil, terror.Error(fmt.Errorf("arena not exits"), "The battle arena does not exist.")
 	}
 	if !arena.connected.Load() {
@@ -169,7 +169,7 @@ func (am *ArenaManager) IdleArenas() []*Arena {
 	defer am.RUnlock()
 	resp := []*Arena{}
 	for _, a := range am.arenas {
-		if a.connected.Load() && a.isIdle.Load() {
+		if a.connected.Load() && a.Stage.Load() == ArenaStageIdle {
 			resp = append(resp, a)
 		}
 	}
@@ -347,6 +347,7 @@ func (am *ArenaManager) NewArena(wsConn *websocket.Conn) (*Arena, error) {
 
 	arena := &Arena{
 		BattleArena:            ba,
+		Stage:                  atomic.NewInt32(ArenaStageIdle),
 		socket:                 wsConn,
 		connected:              atomic.NewBool(true),
 		gameClientJsonDataChan: make(chan []byte, 3),
@@ -365,7 +366,6 @@ func (am *ArenaManager) NewArena(wsConn *websocket.Conn) (*Arena, error) {
 		NewBattleChan:            am.NewBattleChan,
 		QuestManager:             am.QuestManager,
 		ChallengeFundUpdateChan:  am.ChallengeFundUpdateChan,
-		isIdle:                   *atomic.NewBool(true),
 	}
 
 	arena.AIPlayers, err = db.DefaultFactionPlayers()
@@ -385,9 +385,15 @@ func (am *ArenaManager) NewArena(wsConn *websocket.Conn) (*Arena, error) {
 	return arena, nil
 }
 
+const (
+	ArenaStageBacklog int32 = 0
+	ArenaStageIdle    int32 = 1
+	ArenaStageRunning int32 = 2
+)
+
 type Arena struct {
 	*boiler.BattleArena
-	stage                    atomic.Int32 // running, idle
+	Stage                    *atomic.Int32 // backlog, idle, running
 	socket                   *websocket.Conn
 	connected                *atomic.Bool
 	timeout                  time.Duration
@@ -412,7 +418,6 @@ type Arena struct {
 	deadlock.RWMutex
 
 	beginBattleMux deadlock.Mutex
-	isIdle         atomic.Bool
 }
 
 type MechCommandCheckMap struct {
@@ -458,15 +463,6 @@ func (arena *Arena) CurrentBattle() *Battle {
 	arena.RLock()
 	defer arena.RUnlock()
 	return arena._currentBattle
-}
-
-func (arena *Arena) UpdateArenaStatus(isIdle bool) {
-	arena.isIdle.Store(isIdle)
-	arena.RLock()
-	ws.PublishMessage(fmt.Sprintf("/public/arena/%s/status", arena.ID), server.HubKeyArenaStatusSubscribe, &ArenaStatus{
-		IsIdle: isIdle,
-	})
-	arena.RUnlock()
 }
 
 func (arena *Arena) storeCurrentBattle(btl *Battle) {
@@ -683,22 +679,6 @@ func (arena *Arena) Message(cmd string, payload interface{}) {
 		return
 	}
 	gamelog.L.Info().RawJSON("message data", b).Msg("game client message sent")
-}
-
-type ArenaStatus struct {
-	IsIdle bool `json:"is_idle"`
-}
-
-func (am *ArenaManager) ArenaStatusSubscribeHandler(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
-	arena, err := am.GetArenaFromContext(ctx)
-	if err != nil {
-		return err
-	}
-
-	reply(&ArenaStatus{
-		IsIdle: arena.isIdle.Load(),
-	})
-	return nil
 }
 
 type LocationSelectRequest struct {
@@ -1387,7 +1367,7 @@ func (arena *Arena) GameClientJsonDataParser() {
 			}
 
 			// set idle is true
-			arena.isIdle.Store(true)
+			arena.Stage.Store(ArenaStageIdle)
 
 			// begin battle
 			arena.BeginBattle()
@@ -1598,7 +1578,7 @@ func (arena *Arena) BeginBattle() {
 	defer arena.beginBattleMux.Unlock()
 
 	// skip, if arena is not idle
-	if !arena.isIdle.Load() {
+	if arena.Stage.Load() != ArenaStageIdle {
 		return
 	}
 
@@ -1640,13 +1620,13 @@ func (arena *Arena) BeginBattle() {
 		).One(gamedb.StdConn)
 		if err != nil && !errors.Is(err, sql.ErrNoRows) {
 			gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("Failed to load new battle lobby.")
-			arena.UpdateArenaStatus(true)
+			arena.Stage.Store(ArenaStageIdle)
 			return
 		}
 
 		// set arena to idle, if there is no battle lobby available
 		if battleLobby == nil {
-			arena.UpdateArenaStatus(true)
+			arena.Stage.Store(ArenaStageIdle)
 			return
 		}
 
@@ -1655,13 +1635,13 @@ func (arena *Arena) BeginBattle() {
 			gms, err := boiler.GameMaps().All(gamedb.StdConn)
 			if err != nil {
 				gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("Failed to load game maps.")
-				arena.UpdateArenaStatus(true)
+				arena.Stage.Store(ArenaStageIdle)
 				return
 			}
 
 			if gms == nil {
 				gamelog.L.Warn().Str("log_name", "battle arena").Msg("No available game maps in db.")
-				arena.UpdateArenaStatus(true)
+				arena.Stage.Store(ArenaStageIdle)
 				return
 			}
 
@@ -1673,7 +1653,7 @@ func (arena *Arena) BeginBattle() {
 			_, err = battleLobby.Update(gamedb.StdConn, boil.Whitelist(boiler.BattleLobbyColumns.GameMapID))
 			if err != nil {
 				gamelog.L.Error().Str("log_name", "battle arena").Interface("game map", gameMap).Interface("battle lobby", battleLobby).Err(err).Msg("Failed to assign game map to battle lobby.")
-				arena.UpdateArenaStatus(true)
+				arena.Stage.Store(ArenaStageIdle)
 				return
 			}
 		} else {
@@ -1681,7 +1661,7 @@ func (arena *Arena) BeginBattle() {
 			gameMap, err = battleLobby.GameMap().One(gamedb.StdConn)
 			if err != nil {
 				gamelog.L.Error().Err(err).Interface("battle lobby", battle).Msg("Failed to load game map from battle lobby")
-				arena.UpdateArenaStatus(true)
+				arena.Stage.Store(ArenaStageIdle)
 				return
 			}
 		}
@@ -1696,7 +1676,7 @@ func (arena *Arena) BeginBattle() {
 		err := battle.Insert(gamedb.StdConn, boil.Infer())
 		if err != nil {
 			gamelog.L.Error().Err(err).Interface("battle", battle).Msg("unable to insert Battle into database")
-			arena.UpdateArenaStatus(true)
+			arena.Stage.Store(ArenaStageIdle)
 			return
 		}
 
@@ -1705,7 +1685,7 @@ func (arena *Arena) BeginBattle() {
 		_, err = battleLobby.Update(gamedb.StdConn, boil.Whitelist(boiler.BattleLobbyColumns.AssignedToBattleID))
 		if err != nil {
 			gamelog.L.Error().Err(err).Interface("battle lobby", battleLobby).Msg("unable to update battle lobby")
-			arena.UpdateArenaStatus(true)
+			arena.Stage.Store(ArenaStageIdle)
 			return
 		}
 
@@ -1723,7 +1703,7 @@ func (arena *Arena) BeginBattle() {
 		battleLobby, err = lastBattle.AssignedToBattleBattleLobbies().One(gamedb.StdConn)
 		if err != nil && !errors.Is(err, sql.ErrNoRows) {
 			gamelog.L.Error().Err(err).Str("battle id", lastBattle.ID).Msg("Failed to load battle lobby of the last battle")
-			arena.UpdateArenaStatus(true)
+			arena.Stage.Store(ArenaStageIdle)
 			return
 		}
 
@@ -1731,14 +1711,14 @@ func (arena *Arena) BeginBattle() {
 		gameMap, err = lastBattle.GameMap().One(gamedb.StdConn)
 		if err != nil {
 			gamelog.L.Error().Err(err).Interface("battle lobby", battle).Msg("Failed to load game map from battle lobby")
-			arena.UpdateArenaStatus(true)
+			arena.Stage.Store(ArenaStageIdle)
 			return
 		}
 
 		gamelog.L.Info().Msg("Running unfinished battle map")
 	}
 
-	arena.UpdateArenaStatus(false)
+	arena.Stage.Store(ArenaStageRunning)
 
 	// broadcast battle lobby change
 	go BroadcastBattleLobbyUpdate(battleLobby.ID)
