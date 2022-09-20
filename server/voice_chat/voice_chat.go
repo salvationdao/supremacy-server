@@ -96,7 +96,7 @@ func (vc *VoiceChannel) UpdateAllVoiceChannel(warMachineIDs []string, arenaID st
 	checkList := []string{}
 
 	for _, machineStream := range ci {
-		if slices.Index(checkList, machineStream.OwnerID) != -1 {
+		if slices.Index(checkList, machineStream.OwnerID) != -1 || machineStream.R.Owner.IsAi == true {
 			continue
 		}
 
