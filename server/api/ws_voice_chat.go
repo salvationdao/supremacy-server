@@ -51,6 +51,6 @@ func (vcs *VoiceStreamController) VoiceStreamSubscribe(ctx context.Context, user
 }
 
 func (vcs *VoiceStreamController) JoinFactionCommander(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
-
+	
 	return nil
 }

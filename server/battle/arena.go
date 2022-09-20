@@ -1982,6 +1982,11 @@ func (arena *Arena) BeginBattle() {
 			return
 		}
 
+		err := voice_chat.UpdateVoiceChannel(battle.WarMachines, arena.ID)
+		if err != nil {
+			gamelog.L.Error().Msg("Failed to update voice chat channels")
+		}
+
 		// then set battle queue
 		err = battle.setBattleQueue()
 		if err != nil {

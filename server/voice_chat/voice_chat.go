@@ -64,7 +64,7 @@ func GetSignedPolicyURL(ownerID string) (*SignedPolicyURL, error) {
 	return signedPolicyURL, nil
 }
 
-func UpdateVoiceChannel(warMachines []battle.WarMachine, arenaID string) error {
+func UpdateVoiceChannel(warMachines []*battle.WarMachine, arenaID string) error {
 	_, err := boiler.VoiceStreams(
 		boiler.VoiceStreamWhere.ArenaID.EQ(arenaID),
 		boiler.VoiceStreamWhere.IsActive.EQ(true),
