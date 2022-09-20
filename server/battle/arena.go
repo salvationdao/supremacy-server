@@ -20,7 +20,6 @@ import (
 	"server/xsyn_rpcclient"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/sasha-s/go-deadlock"
@@ -59,8 +58,8 @@ type ArenaManager struct {
 	SystemBanManager         *SystemBanManager
 	NewBattleChan            chan *NewBattleChan
 	SystemMessagingManager   *system_messages.SystemMessagingManager
-	RepairFuncMx             sync.Mutex
-	BattleQueueFuncMx        sync.Mutex
+	RepairFuncMx             deadlock.Mutex
+	BattleQueueFuncMx        deadlock.Mutex
 	QuestManager             *quest.System
 
 	arenas           map[string]*Arena
@@ -91,7 +90,7 @@ func NewArenaManager(opts *Opts) (*ArenaManager, error) {
 		SystemBanManager:         NewSystemBanManager(),
 		NewBattleChan:            make(chan *NewBattleChan),
 		SystemMessagingManager:   opts.SystemMessagingManager,
-		BattleQueueFuncMx:        sync.Mutex{},
+		BattleQueueFuncMx:        deadlock.Mutex{},
 		QuestManager:             opts.QuestManager,
 		arenas:                   make(map[string]*Arena),
 
@@ -410,15 +409,15 @@ type Arena struct {
 	gameClientJsonDataChan chan []byte
 
 	MechCommandCheckMap *MechCommandCheckMap
-	sync.RWMutex
+	deadlock.RWMutex
 
-	beginBattleMux sync.Mutex
+	beginBattleMux deadlock.Mutex
 	isIdle         atomic.Bool
 }
 
 type MechCommandCheckMap struct {
 	m map[string]chan bool
-	sync.RWMutex
+	deadlock.RWMutex
 }
 
 func (mc *MechCommandCheckMap) Register(key string, ch chan bool) {
