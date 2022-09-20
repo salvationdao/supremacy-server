@@ -284,7 +284,7 @@ func NewAPI(
 				s.WS("/user/{user_id}/telegram_shortcode_register", server.HubKeyTelegramShortcodeRegistered, nil, MustMatchUserID)
 				s.WS("/user/{user_id}/quest_stat", server.HubKeyPlayerQuestStats, server.MustSecure(pc.PlayerQuestStat), MustMatchUserID)
 				s.WS("/user/{user_id}/quest_progression", server.HubKeyPlayerQuestProgressions, server.MustSecure(pc.PlayerQuestProgressions), MustMatchUserID)
-				s.WS("/user/{user_id}/arena/{arena_id}/faction_commander/{faction_id}", server.HubKeyVoiceStreams, server.MustSecureFaction(api.VoiceStreamSubscribe), MustMatchUserID, MustMatchFaction)
+				s.WS("/user/{user_id}/arena/{arena_id}/faction_commander", server.HubKeyVoiceStreams, server.MustSecure(api.VoiceStreamSubscribe), MustMatchUserID)
 
 				// user repair bay
 				s.WS("/user/{user_id}/repair_bay", server.HubKeyMechRepairSlots, server.MustSecure(api.PlayerMechRepairSlots), MustMatchUserID)

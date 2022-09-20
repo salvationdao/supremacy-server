@@ -2,9 +2,10 @@ package api
 
 import (
 	"context"
+	"server"
+
 	"github.com/go-chi/chi/v5"
 	"github.com/ninja-syndicate/ws"
-	"server"
 )
 
 func (api *API) Command(key string, fn ws.CommandFunc) {
@@ -43,21 +44,6 @@ func MustMatchUserID(ctx context.Context) bool {
 	}
 
 	return true
-}
-
-func MustMatchFaction(ctx context.Context) bool {
-	// get user from xsyn service
-	factionID, ok := ctx.Value("faction_id").(string)
-	if !ok || factionID == "" {
-		return false
-	}
-
-	u, err := server.RetrieveUser(ctx)
-	if err != nil {
-		return false
-	}
-
-	return u.FactionID.Valid && u.FactionID.String == factionID
 }
 
 func MustMatchSyndicate(ctx context.Context) bool {
