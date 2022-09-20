@@ -318,7 +318,7 @@ func generateSignedURL(baseURL string, expiryTime time.Time, send bool) (string,
 	if err != nil {
 		return "", terror.Error(err, "Failed to parse base url")
 	}
-	policy := fmt.Sprintf("{\"url_expire\":%d}", expiryTime.Unix())
+	policy := fmt.Sprintf("{\"url_expire\":%d}", expiryTime.UnixMilli())
 	encodedPolicy := removeEncodePadding(base64.StdEncoding.EncodeToString([]byte(policy)))
 	query := u.Query()
 	if send {
