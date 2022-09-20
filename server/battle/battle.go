@@ -1446,7 +1446,6 @@ func (btl *Battle) processWarMachineRepair() {
 }
 
 const HubKeyBattleEndDetailUpdated = "BATTLE:END:DETAIL:UPDATED"
-const HubKeyNextBattleDetails = "BATTLE:NEXT:DETAILS"
 
 func (btl *Battle) end(payload *BattleEndPayload) {
 	defer func() {
