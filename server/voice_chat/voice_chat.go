@@ -40,7 +40,7 @@ type SignedPolicyURL struct {
 var VoiceChatSecretKey string
 
 func GetSignedPolicyURL(ownerID string) (*SignedPolicyURL, error) {
-	baseURL := fmt.Sprintf("%s/%s", db.GetStrWithDefault(db.KeyOvenmediaAPIBaseUrl, "https://stream2.supremacy.game:8082"), ownerID)
+	baseURL := fmt.Sprintf("%s/%s", db.GetStrWithDefault(db.KeyOvenmediaStreamURL, "wss://stream.supremacygame.io:3334/app"), ownerID)
 	urlExpiryTime := db.GetIntWithDefault(db.KeyVoiceExpiryTimeHours, 2)
 	signedPolicyURL := &SignedPolicyURL{}
 
