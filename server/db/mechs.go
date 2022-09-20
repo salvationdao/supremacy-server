@@ -1445,13 +1445,14 @@ func OwnedMechsBrief(playerID string, mechIDs ...string) ([]*MechBrief, error) {
 			fmt.Sprintf("_pc.%s", boiler.PowerCoreColumns.Capacity),
 			fmt.Sprintf("_pc.%s", boiler.PowerCoreColumns.RechargeRate),
 			fmt.Sprintf(
-				"COALESCE((SELECT _rc.%s - _rc.%s FROM %s _rc WHERE _rc.%s = _ci.%s AND _rc.%s ISNULL LIMIT 1), 0) AS damaged_blocks",
+				"COALESCE((SELECT _rc.%s - _rc.%s FROM %s _rc WHERE _rc.%s = _ci.%s AND _rc.%s ISNULL AND _rc.%s ISNULL LIMIT 1), 0) AS damaged_blocks",
 				boiler.RepairCaseColumns.BlocksRequiredRepair,
 				boiler.RepairCaseColumns.BlocksRepaired,
 				boiler.TableNames.RepairCases,
 				boiler.RepairCaseColumns.MechID,
 				boiler.CollectionItemColumns.ItemID,
 				boiler.RepairCaseColumns.CompletedAt,
+				boiler.RepairCaseColumns.DeletedAt,
 			),
 			fmt.Sprintf(
 				"COALESCE((SELECT _a.%s <= now() FROM %s _a WHERE _a.%s = _bm.%s), TRUE) AS is_battle_ready",

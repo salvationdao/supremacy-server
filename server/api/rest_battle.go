@@ -111,6 +111,8 @@ func (api *API) FillUpIncompleteLobbies(w http.ResponseWriter, r *http.Request) 
 		var impactedLobbyIDs []string
 
 		for _, bl := range bls {
+			impactedLobbyIDs = append(impactedLobbyIDs, bl.ID)
+
 			needRM := bl.EachFactionMechAmount
 			needBC := bl.EachFactionMechAmount
 			needZai := bl.EachFactionMechAmount
