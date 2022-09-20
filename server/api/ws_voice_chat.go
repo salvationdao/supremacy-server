@@ -13,6 +13,7 @@ import (
 	"server/voice_chat"
 
 	"github.com/friendsofgo/errors"
+	"github.com/go-chi/chi/v5"
 	"github.com/ninja-software/terror/v2"
 	"github.com/ninja-syndicate/ws"
 	"github.com/volatiletech/sqlboiler/v4/boil"
@@ -28,8 +29,8 @@ func (api *API) VoiceStreamSubscribe(ctx context.Context, user *boiler.Player, k
 		return fmt.Errorf("faction id not found")
 	}
 
-	arenaID, ok := ctx.Value("arena_id").(string)
-	if !ok || arenaID == "" {
+	arenaID := chi.RouteContext(ctx).URLParam("arena_id")
+	if arenaID == "" {
 		return terror.Error(fmt.Errorf("missing arena id"), "Missing arena id")
 	}
 
