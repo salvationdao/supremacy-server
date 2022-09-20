@@ -19,6 +19,7 @@ import (
 
 func NewVoiceStreamController(api *API) {
 	api.SecureUserFactionCommand(server.HubKeyVoiceStreamJoinFactionCommander, api.JoinFactionCommander)
+	api.SecureUserFactionCommand(server.HubKeyVoiceStreamLeaveFactionCommander, api.LeaveFactionCommander)
 }
 
 func (api *API) VoiceStreamSubscribe(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
@@ -89,6 +90,48 @@ func (api *API) JoinFactionCommander(ctx context.Context, user *boiler.Player, f
 	err = newFactionCommander.Insert(gamedb.StdConn, boil.Infer())
 	if err != nil {
 		return terror.Error(err, "failed to create new faction commander")
+	}
+
+	err = voice_chat.UpdateFactionVoiceChannel(factionID, arena.ID)
+	if err != nil {
+		return terror.Error(err, "failed to update faction voice channel")
+	}
+
+	reply(true)
+
+	return nil
+}
+
+func (api *API) LeaveFactionCommander(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
+	req := &VoiceStreamReq{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return terror.Error(err, "Invalid request received")
+	}
+
+	arena, err := api.ArenaManager.GetArena(req.Payload.ArenaID)
+	if err != nil {
+		return err
+	}
+
+	arena.VoiceChannel.Lock()
+	defer arena.VoiceChannel.Unlock()
+
+	// check if there is a faction commander
+	activeVoiceCommander, err := boiler.VoiceStreams(
+		boiler.VoiceStreamWhere.IsActive.EQ(true),
+		boiler.VoiceStreamWhere.SenderType.EQ(boiler.VoiceSenderTypeFACTION_COMMANDER),
+		boiler.VoiceStreamWhere.ArenaID.EQ(arena.ID),
+		boiler.VoiceStreamWhere.FactionID.EQ(factionID),
+	).One(gamedb.StdConn)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return terror.Error(err, "Failed to get faction commander voice stream")
+	}
+
+	activeVoiceCommander.IsActive = false
+	_, err = activeVoiceCommander.Update(gamedb.StdConn, boil.Infer())
+	if err != nil {
+		return terror.Error(err, "failed to update active voice commander")
 	}
 
 	err = voice_chat.UpdateFactionVoiceChannel(factionID, arena.ID)

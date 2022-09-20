@@ -74,3 +74,4 @@ const HubKeyMiniMapAbilityDisplayList = "MINI:MAP:ABILITY:DISPLAY:LIST"
 // voice streams
 
 const HubKeyVoiceStreamJoinFactionCommander = "VOICE:JOIN:FACTION:COMMANDER"
+const HubKeyVoiceStreamLeaveFactionCommander = "VOICE:LEAVE:FACTION:COMMANDER"
