@@ -139,6 +139,7 @@ func (vc *VoiceChannel) UpdateAllVoiceChannel(warMachineIDs []string, arenaID st
 		qm.Select(boiler.PlayerColumns.ID, boiler.PlayerColumns.FactionID),
 		boiler.PlayerWhere.ID.IN(ws.TrackedIdents()),
 		boiler.PlayerWhere.FactionID.IsNotNull(),
+		boiler.PlayerWhere.IsAi.EQ(false),
 	).All(gamedb.StdConn)
 	if err != nil {
 		return err
