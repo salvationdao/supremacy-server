@@ -20,19 +20,6 @@ import (
 
 const FACTION_MECH_LIMIT = 3
 
-func GetPlayerQueueCount(playerID string) (int64, error) {
-	count, err := boiler.BattleLobbiesMechs(
-		boiler.BattleLobbiesMechWhere.OwnerID.EQ(playerID),
-		boiler.BattleLobbiesMechWhere.EndedAt.IsNull(),
-		boiler.BattleLobbiesMechWhere.RefundTXID.IsNull(),
-	).Count(gamedb.StdConn)
-	if err != nil {
-		return 0, err
-	}
-
-	return count, nil
-}
-
 func GetCollectionItemStatus(collectionItem boiler.CollectionItem) (*server.MechArenaInfo, error) {
 	l := gamelog.L.With().Str("func", "GetCollectionItemStatus").Interface("collectionItem", collectionItem).Logger()
 

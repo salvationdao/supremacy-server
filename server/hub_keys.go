@@ -1,6 +1,8 @@
 package server
 
 // player_abilities
+
+const HubKeyPlayerQueueStatus = "PLAYER:QUEUE:STATUS"
 const HubKeyPlayerAbilitiesList = "PLAYER:ABILITIES:LIST:SUBSCRIBE"
 const HubKeyMechMoveCommandSubscribe = "MECH:MOVE:COMMAND:SUBSCRIBE"
 

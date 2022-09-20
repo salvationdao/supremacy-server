@@ -184,3 +184,26 @@ func BroadcastMechQueueStatus(playerID string, mechIDs ...string) {
 
 	ws.PublishMessage(fmt.Sprintf("/secure/user/%s/owned_mechs", playerID), server.HubKeyPlayerMechsBrief, mechInfo)
 }
+
+func BroadcastPlayerQueueStatus(playerID string) {
+	resp := &server.PlayerQueueStatus{
+		TotalQueued: 0,
+		QueueLimit:  db.GetIntWithDefault(db.KeyPlayerQueueLimit, 10),
+	}
+
+	blms, err := boiler.BattleLobbiesMechs(
+		boiler.BattleLobbiesMechWhere.OwnerID.EQ(playerID),
+		boiler.BattleLobbiesMechWhere.RefundTXID.IsNull(),
+		boiler.BattleLobbiesMechWhere.EndedAt.IsNull(),
+	).All(gamedb.StdConn)
+	if err != nil {
+		gamelog.L.Error().Str("player id", playerID).Err(err).Msg("Failed to load player battle queue mechs")
+		return
+	}
+
+	if blms != nil {
+		resp.TotalQueued = len(blms)
+	}
+
+	ws.PublishMessage(fmt.Sprintf("/secure/user/%s/queue_status", playerID), server.HubKeyPlayerQueueStatus, resp)
+}

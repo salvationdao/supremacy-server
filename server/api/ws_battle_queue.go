@@ -235,6 +235,8 @@ func (api *API) BattleLobbyCreate(ctx context.Context, user *boiler.Player, fact
 
 		go battle.BroadcastMechQueueStatus(user.ID, deployedMechIDs...)
 
+		go battle.BroadcastPlayerQueueStatus(user.ID)
+
 		return nil
 	})
 	if err != nil {
@@ -541,6 +543,9 @@ func (api *API) BattleLobbyJoin(ctx context.Context, user *boiler.Player, factio
 		// broadcast battle lobby
 		go battle.BroadcastBattleLobbyUpdate(affectedLobbyIDs...)
 
+		// broadcast player queue status
+		go battle.BroadcastPlayerQueueStatus(user.ID)
+
 		// terminate repair bay
 		// wrap it in go routine, the channel will not slow down the deployment process
 		go func(playerID string, mechIDs []string) {
@@ -832,6 +837,9 @@ func (api *API) BattleLobbyLeave(ctx context.Context, user *boiler.Player, facti
 				gamelog.L.Error().Err(err).Strs("mech id list", leftMechIDs).Msg("Failed to restart repair cases")
 			}
 		}()
+
+		// broadcast player queue status
+		go battle.BroadcastPlayerQueueStatus(user.ID)
 
 		// broadcast new mech stat
 		go func() {
