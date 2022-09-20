@@ -3,13 +3,13 @@ package db
 import (
 	"github.com/ninja-software/terror/v2"
 	"golang.org/x/exp/slices"
-	"server/api"
+	"server"
 	"server/db/boiler"
 	"server/gamedb"
 )
 
-func GetActiveVoiceChat(userID, factionID, arenaID string) ([]*api.VoiceStreamResp, error) {
-	vcr := []*api.VoiceStreamResp{}
+func GetActiveVoiceChat(userID, factionID, arenaID string) ([]*server.VoiceStreamResp, error) {
+	vcr := []*server.VoiceStreamResp{}
 
 	activeVoiceStreams, err := boiler.VoiceStreams(
 		boiler.VoiceStreamWhere.FactionID.EQ(factionID),
@@ -29,7 +29,7 @@ func GetActiveVoiceChat(userID, factionID, arenaID string) ([]*api.VoiceStreamRe
 
 		checkList = append(checkList, stream.OwnerID)
 
-		rvs := &api.VoiceStreamResp{
+		rvs := &server.VoiceStreamResp{
 			IsFactionCommander: stream.SenderType == boiler.VoiceSenderTypeFACTION_COMMANDER,
 		}
 

@@ -9,13 +9,12 @@ import (
 	"github.com/friendsofgo/errors"
 	"github.com/ninja-software/terror/v2"
 	"github.com/ninja-syndicate/ws"
+	"github.com/sasha-s/go-deadlock"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 	"golang.org/x/exp/slices"
 	"net/url"
 	"server"
-	"server/api"
-	"server/battle"
 	"server/db"
 	"server/db/boiler"
 	"server/gamedb"
@@ -28,6 +27,8 @@ type VoiceChannel struct {
 	Boston      []*boiler.VoiceStream
 	Zaibatsu    []*boiler.VoiceStream
 	RedMountain []*boiler.VoiceStream
+
+	deadlock.RWMutex
 }
 
 type SignedPolicyURL struct {
@@ -38,7 +39,7 @@ type SignedPolicyURL struct {
 
 var VoiceChatSecretKey string
 
-func GetSignedPolicyURL(ownerID string) (*SignedPolicyURL, error) {
+func getSignedPolicyURL(ownerID string) (*SignedPolicyURL, error) {
 	baseURL := fmt.Sprintf("%s/%s", db.GetStrWithDefault(db.KeyOvenmediaAPIBaseUrl, "https://stream2.supremacy.game:8082"), ownerID)
 	urlExpiryTime := db.GetIntWithDefault(db.KeyVoiceExpiryTimeHours, 2)
 	signedPolicyURL := &SignedPolicyURL{}
@@ -64,8 +65,20 @@ func GetSignedPolicyURL(ownerID string) (*SignedPolicyURL, error) {
 	return signedPolicyURL, nil
 }
 
-func UpdateVoiceChannel(warMachines []*battle.WarMachine, arenaID string) error {
-	_, err := boiler.VoiceStreams(
+func (vc *VoiceChannel) UpdateVoiceChannel(warMachineIDs []string, arenaID string) error {
+	vc.Lock()
+	defer vc.Unlock()
+
+	ci, err := boiler.CollectionItems(
+		boiler.CollectionItemWhere.ItemID.IN(warMachineIDs),
+		boiler.CollectionItemWhere.ItemType.EQ(boiler.ItemTypeMech),
+		qm.Load(boiler.CollectionItemRels.Owner),
+	).All(gamedb.StdConn)
+	if err != nil {
+		return err
+	}
+
+	_, err = boiler.VoiceStreams(
 		boiler.VoiceStreamWhere.ArenaID.EQ(arenaID),
 		boiler.VoiceStreamWhere.IsActive.EQ(true),
 		boiler.VoiceStreamWhere.SenderType.EQ(boiler.VoiceSenderTypeMECH_OWNER),
@@ -82,23 +95,23 @@ func UpdateVoiceChannel(warMachines []*battle.WarMachine, arenaID string) error 
 
 	checkList := []string{}
 
-	for _, machineStream := range warMachines {
-		if slices.Index(checkList, machineStream.OwnedByID) != -1 {
+	for _, machineStream := range ci {
+		if slices.Index(checkList, machineStream.OwnerID) != -1 {
 			continue
 		}
 
-		checkList = append(checkList, machineStream.OwnedByID)
+		checkList = append(checkList, machineStream.OwnerID)
 
-		policyURL, err := GetSignedPolicyURL(machineStream.OwnedByID)
+		policyURL, err := getSignedPolicyURL(machineStream.OwnerID)
 		if err != nil {
-			gamelog.L.Error().Str("owner_id", machineStream.OwnedByID).Err(err).Msg("Failed to get signed policy url")
+			gamelog.L.Error().Str("owner_id", machineStream.OwnerID).Err(err).Msg("Failed to get signed policy url")
 			continue
 		}
 
 		voiceStream := &boiler.VoiceStream{
 			ArenaID:         arenaID,
-			OwnerID:         machineStream.OwnedByID,
-			FactionID:       machineStream.FactionID,
+			OwnerID:         machineStream.OwnerID,
+			FactionID:       machineStream.R.Owner.FactionID.String,
 			IsActive:        true,
 			SenderType:      boiler.VoiceSenderTypeMECH_OWNER,
 			SendStreamURL:   policyURL.sendURL,
@@ -108,11 +121,11 @@ func UpdateVoiceChannel(warMachines []*battle.WarMachine, arenaID string) error 
 
 		err = voiceStream.Insert(gamedb.StdConn, boil.Infer())
 		if err != nil {
-			gamelog.L.Error().Str("owner_id", machineStream.OwnedByID).Err(err).Msg("Failed to insert voice stream")
+			gamelog.L.Error().Str("owner_id", machineStream.OwnerID).Err(err).Msg("Failed to insert voice stream")
 			continue
 		}
 
-		switch machineStream.FactionID {
+		switch machineStream.R.Owner.FactionID.String {
 		case server.ZaibatsuFactionID:
 			zaiChannel = append(zaiChannel, voiceStream)
 		case server.RedMountainFactionID:
@@ -132,11 +145,11 @@ func UpdateVoiceChannel(warMachines []*battle.WarMachine, arenaID string) error 
 	}
 
 	for _, p := range ps {
-		vcs := []*api.VoiceStreamResp{}
+		vcs := []*server.VoiceStreamResp{}
 		switch p.FactionID.String {
 		case server.ZaibatsuFactionID:
 			for _, zc := range zaiChannel {
-				vc := &api.VoiceStreamResp{
+				vc := &server.VoiceStreamResp{
 					ListenURL:          zc.ListenStreamURL,
 					IsFactionCommander: false,
 				}
@@ -160,7 +173,7 @@ func UpdateVoiceChannel(warMachines []*battle.WarMachine, arenaID string) error 
 			}
 
 			if factionCommander != nil {
-				vc := &api.VoiceStreamResp{
+				vc := &server.VoiceStreamResp{
 					IsFactionCommander: true,
 				}
 
@@ -176,7 +189,7 @@ func UpdateVoiceChannel(warMachines []*battle.WarMachine, arenaID string) error 
 			ws.PublishMessage(fmt.Sprintf("/secure/user/%s/faction_commander/%s", p.ID, server.ZaibatsuFactionID), server.HubKeyVoiceStreams, vcs)
 		case server.RedMountainFactionID:
 			for _, rc := range rmChannel {
-				vc := &api.VoiceStreamResp{
+				vc := &server.VoiceStreamResp{
 					ListenURL: rc.ListenStreamURL,
 				}
 
@@ -199,7 +212,7 @@ func UpdateVoiceChannel(warMachines []*battle.WarMachine, arenaID string) error 
 			}
 
 			if factionCommander != nil {
-				vc := &api.VoiceStreamResp{
+				vc := &server.VoiceStreamResp{
 					IsFactionCommander: true,
 				}
 
@@ -215,7 +228,7 @@ func UpdateVoiceChannel(warMachines []*battle.WarMachine, arenaID string) error 
 			ws.PublishMessage(fmt.Sprintf("/secure/user/%s/faction_commander/%s", p.ID, server.RedMountainFactionID), server.HubKeyVoiceStreams, vcs)
 		case server.BostonCyberneticsFactionID:
 			for _, bc := range bostonChannel {
-				vc := &api.VoiceStreamResp{
+				vc := &server.VoiceStreamResp{
 					ListenURL: bc.ListenStreamURL,
 				}
 
@@ -238,7 +251,7 @@ func UpdateVoiceChannel(warMachines []*battle.WarMachine, arenaID string) error 
 			}
 
 			if factionCommander != nil {
-				vc := &api.VoiceStreamResp{
+				vc := &server.VoiceStreamResp{
 					IsFactionCommander: true,
 				}
 

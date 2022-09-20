@@ -350,6 +350,7 @@ func (am *ArenaManager) NewArena(wsConn *websocket.Conn) (*Arena, error) {
 		MechCommandCheckMap: &MechCommandCheckMap{
 			m: make(map[string]chan bool),
 		},
+		voiceChannel: &voice_chat.VoiceChannel{},
 
 		// objects inherited from arena manager
 		RPCClient:                am.RPCClient,
@@ -1982,7 +1983,7 @@ func (arena *Arena) BeginBattle() {
 			return
 		}
 
-		err := voice_chat.UpdateVoiceChannel(battle.WarMachines, arena.ID)
+		err := arena.voiceChannel.UpdateVoiceChannel(helpers.UUIDArray2StrArray(battle.warMachineIDs), arena.ID)
 		if err != nil {
 			gamelog.L.Error().Msg("Failed to update voice chat channels")
 		}

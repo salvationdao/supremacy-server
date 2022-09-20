@@ -22,12 +22,6 @@ func NewVoiceStreamController(api *API) *VoiceStreamController {
 	return vcs
 }
 
-type VoiceStreamResp struct {
-	ListenURL          string `json:"listen_url,omitempty"`
-	SendURL            string `json:"send_url,omitempty"`
-	IsFactionCommander bool   `json:"is_faction_commander"`
-}
-
 type VoiceStreamReq struct {
 	ArenaID string `json:"arena_id"`
 }
@@ -51,6 +45,6 @@ func (vcs *VoiceStreamController) VoiceStreamSubscribe(ctx context.Context, user
 }
 
 func (vcs *VoiceStreamController) JoinFactionCommander(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
-	
+
 	return nil
 }
