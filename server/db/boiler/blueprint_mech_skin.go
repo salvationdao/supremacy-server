@@ -149,29 +149,29 @@ var BlueprintMechSkinWhere = struct {
 
 // BlueprintMechSkinRels is where relationship names are stored.
 var BlueprintMechSkinRels = struct {
-	BlueprintWeaponSkin              string
-	ProfileAvatar                    string
-	DefaultChassisSkinBlueprintMechs string
+	BlueprintWeaponSkin                        string
+	ProfileAvatar                              string
+	DefaultChassisSkinBlueprintMechs           string
 	MechSkinBlueprintFiatProductItemBlueprints string
-	MechModelSkinCompatibilities     string
-	BlueprintMechSkins               string
+	MechModelSkinCompatibilities               string
+	BlueprintMechSkins                         string
 }{
-	BlueprintWeaponSkin:              "BlueprintWeaponSkin",
-	ProfileAvatar:                    "ProfileAvatar",
-	DefaultChassisSkinBlueprintMechs: "DefaultChassisSkinBlueprintMechs",
+	BlueprintWeaponSkin:                        "BlueprintWeaponSkin",
+	ProfileAvatar:                              "ProfileAvatar",
+	DefaultChassisSkinBlueprintMechs:           "DefaultChassisSkinBlueprintMechs",
 	MechSkinBlueprintFiatProductItemBlueprints: "MechSkinBlueprintFiatProductItemBlueprints",
-	MechModelSkinCompatibilities:     "MechModelSkinCompatibilities",
-	BlueprintMechSkins:               "BlueprintMechSkins",
+	MechModelSkinCompatibilities:               "MechModelSkinCompatibilities",
+	BlueprintMechSkins:                         "BlueprintMechSkins",
 }
 
 // blueprintMechSkinR is where relationships are stored.
 type blueprintMechSkinR struct {
-	BlueprintWeaponSkin              *BlueprintWeaponSkin            `boiler:"BlueprintWeaponSkin" boil:"BlueprintWeaponSkin" json:"BlueprintWeaponSkin" toml:"BlueprintWeaponSkin" yaml:"BlueprintWeaponSkin"`
-	ProfileAvatar                    *ProfileAvatar                  `boiler:"ProfileAvatar" boil:"ProfileAvatar" json:"ProfileAvatar" toml:"ProfileAvatar" yaml:"ProfileAvatar"`
-	DefaultChassisSkinBlueprintMechs BlueprintMechSlice              `boiler:"DefaultChassisSkinBlueprintMechs" boil:"DefaultChassisSkinBlueprintMechs" json:"DefaultChassisSkinBlueprintMechs" toml:"DefaultChassisSkinBlueprintMechs" yaml:"DefaultChassisSkinBlueprintMechs"`
+	BlueprintWeaponSkin                        *BlueprintWeaponSkin            `boiler:"BlueprintWeaponSkin" boil:"BlueprintWeaponSkin" json:"BlueprintWeaponSkin" toml:"BlueprintWeaponSkin" yaml:"BlueprintWeaponSkin"`
+	ProfileAvatar                              *ProfileAvatar                  `boiler:"ProfileAvatar" boil:"ProfileAvatar" json:"ProfileAvatar" toml:"ProfileAvatar" yaml:"ProfileAvatar"`
+	DefaultChassisSkinBlueprintMechs           BlueprintMechSlice              `boiler:"DefaultChassisSkinBlueprintMechs" boil:"DefaultChassisSkinBlueprintMechs" json:"DefaultChassisSkinBlueprintMechs" toml:"DefaultChassisSkinBlueprintMechs" yaml:"DefaultChassisSkinBlueprintMechs"`
 	MechSkinBlueprintFiatProductItemBlueprints FiatProductItemBlueprintSlice   `boiler:"MechSkinBlueprintFiatProductItemBlueprints" boil:"MechSkinBlueprintFiatProductItemBlueprints" json:"MechSkinBlueprintFiatProductItemBlueprints" toml:"MechSkinBlueprintFiatProductItemBlueprints" yaml:"MechSkinBlueprintFiatProductItemBlueprints"`
-	MechModelSkinCompatibilities     MechModelSkinCompatibilitySlice `boiler:"MechModelSkinCompatibilities" boil:"MechModelSkinCompatibilities" json:"MechModelSkinCompatibilities" toml:"MechModelSkinCompatibilities" yaml:"MechModelSkinCompatibilities"`
-	BlueprintMechSkins               MechSkinSlice                   `boiler:"BlueprintMechSkins" boil:"BlueprintMechSkins" json:"BlueprintMechSkins" toml:"BlueprintMechSkins" yaml:"BlueprintMechSkins"`
+	MechModelSkinCompatibilities               MechModelSkinCompatibilitySlice `boiler:"MechModelSkinCompatibilities" boil:"MechModelSkinCompatibilities" json:"MechModelSkinCompatibilities" toml:"MechModelSkinCompatibilities" yaml:"MechModelSkinCompatibilities"`
+	BlueprintMechSkins                         MechSkinSlice                   `boiler:"BlueprintMechSkins" boil:"BlueprintMechSkins" json:"BlueprintMechSkins" toml:"BlueprintMechSkins" yaml:"BlueprintMechSkins"`
 }
 
 // NewStruct creates a new relationship struct

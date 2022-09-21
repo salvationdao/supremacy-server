@@ -136,26 +136,26 @@ var BlueprintWeaponSkinWhere = struct {
 
 // BlueprintWeaponSkinRels is where relationship names are stored.
 var BlueprintWeaponSkinRels = struct {
-	BlueprintMechSkins             string
-	DefaultSkinBlueprintWeapons    string
+	BlueprintMechSkins                           string
+	DefaultSkinBlueprintWeapons                  string
 	WeaponSkinBlueprintFiatProductItemBlueprints string
-	WeaponModelSkinCompatibilities string
-	BlueprintWeaponSkins           string
+	WeaponModelSkinCompatibilities               string
+	BlueprintWeaponSkins                         string
 }{
-	BlueprintMechSkins:             "BlueprintMechSkins",
-	DefaultSkinBlueprintWeapons:    "DefaultSkinBlueprintWeapons",
+	BlueprintMechSkins:                           "BlueprintMechSkins",
+	DefaultSkinBlueprintWeapons:                  "DefaultSkinBlueprintWeapons",
 	WeaponSkinBlueprintFiatProductItemBlueprints: "WeaponSkinBlueprintFiatProductItemBlueprints",
-	WeaponModelSkinCompatibilities: "WeaponModelSkinCompatibilities",
-	BlueprintWeaponSkins:           "BlueprintWeaponSkins",
+	WeaponModelSkinCompatibilities:               "WeaponModelSkinCompatibilities",
+	BlueprintWeaponSkins:                         "BlueprintWeaponSkins",
 }
 
 // blueprintWeaponSkinR is where relationships are stored.
 type blueprintWeaponSkinR struct {
-	BlueprintMechSkins             BlueprintMechSkinSlice            `boiler:"BlueprintMechSkins" boil:"BlueprintMechSkins" json:"BlueprintMechSkins" toml:"BlueprintMechSkins" yaml:"BlueprintMechSkins"`
-	DefaultSkinBlueprintWeapons    BlueprintWeaponSlice              `boiler:"DefaultSkinBlueprintWeapons" boil:"DefaultSkinBlueprintWeapons" json:"DefaultSkinBlueprintWeapons" toml:"DefaultSkinBlueprintWeapons" yaml:"DefaultSkinBlueprintWeapons"`
+	BlueprintMechSkins                           BlueprintMechSkinSlice            `boiler:"BlueprintMechSkins" boil:"BlueprintMechSkins" json:"BlueprintMechSkins" toml:"BlueprintMechSkins" yaml:"BlueprintMechSkins"`
+	DefaultSkinBlueprintWeapons                  BlueprintWeaponSlice              `boiler:"DefaultSkinBlueprintWeapons" boil:"DefaultSkinBlueprintWeapons" json:"DefaultSkinBlueprintWeapons" toml:"DefaultSkinBlueprintWeapons" yaml:"DefaultSkinBlueprintWeapons"`
 	WeaponSkinBlueprintFiatProductItemBlueprints FiatProductItemBlueprintSlice     `boiler:"WeaponSkinBlueprintFiatProductItemBlueprints" boil:"WeaponSkinBlueprintFiatProductItemBlueprints" json:"WeaponSkinBlueprintFiatProductItemBlueprints" toml:"WeaponSkinBlueprintFiatProductItemBlueprints" yaml:"WeaponSkinBlueprintFiatProductItemBlueprints"`
-	WeaponModelSkinCompatibilities WeaponModelSkinCompatibilitySlice `boiler:"WeaponModelSkinCompatibilities" boil:"WeaponModelSkinCompatibilities" json:"WeaponModelSkinCompatibilities" toml:"WeaponModelSkinCompatibilities" yaml:"WeaponModelSkinCompatibilities"`
-	BlueprintWeaponSkins           WeaponSkinSlice                   `boiler:"BlueprintWeaponSkins" boil:"BlueprintWeaponSkins" json:"BlueprintWeaponSkins" toml:"BlueprintWeaponSkins" yaml:"BlueprintWeaponSkins"`
+	WeaponModelSkinCompatibilities               WeaponModelSkinCompatibilitySlice `boiler:"WeaponModelSkinCompatibilities" boil:"WeaponModelSkinCompatibilities" json:"WeaponModelSkinCompatibilities" toml:"WeaponModelSkinCompatibilities" yaml:"WeaponModelSkinCompatibilities"`
+	BlueprintWeaponSkins                         WeaponSkinSlice                   `boiler:"BlueprintWeaponSkins" boil:"BlueprintWeaponSkins" json:"BlueprintWeaponSkins" toml:"BlueprintWeaponSkins" yaml:"BlueprintWeaponSkins"`
 }
 
 // NewStruct creates a new relationship struct
