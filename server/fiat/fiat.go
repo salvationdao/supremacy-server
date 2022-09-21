@@ -130,6 +130,7 @@ func (f *FiatController) processStorefrontSupPrices() {
 		}
 
 		if p.R.StorefrontMysteryCrate != nil {
+			// TODO: Setup subscription to publish new crate prices?
 			// TODO: Remove storing sup prices on storefront mystery crate table
 			storefrontCrate := p.R.StorefrontMysteryCrate
 			storefrontCrate.Price = convertedPrice

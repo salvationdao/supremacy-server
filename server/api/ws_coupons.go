@@ -154,6 +154,7 @@ func (cc *CouponController) CodeRedemptionHandler(ctx context.Context, user *boi
 	storeWeaponCrate, err := boiler.StorefrontMysteryCrates(
 		boiler.StorefrontMysteryCrateWhere.MysteryCrateType.EQ(boiler.CrateTypeWEAPON),
 		boiler.StorefrontMysteryCrateWhere.FactionID.EQ(factionID),
+		qm.Load(qm.Rels(boiler.StorefrontMysteryCrateRels.FiatProduct, boiler.FiatProductRels.FiatProductPricings)),
 	).One(gamedb.StdConn)
 	if err != nil {
 		return terror.Error(err, "Failed to get mech crate for claim, please try again or contact support.")

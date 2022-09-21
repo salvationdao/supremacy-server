@@ -75,7 +75,7 @@ func (sc *StoreController) MysteryCrateSubscribeHandler(ctx context.Context, use
 	crate, err := boiler.StorefrontMysteryCrates(
 		boiler.StorefrontMysteryCrateWhere.ID.EQ(crateID),
 		boiler.StorefrontMysteryCrateWhere.FactionID.EQ(factionID),
-		qm.Load(boiler.StorefrontMysteryCrateRels.FiatProduct),
+		qm.Load(qm.Rels(boiler.StorefrontMysteryCrateRels.FiatProduct, boiler.FiatProductRels.FiatProductPricings)),
 	).One(gamedb.StdConn)
 	if err != nil {
 		return terror.Error(err, "Failed to get mystery crate")
@@ -113,6 +113,7 @@ func (sc *StoreController) PurchaseMysteryCrateHandler(ctx context.Context, user
 		boiler.StorefrontMysteryCrateWhere.MysteryCrateType.EQ(req.Payload.Type),
 		boiler.StorefrontMysteryCrateWhere.FactionID.EQ(factionID),
 		qm.Load(boiler.StorefrontMysteryCrateRels.Faction),
+		qm.Load(qm.Rels(boiler.StorefrontMysteryCrateRels.FiatProduct, boiler.FiatProductRels.FiatProductPricings)),
 	).One(gamedb.StdConn)
 	if err != nil {
 		return terror.Error(err, "Failed to get crate for purchase, please try again or contact support.")
