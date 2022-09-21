@@ -136,7 +136,6 @@ func (vc *VoiceChannel) UpdateAllVoiceChannel(warMachineIDs []string, arenaID st
 	}
 
 	ps, err := boiler.Players(
-		qm.Select(boiler.PlayerColumns.ID, boiler.PlayerColumns.FactionID),
 		boiler.PlayerWhere.ID.IN(ws.TrackedIdents()),
 		boiler.PlayerWhere.FactionID.IsNotNull(),
 		boiler.PlayerWhere.IsAi.EQ(false),
@@ -153,6 +152,8 @@ func (vc *VoiceChannel) UpdateAllVoiceChannel(warMachineIDs []string, arenaID st
 				vc := &server.VoiceStreamResp{
 					ListenURL:          zc.ListenStreamURL,
 					IsFactionCommander: false,
+					Username:           p.Username,
+					UserGID:            p.Gid,
 				}
 
 				if zc.OwnerID == p.ID {
@@ -176,6 +177,8 @@ func (vc *VoiceChannel) UpdateAllVoiceChannel(warMachineIDs []string, arenaID st
 			if factionCommander != nil {
 				vc := &server.VoiceStreamResp{
 					IsFactionCommander: true,
+					Username:           p.Username,
+					UserGID:            p.Gid,
 				}
 
 				if factionCommander.OwnerID == p.ID {
@@ -190,6 +193,8 @@ func (vc *VoiceChannel) UpdateAllVoiceChannel(warMachineIDs []string, arenaID st
 			for _, rc := range rmChannel {
 				vc := &server.VoiceStreamResp{
 					ListenURL: rc.ListenStreamURL,
+					Username:  p.Username,
+					UserGID:   p.Gid,
 				}
 
 				if rc.OwnerID == p.ID {
@@ -213,6 +218,8 @@ func (vc *VoiceChannel) UpdateAllVoiceChannel(warMachineIDs []string, arenaID st
 			if factionCommander != nil {
 				vc := &server.VoiceStreamResp{
 					IsFactionCommander: true,
+					Username:           p.Username,
+					UserGID:            p.Gid,
 				}
 
 				if factionCommander.OwnerID == p.ID {
@@ -227,6 +234,8 @@ func (vc *VoiceChannel) UpdateAllVoiceChannel(warMachineIDs []string, arenaID st
 			for _, bc := range bostonChannel {
 				vc := &server.VoiceStreamResp{
 					ListenURL: bc.ListenStreamURL,
+					Username:  p.Username,
+					UserGID:   p.Gid,
 				}
 
 				if bc.OwnerID == p.ID {
@@ -250,6 +259,8 @@ func (vc *VoiceChannel) UpdateAllVoiceChannel(warMachineIDs []string, arenaID st
 			if factionCommander != nil {
 				vc := &server.VoiceStreamResp{
 					IsFactionCommander: true,
+					Username:           p.Username,
+					UserGID:            p.Gid,
 				}
 
 				if factionCommander.OwnerID == p.ID {
@@ -296,6 +307,8 @@ func UpdateFactionVoiceChannel(factionID, arenaID string) error {
 		for _, channel := range allActiveFactionChannels {
 			vc := &server.VoiceStreamResp{
 				IsFactionCommander: channel.SenderType == boiler.VoiceSenderTypeFACTION_COMMANDER,
+				Username:           p.Username,
+				UserGID:            p.Gid,
 			}
 
 			if p.ID == channel.OwnerID {
