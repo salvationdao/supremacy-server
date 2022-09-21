@@ -175,8 +175,19 @@ func (api *API) FillUpIncompleteLobbies(w http.ResponseWriter, r *http.Request) 
 				}
 			}
 
-			bl.ReadyAt = null.TimeFrom(time.Now())
+			now := time.Now()
+
+			bl.ReadyAt = null.TimeFrom(now)
 			_, err = bl.Update(gamedb.StdConn, boil.Whitelist(boiler.BattleLobbyColumns.ReadyAt))
+			if err != nil {
+				return err
+			}
+
+			_, err = boiler.BattleLobbiesMechs(
+				boiler.BattleLobbiesMechWhere.BattleLobbyID.EQ(bl.ID),
+			).UpdateAll(gamedb.StdConn, boiler.M{
+				boiler.BattleLobbiesMechColumns.LockedAt: null.TimeFrom(now),
+			})
 			if err != nil {
 				return err
 			}
@@ -210,10 +221,7 @@ func (api *API) FillUpIncompleteLobbies(w http.ResponseWriter, r *http.Request) 
 		return http.StatusInternalServerError, err
 	}
 
-	// restart idle arena
-	for _, arena := range api.ArenaManager.IdleArenas() {
-		go arena.BeginBattle()
-	}
+	api.ArenaManager.KickIdleArenas()
 
 	return http.StatusOK, nil
 }

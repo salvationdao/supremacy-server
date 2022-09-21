@@ -35,9 +35,11 @@ type BattleLobby struct {
 	GameMapID             null.String     `boiler:"game_map_id" boil:"game_map_id" json:"game_map_id,omitempty" toml:"game_map_id" yaml:"game_map_id,omitempty"`
 	GeneratedBySystem     bool            `boiler:"generated_by_system" boil:"generated_by_system" json:"generated_by_system" toml:"generated_by_system" yaml:"generated_by_system"`
 	Password              null.String     `boiler:"password" boil:"password" json:"password,omitempty" toml:"password" yaml:"password,omitempty"`
+	WillNotStartUntil     null.Time       `boiler:"will_not_start_until" boil:"will_not_start_until" json:"will_not_start_until,omitempty" toml:"will_not_start_until" yaml:"will_not_start_until,omitempty"`
 	ReadyAt               null.Time       `boiler:"ready_at" boil:"ready_at" json:"ready_at,omitempty" toml:"ready_at" yaml:"ready_at,omitempty"`
 	AssignedToBattleID    null.String     `boiler:"assigned_to_battle_id" boil:"assigned_to_battle_id" json:"assigned_to_battle_id,omitempty" toml:"assigned_to_battle_id" yaml:"assigned_to_battle_id,omitempty"`
 	EndedAt               null.Time       `boiler:"ended_at" boil:"ended_at" json:"ended_at,omitempty" toml:"ended_at" yaml:"ended_at,omitempty"`
+	AssignedToArenaID     null.String     `boiler:"assigned_to_arena_id" boil:"assigned_to_arena_id" json:"assigned_to_arena_id,omitempty" toml:"assigned_to_arena_id" yaml:"assigned_to_arena_id,omitempty"`
 	CreatedAt             time.Time       `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
 	UpdatedAt             time.Time       `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
 	DeletedAt             null.Time       `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
@@ -58,9 +60,11 @@ var BattleLobbyColumns = struct {
 	GameMapID             string
 	GeneratedBySystem     string
 	Password              string
+	WillNotStartUntil     string
 	ReadyAt               string
 	AssignedToBattleID    string
 	EndedAt               string
+	AssignedToArenaID     string
 	CreatedAt             string
 	UpdatedAt             string
 	DeletedAt             string
@@ -76,9 +80,11 @@ var BattleLobbyColumns = struct {
 	GameMapID:             "game_map_id",
 	GeneratedBySystem:     "generated_by_system",
 	Password:              "password",
+	WillNotStartUntil:     "will_not_start_until",
 	ReadyAt:               "ready_at",
 	AssignedToBattleID:    "assigned_to_battle_id",
 	EndedAt:               "ended_at",
+	AssignedToArenaID:     "assigned_to_arena_id",
 	CreatedAt:             "created_at",
 	UpdatedAt:             "updated_at",
 	DeletedAt:             "deleted_at",
@@ -96,9 +102,11 @@ var BattleLobbyTableColumns = struct {
 	GameMapID             string
 	GeneratedBySystem     string
 	Password              string
+	WillNotStartUntil     string
 	ReadyAt               string
 	AssignedToBattleID    string
 	EndedAt               string
+	AssignedToArenaID     string
 	CreatedAt             string
 	UpdatedAt             string
 	DeletedAt             string
@@ -114,9 +122,11 @@ var BattleLobbyTableColumns = struct {
 	GameMapID:             "battle_lobbies.game_map_id",
 	GeneratedBySystem:     "battle_lobbies.generated_by_system",
 	Password:              "battle_lobbies.password",
+	WillNotStartUntil:     "battle_lobbies.will_not_start_until",
 	ReadyAt:               "battle_lobbies.ready_at",
 	AssignedToBattleID:    "battle_lobbies.assigned_to_battle_id",
 	EndedAt:               "battle_lobbies.ended_at",
+	AssignedToArenaID:     "battle_lobbies.assigned_to_arena_id",
 	CreatedAt:             "battle_lobbies.created_at",
 	UpdatedAt:             "battle_lobbies.updated_at",
 	DeletedAt:             "battle_lobbies.deleted_at",
@@ -136,9 +146,11 @@ var BattleLobbyWhere = struct {
 	GameMapID             whereHelpernull_String
 	GeneratedBySystem     whereHelperbool
 	Password              whereHelpernull_String
+	WillNotStartUntil     whereHelpernull_Time
 	ReadyAt               whereHelpernull_Time
 	AssignedToBattleID    whereHelpernull_String
 	EndedAt               whereHelpernull_Time
+	AssignedToArenaID     whereHelpernull_String
 	CreatedAt             whereHelpertime_Time
 	UpdatedAt             whereHelpertime_Time
 	DeletedAt             whereHelpernull_Time
@@ -154,9 +166,11 @@ var BattleLobbyWhere = struct {
 	GameMapID:             whereHelpernull_String{field: "\"battle_lobbies\".\"game_map_id\""},
 	GeneratedBySystem:     whereHelperbool{field: "\"battle_lobbies\".\"generated_by_system\""},
 	Password:              whereHelpernull_String{field: "\"battle_lobbies\".\"password\""},
+	WillNotStartUntil:     whereHelpernull_Time{field: "\"battle_lobbies\".\"will_not_start_until\""},
 	ReadyAt:               whereHelpernull_Time{field: "\"battle_lobbies\".\"ready_at\""},
 	AssignedToBattleID:    whereHelpernull_String{field: "\"battle_lobbies\".\"assigned_to_battle_id\""},
 	EndedAt:               whereHelpernull_Time{field: "\"battle_lobbies\".\"ended_at\""},
+	AssignedToArenaID:     whereHelpernull_String{field: "\"battle_lobbies\".\"assigned_to_arena_id\""},
 	CreatedAt:             whereHelpertime_Time{field: "\"battle_lobbies\".\"created_at\""},
 	UpdatedAt:             whereHelpertime_Time{field: "\"battle_lobbies\".\"updated_at\""},
 	DeletedAt:             whereHelpernull_Time{field: "\"battle_lobbies\".\"deleted_at\""},
@@ -164,12 +178,14 @@ var BattleLobbyWhere = struct {
 
 // BattleLobbyRels is where relationship names are stored.
 var BattleLobbyRels = struct {
+	AssignedToArena    string
 	AssignedToBattle   string
 	GameMap            string
 	HostBy             string
 	BattleBounties     string
 	BattleLobbiesMechs string
 }{
+	AssignedToArena:    "AssignedToArena",
 	AssignedToBattle:   "AssignedToBattle",
 	GameMap:            "GameMap",
 	HostBy:             "HostBy",
@@ -179,6 +195,7 @@ var BattleLobbyRels = struct {
 
 // battleLobbyR is where relationships are stored.
 type battleLobbyR struct {
+	AssignedToArena    *BattleArena           `boiler:"AssignedToArena" boil:"AssignedToArena" json:"AssignedToArena" toml:"AssignedToArena" yaml:"AssignedToArena"`
 	AssignedToBattle   *Battle                `boiler:"AssignedToBattle" boil:"AssignedToBattle" json:"AssignedToBattle" toml:"AssignedToBattle" yaml:"AssignedToBattle"`
 	GameMap            *GameMap               `boiler:"GameMap" boil:"GameMap" json:"GameMap" toml:"GameMap" yaml:"GameMap"`
 	HostBy             *Player                `boiler:"HostBy" boil:"HostBy" json:"HostBy" toml:"HostBy" yaml:"HostBy"`
@@ -195,9 +212,9 @@ func (*battleLobbyR) NewStruct() *battleLobbyR {
 type battleLobbyL struct{}
 
 var (
-	battleLobbyAllColumns            = []string{"id", "host_by_id", "number", "entry_fee", "first_faction_cut", "second_faction_cut", "third_faction_cut", "each_faction_mech_amount", "game_map_id", "generated_by_system", "password", "ready_at", "assigned_to_battle_id", "ended_at", "created_at", "updated_at", "deleted_at"}
+	battleLobbyAllColumns            = []string{"id", "host_by_id", "number", "entry_fee", "first_faction_cut", "second_faction_cut", "third_faction_cut", "each_faction_mech_amount", "game_map_id", "generated_by_system", "password", "will_not_start_until", "ready_at", "assigned_to_battle_id", "ended_at", "assigned_to_arena_id", "created_at", "updated_at", "deleted_at"}
 	battleLobbyColumnsWithoutDefault = []string{"host_by_id"}
-	battleLobbyColumnsWithDefault    = []string{"id", "number", "entry_fee", "first_faction_cut", "second_faction_cut", "third_faction_cut", "each_faction_mech_amount", "game_map_id", "generated_by_system", "password", "ready_at", "assigned_to_battle_id", "ended_at", "created_at", "updated_at", "deleted_at"}
+	battleLobbyColumnsWithDefault    = []string{"id", "number", "entry_fee", "first_faction_cut", "second_faction_cut", "third_faction_cut", "each_faction_mech_amount", "game_map_id", "generated_by_system", "password", "will_not_start_until", "ready_at", "assigned_to_battle_id", "ended_at", "assigned_to_arena_id", "created_at", "updated_at", "deleted_at"}
 	battleLobbyPrimaryKeyColumns     = []string{"id"}
 	battleLobbyGeneratedColumns      = []string{}
 )
@@ -444,6 +461,21 @@ func (q battleLobbyQuery) Exists(exec boil.Executor) (bool, error) {
 	return count > 0, nil
 }
 
+// AssignedToArena pointed to by the foreign key.
+func (o *BattleLobby) AssignedToArena(mods ...qm.QueryMod) battleArenaQuery {
+	queryMods := []qm.QueryMod{
+		qm.Where("\"id\" = ?", o.AssignedToArenaID),
+		qmhelper.WhereIsNull("deleted_at"),
+	}
+
+	queryMods = append(queryMods, mods...)
+
+	query := BattleArenas(queryMods...)
+	queries.SetFrom(query.Query, "\"battle_arena\"")
+
+	return query
+}
+
 // AssignedToBattle pointed to by the foreign key.
 func (o *BattleLobby) AssignedToBattle(mods ...qm.QueryMod) battleQuery {
 	queryMods := []qm.QueryMod{
@@ -529,6 +561,115 @@ func (o *BattleLobby) BattleLobbiesMechs(mods ...qm.QueryMod) battleLobbiesMechQ
 	}
 
 	return query
+}
+
+// LoadAssignedToArena allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for an N-1 relationship.
+func (battleLobbyL) LoadAssignedToArena(e boil.Executor, singular bool, maybeBattleLobby interface{}, mods queries.Applicator) error {
+	var slice []*BattleLobby
+	var object *BattleLobby
+
+	if singular {
+		object = maybeBattleLobby.(*BattleLobby)
+	} else {
+		slice = *maybeBattleLobby.(*[]*BattleLobby)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &battleLobbyR{}
+		}
+		if !queries.IsNil(object.AssignedToArenaID) {
+			args = append(args, object.AssignedToArenaID)
+		}
+
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &battleLobbyR{}
+			}
+
+			for _, a := range args {
+				if queries.Equal(a, obj.AssignedToArenaID) {
+					continue Outer
+				}
+			}
+
+			if !queries.IsNil(obj.AssignedToArenaID) {
+				args = append(args, obj.AssignedToArenaID)
+			}
+
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`battle_arena`),
+		qm.WhereIn(`battle_arena.id in ?`, args...),
+		qmhelper.WhereIsNull(`battle_arena.deleted_at`),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load BattleArena")
+	}
+
+	var resultSlice []*BattleArena
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice BattleArena")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results of eager load for battle_arena")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for battle_arena")
+	}
+
+	if len(battleLobbyAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+
+	if len(resultSlice) == 0 {
+		return nil
+	}
+
+	if singular {
+		foreign := resultSlice[0]
+		object.R.AssignedToArena = foreign
+		if foreign.R == nil {
+			foreign.R = &battleArenaR{}
+		}
+		foreign.R.AssignedToArenaBattleLobbies = append(foreign.R.AssignedToArenaBattleLobbies, object)
+		return nil
+	}
+
+	for _, local := range slice {
+		for _, foreign := range resultSlice {
+			if queries.Equal(local.AssignedToArenaID, foreign.ID) {
+				local.R.AssignedToArena = foreign
+				if foreign.R == nil {
+					foreign.R = &battleArenaR{}
+				}
+				foreign.R.AssignedToArenaBattleLobbies = append(foreign.R.AssignedToArenaBattleLobbies, local)
+				break
+			}
+		}
+	}
+
+	return nil
 }
 
 // LoadAssignedToBattle allows an eager lookup of values, cached into the
@@ -1047,6 +1188,85 @@ func (battleLobbyL) LoadBattleLobbiesMechs(e boil.Executor, singular bool, maybe
 		}
 	}
 
+	return nil
+}
+
+// SetAssignedToArena of the battleLobby to the related item.
+// Sets o.R.AssignedToArena to related.
+// Adds o to related.R.AssignedToArenaBattleLobbies.
+func (o *BattleLobby) SetAssignedToArena(exec boil.Executor, insert bool, related *BattleArena) error {
+	var err error
+	if insert {
+		if err = related.Insert(exec, boil.Infer()); err != nil {
+			return errors.Wrap(err, "failed to insert into foreign table")
+		}
+	}
+
+	updateQuery := fmt.Sprintf(
+		"UPDATE \"battle_lobbies\" SET %s WHERE %s",
+		strmangle.SetParamNames("\"", "\"", 1, []string{"assigned_to_arena_id"}),
+		strmangle.WhereClause("\"", "\"", 2, battleLobbyPrimaryKeyColumns),
+	)
+	values := []interface{}{related.ID, o.ID}
+
+	if boil.DebugMode {
+		fmt.Fprintln(boil.DebugWriter, updateQuery)
+		fmt.Fprintln(boil.DebugWriter, values)
+	}
+	if _, err = exec.Exec(updateQuery, values...); err != nil {
+		return errors.Wrap(err, "failed to update local table")
+	}
+
+	queries.Assign(&o.AssignedToArenaID, related.ID)
+	if o.R == nil {
+		o.R = &battleLobbyR{
+			AssignedToArena: related,
+		}
+	} else {
+		o.R.AssignedToArena = related
+	}
+
+	if related.R == nil {
+		related.R = &battleArenaR{
+			AssignedToArenaBattleLobbies: BattleLobbySlice{o},
+		}
+	} else {
+		related.R.AssignedToArenaBattleLobbies = append(related.R.AssignedToArenaBattleLobbies, o)
+	}
+
+	return nil
+}
+
+// RemoveAssignedToArena relationship.
+// Sets o.R.AssignedToArena to nil.
+// Removes o from all passed in related items' relationships struct (Optional).
+func (o *BattleLobby) RemoveAssignedToArena(exec boil.Executor, related *BattleArena) error {
+	var err error
+
+	queries.SetScanner(&o.AssignedToArenaID, nil)
+	if _, err = o.Update(exec, boil.Whitelist("assigned_to_arena_id")); err != nil {
+		return errors.Wrap(err, "failed to update local table")
+	}
+
+	if o.R != nil {
+		o.R.AssignedToArena = nil
+	}
+	if related == nil || related.R == nil {
+		return nil
+	}
+
+	for i, ri := range related.R.AssignedToArenaBattleLobbies {
+		if queries.Equal(o.AssignedToArenaID, ri.AssignedToArenaID) {
+			continue
+		}
+
+		ln := len(related.R.AssignedToArenaBattleLobbies)
+		if ln > 1 && i < ln-1 {
+			related.R.AssignedToArenaBattleLobbies[i] = related.R.AssignedToArenaBattleLobbies[ln-1]
+		}
+		related.R.AssignedToArenaBattleLobbies = related.R.AssignedToArenaBattleLobbies[:ln-1]
+		break
+	}
 	return nil
 }
 

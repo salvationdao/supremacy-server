@@ -226,8 +226,15 @@ func (btl *Battle) storeGameMap(gm server.GameMap, battleZones []server.BattleZo
 	gamelog.L.Trace().Str("func", "storeGameMap").Msg("end")
 }
 
-func battleRecordReset(battle *boiler.Battle) {
+// cleanUpBattleRecord remove all the record of the battle
+func cleanUpBattleRecord(battleID string) {
 	now := time.Now()
+
+	battle, err := boiler.FindBattle(gamedb.StdConn, battleID)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("not able to load previous battle")
+	}
+
 	l := gamelog.L.With().Str("log_name", "battle arena").Interface("battle", battle).Str("battle.go", ":battle.go:battle.Battle()").Logger()
 
 	// refund abilities
@@ -269,12 +276,6 @@ func battleRecordReset(battle *boiler.Battle) {
 		}
 	}(battle.ID, battle.ArenaID)
 
-	battle.StartedAt = now
-	_, err := battle.Update(gamedb.StdConn, boil.Whitelist(boiler.BattleColumns.StartedAt))
-	if err != nil {
-		l.Error().Err(err).Msg("unable to update Battle in database")
-	}
-
 	_, err = boiler.BattleMechs(boiler.BattleMechWhere.BattleID.EQ(battle.ID)).DeleteAll(gamedb.StdConn)
 	if err != nil {
 		l.Error().Err(err).Msg("unable to delete delete stale battle mechs from database")
@@ -302,6 +303,8 @@ func battleRecordReset(battle *boiler.Battle) {
 	if err != nil {
 		gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("Failed to clean up mech ability trigger logs.")
 	}
+
+	gamelog.L.Info().Interface("battle", battle).Msg("clean up unfinished battle")
 }
 
 func (btl *Battle) storePlayerAbilityManager(im *PlayerAbilityManager) {
@@ -559,7 +562,7 @@ func (btl *Battle) handleBattleEnd(payload *BattleEndPayload) {
 			if prefs != nil && prefs.TelegramID.Valid && prefs.EnableTelegramNotifications {
 				// killed a war machine
 				msg := fmt.Sprintf("Your War machine %s is Victorious! 🎉", wm.Name)
-				err := btl.arena.telegram.Notify(prefs.TelegramID.Int64, msg)
+				err := btl.arena.Manager.telegram.Notify(prefs.TelegramID.Int64, msg)
 				if err != nil {
 					gamelog.L.Error().Str("log_name", "battle arena").Str("telegramID", fmt.Sprintf("%v", prefs.TelegramID)).Err(err).Msg("failed to send notification")
 				}
@@ -950,7 +953,7 @@ func (btl *Battle) RewardMechOwner(
 ) {
 	// trigger challenge fund update
 	defer func() {
-		btl.arena.ChallengeFundUpdateChan <- true
+		btl.arena.Manager.ChallengeFundUpdateChan <- true
 	}()
 
 	l := gamelog.L.With().Str("function", "RewardMechOwner").Logger()
@@ -964,7 +967,7 @@ func (btl *Battle) RewardMechOwner(
 	// reward bonus
 	if !owner.IsAi && bonusSups.GreaterThan(decimal.Zero) {
 		// transfer bonus reward
-		rewardBonusTXID, err := btl.arena.RPCClient.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
+		rewardBonusTXID, err := btl.arena.Manager.RPCClient.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
 			FromUserID:           uuid.FromStringOrNil(server.SupremacyChallengeFundUserID),
 			ToUserID:             uuid.Must(uuid.FromString(owner.ID)),
 			Amount:               bonusSups.StringFixed(0),
@@ -996,7 +999,7 @@ func (btl *Battle) RewardMechOwner(
 
 		// if player is AI, pay reward back to treasury fund, and return
 		if owner.IsAi {
-			payoutTXID, err := btl.arena.RPCClient.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
+			payoutTXID, err := btl.arena.Manager.RPCClient.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
 				FromUserID:           uuid.Must(uuid.FromString(server.SupremacyBattleUserID)),
 				ToUserID:             uuid.UUID(server.XsynTreasuryUserID),
 				Amount:               rewardedSups.StringFixed(0),
@@ -1016,7 +1019,7 @@ func (btl *Battle) RewardMechOwner(
 			updateCols = append(updateCols, boiler.BattleLobbiesMechColumns.PayoutTXID)
 		} else {
 			// otherwise, pay battle reward to the actual player
-			payoutTXID, err := btl.arena.RPCClient.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
+			payoutTXID, err := btl.arena.Manager.RPCClient.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
 				FromUserID:           uuid.Must(uuid.FromString(server.SupremacyBattleUserID)),
 				ToUserID:             uuid.Must(uuid.FromString(owner.ID)),
 				Amount:               rewardedSups.StringFixed(0),
@@ -1036,7 +1039,7 @@ func (btl *Battle) RewardMechOwner(
 			updateCols = append(updateCols, boiler.BattleLobbiesMechColumns.PayoutTXID)
 
 			// pay reward tax
-			taxTXID, err := btl.arena.RPCClient.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
+			taxTXID, err := btl.arena.Manager.RPCClient.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
 				FromUserID:           uuid.Must(uuid.FromString(owner.ID)),
 				ToUserID:             uuid.FromStringOrNil(server.SupremacyChallengeFundUserID), // NOTE: send fees to challenge fund for now. (was treasury)
 				Amount:               tax.StringFixed(0),
@@ -1056,7 +1059,7 @@ func (btl *Battle) RewardMechOwner(
 			updateCols = append(updateCols, boiler.BattleLobbiesMechColumns.TaxTXID)
 
 			// pay challenge fund
-			challengeFundTXID, err := btl.arena.RPCClient.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
+			challengeFundTXID, err := btl.arena.Manager.RPCClient.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
 				FromUserID:           uuid.Must(uuid.FromString(owner.ID)),
 				ToUserID:             uuid.Must(uuid.FromString(server.SupremacyChallengeFundUserID)),
 				Amount:               challengeFund.StringFixed(0),
@@ -1274,7 +1277,7 @@ func (btl *Battle) RewardBattleBounties() {
 				}
 
 				// pay sups to offer repair job
-				payoutTXID, err := btl.arena.RPCClient.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
+				payoutTXID, err := btl.arena.Manager.RPCClient.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
 					FromUserID:           uuid.FromStringOrNil(server.SupremacyBattleUserID),
 					ToUserID:             uuid.FromStringOrNil(mkr.playerID),
 					Amount:               bb.Amount.String(),
@@ -1289,7 +1292,7 @@ func (btl *Battle) RewardBattleBounties() {
 				}
 
 				tax := bb.Amount.Mul(taxRatio)
-				taxTXID, err := btl.arena.RPCClient.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
+				taxTXID, err := btl.arena.Manager.RPCClient.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
 					FromUserID:           uuid.FromStringOrNil(mkr.playerID),
 					ToUserID:             uuid.FromStringOrNil(server.SupremacyChallengeFundUserID),
 					Amount:               tax.String(),
@@ -1299,7 +1302,7 @@ func (btl *Battle) RewardBattleBounties() {
 					Description:          "tax for battle bounty reward",
 				})
 				if err != nil {
-					_, err = btl.arena.RPCClient.RefundSupsMessage(payoutTXID)
+					_, err = btl.arena.Manager.RPCClient.RefundSupsMessage(payoutTXID)
 					if err != nil {
 						gamelog.L.Error().Err(err).Str("transaction id", payoutTXID).Msg("Failed to refund payout transaction")
 					}
@@ -1314,11 +1317,11 @@ func (btl *Battle) RewardBattleBounties() {
 					boiler.BattleBountyColumns.TaxTXID,
 				))
 				if err != nil {
-					_, err = btl.arena.RPCClient.RefundSupsMessage(taxTXID)
+					_, err = btl.arena.Manager.RPCClient.RefundSupsMessage(taxTXID)
 					if err != nil {
 						gamelog.L.Error().Err(err).Str("transaction id", taxTXID).Msg("Failed to refund tax transaction")
 					}
-					_, err = btl.arena.RPCClient.RefundSupsMessage(payoutTXID)
+					_, err = btl.arena.Manager.RPCClient.RefundSupsMessage(payoutTXID)
 					if err != nil {
 						gamelog.L.Error().Err(err).Str("transaction id", payoutTXID).Msg("Failed to refund payout transaction")
 					}
@@ -1374,7 +1377,7 @@ func (btl *Battle) RewardBattleBounties() {
 			continue
 		}
 
-		refundTXID, err := btl.arena.RPCClient.RefundSupsMessage(bb.PaidTXID.String)
+		refundTXID, err := btl.arena.Manager.RPCClient.RefundSupsMessage(bb.PaidTXID.String)
 		if err != nil {
 			gamelog.L.Error().Err(err).Msg("Failed to refund battle bounties")
 			continue
@@ -1385,7 +1388,7 @@ func (btl *Battle) RewardBattleBounties() {
 			boiler.BattleBountyColumns.RefundTXID,
 		))
 		if err != nil {
-			_, err = btl.arena.RPCClient.RefundSupsMessage(refundTXID)
+			_, err = btl.arena.Manager.RPCClient.RefundSupsMessage(refundTXID)
 			if err != nil {
 				gamelog.L.Error().Err(err).Str("transaction id", refundTXID).Msg("Failed to refund tax transaction")
 			}
@@ -1458,6 +1461,14 @@ func (btl *Battle) end(payload *BattleEndPayload) {
 	btl.processWarMachineRepair()
 	btl.handleBattleEnd(payload)
 	gamelog.L.Info().Msgf("battle has been cleaned up, sending broadcast %s", btl.ID)
+
+	// pre-assign battle lobby
+	btl.arena.beginBattleMux.Lock()
+	btl.arena.assignBattleLobby()
+	btl.arena.beginBattleMux.Unlock()
+
+	// reactivate idle arenas
+	btl.arena.Manager.KickIdleArenas()
 }
 
 type GameSettingsResponse struct {
@@ -1876,7 +1887,7 @@ func (btl *Battle) Destroyed(dp *BattleWMDestroyedPayload) {
 		if prefs != nil && prefs.TelegramID.Valid && prefs.EnableTelegramNotifications {
 			// killed a war machine
 			msg := fmt.Sprintf("Your War machine %s has been destroyed ☠️", destroyedWarMachine.Name)
-			err := btl.arena.telegram.Notify(prefs.TelegramID.Int64, msg)
+			err := btl.arena.Manager.telegram.Notify(prefs.TelegramID.Int64, msg)
 			if err != nil {
 				gamelog.L.Error().Str("log_name", "battle arena").Str("playerID", prefs.PlayerID).Str("telegramID", fmt.Sprintf("%v", prefs.TelegramID)).Err(err).Msg("failed to send notification")
 			}
@@ -1910,7 +1921,7 @@ func (btl *Battle) Destroyed(dp *BattleWMDestroyedPayload) {
 						if prefs != nil && prefs.TelegramID.Valid && prefs.EnableTelegramNotifications {
 							// killed a war machine
 							msg := fmt.Sprintf("Your War machine destroyed %s \U0001F9BE ", destroyedWarMachine.Name)
-							err := btl.arena.telegram.Notify(prefs.TelegramID.Int64, msg)
+							err := btl.arena.Manager.telegram.Notify(prefs.TelegramID.Int64, msg)
 							if err != nil {
 								gamelog.L.Error().Str("log_name", "battle arena").Str("playerID", prefs.PlayerID).Str("telegramID", fmt.Sprintf("%v", prefs.TelegramID)).Err(err).Msg("failed to send notification")
 							}
@@ -1995,7 +2006,7 @@ func (btl *Battle) Destroyed(dp *BattleWMDestroyedPayload) {
 							}
 
 							// sent instance to system ban manager
-							go btl.arena.SystemBanManager.SendToTeamKillCourtroom(abl.PlayerID.String, dp.RelatedEventIDString)
+							go btl.arena.Manager.SystemBanManager.SendToTeamKillCourtroom(abl.PlayerID.String, dp.RelatedEventIDString)
 
 						}
 					}
@@ -2084,13 +2095,13 @@ func (btl *Battle) Destroyed(dp *BattleWMDestroyedPayload) {
 
 			// check player obtain mech kill quest
 			if killByWarMachine != nil {
-				btl.arena.QuestManager.MechKillQuestCheck(killByWarMachine.OwnedByID)
+				btl.arena.Manager.QuestManager.MechKillQuestCheck(killByWarMachine.OwnedByID)
 			}
 
 			// check player obtain ability kill quest, if it is not a team kill
 			if killedByUser != nil && destroyedWarMachine.FactionID != killedByUser.FactionID {
 				// check player quest reward
-				btl.arena.QuestManager.AbilityKillQuestCheck(killedByUser.ID.String())
+				btl.arena.Manager.QuestManager.AbilityKillQuestCheck(killedByUser.ID.String())
 			}
 		}
 
@@ -2282,14 +2293,6 @@ func (btl *Battle) Load(battleLobby *boiler.BattleLobby) error {
 		err = bmd.Insert(gamedb.StdConn, boil.Infer())
 		if err != nil {
 			gamelog.L.Error().Interface("battle mech", bmd).Str("db func", "Battle").Err(err).Msg("unable to insert battle Mech into database")
-			return err
-		}
-
-		// update assigned battle id
-		blm.AssignedToBattleID = null.StringFrom(btl.ID)
-		_, err = blm.Update(gamedb.StdConn, boil.Whitelist(boiler.BattleLobbiesMechColumns.AssignedToBattleID))
-		if err != nil {
-			gamelog.L.Error().Interface("battle lobby mech", blm).Str("db func", "Battle").Err(err).Msg("unable to update battle id of battle lobby mech")
 			return err
 		}
 
