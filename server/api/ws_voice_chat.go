@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/volatiletech/null/v8"
+	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 	"server"
 	"server/db"
 	"server/db/boiler"
@@ -77,6 +78,27 @@ func (api *API) JoinFactionCommander(ctx context.Context, user *boiler.Player, f
 	).One(gamedb.StdConn)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return terror.Error(err, "Failed to get faction commander voice stream")
+	}
+
+	// check if user has been kicked before
+	oldExist, err := boiler.VoiceStreams(
+		boiler.VoiceStreamWhere.OwnerID.EQ(user.ID),
+		boiler.VoiceStreamWhere.KickedAt.IsNotNull(),
+		qm.OrderBy(fmt.Sprintf("%s DESC", boiler.VoiceStreamColumns.KickedAt)),
+	).One(gamedb.StdConn)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return terror.Error(err, "failed to get faction commander with user id")
+	}
+
+	if oldExist != nil {
+		if oldExist.KickedAt.Valid {
+			banTimeHour := db.GetIntWithDefault(db.KeyVoiceBanTimeHours, 24)
+			oldExist.KickedAt.Time.Add(time.Hour * time.Duration(int64(banTimeHour)))
+
+			if oldExist.KickedAt.Time.Before(time.Now()) {
+				return terror.Error(fmt.Errorf("you've been voted to be banned for 24 hours"), "You've been voted to be banned for 24 hours")
+			}
+		}
 	}
 
 	signedURL, err := voice_chat.GetSignedPolicyURL(user.ID)

@@ -76,6 +76,7 @@ const KeyOvenmediaAPIBaseUrl KVKey = "ovenmedia_api_base_url"
 const KeyOvenmediaStreamURL KVKey = "ovenmedia_stream_base_url"
 const KeyCanRecordReplayStatus KVKey = "can_record_replay"
 const KeyVoiceExpiryTimeHours KVKey = "voice_expiry_time_hours"
+const KeyVoiceBanTimeHours KVKey = "voice_ban_time_hours"
 
 const KeyAutoRepairSlotCount KVKey = "auto_repair_slot_count"
 const KeyAutoRepairDurationSeconds KVKey = "auto_repair_duration_seconds"
