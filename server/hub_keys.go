@@ -65,6 +65,15 @@ const HubKeyChallengeFundSubscribe = "CHALLENGE:FUND"
 const HubKeyBattleArenaListSubscribe = "BATTLE:ARENA:LIST"
 const HubKeyBattleArenaClosedSubscribe = "BATTLE:ARENA:CLOSED"
 
+// store
+
+const HubKeyMysteryCrateSubscribe = "STORE:MYSTERY:CRATE:SUBSCRIBE"
+
+// fiat
+
+const HubKeyShoppingCartExpired = "FIAT:SHOPPING_CART:EXPIRED"
+const HubKeyShoppingCartUpdated = "FIAT:SHOPPING_CART:UPDATED"
+
 // battle abilities
 
 const HubKeyMiniMapAbilityDisplayList = "MINI:MAP:ABILITY:DISPLAY:LIST"

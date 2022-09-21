@@ -27,7 +27,7 @@ type ItemSale struct {
 	ID                   string              `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
 	FactionID            string              `boiler:"faction_id" boil:"faction_id" json:"faction_id" toml:"faction_id" yaml:"faction_id"`
 	CollectionItemID     string              `boiler:"collection_item_id" boil:"collection_item_id" json:"collection_item_id" toml:"collection_item_id" yaml:"collection_item_id"`
-	ListingFeeTXID       string              `boiler:"listing_fee_tx_id" boil:"listing_fee_tx_id" json:"listing_fee_tx_id" toml:"listing_fee_tx_id" yaml:"listing_fee_tx_id"`
+	ListingFeeTXID       null.String         `boiler:"listing_fee_tx_id" boil:"listing_fee_tx_id" json:"listing_fee_tx_id,omitempty" toml:"listing_fee_tx_id" yaml:"listing_fee_tx_id,omitempty"`
 	OwnerID              string              `boiler:"owner_id" boil:"owner_id" json:"owner_id" toml:"owner_id" yaml:"owner_id"`
 	Auction              bool                `boiler:"auction" boil:"auction" json:"auction" toml:"auction" yaml:"auction"`
 	AuctionCurrentPrice  decimal.NullDecimal `boiler:"auction_current_price" boil:"auction_current_price" json:"auction_current_price,omitempty" toml:"auction_current_price" yaml:"auction_current_price,omitempty"`
@@ -148,7 +148,7 @@ var ItemSaleWhere = struct {
 	ID                   whereHelperstring
 	FactionID            whereHelperstring
 	CollectionItemID     whereHelperstring
-	ListingFeeTXID       whereHelperstring
+	ListingFeeTXID       whereHelpernull_String
 	OwnerID              whereHelperstring
 	Auction              whereHelperbool
 	AuctionCurrentPrice  whereHelperdecimal_NullDecimal
@@ -170,7 +170,7 @@ var ItemSaleWhere = struct {
 	ID:                   whereHelperstring{field: "\"item_sales\".\"id\""},
 	FactionID:            whereHelperstring{field: "\"item_sales\".\"faction_id\""},
 	CollectionItemID:     whereHelperstring{field: "\"item_sales\".\"collection_item_id\""},
-	ListingFeeTXID:       whereHelperstring{field: "\"item_sales\".\"listing_fee_tx_id\""},
+	ListingFeeTXID:       whereHelpernull_String{field: "\"item_sales\".\"listing_fee_tx_id\""},
 	OwnerID:              whereHelperstring{field: "\"item_sales\".\"owner_id\""},
 	Auction:              whereHelperbool{field: "\"item_sales\".\"auction\""},
 	AuctionCurrentPrice:  whereHelperdecimal_NullDecimal{field: "\"item_sales\".\"auction_current_price\""},
@@ -227,8 +227,8 @@ type itemSaleL struct{}
 
 var (
 	itemSaleAllColumns            = []string{"id", "faction_id", "collection_item_id", "listing_fee_tx_id", "owner_id", "auction", "auction_current_price", "auction_reserved_price", "buyout", "buyout_price", "dutch_auction", "dutch_auction_drop_rate", "end_at", "sold_at", "sold_for", "sold_to", "sold_tx_id", "sold_fee_tx_id", "deleted_at", "updated_at", "created_at"}
-	itemSaleColumnsWithoutDefault = []string{"faction_id", "collection_item_id", "listing_fee_tx_id", "owner_id", "end_at"}
-	itemSaleColumnsWithDefault    = []string{"id", "auction", "auction_current_price", "auction_reserved_price", "buyout", "buyout_price", "dutch_auction", "dutch_auction_drop_rate", "sold_at", "sold_for", "sold_to", "sold_tx_id", "sold_fee_tx_id", "deleted_at", "updated_at", "created_at"}
+	itemSaleColumnsWithoutDefault = []string{"faction_id", "collection_item_id", "owner_id", "end_at"}
+	itemSaleColumnsWithDefault    = []string{"id", "listing_fee_tx_id", "auction", "auction_current_price", "auction_reserved_price", "buyout", "buyout_price", "dutch_auction", "dutch_auction_drop_rate", "sold_at", "sold_for", "sold_to", "sold_tx_id", "sold_fee_tx_id", "deleted_at", "updated_at", "created_at"}
 	itemSalePrimaryKeyColumns     = []string{"id"}
 	itemSaleGeneratedColumns      = []string{}
 )

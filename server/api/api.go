@@ -8,6 +8,7 @@ import (
 	"server"
 	"server/battle"
 	"server/db"
+	"server/fiat"
 	"server/gamelog"
 	"server/marketplace"
 	"server/profanities"
@@ -21,6 +22,7 @@ import (
 
 	"github.com/gofrs/uuid"
 	"github.com/shopspring/decimal"
+	"github.com/stripe/stripe-go/v72/client"
 
 	sentryhttp "github.com/getsentry/sentry-go/http"
 	"github.com/go-chi/chi/v5"
@@ -42,6 +44,8 @@ type API struct {
 	Routes                   chi.Router
 	ArenaManager             *battle.ArenaManager
 	HTMLSanitize             *bluemonday.Policy
+	StripeClient             *client.API
+	StripeWebhookSecret      string
 	SMS                      server.SMS
 	Passport                 *xsyn_rpcclient.XsynXrpcClient
 	Telegram                 server.Telegram
@@ -59,8 +63,11 @@ type API struct {
 
 	FactionActivePlayers map[string]*ActivePlayers
 
-	// Marketplace
+	// marketplace
 	MarketplaceController *marketplace.MarketplaceController
+
+	// fiat
+	FiatController *fiat.FiatController
 
 	// chatrooms
 	GlobalChat       *Chatroom
@@ -91,6 +98,8 @@ func NewAPI(
 	arenaManager *battle.ArenaManager,
 	pp *xsyn_rpcclient.XsynXrpcClient,
 	HTMLSanitize *bluemonday.Policy,
+	stripeClient *client.API,
+	stripeWebhookSecret string,
 	config *server.Config,
 	sms server.SMS,
 	telegram server.Telegram,
@@ -118,6 +127,8 @@ func NewAPI(
 		Passport:                 pp,
 		SMS:                      sms,
 		Telegram:                 telegram,
+		StripeClient:             stripeClient,
+		StripeWebhookSecret:      stripeWebhookSecret,
 		Zendesk:                  zendesk,
 		LanguageDetector:         languageDetector,
 		IsCookieSecure:           config.CookieSecure,
@@ -130,6 +141,9 @@ func NewAPI(
 
 		// marketplace
 		MarketplaceController: marketplace.NewMarketplaceController(pp),
+
+		// fiat
+		FiatController: fiat.NewFiatController(pp, stripeClient),
 
 		// chatroom
 		GlobalChat:       NewChatroom(""),
@@ -182,6 +196,7 @@ func NewAPI(
 	NewLeaderboardController(api)
 	_ = NewSystemMessagesController(api)
 	NewMechRepairController(api)
+	fc := NewFiatController(api)
 	_ = NewReplayController(api)
 	BattleQueueController(api)
 
@@ -198,6 +213,7 @@ func NewAPI(
 	)
 
 	api.Routes.Handle("/metrics", promhttp.Handler())
+	api.Routes.Post("/stripe-webhook", WithError(fc.StripeWebhook))
 	api.Routes.Route("/api", func(r chi.Router) {
 		r.Group(func(r chi.Router) {
 			sentryHandler := sentryhttp.New(sentryhttp.Options{})
@@ -288,6 +304,10 @@ func NewAPI(
 				s.WS("/user/{user_id}/quest_progression", server.HubKeyPlayerQuestProgressions, server.MustSecure(pc.PlayerQuestProgressions), MustMatchUserID)
 				s.WS("/user/{user_id}/queue_status", server.HubKeyPlayerQueueStatus, server.MustSecure(pc.PlayerQueueStatusHandler), MustMatchUserID)
 
+				// fiat related
+				s.WS("/user/{user_id}/shopping_cart_updated", server.HubKeyShoppingCartUpdated, server.MustSecure(fc.ShoppingCartUpdatedSubscriber), MustMatchUserID)
+				s.WS("/user/{user_id}/shopping_cart_expired", server.HubKeyShoppingCartExpired, nil, MustMatchUserID)
+
 				// user repair bay
 				s.WS("/user/{user_id}/repair_bay", server.HubKeyMechRepairSlots, server.MustSecure(api.PlayerMechRepairSlots), MustMatchUserID)
 
@@ -315,7 +335,7 @@ func NewAPI(
 				s.WS("/mech/{mech_id}/brief_info", HubKeyPlayerAssetMechDetail, server.MustSecureFaction(pasc.PlayerAssetMechBriefInfo))
 				s.WS("/weapon/{weapon_id}/details", HubKeyPlayerAssetWeaponDetail, server.MustSecureFaction(pasc.PlayerAssetWeaponDetail))
 
-				s.WS("/crate/{crate_id}", HubKeyMysteryCrateSubscribe, server.MustSecureFaction(ssc.MysteryCrateSubscribeHandler))
+				s.WS("/crate/{crate_id}", server.HubKeyMysteryCrateSubscribe, server.MustSecureFaction(ssc.MysteryCrateSubscribeHandler))
 				s.WS("/queue/{mech_id}", server.HubKeyPlayerAssetMechQueueSubscribe, server.MustSecureFaction(api.PlayerAssetMechQueueSubscribeHandler))
 
 				// subscription from battle

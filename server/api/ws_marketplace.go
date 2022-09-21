@@ -546,64 +546,64 @@ func (mp *MarketplaceController) SalesCreateHandler(ctx context.Context, user *b
 	//	return terror.Error(err, errMsg)
 	//}
 
-	balance := mp.API.Passport.UserBalanceGet(userID)
-	feePrice := db.GetDecimalWithDefault(db.KeyMarketplaceListingFee, decimal.NewFromInt(10))
-	if hasBuyout {
-		feePrice = feePrice.Add(db.GetDecimalWithDefault(db.KeyMarketplaceListingBuyoutFee, decimal.NewFromInt(5)))
-	}
-	if req.Payload.AuctionReservedPrice.Valid {
-		feePrice = feePrice.Add(db.GetDecimalWithDefault(db.KeyMarketplaceListingAuctionReserveFee, decimal.NewFromInt(5)))
-	}
-	if req.Payload.ListingDurationHours > 24 {
-		listingDurationFee := (req.Payload.ListingDurationHours/24 - 1) * 5
-		feePrice = feePrice.Add(decimal.NewFromInt(int64(listingDurationFee)))
-	}
+	// balance := mp.API.Passport.UserBalanceGet(userID)
+	// feePrice := db.GetDecimalWithDefault(db.KeyMarketplaceListingFee, decimal.NewFromInt(10))
+	// if hasBuyout {
+	// 	feePrice = feePrice.Add(db.GetDecimalWithDefault(db.KeyMarketplaceListingBuyoutFee, decimal.NewFromInt(5)))
+	// }
+	// if req.Payload.AuctionReservedPrice.Valid {
+	// 	feePrice = feePrice.Add(db.GetDecimalWithDefault(db.KeyMarketplaceListingAuctionReserveFee, decimal.NewFromInt(5)))
+	// }
+	// if req.Payload.ListingDurationHours > 24 {
+	// 	listingDurationFee := (req.Payload.ListingDurationHours/24 - 1) * 5
+	// 	feePrice = feePrice.Add(decimal.NewFromInt(int64(listingDurationFee)))
+	// }
 
-	feePrice = feePrice.Mul(decimal.New(1, 18))
+	// feePrice = feePrice.Mul(decimal.New(1, 18))
 
-	if balance.Sub(feePrice).LessThan(decimal.Zero) {
-		err = fmt.Errorf("insufficient funds")
-		gamelog.L.Error().
-			Str("user_id", user.ID).
-			Str("balance", balance.String()).
-			Str("item_type", req.Payload.ItemType).
-			Str("item_id", req.Payload.ItemID.String()).
-			Err(err).
-			Msg("Player does not have enough sups.")
-		return terror.Error(err, "You do not have enough sups to list item.")
-	}
+	// if balance.Sub(feePrice).LessThan(decimal.Zero) {
+	// 	err = fmt.Errorf("insufficient funds")
+	// 	gamelog.L.Error().
+	// 		Str("user_id", user.ID).
+	// 		Str("balance", balance.String()).
+	// 		Str("item_type", req.Payload.ItemType).
+	// 		Str("item_id", req.Payload.ItemID.String()).
+	// 		Err(err).
+	// 		Msg("Player does not have enough sups.")
+	// 	return terror.Error(err, "You do not have enough sups to list item.")
+	// }
 
-	// Pay Listing Fees
-	txid, err := mp.API.Passport.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
-		FromUserID:           userID,
-		ToUserID:             uuid.Must(uuid.FromString(server.SupremacyChallengeFundUserID)), // NOTE: send fees to challenge fund for now. (was faction account)
-		Amount:               feePrice.String(),
-		TransactionReference: server.TransactionReference(fmt.Sprintf("marketplace_fee|%s|%s|%d", req.Payload.ItemType, req.Payload.ItemID.String(), time.Now().UnixNano())),
-		Group:                string(server.TransactionGroupSupremacy),
-		SubGroup:             string(server.TransactionGroupMarketplace),
-		Description:          fmt.Sprintf("Marketplace List Item Fee: %s (%s)", req.Payload.ItemID.String(), req.Payload.ItemType),
-	})
-	if err != nil {
-		err = fmt.Errorf("failed to process marketplace fee transaction")
-		gamelog.L.Error().
-			Str("user_id", user.ID).
-			Str("balance", balance.String()).
-			Str("item_type", req.Payload.ItemType).
-			Str("item_id", req.Payload.ItemID.String()).
-			Err(err).
-			Msg("Failed to process transaction for Marketplace Fee.")
-		return terror.Error(err, "Failed tp process transaction for Marketplace Fee.")
-	}
+	// // Pay Listing Fees
+	// txid, err := mp.API.Passport.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
+	// 	FromUserID:           userID,
+	// 	ToUserID:             uuid.Must(uuid.FromString(server.SupremacyChallengeFundUserID)), // NOTE: send fees to challenge fund for now. (was faction account)
+	// 	Amount:               feePrice.String(),
+	// 	TransactionReference: server.TransactionReference(fmt.Sprintf("marketplace_fee|%s|%s|%d", req.Payload.ItemType, req.Payload.ItemID.String(), time.Now().UnixNano())),
+	// 	Group:                string(server.TransactionGroupSupremacy),
+	// 	SubGroup:             string(server.TransactionGroupMarketplace),
+	// 	Description:          fmt.Sprintf("Marketplace List Item Fee: %s (%s)", req.Payload.ItemID.String(), req.Payload.ItemType),
+	// })
+	// if err != nil {
+	// 	err = fmt.Errorf("failed to process marketplace fee transaction")
+	// 	gamelog.L.Error().
+	// 		Str("user_id", user.ID).
+	// 		Str("balance", balance.String()).
+	// 		Str("item_type", req.Payload.ItemType).
+	// 		Str("item_id", req.Payload.ItemID.String()).
+	// 		Err(err).
+	// 		Msg("Failed to process transaction for Marketplace Fee.")
+	// 	return terror.Error(err, "Failed tp process transaction for Marketplace Fee.")
+	// }
 
-	// trigger challenge fund update
-	defer func() {
-		mp.API.ArenaManager.ChallengeFundUpdateChan <- true
-	}()
+	// // trigger challenge fund update
+	// defer func() {
+	// 	mp.API.ArenaManager.ChallengeFundUpdateChan <- true
+	// }()
 
 	// Begin transaction
 	tx, err := gamedb.StdConn.Begin()
 	if err != nil {
-		mp.API.Passport.RefundSupsMessage(txid)
+		// mp.API.Passport.RefundSupsMessage(txid)
 		gamelog.L.Error().
 			Str("user_id", user.ID).
 			Str("item_type", req.Payload.ItemType).
@@ -625,7 +625,7 @@ func (mp *MarketplaceController) SalesCreateHandler(ctx context.Context, user *b
 		tx,
 		userID,
 		factionID,
-		txid,
+		null.String{},
 		endAt,
 		ciUUID,
 		hasBuyout,
@@ -637,7 +637,7 @@ func (mp *MarketplaceController) SalesCreateHandler(ctx context.Context, user *b
 		req.Payload.DutchAuctionDropRate,
 	)
 	if err != nil {
-		mp.API.Passport.RefundSupsMessage(txid)
+		// mp.API.Passport.RefundSupsMessage(txid)
 		gamelog.L.Error().
 			Str("user_id", user.ID).
 			Str("item_type", req.Payload.ItemType).
@@ -654,7 +654,7 @@ func (mp *MarketplaceController) SalesCreateHandler(ctx context.Context, user *b
 		boiler.CollectionItemColumns.LockedToMarketplace,
 	))
 	if err != nil {
-		mp.API.Passport.RefundSupsMessage(txid)
+		// mp.API.Passport.RefundSupsMessage(txid)
 		gamelog.L.Error().
 			Str("user_id", user.ID).
 			Str("item_type", req.Payload.ItemType).
@@ -667,7 +667,7 @@ func (mp *MarketplaceController) SalesCreateHandler(ctx context.Context, user *b
 	// Commit Transaction
 	err = tx.Commit()
 	if err != nil {
-		mp.API.Passport.RefundSupsMessage(txid)
+		// mp.API.Passport.RefundSupsMessage(txid)
 		gamelog.L.Error().
 			Str("user_id", user.ID).
 			Str("item_type", req.Payload.ItemType).
@@ -819,58 +819,57 @@ func (mp *MarketplaceController) SalesKeycardCreateHandler(ctx context.Context, 
 		return terror.Error(err, "Failed to update XSYN asset count")
 	}
 
-	// Process fee
-	balance := mp.API.Passport.UserBalanceGet(userID)
+	// // Process fee
+	// balance := mp.API.Passport.UserBalanceGet(userID)
 
-	feePrice := db.GetDecimalWithDefault(db.KeyMarketplaceListingFee, decimal.NewFromInt(10)).Mul(decimal.New(1, 18))
-	if req.Payload.ListingDurationHours > 24 {
-		listingDurationFee := (req.Payload.ListingDurationHours/24 - 1) * 5
-		feePrice = feePrice.Add(decimal.NewFromInt(int64(listingDurationFee)))
-	}
+	// feePrice := db.GetDecimalWithDefault(db.KeyMarketplaceListingFee, decimal.NewFromInt(10)).Mul(decimal.New(1, 18))
+	// if req.Payload.ListingDurationHours > 24 {
+	// 	listingDurationFee := (req.Payload.ListingDurationHours/24 - 1) * 5
+	// 	feePrice = feePrice.Add(decimal.NewFromInt(int64(listingDurationFee)))
+	// }
 
-	if balance.Sub(feePrice).LessThan(decimal.Zero) {
-		err = fmt.Errorf("insufficient funds")
-		gamelog.L.Error().
-			Str("user_id", user.ID).
-			Str("balance", balance.String()).
-			Str("item_id", req.Payload.ItemID.String()).
-			Err(err).
-			Msg("Player does not have enough sups.")
-		return terror.Error(err, "You do not have enough sups to list item.")
-	}
+	// if balance.Sub(feePrice).LessThan(decimal.Zero) {
+	// 	err = fmt.Errorf("insufficient funds")
+	// 	gamelog.L.Error().
+	// 		Str("user_id", user.ID).
+	// 		Str("balance", balance.String()).
+	// 		Str("item_id", req.Payload.ItemID.String()).
+	// 		Err(err).
+	// 		Msg("Player does not have enough sups.")
+	// 	return terror.Error(err, "You do not have enough sups to list item.")
+	// }
 
-	// Pay sup
-	txid, err := mp.API.Passport.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
-		FromUserID:           userID,
-		ToUserID:             uuid.Must(uuid.FromString(server.SupremacyChallengeFundUserID)), // NOTE: send fees to challenge fund for now. (was faction account)
-		Amount:               feePrice.String(),
-		TransactionReference: server.TransactionReference(fmt.Sprintf("marketplace_fee|keycard|%s|%d", req.Payload.ItemID.String(), time.Now().UnixNano())),
-		Group:                string(server.TransactionGroupSupremacy),
-		SubGroup:             string(server.TransactionGroupMarketplace),
-		Description:          fmt.Sprintf("Marketplace List Item Fee: %s (keycard)", req.Payload.ItemID.String()),
-	})
-	if err != nil {
-		gamelog.L.Error().
-			Str("user_id", user.ID).
-			Str("balance", balance.String()).
-			Str("item_id", req.Payload.ItemID.String()).
-			Err(err).
-			Msg("Failed to process transaction for Marketplace Fee.")
-		err = fmt.Errorf("failed to process marketplace fee transaction")
-		return terror.Error(err, "Failed tp process transaction for Marketplace Fee.")
-	}
+	// // Pay sup
+	// txid, err := mp.API.Passport.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
+	// 	FromUserID:           userID,
+	// 	ToUserID:             uuid.Must(uuid.FromString(server.SupremacyChallengeFundUserID)), // NOTE: send fees to challenge fund for now. (was faction account)
+	// 	Amount:               feePrice.String(),
+	// 	TransactionReference: server.TransactionReference(fmt.Sprintf("marketplace_fee|keycard|%s|%d", req.Payload.ItemID.String(), time.Now().UnixNano())),
+	// 	Group:                string(server.TransactionGroupSupremacy),
+	// 	SubGroup:             string(server.TransactionGroupMarketplace),
+	// 	Description:          fmt.Sprintf("Marketplace List Item Fee: %s (keycard)", req.Payload.ItemID.String()),
+	// })
+	// if err != nil {
+	// 	gamelog.L.Error().
+	// 		Str("user_id", user.ID).
+	// 		Str("balance", balance.String()).
+	// 		Str("item_id", req.Payload.ItemID.String()).
+	// 		Err(err).
+	// 		Msg("Failed to process transaction for Marketplace Fee.")
+	// 	err = fmt.Errorf("failed to process marketplace fee transaction")
+	// 	return terror.Error(err, "Failed tp process transaction for Marketplace Fee.")
+	// }
 
-	// trigger challenge fund update
-	defer func() {
-		mp.API.ArenaManager.ChallengeFundUpdateChan <- true
-	}()
+	// // trigger challenge fund update
+	// defer func() {
+	// 	mp.API.ArenaManager.ChallengeFundUpdateChan <- true
+	// }()
 
 	// Start transaction
 	tx, err := gamedb.StdConn.Begin()
 	if err != nil {
 		gamelog.L.Error().
 			Str("user_id", user.ID).
-			Str("balance", balance.String()).
 			Str("item_id", req.Payload.ItemID.String()).
 			Err(err).
 			Msg("Unable to start db transaction (add player keycard sale item listing)")
@@ -880,7 +879,7 @@ func (mp *MarketplaceController) SalesKeycardCreateHandler(ctx context.Context, 
 	// Deduct Keycard Count
 	err = db.DecrementPlayerKeycardCount(tx, req.Payload.ItemID)
 	if err != nil {
-		mp.API.Passport.RefundSupsMessage(txid)
+		// mp.API.Passport.RefundSupsMessage(txid)
 		gamelog.L.Error().
 			Str("user_id", user.ID).
 			Str("item_id", req.Payload.ItemID.String()).
@@ -895,13 +894,13 @@ func (mp *MarketplaceController) SalesKeycardCreateHandler(ctx context.Context, 
 		tx,
 		userID,
 		factionID,
-		txid,
+		null.String{},
 		endAt,
 		req.Payload.ItemID,
 		req.Payload.AskingPrice,
 	)
 	if err != nil {
-		mp.API.Passport.RefundSupsMessage(txid)
+		// mp.API.Passport.RefundSupsMessage(txid)
 		gamelog.L.Error().
 			Str("user_id", user.ID).
 			Str("item_id", req.Payload.ItemID.String()).
@@ -913,7 +912,7 @@ func (mp *MarketplaceController) SalesKeycardCreateHandler(ctx context.Context, 
 	// Commit Transaction
 	err = tx.Commit()
 	if err != nil {
-		mp.API.Passport.RefundSupsMessage(txid)
+		// mp.API.Passport.RefundSupsMessage(txid)
 		gamelog.L.Error().
 			Str("user_id", user.ID).
 			Str("item_id", req.Payload.ItemID.String()).
