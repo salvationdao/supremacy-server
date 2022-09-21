@@ -494,6 +494,11 @@ func (api *API) BattleLobbyJoin(ctx context.Context, user *boiler.Player, factio
 			return err
 		}
 
+		// kick
+		if lobbyReady {
+			api.ArenaManager.KickIdleArenas()
+		}
+
 		// broadcast mech queue position
 		go func(battleLobby *boiler.BattleLobby, currentDeployedMechIDs []string, allLobbyMechs []*boiler.BattleLobbiesMech) {
 			battle.BroadcastMechQueueStatus(user.ID, deployedMechIDs...)
@@ -660,12 +665,6 @@ func (api *API) BattleLobbyJoin(ctx context.Context, user *boiler.Player, factio
 	})
 	if err != nil {
 		return err
-	}
-
-	// restart idle arenas, if it is not prod env or the time has passed reopen date
-	for _, arena := range api.ArenaManager.IdleArenas() {
-		// trigger begin battle when arena is idle
-		go arena.BeginBattle()
 	}
 
 	reply(true)

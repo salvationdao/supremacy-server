@@ -226,8 +226,15 @@ func (btl *Battle) storeGameMap(gm server.GameMap, battleZones []server.BattleZo
 	gamelog.L.Trace().Str("func", "storeGameMap").Msg("end")
 }
 
-func battleRecordReset(battle *boiler.Battle) {
+// cleanUpBattleRecord remove all the record of the battle
+func cleanUpBattleRecord(battleID string) {
 	now := time.Now()
+
+	battle, err := boiler.FindBattle(gamedb.StdConn, battleID)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("not able to load previous battle")
+	}
+
 	l := gamelog.L.With().Str("log_name", "battle arena").Interface("battle", battle).Str("battle.go", ":battle.go:battle.Battle()").Logger()
 
 	// refund abilities
@@ -269,12 +276,6 @@ func battleRecordReset(battle *boiler.Battle) {
 		}
 	}(battle.ID, battle.ArenaID)
 
-	battle.StartedAt = now
-	_, err := battle.Update(gamedb.StdConn, boil.Whitelist(boiler.BattleColumns.StartedAt))
-	if err != nil {
-		l.Error().Err(err).Msg("unable to update Battle in database")
-	}
-
 	_, err = boiler.BattleMechs(boiler.BattleMechWhere.BattleID.EQ(battle.ID)).DeleteAll(gamedb.StdConn)
 	if err != nil {
 		l.Error().Err(err).Msg("unable to delete delete stale battle mechs from database")
@@ -302,6 +303,8 @@ func battleRecordReset(battle *boiler.Battle) {
 	if err != nil {
 		gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("Failed to clean up mech ability trigger logs.")
 	}
+
+	gamelog.L.Info().Interface("battle", battle).Msg("clean up unfinished battle")
 }
 
 func (btl *Battle) storePlayerAbilityManager(im *PlayerAbilityManager) {
@@ -1458,6 +1461,14 @@ func (btl *Battle) end(payload *BattleEndPayload) {
 	btl.processWarMachineRepair()
 	btl.handleBattleEnd(payload)
 	gamelog.L.Info().Msgf("battle has been cleaned up, sending broadcast %s", btl.ID)
+
+	// pre-assign battle lobby
+	btl.arena.beginBattleMux.Lock()
+	btl.arena.assignBattleLobby()
+	btl.arena.beginBattleMux.Unlock()
+
+	// reactivate idle arenas
+	btl.arena.Manager.KickIdleArenas()
 }
 
 type GameSettingsResponse struct {
@@ -2282,14 +2293,6 @@ func (btl *Battle) Load(battleLobby *boiler.BattleLobby) error {
 		err = bmd.Insert(gamedb.StdConn, boil.Infer())
 		if err != nil {
 			gamelog.L.Error().Interface("battle mech", bmd).Str("db func", "Battle").Err(err).Msg("unable to insert battle Mech into database")
-			return err
-		}
-
-		// update assigned battle id
-		blm.AssignedToBattleID = null.StringFrom(btl.ID)
-		_, err = blm.Update(gamedb.StdConn, boil.Whitelist(boiler.BattleLobbiesMechColumns.AssignedToBattleID))
-		if err != nil {
-			gamelog.L.Error().Interface("battle lobby mech", blm).Str("db func", "Battle").Err(err).Msg("unable to update battle id of battle lobby mech")
 			return err
 		}
 
