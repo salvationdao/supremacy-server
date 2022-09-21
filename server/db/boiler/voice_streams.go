@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/friendsofgo/errors"
+	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
@@ -31,6 +32,9 @@ type VoiceStream struct {
 	IsActive        bool      `boiler:"is_active" boil:"is_active" json:"is_active" toml:"is_active" yaml:"is_active"`
 	SenderType      string    `boiler:"sender_type" boil:"sender_type" json:"sender_type" toml:"sender_type" yaml:"sender_type"`
 	SessionExpireAt time.Time `boiler:"session_expire_at" boil:"session_expire_at" json:"session_expire_at" toml:"session_expire_at" yaml:"session_expire_at"`
+	CurrentKickVote int       `boiler:"current_kick_vote" boil:"current_kick_vote" json:"current_kick_vote" toml:"current_kick_vote" yaml:"current_kick_vote"`
+	HasVoted        bool      `boiler:"has_voted" boil:"has_voted" json:"has_voted" toml:"has_voted" yaml:"has_voted"`
+	KickedAt        null.Time `boiler:"kicked_at" boil:"kicked_at" json:"kicked_at,omitempty" toml:"kicked_at" yaml:"kicked_at,omitempty"`
 	CreatedAt       time.Time `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
 
 	R *voiceStreamR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -47,6 +51,9 @@ var VoiceStreamColumns = struct {
 	IsActive        string
 	SenderType      string
 	SessionExpireAt string
+	CurrentKickVote string
+	HasVoted        string
+	KickedAt        string
 	CreatedAt       string
 }{
 	ID:              "id",
@@ -58,6 +65,9 @@ var VoiceStreamColumns = struct {
 	IsActive:        "is_active",
 	SenderType:      "sender_type",
 	SessionExpireAt: "session_expire_at",
+	CurrentKickVote: "current_kick_vote",
+	HasVoted:        "has_voted",
+	KickedAt:        "kicked_at",
 	CreatedAt:       "created_at",
 }
 
@@ -71,6 +81,9 @@ var VoiceStreamTableColumns = struct {
 	IsActive        string
 	SenderType      string
 	SessionExpireAt string
+	CurrentKickVote string
+	HasVoted        string
+	KickedAt        string
 	CreatedAt       string
 }{
 	ID:              "voice_streams.id",
@@ -82,6 +95,9 @@ var VoiceStreamTableColumns = struct {
 	IsActive:        "voice_streams.is_active",
 	SenderType:      "voice_streams.sender_type",
 	SessionExpireAt: "voice_streams.session_expire_at",
+	CurrentKickVote: "voice_streams.current_kick_vote",
+	HasVoted:        "voice_streams.has_voted",
+	KickedAt:        "voice_streams.kicked_at",
 	CreatedAt:       "voice_streams.created_at",
 }
 
@@ -97,6 +113,9 @@ var VoiceStreamWhere = struct {
 	IsActive        whereHelperbool
 	SenderType      whereHelperstring
 	SessionExpireAt whereHelpertime_Time
+	CurrentKickVote whereHelperint
+	HasVoted        whereHelperbool
+	KickedAt        whereHelpernull_Time
 	CreatedAt       whereHelpertime_Time
 }{
 	ID:              whereHelperstring{field: "\"voice_streams\".\"id\""},
@@ -108,6 +127,9 @@ var VoiceStreamWhere = struct {
 	IsActive:        whereHelperbool{field: "\"voice_streams\".\"is_active\""},
 	SenderType:      whereHelperstring{field: "\"voice_streams\".\"sender_type\""},
 	SessionExpireAt: whereHelpertime_Time{field: "\"voice_streams\".\"session_expire_at\""},
+	CurrentKickVote: whereHelperint{field: "\"voice_streams\".\"current_kick_vote\""},
+	HasVoted:        whereHelperbool{field: "\"voice_streams\".\"has_voted\""},
+	KickedAt:        whereHelpernull_Time{field: "\"voice_streams\".\"kicked_at\""},
 	CreatedAt:       whereHelpertime_Time{field: "\"voice_streams\".\"created_at\""},
 }
 
@@ -138,9 +160,9 @@ func (*voiceStreamR) NewStruct() *voiceStreamR {
 type voiceStreamL struct{}
 
 var (
-	voiceStreamAllColumns            = []string{"id", "arena_id", "owner_id", "faction_id", "listen_stream_url", "send_stream_url", "is_active", "sender_type", "session_expire_at", "created_at"}
+	voiceStreamAllColumns            = []string{"id", "arena_id", "owner_id", "faction_id", "listen_stream_url", "send_stream_url", "is_active", "sender_type", "session_expire_at", "current_kick_vote", "has_voted", "kicked_at", "created_at"}
 	voiceStreamColumnsWithoutDefault = []string{"arena_id", "owner_id", "faction_id", "listen_stream_url", "send_stream_url", "sender_type", "session_expire_at"}
-	voiceStreamColumnsWithDefault    = []string{"id", "is_active", "created_at"}
+	voiceStreamColumnsWithDefault    = []string{"id", "is_active", "current_kick_vote", "has_voted", "kicked_at", "created_at"}
 	voiceStreamPrimaryKeyColumns     = []string{"id"}
 	voiceStreamGeneratedColumns      = []string{}
 )

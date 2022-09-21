@@ -13,5 +13,8 @@ CREATE TABLE voice_streams
     is_active BOOL NOT NULL default false,
     sender_type VOICE_SENDER_TYPE NOT NULL,
     session_expire_at TIMESTAMPTZ NOT NULL,
+    current_kick_vote INT NOT NULL DEFAULT 0,
+    has_voted BOOL NOT NULL default false,
+    kicked_at TIMESTAMPTZ,
     created_at timestamptz NOT NULL default now()
 )
