@@ -178,6 +178,10 @@ serve:
 serve-arelo:
 	cd $(SERVER) && ${BIN}/arelo -p '**/*.go' -i '**/.*' -i '**/*_test.go' -i 'tools/*' -- go run cmd/gameserver/main.go serve
 
+.PHONY: serve-stripe-webhook
+serve-stripe-webhook:
+	stripe listen --forward-to localhost:8084/stripe-webhook
+
 .PHONY: lb
 lb:
 	./bin/caddy run

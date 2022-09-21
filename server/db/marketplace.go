@@ -755,7 +755,9 @@ func MarketplaceItemSaleList(
 	}
 
 	records := []*server.MarketplaceSaleItem{}
+	boil.DebugMode = true
 	err = boiler.ItemSales(queryMods...).Bind(nil, gamedb.StdConn, &records)
+	boil.DebugMode = false
 	if err != nil {
 		return 0, nil, terror.Error(err)
 	}
@@ -1114,7 +1116,7 @@ func MarketplaceEventList(
 		return 0, nil, terror.Error(err)
 	}
 
-	// Populate reasons
+	// Populate results
 	collectionToMechID := map[string]string{}
 	collectionToMysteryCrateID := map[string]string{}
 	collectionToWeaponID := map[string]string{}

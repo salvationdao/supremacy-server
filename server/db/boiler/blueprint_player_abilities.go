@@ -170,20 +170,23 @@ var BlueprintPlayerAbilityWhere = struct {
 
 // BlueprintPlayerAbilityRels is where relationship names are stored.
 var BlueprintPlayerAbilityRels = struct {
-	BlueprintConsumedAbilities   string
-	BlueprintPlayerAbilities     string
-	BlueprintSalePlayerAbilities string
+	BlueprintConsumedAbilities                      string
+	PlayerAbilityBlueprintFiatProductItemBlueprints string
+	BlueprintPlayerAbilities                        string
+	BlueprintSalePlayerAbilities                    string
 }{
-	BlueprintConsumedAbilities:   "BlueprintConsumedAbilities",
-	BlueprintPlayerAbilities:     "BlueprintPlayerAbilities",
-	BlueprintSalePlayerAbilities: "BlueprintSalePlayerAbilities",
+	BlueprintConsumedAbilities:                      "BlueprintConsumedAbilities",
+	PlayerAbilityBlueprintFiatProductItemBlueprints: "PlayerAbilityBlueprintFiatProductItemBlueprints",
+	BlueprintPlayerAbilities:                        "BlueprintPlayerAbilities",
+	BlueprintSalePlayerAbilities:                    "BlueprintSalePlayerAbilities",
 }
 
 // blueprintPlayerAbilityR is where relationships are stored.
 type blueprintPlayerAbilityR struct {
-	BlueprintConsumedAbilities   ConsumedAbilitySlice   `boiler:"BlueprintConsumedAbilities" boil:"BlueprintConsumedAbilities" json:"BlueprintConsumedAbilities" toml:"BlueprintConsumedAbilities" yaml:"BlueprintConsumedAbilities"`
-	BlueprintPlayerAbilities     PlayerAbilitySlice     `boiler:"BlueprintPlayerAbilities" boil:"BlueprintPlayerAbilities" json:"BlueprintPlayerAbilities" toml:"BlueprintPlayerAbilities" yaml:"BlueprintPlayerAbilities"`
-	BlueprintSalePlayerAbilities SalePlayerAbilitySlice `boiler:"BlueprintSalePlayerAbilities" boil:"BlueprintSalePlayerAbilities" json:"BlueprintSalePlayerAbilities" toml:"BlueprintSalePlayerAbilities" yaml:"BlueprintSalePlayerAbilities"`
+	BlueprintConsumedAbilities                      ConsumedAbilitySlice          `boiler:"BlueprintConsumedAbilities" boil:"BlueprintConsumedAbilities" json:"BlueprintConsumedAbilities" toml:"BlueprintConsumedAbilities" yaml:"BlueprintConsumedAbilities"`
+	PlayerAbilityBlueprintFiatProductItemBlueprints FiatProductItemBlueprintSlice `boiler:"PlayerAbilityBlueprintFiatProductItemBlueprints" boil:"PlayerAbilityBlueprintFiatProductItemBlueprints" json:"PlayerAbilityBlueprintFiatProductItemBlueprints" toml:"PlayerAbilityBlueprintFiatProductItemBlueprints" yaml:"PlayerAbilityBlueprintFiatProductItemBlueprints"`
+	BlueprintPlayerAbilities                        PlayerAbilitySlice            `boiler:"BlueprintPlayerAbilities" boil:"BlueprintPlayerAbilities" json:"BlueprintPlayerAbilities" toml:"BlueprintPlayerAbilities" yaml:"BlueprintPlayerAbilities"`
+	BlueprintSalePlayerAbilities                    SalePlayerAbilitySlice        `boiler:"BlueprintSalePlayerAbilities" boil:"BlueprintSalePlayerAbilities" json:"BlueprintSalePlayerAbilities" toml:"BlueprintSalePlayerAbilities" yaml:"BlueprintSalePlayerAbilities"`
 }
 
 // NewStruct creates a new relationship struct
@@ -465,6 +468,27 @@ func (o *BlueprintPlayerAbility) BlueprintConsumedAbilities(mods ...qm.QueryMod)
 	return query
 }
 
+// PlayerAbilityBlueprintFiatProductItemBlueprints retrieves all the fiat_product_item_blueprint's FiatProductItemBlueprints with an executor via player_ability_blueprint_id column.
+func (o *BlueprintPlayerAbility) PlayerAbilityBlueprintFiatProductItemBlueprints(mods ...qm.QueryMod) fiatProductItemBlueprintQuery {
+	var queryMods []qm.QueryMod
+	if len(mods) != 0 {
+		queryMods = append(queryMods, mods...)
+	}
+
+	queryMods = append(queryMods,
+		qm.Where("\"fiat_product_item_blueprints\".\"player_ability_blueprint_id\"=?", o.ID),
+	)
+
+	query := FiatProductItemBlueprints(queryMods...)
+	queries.SetFrom(query.Query, "\"fiat_product_item_blueprints\"")
+
+	if len(queries.GetSelect(query.Query)) == 0 {
+		queries.SetSelect(query.Query, []string{"\"fiat_product_item_blueprints\".*"})
+	}
+
+	return query
+}
+
 // BlueprintPlayerAbilities retrieves all the player_ability's PlayerAbilities with an executor via blueprint_id column.
 func (o *BlueprintPlayerAbility) BlueprintPlayerAbilities(mods ...qm.QueryMod) playerAbilityQuery {
 	var queryMods []qm.QueryMod
@@ -598,6 +622,104 @@ func (blueprintPlayerAbilityL) LoadBlueprintConsumedAbilities(e boil.Executor, s
 					foreign.R = &consumedAbilityR{}
 				}
 				foreign.R.Blueprint = local
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
+// LoadPlayerAbilityBlueprintFiatProductItemBlueprints allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for a 1-M or N-M relationship.
+func (blueprintPlayerAbilityL) LoadPlayerAbilityBlueprintFiatProductItemBlueprints(e boil.Executor, singular bool, maybeBlueprintPlayerAbility interface{}, mods queries.Applicator) error {
+	var slice []*BlueprintPlayerAbility
+	var object *BlueprintPlayerAbility
+
+	if singular {
+		object = maybeBlueprintPlayerAbility.(*BlueprintPlayerAbility)
+	} else {
+		slice = *maybeBlueprintPlayerAbility.(*[]*BlueprintPlayerAbility)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &blueprintPlayerAbilityR{}
+		}
+		args = append(args, object.ID)
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &blueprintPlayerAbilityR{}
+			}
+
+			for _, a := range args {
+				if queries.Equal(a, obj.ID) {
+					continue Outer
+				}
+			}
+
+			args = append(args, obj.ID)
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`fiat_product_item_blueprints`),
+		qm.WhereIn(`fiat_product_item_blueprints.player_ability_blueprint_id in ?`, args...),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load fiat_product_item_blueprints")
+	}
+
+	var resultSlice []*FiatProductItemBlueprint
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice fiat_product_item_blueprints")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results in eager load on fiat_product_item_blueprints")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for fiat_product_item_blueprints")
+	}
+
+	if len(fiatProductItemBlueprintAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+	if singular {
+		object.R.PlayerAbilityBlueprintFiatProductItemBlueprints = resultSlice
+		for _, foreign := range resultSlice {
+			if foreign.R == nil {
+				foreign.R = &fiatProductItemBlueprintR{}
+			}
+			foreign.R.PlayerAbilityBlueprint = object
+		}
+		return nil
+	}
+
+	for _, foreign := range resultSlice {
+		for _, local := range slice {
+			if queries.Equal(local.ID, foreign.PlayerAbilityBlueprintID) {
+				local.R.PlayerAbilityBlueprintFiatProductItemBlueprints = append(local.R.PlayerAbilityBlueprintFiatProductItemBlueprints, foreign)
+				if foreign.R == nil {
+					foreign.R = &fiatProductItemBlueprintR{}
+				}
+				foreign.R.PlayerAbilityBlueprint = local
 				break
 			}
 		}
@@ -852,6 +974,131 @@ func (o *BlueprintPlayerAbility) AddBlueprintConsumedAbilities(exec boil.Executo
 			rel.R.Blueprint = o
 		}
 	}
+	return nil
+}
+
+// AddPlayerAbilityBlueprintFiatProductItemBlueprints adds the given related objects to the existing relationships
+// of the blueprint_player_ability, optionally inserting them as new records.
+// Appends related to o.R.PlayerAbilityBlueprintFiatProductItemBlueprints.
+// Sets related.R.PlayerAbilityBlueprint appropriately.
+func (o *BlueprintPlayerAbility) AddPlayerAbilityBlueprintFiatProductItemBlueprints(exec boil.Executor, insert bool, related ...*FiatProductItemBlueprint) error {
+	var err error
+	for _, rel := range related {
+		if insert {
+			queries.Assign(&rel.PlayerAbilityBlueprintID, o.ID)
+			if err = rel.Insert(exec, boil.Infer()); err != nil {
+				return errors.Wrap(err, "failed to insert into foreign table")
+			}
+		} else {
+			updateQuery := fmt.Sprintf(
+				"UPDATE \"fiat_product_item_blueprints\" SET %s WHERE %s",
+				strmangle.SetParamNames("\"", "\"", 1, []string{"player_ability_blueprint_id"}),
+				strmangle.WhereClause("\"", "\"", 2, fiatProductItemBlueprintPrimaryKeyColumns),
+			)
+			values := []interface{}{o.ID, rel.ID}
+
+			if boil.DebugMode {
+				fmt.Fprintln(boil.DebugWriter, updateQuery)
+				fmt.Fprintln(boil.DebugWriter, values)
+			}
+			if _, err = exec.Exec(updateQuery, values...); err != nil {
+				return errors.Wrap(err, "failed to update foreign table")
+			}
+
+			queries.Assign(&rel.PlayerAbilityBlueprintID, o.ID)
+		}
+	}
+
+	if o.R == nil {
+		o.R = &blueprintPlayerAbilityR{
+			PlayerAbilityBlueprintFiatProductItemBlueprints: related,
+		}
+	} else {
+		o.R.PlayerAbilityBlueprintFiatProductItemBlueprints = append(o.R.PlayerAbilityBlueprintFiatProductItemBlueprints, related...)
+	}
+
+	for _, rel := range related {
+		if rel.R == nil {
+			rel.R = &fiatProductItemBlueprintR{
+				PlayerAbilityBlueprint: o,
+			}
+		} else {
+			rel.R.PlayerAbilityBlueprint = o
+		}
+	}
+	return nil
+}
+
+// SetPlayerAbilityBlueprintFiatProductItemBlueprints removes all previously related items of the
+// blueprint_player_ability replacing them completely with the passed
+// in related items, optionally inserting them as new records.
+// Sets o.R.PlayerAbilityBlueprint's PlayerAbilityBlueprintFiatProductItemBlueprints accordingly.
+// Replaces o.R.PlayerAbilityBlueprintFiatProductItemBlueprints with related.
+// Sets related.R.PlayerAbilityBlueprint's PlayerAbilityBlueprintFiatProductItemBlueprints accordingly.
+func (o *BlueprintPlayerAbility) SetPlayerAbilityBlueprintFiatProductItemBlueprints(exec boil.Executor, insert bool, related ...*FiatProductItemBlueprint) error {
+	query := "update \"fiat_product_item_blueprints\" set \"player_ability_blueprint_id\" = null where \"player_ability_blueprint_id\" = $1"
+	values := []interface{}{o.ID}
+	if boil.DebugMode {
+		fmt.Fprintln(boil.DebugWriter, query)
+		fmt.Fprintln(boil.DebugWriter, values)
+	}
+	_, err := exec.Exec(query, values...)
+	if err != nil {
+		return errors.Wrap(err, "failed to remove relationships before set")
+	}
+
+	if o.R != nil {
+		for _, rel := range o.R.PlayerAbilityBlueprintFiatProductItemBlueprints {
+			queries.SetScanner(&rel.PlayerAbilityBlueprintID, nil)
+			if rel.R == nil {
+				continue
+			}
+
+			rel.R.PlayerAbilityBlueprint = nil
+		}
+
+		o.R.PlayerAbilityBlueprintFiatProductItemBlueprints = nil
+	}
+	return o.AddPlayerAbilityBlueprintFiatProductItemBlueprints(exec, insert, related...)
+}
+
+// RemovePlayerAbilityBlueprintFiatProductItemBlueprints relationships from objects passed in.
+// Removes related items from R.PlayerAbilityBlueprintFiatProductItemBlueprints (uses pointer comparison, removal does not keep order)
+// Sets related.R.PlayerAbilityBlueprint.
+func (o *BlueprintPlayerAbility) RemovePlayerAbilityBlueprintFiatProductItemBlueprints(exec boil.Executor, related ...*FiatProductItemBlueprint) error {
+	if len(related) == 0 {
+		return nil
+	}
+
+	var err error
+	for _, rel := range related {
+		queries.SetScanner(&rel.PlayerAbilityBlueprintID, nil)
+		if rel.R != nil {
+			rel.R.PlayerAbilityBlueprint = nil
+		}
+		if _, err = rel.Update(exec, boil.Whitelist("player_ability_blueprint_id")); err != nil {
+			return err
+		}
+	}
+	if o.R == nil {
+		return nil
+	}
+
+	for _, rel := range related {
+		for i, ri := range o.R.PlayerAbilityBlueprintFiatProductItemBlueprints {
+			if rel != ri {
+				continue
+			}
+
+			ln := len(o.R.PlayerAbilityBlueprintFiatProductItemBlueprints)
+			if ln > 1 && i < ln-1 {
+				o.R.PlayerAbilityBlueprintFiatProductItemBlueprints[i] = o.R.PlayerAbilityBlueprintFiatProductItemBlueprints[ln-1]
+			}
+			o.R.PlayerAbilityBlueprintFiatProductItemBlueprints = o.R.PlayerAbilityBlueprintFiatProductItemBlueprints[:ln-1]
+			break
+		}
+	}
+
 	return nil
 }
 

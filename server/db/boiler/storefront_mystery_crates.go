@@ -42,6 +42,7 @@ type StorefrontMysteryCrate struct {
 	BackgroundColor  null.String     `boiler:"background_color" boil:"background_color" json:"background_color,omitempty" toml:"background_color" yaml:"background_color,omitempty"`
 	AnimationURL     null.String     `boiler:"animation_url" boil:"animation_url" json:"animation_url,omitempty" toml:"animation_url" yaml:"animation_url,omitempty"`
 	YoutubeURL       null.String     `boiler:"youtube_url" boil:"youtube_url" json:"youtube_url,omitempty" toml:"youtube_url" yaml:"youtube_url,omitempty"`
+	FiatProductID    string          `boiler:"fiat_product_id" boil:"fiat_product_id" json:"fiat_product_id" toml:"fiat_product_id" yaml:"fiat_product_id"`
 
 	R *storefrontMysteryCrateR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L storefrontMysteryCrateL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -66,6 +67,7 @@ var StorefrontMysteryCrateColumns = struct {
 	BackgroundColor  string
 	AnimationURL     string
 	YoutubeURL       string
+	FiatProductID    string
 }{
 	ID:               "id",
 	MysteryCrateType: "mystery_crate_type",
@@ -85,6 +87,7 @@ var StorefrontMysteryCrateColumns = struct {
 	BackgroundColor:  "background_color",
 	AnimationURL:     "animation_url",
 	YoutubeURL:       "youtube_url",
+	FiatProductID:    "fiat_product_id",
 }
 
 var StorefrontMysteryCrateTableColumns = struct {
@@ -106,6 +109,7 @@ var StorefrontMysteryCrateTableColumns = struct {
 	BackgroundColor  string
 	AnimationURL     string
 	YoutubeURL       string
+	FiatProductID    string
 }{
 	ID:               "storefront_mystery_crates.id",
 	MysteryCrateType: "storefront_mystery_crates.mystery_crate_type",
@@ -125,6 +129,7 @@ var StorefrontMysteryCrateTableColumns = struct {
 	BackgroundColor:  "storefront_mystery_crates.background_color",
 	AnimationURL:     "storefront_mystery_crates.animation_url",
 	YoutubeURL:       "storefront_mystery_crates.youtube_url",
+	FiatProductID:    "storefront_mystery_crates.fiat_product_id",
 }
 
 // Generated where
@@ -148,6 +153,7 @@ var StorefrontMysteryCrateWhere = struct {
 	BackgroundColor  whereHelpernull_String
 	AnimationURL     whereHelpernull_String
 	YoutubeURL       whereHelpernull_String
+	FiatProductID    whereHelperstring
 }{
 	ID:               whereHelperstring{field: "\"storefront_mystery_crates\".\"id\""},
 	MysteryCrateType: whereHelperstring{field: "\"storefront_mystery_crates\".\"mystery_crate_type\""},
@@ -167,20 +173,24 @@ var StorefrontMysteryCrateWhere = struct {
 	BackgroundColor:  whereHelpernull_String{field: "\"storefront_mystery_crates\".\"background_color\""},
 	AnimationURL:     whereHelpernull_String{field: "\"storefront_mystery_crates\".\"animation_url\""},
 	YoutubeURL:       whereHelpernull_String{field: "\"storefront_mystery_crates\".\"youtube_url\""},
+	FiatProductID:    whereHelperstring{field: "\"storefront_mystery_crates\".\"fiat_product_id\""},
 }
 
 // StorefrontMysteryCrateRels is where relationship names are stored.
 var StorefrontMysteryCrateRels = struct {
 	Faction                string
+	FiatProduct            string
 	BlueprintMysteryCrates string
 }{
 	Faction:                "Faction",
+	FiatProduct:            "FiatProduct",
 	BlueprintMysteryCrates: "BlueprintMysteryCrates",
 }
 
 // storefrontMysteryCrateR is where relationships are stored.
 type storefrontMysteryCrateR struct {
 	Faction                *Faction          `boiler:"Faction" boil:"Faction" json:"Faction" toml:"Faction" yaml:"Faction"`
+	FiatProduct            *FiatProduct      `boiler:"FiatProduct" boil:"FiatProduct" json:"FiatProduct" toml:"FiatProduct" yaml:"FiatProduct"`
 	BlueprintMysteryCrates MysteryCrateSlice `boiler:"BlueprintMysteryCrates" boil:"BlueprintMysteryCrates" json:"BlueprintMysteryCrates" toml:"BlueprintMysteryCrates" yaml:"BlueprintMysteryCrates"`
 }
 
@@ -193,8 +203,8 @@ func (*storefrontMysteryCrateR) NewStruct() *storefrontMysteryCrateR {
 type storefrontMysteryCrateL struct{}
 
 var (
-	storefrontMysteryCrateAllColumns            = []string{"id", "mystery_crate_type", "price", "amount", "amount_sold", "faction_id", "deleted_at", "updated_at", "created_at", "label", "description", "image_url", "card_animation_url", "avatar_url", "large_image_url", "background_color", "animation_url", "youtube_url"}
-	storefrontMysteryCrateColumnsWithoutDefault = []string{"mystery_crate_type", "price", "amount", "faction_id"}
+	storefrontMysteryCrateAllColumns            = []string{"id", "mystery_crate_type", "price", "amount", "amount_sold", "faction_id", "deleted_at", "updated_at", "created_at", "label", "description", "image_url", "card_animation_url", "avatar_url", "large_image_url", "background_color", "animation_url", "youtube_url", "fiat_product_id"}
+	storefrontMysteryCrateColumnsWithoutDefault = []string{"mystery_crate_type", "price", "amount", "faction_id", "fiat_product_id"}
 	storefrontMysteryCrateColumnsWithDefault    = []string{"id", "amount_sold", "deleted_at", "updated_at", "created_at", "label", "description", "image_url", "card_animation_url", "avatar_url", "large_image_url", "background_color", "animation_url", "youtube_url"}
 	storefrontMysteryCratePrimaryKeyColumns     = []string{"id"}
 	storefrontMysteryCrateGeneratedColumns      = []string{}
@@ -457,6 +467,21 @@ func (o *StorefrontMysteryCrate) Faction(mods ...qm.QueryMod) factionQuery {
 	return query
 }
 
+// FiatProduct pointed to by the foreign key.
+func (o *StorefrontMysteryCrate) FiatProduct(mods ...qm.QueryMod) fiatProductQuery {
+	queryMods := []qm.QueryMod{
+		qm.Where("\"id\" = ?", o.FiatProductID),
+		qmhelper.WhereIsNull("deleted_at"),
+	}
+
+	queryMods = append(queryMods, mods...)
+
+	query := FiatProducts(queryMods...)
+	queries.SetFrom(query.Query, "\"fiat_products\"")
+
+	return query
+}
+
 // BlueprintMysteryCrates retrieves all the mystery_crate's MysteryCrates with an executor via blueprint_id column.
 func (o *StorefrontMysteryCrate) BlueprintMysteryCrates(mods ...qm.QueryMod) mysteryCrateQuery {
 	var queryMods []qm.QueryMod
@@ -576,6 +601,111 @@ func (storefrontMysteryCrateL) LoadFaction(e boil.Executor, singular bool, maybe
 					foreign.R = &factionR{}
 				}
 				foreign.R.StorefrontMysteryCrates = append(foreign.R.StorefrontMysteryCrates, local)
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
+// LoadFiatProduct allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for an N-1 relationship.
+func (storefrontMysteryCrateL) LoadFiatProduct(e boil.Executor, singular bool, maybeStorefrontMysteryCrate interface{}, mods queries.Applicator) error {
+	var slice []*StorefrontMysteryCrate
+	var object *StorefrontMysteryCrate
+
+	if singular {
+		object = maybeStorefrontMysteryCrate.(*StorefrontMysteryCrate)
+	} else {
+		slice = *maybeStorefrontMysteryCrate.(*[]*StorefrontMysteryCrate)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &storefrontMysteryCrateR{}
+		}
+		args = append(args, object.FiatProductID)
+
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &storefrontMysteryCrateR{}
+			}
+
+			for _, a := range args {
+				if a == obj.FiatProductID {
+					continue Outer
+				}
+			}
+
+			args = append(args, obj.FiatProductID)
+
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`fiat_products`),
+		qm.WhereIn(`fiat_products.id in ?`, args...),
+		qmhelper.WhereIsNull(`fiat_products.deleted_at`),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load FiatProduct")
+	}
+
+	var resultSlice []*FiatProduct
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice FiatProduct")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results of eager load for fiat_products")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for fiat_products")
+	}
+
+	if len(storefrontMysteryCrateAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+
+	if len(resultSlice) == 0 {
+		return nil
+	}
+
+	if singular {
+		foreign := resultSlice[0]
+		object.R.FiatProduct = foreign
+		if foreign.R == nil {
+			foreign.R = &fiatProductR{}
+		}
+		foreign.R.StorefrontMysteryCrate = object
+		return nil
+	}
+
+	for _, local := range slice {
+		for _, foreign := range resultSlice {
+			if local.FiatProductID == foreign.ID {
+				local.R.FiatProduct = foreign
+				if foreign.R == nil {
+					foreign.R = &fiatProductR{}
+				}
+				foreign.R.StorefrontMysteryCrate = local
 				break
 			}
 		}
@@ -724,6 +854,52 @@ func (o *StorefrontMysteryCrate) SetFaction(exec boil.Executor, insert bool, rel
 		}
 	} else {
 		related.R.StorefrontMysteryCrates = append(related.R.StorefrontMysteryCrates, o)
+	}
+
+	return nil
+}
+
+// SetFiatProduct of the storefrontMysteryCrate to the related item.
+// Sets o.R.FiatProduct to related.
+// Adds o to related.R.StorefrontMysteryCrate.
+func (o *StorefrontMysteryCrate) SetFiatProduct(exec boil.Executor, insert bool, related *FiatProduct) error {
+	var err error
+	if insert {
+		if err = related.Insert(exec, boil.Infer()); err != nil {
+			return errors.Wrap(err, "failed to insert into foreign table")
+		}
+	}
+
+	updateQuery := fmt.Sprintf(
+		"UPDATE \"storefront_mystery_crates\" SET %s WHERE %s",
+		strmangle.SetParamNames("\"", "\"", 1, []string{"fiat_product_id"}),
+		strmangle.WhereClause("\"", "\"", 2, storefrontMysteryCratePrimaryKeyColumns),
+	)
+	values := []interface{}{related.ID, o.ID}
+
+	if boil.DebugMode {
+		fmt.Fprintln(boil.DebugWriter, updateQuery)
+		fmt.Fprintln(boil.DebugWriter, values)
+	}
+	if _, err = exec.Exec(updateQuery, values...); err != nil {
+		return errors.Wrap(err, "failed to update local table")
+	}
+
+	o.FiatProductID = related.ID
+	if o.R == nil {
+		o.R = &storefrontMysteryCrateR{
+			FiatProduct: related,
+		}
+	} else {
+		o.R.FiatProduct = related
+	}
+
+	if related.R == nil {
+		related.R = &fiatProductR{
+			StorefrontMysteryCrate: o,
+		}
+	} else {
+		related.R.StorefrontMysteryCrate = o
 	}
 
 	return nil
