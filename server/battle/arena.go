@@ -1571,26 +1571,30 @@ func (arena *Arena) GameClientJsonDataParser() {
 }
 
 // assignBattleLobby assign the next
-func (arena *Arena) assignBattleLobby() {
+// skipLobbyCheck ONLY happen on the battle end
+func (arena *Arena) assignBattleLobby(skipLobbyCheck bool) {
 	arena.Manager.Lock()
 	defer arena.Manager.Unlock()
 
 	battleLobbyID := arena.currentLobbyID.Load()
-	if battleLobbyID != "" {
-		// check battle lobby is valid
-		bl, err := boiler.BattleLobbies(
-			boiler.BattleLobbyWhere.ID.EQ(battleLobbyID),
-			boiler.BattleLobbyWhere.ReadyAt.IsNotNull(),
-			boiler.BattleLobbyWhere.EndedAt.IsNull(),
-		).One(gamedb.StdConn)
-		if err != nil && !errors.Is(err, sql.ErrNoRows) {
-			gamelog.L.Error().Err(err).Msg("Failed to load battle lobby")
-		}
 
-		// if assigned lobby is valid
-		if bl != nil {
-			arena.Stage.Store(ArenaStageProcessing)
-			return
+	if !skipLobbyCheck {
+		//  check current lobby is valid
+		if battleLobbyID != "" {
+			bl, err := boiler.BattleLobbies(
+				boiler.BattleLobbyWhere.ID.EQ(battleLobbyID),
+				boiler.BattleLobbyWhere.ReadyAt.IsNotNull(),
+				boiler.BattleLobbyWhere.EndedAt.IsNull(),
+			).One(gamedb.StdConn)
+			if err != nil && !errors.Is(err, sql.ErrNoRows) {
+				gamelog.L.Error().Err(err).Msg("Failed to load battle lobby")
+			}
+
+			// if assigned lobby is valid
+			if bl != nil {
+				arena.Stage.Store(ArenaStageProcessing)
+				return
+			}
 		}
 	}
 
@@ -1746,7 +1750,7 @@ func (arena *Arena) BeginBattle() {
 		gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("Failed to clean up unfinished mech move command")
 	}
 
-	arena.assignBattleLobby()
+	arena.assignBattleLobby(false)
 
 	// return, if the stage of the arena is still idle
 	if arena.Stage.Load() == ArenaStageIdle || arena.currentLobbyID.Load() == "" {

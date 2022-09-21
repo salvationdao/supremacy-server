@@ -1459,13 +1459,15 @@ func (btl *Battle) end(payload *BattleEndPayload) {
 
 	btl.endAbilities()
 	btl.processWarMachineRepair()
+
+	// pre-assign next battle lobby
+	btl.arena.beginBattleMux.Lock()
+	btl.arena.assignBattleLobby(true)
+	btl.arena.beginBattleMux.Unlock()
+
+	// clean up current battle
 	btl.handleBattleEnd(payload)
 	gamelog.L.Info().Msgf("battle has been cleaned up, sending broadcast %s", btl.ID)
-
-	// pre-assign battle lobby
-	btl.arena.beginBattleMux.Lock()
-	btl.arena.assignBattleLobby()
-	btl.arena.beginBattleMux.Unlock()
 
 	// reactivate idle arenas
 	btl.arena.Manager.KickIdleArenas()
