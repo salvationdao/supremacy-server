@@ -78,6 +78,8 @@ const KeyCanRecordReplayStatus KVKey = "can_record_replay"
 const KeyAutoRepairSlotCount KVKey = "auto_repair_slot_count"
 const KeyAutoRepairDurationSeconds KVKey = "auto_repair_duration_seconds"
 
+const KeyFiatToSUPCut KVKey = "fiat_to_sup_cut" // TODO: find better name to describe: "20% cheaper than fiat pricing"
+
 func get(key KVKey) string {
 	kv, err := boiler.KVS(boiler.KVWhere.Key.EQ(string(key))).One(gamedb.StdConn)
 	if err != nil {

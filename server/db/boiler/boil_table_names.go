@@ -61,6 +61,10 @@ var TableNames = struct {
 	Factions                                           string
 	FailedPlayerKeycardsSync                           string
 	Features                                           string
+	FiatProductItemBlueprints                          string
+	FiatProductItems                                   string
+	FiatProductPricings                                string
+	FiatProducts                                       string
 	FingerprintIps                                     string
 	Fingerprints                                       string
 	GameAbilities                                      string
@@ -86,6 +90,8 @@ var TableNames = struct {
 	Multipliers                                        string
 	MysteryCrate                                       string
 	MysteryCrateBlueprints                             string
+	OrderItems                                         string
+	Orders                                             string
 	OvenStreams                                        string
 	PlayerAbilities                                    string
 	PlayerActiveLogs                                   string
@@ -124,6 +130,8 @@ var TableNames = struct {
 	RepairOffers                                       string
 	SalePlayerAbilities                                string
 	SchemaMigrations                                   string
+	ShoppingCartItems                                  string
+	ShoppingCarts                                      string
 	SpoilsOfWar                                        string
 	StaticMigrations                                   string
 	StorePurchaseHistory                               string
@@ -210,6 +218,10 @@ var TableNames = struct {
 	Factions:                       "factions",
 	FailedPlayerKeycardsSync:       "failed_player_keycards_sync",
 	Features:                       "features",
+	FiatProductItemBlueprints:      "fiat_product_item_blueprints",
+	FiatProductItems:               "fiat_product_items",
+	FiatProductPricings:            "fiat_product_pricings",
+	FiatProducts:                   "fiat_products",
 	FingerprintIps:                 "fingerprint_ips",
 	Fingerprints:                   "fingerprints",
 	GameAbilities:                  "game_abilities",
@@ -235,6 +247,8 @@ var TableNames = struct {
 	Multipliers:                    "multipliers",
 	MysteryCrate:                   "mystery_crate",
 	MysteryCrateBlueprints:         "mystery_crate_blueprints",
+	OrderItems:                     "order_items",
+	Orders:                         "orders",
 	OvenStreams:                    "oven_streams",
 	PlayerAbilities:                "player_abilities",
 	PlayerActiveLogs:               "player_active_logs",
@@ -273,6 +287,8 @@ var TableNames = struct {
 	RepairOffers:                   "repair_offers",
 	SalePlayerAbilities:            "sale_player_abilities",
 	SchemaMigrations:               "schema_migrations",
+	ShoppingCartItems:              "shopping_cart_items",
+	ShoppingCarts:                  "shopping_carts",
 	SpoilsOfWar:                    "spoils_of_war",
 	StaticMigrations:               "static_migrations",
 	StorePurchaseHistory:           "store_purchase_history",

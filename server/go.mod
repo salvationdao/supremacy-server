@@ -38,6 +38,7 @@ require (
 	github.com/ninja-syndicate/supremacy-bridge v0.1.49
 	github.com/sasha-s/go-deadlock v0.3.1
 	github.com/shopspring/decimal v1.3.1
+	github.com/stripe/stripe-go/v72 v72.119.0
 	github.com/teris-io/shortid v0.0.0-20201117134242-e59966efd125
 	github.com/twilio/twilio-go v0.22.2
 	github.com/valyala/fastjson v1.6.3

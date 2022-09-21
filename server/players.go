@@ -3,9 +3,10 @@ package server
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/shopspring/decimal"
 	"server/db/boiler"
 	"time"
+
+	"github.com/shopspring/decimal"
 
 	"github.com/volatiletech/null/v8"
 )

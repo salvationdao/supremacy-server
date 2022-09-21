@@ -56,6 +56,7 @@ const HubKeyGetMysteryCrates = "STORE:MYSTERY:CRATES"
 func (sc *StoreController) GetMysteryCratesHandler(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
 	crates, err := boiler.StorefrontMysteryCrates(
 		boiler.StorefrontMysteryCrateWhere.FactionID.EQ(factionID),
+		qm.Load(qm.Rels(boiler.StorefrontMysteryCrateRels.FiatProduct, boiler.FiatProductRels.FiatProductPricings)),
 	).All(gamedb.StdConn)
 	if err != nil {
 		return terror.Error(err, "Failed to get mystery crate")
@@ -67,8 +68,6 @@ func (sc *StoreController) GetMysteryCratesHandler(ctx context.Context, user *bo
 	return nil
 }
 
-const HubKeyMysteryCrateSubscribe = "STORE:MYSTERY:CRATE:SUBSCRIBE"
-
 func (sc *StoreController) MysteryCrateSubscribeHandler(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
 	cctx := chi.RouteContext(ctx)
 	crateID := cctx.URLParam("crate_id")
@@ -76,6 +75,7 @@ func (sc *StoreController) MysteryCrateSubscribeHandler(ctx context.Context, use
 	crate, err := boiler.StorefrontMysteryCrates(
 		boiler.StorefrontMysteryCrateWhere.ID.EQ(crateID),
 		boiler.StorefrontMysteryCrateWhere.FactionID.EQ(factionID),
+		qm.Load(boiler.StorefrontMysteryCrateRels.FiatProduct),
 	).One(gamedb.StdConn)
 	if err != nil {
 		return terror.Error(err, "Failed to get mystery crate")
@@ -226,7 +226,7 @@ func (sc *StoreController) PurchaseMysteryCrateHandler(ctx context.Context, user
 	}
 
 	//update mysterycrate subscribers and update player
-	ws.PublishMessage(fmt.Sprintf("/faction/%s/crate/%s", factionID, storeCrate.ID), HubKeyMysteryCrateSubscribe, serverStoreCrate)
+	ws.PublishMessage(fmt.Sprintf("/faction/%s/crate/%s", factionID, storeCrate.ID), server.HubKeyMysteryCrateSubscribe, serverStoreCrate)
 
 	reply(resp)
 	return nil
