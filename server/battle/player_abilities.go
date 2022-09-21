@@ -1136,7 +1136,7 @@ func (arena *Arena) MechMoveCommandCreateHandler(ctx context.Context, user *boil
 		}
 
 		// check mech command quest
-		arena.QuestManager.MechCommanderQuestCheck(user.ID)
+		arena.Manager.QuestManager.MechCommanderQuestCheck(user.ID)
 
 		// broadcast mech command log
 		ws.PublishMessage(fmt.Sprintf("/faction/%s/arena/%s/mech_command/%s", wm.FactionID, arena.ID, wm.Hash), server.HubKeyMechMoveCommandSubscribe, &MechMoveCommandResponse{

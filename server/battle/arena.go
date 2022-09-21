@@ -67,6 +67,7 @@ type ArenaManager struct {
 	deadlock.RWMutex // lock for arena
 
 	ChallengeFundUpdateChan chan bool
+	LobbyFuncMx             *deadlock.Mutex
 }
 
 type Opts struct {
@@ -91,11 +92,11 @@ func NewArenaManager(opts *Opts) (*ArenaManager, error) {
 		SystemBanManager:         NewSystemBanManager(),
 		NewBattleChan:            make(chan *NewBattleChan),
 		SystemMessagingManager:   opts.SystemMessagingManager,
-		BattleQueueFuncMx:        deadlock.Mutex{},
 		QuestManager:             opts.QuestManager,
 		arenas:                   make(map[string]*Arena),
 
 		ChallengeFundUpdateChan: make(chan bool),
+		LobbyFuncMx:             &deadlock.Mutex{},
 	}
 
 	am.server = &http.Server{
@@ -376,16 +377,7 @@ func (am *ArenaManager) NewArena(battleArena *boiler.BattleArena, wsConn *websoc
 		},
 
 		// objects inherited from arena manager
-		RPCClient:                am.RPCClient,
-		sms:                      am.sms,
-		gameClientMinimumBuildNo: am.gameClientMinimumBuildNo,
-		telegram:                 am.telegram,
-		timeout:                  am.timeout,
-		SystemBanManager:         am.SystemBanManager,
-		SystemMessagingManager:   am.SystemMessagingManager,
-		NewBattleChan:            am.NewBattleChan,
-		QuestManager:             am.QuestManager,
-		ChallengeFundUpdateChan:  am.ChallengeFundUpdateChan,
+		Manager: am,
 	}
 
 	arena.AIPlayers, err = db.DefaultFactionPlayers()
@@ -413,25 +405,15 @@ const (
 
 type Arena struct {
 	*boiler.BattleArena
-	Name                     string
-	Stage                    *atomic.String // hijacked, idle, running
-	socket                   *websocket.Conn
-	connected                *atomic.Bool
-	timeout                  time.Duration
-	_currentBattle           *Battle
-	AIPlayers                map[string]db.PlayerWithFaction
-	RPCClient                *xsyn_rpcclient.XsynXrpcClient
-	sms                      server.SMS
-	gameClientMinimumBuildNo uint64
-	telegram                 server.Telegram
-	SystemBanManager         *SystemBanManager
-	SystemMessagingManager   *system_messages.SystemMessagingManager
-	NewBattleChan            chan *NewBattleChan
-	ChallengeFundUpdateChan  chan bool
-
+	Manager          *ArenaManager
+	Name             string
+	Stage            *atomic.String // hijacked, idle, running
+	socket           *websocket.Conn
+	connected        *atomic.Bool
+	timeout          time.Duration
+	_currentBattle   *Battle
 	LastBattleResult *BattleEndDetail
-
-	QuestManager *quest.System
+	AIPlayers        map[string]db.PlayerWithFaction
 
 	gameClientJsonDataChan chan []byte
 
@@ -1351,8 +1333,8 @@ func (arena *Arena) GameClientJsonDataParser() {
 				L.Panic().Str("game_client_build_no", dataPayload.ClientBuildNo).Msg("invalid game client build number received")
 			}
 
-			if gameClientBuildNo < arena.gameClientMinimumBuildNo {
-				L.Panic().Str("current_game_client_build", dataPayload.ClientBuildNo).Uint64("minimum_game_client_build", arena.gameClientMinimumBuildNo).Msg("unsupported game client build number")
+			if gameClientBuildNo < arena.Manager.gameClientMinimumBuildNo {
+				L.Panic().Str("current_game_client_build", dataPayload.ClientBuildNo).Uint64("minimum_game_client_build", arena.Manager.gameClientMinimumBuildNo).Msg("unsupported game client build number")
 			}
 
 			err = btl.preIntro(dataPayload)
@@ -1361,7 +1343,7 @@ func (arena *Arena) GameClientJsonDataParser() {
 				return
 			}
 
-			arena.NewBattleChan <- &NewBattleChan{btl.ID, btl.BattleNumber}
+			arena.Manager.NewBattleChan <- &NewBattleChan{btl.ID, btl.BattleNumber}
 		case "BATTLE:OUTRO_FINISHED":
 			if btl.replaySession.ReplaySession != nil {
 				err = replay.RecordReplayRequest(btl.Battle, btl.replaySession.ReplaySession.ID, replay.StopRecording)
@@ -1789,7 +1771,7 @@ func (arena *Arena) BeginBattle() {
 		playerMechMap[wm.OwnedByID] = pm
 
 		// check mech join battle quest for each mech owner
-		arena.QuestManager.MechJoinBattleQuestCheck(wm.OwnedByID)
+		arena.Manager.QuestManager.MechJoinBattleQuestCheck(wm.OwnedByID)
 	}
 
 	// broadcast mech status change
