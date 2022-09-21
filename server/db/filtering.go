@@ -20,6 +20,9 @@ const (
 	OperatorValueTypeEndsWith   = "endsWith"
 	OperatorValueTypeEquals     = "equals"
 
+	OperatorValueTypeIn    = "in"
+	OperatorValueTypeNotIn = "notIn"
+
 	OperatorValueTypeIsNull    = "isnull"
 	OperatorValueTypeIsNotNull = "isnotnull"
 
@@ -79,6 +82,10 @@ func GenerateListFilterQueryMod(filterItem ListFilterRequestItem, index int, lin
 	}
 
 	switch filterItem.Operator {
+	case OperatorValueTypeIn:
+		condition = fmt.Sprintf("%s IN ?", checkColumn)
+	case OperatorValueTypeNotIn:
+		condition = fmt.Sprintf("%s NOT IN ?", checkColumn)
 	case OperatorValueTypeIsTrue:
 		condition = fmt.Sprintf("%s IS TRUE", checkColumn)
 		break

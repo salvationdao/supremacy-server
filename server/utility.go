@@ -22,6 +22,8 @@ type Utility struct {
 	LimitedReleaseTokenID null.Int64  `json:"limited_release_token_id,omitempty"`
 	EquippedOn            null.String `json:"equipped_on,omitempty"`
 	Type                  string      `json:"type"`
+	LockedToMech          bool        `json:"locked_to_mech"`
+	SlotNumber            null.Int    `json:"slot_number,omitempty"`
 
 	AttackDrone *UtilityAttackDrone `json:"attack_drone,omitempty"`
 	RepairDrone *UtilityRepairDrone `json:"repair_drone,omitempty"`
