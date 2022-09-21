@@ -24,7 +24,7 @@ import (
 func NewVoiceStreamController(api *API) {
 	api.SecureUserFactionCommand(server.HubKeyVoiceStreamJoinFactionCommander, api.JoinFactionCommander)
 	api.SecureUserFactionCommand(server.HubKeyVoiceStreamLeaveFactionCommander, api.LeaveFactionCommander)
-	//HubKeyVoiceStreamVoteKick
+	api.SecureUserFactionCommand(server.HubKeyVoiceStreamVoteKick, api.VoteKickFactionCommander)
 }
 
 func (api *API) VoiceStreamSubscribe(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
