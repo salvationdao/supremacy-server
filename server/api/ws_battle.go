@@ -12,8 +12,6 @@ import (
 	"server/gamedb"
 	"server/gamelog"
 
-	"github.com/volatiletech/null/v8"
-
 	"github.com/go-chi/chi/v5"
 	"github.com/ninja-syndicate/ws"
 
@@ -56,7 +54,7 @@ type BattleDetailed struct {
 	*boiler.Battle `json:"battle"`
 	GameMap        *boiler.GameMap `json:"game_map"`
 	BattleReplayID *string         `json:"battle_replay,omitempty"`
-	ArenaGID       null.Int        `json:"arena_gid,omitempty"`
+	ArenaGID       int             `json:"arena_gid"`
 }
 
 type BattleMechDetailed struct {

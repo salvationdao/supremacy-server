@@ -13,6 +13,7 @@ import (
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
+	"server/helpers"
 	"server/quest"
 	"server/replay"
 	"server/system_messages"
@@ -144,7 +145,7 @@ func (am *ArenaManager) GetArena(arenaID string) (*Arena, error) {
 	am.RLock()
 	defer am.RUnlock()
 	arena, ok := am.arenas[arenaID]
-	if !ok || arena.Stage.Load() == ArenaStageBacklog {
+	if !ok || arena.Stage.Load() == ArenaStageHijacked {
 		return nil, terror.Error(fmt.Errorf("arena not exits"), "The battle arena does not exist.")
 	}
 	if !arena.connected.Load() {
@@ -152,16 +153,6 @@ func (am *ArenaManager) GetArena(arenaID string) (*Arena, error) {
 	}
 
 	return arena, nil
-}
-
-func (am *ArenaManager) EachArena(fn func(arena *Arena) bool) {
-	am.RLock()
-	defer am.RUnlock()
-	for _, a := range am.arenas {
-		if !fn(a) {
-			return
-		}
-	}
 }
 
 func (am *ArenaManager) IdleArenas() []*Arena {
@@ -176,14 +167,26 @@ func (am *ArenaManager) IdleArenas() []*Arena {
 	return resp
 }
 
-func (am *ArenaManager) AvailableBattleArenas() []*boiler.BattleArena {
+type ArenaBrief struct {
+	ID    string `json:"id"`
+	Gid   int    `json:"gid"`
+	Name  string `json:"name"`
+	Stage string `json:"stage"`
+}
+
+func (am *ArenaManager) AvailableBattleArenas() []*ArenaBrief {
 	am.RLock()
 	defer am.RUnlock()
 
-	resp := []*boiler.BattleArena{}
+	resp := []*ArenaBrief{}
 	for _, arena := range am.arenas {
-		if arena.connected.Load() {
-			resp = append(resp, arena.BattleArena)
+		if arena.Stage.Load() != ArenaStageHijacked && arena.connected.Load() {
+			resp = append(resp, &ArenaBrief{
+				ID:    arena.ID,
+				Gid:   arena.Gid,
+				Name:  arena.Name,
+				Stage: arena.Stage.Load(),
+			})
 		}
 	}
 	return resp
@@ -205,7 +208,25 @@ func (am *ArenaManager) Serve() {
 }
 
 func (am *ArenaManager) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	// TODO: read arena id from the request
+	arenaID := r.URL.Query().Get("id")
+	if arenaID == "" {
+		gamelog.L.Error().Msg("Arena id is missing.")
+		return
+	}
+
+	// check arena exists
+	battleArena, err := boiler.FindBattleArena(gamedb.StdConn, arenaID)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		gamelog.L.Error().Err(err).Str("arena id", arenaID).Msg("Failed to load battle arena from db")
+		return
+	}
+
+	if battleArena == nil {
+		gamelog.L.Error().Err(err).Str("arena id", arenaID).Msg("Battle arena does not exist in db")
+		return
+	}
+
+	gamelog.L.Info().Str("arena id", arenaID).Msg("New arena is connected.")
 
 	wsConn, err := websocket.Accept(w, r, nil)
 	if err != nil {
@@ -224,7 +245,7 @@ func (am *ArenaManager) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// create new arena
-	arena, err := am.NewArena(wsConn)
+	arena, err := am.NewArena(battleArena, wsConn)
 	if err != nil {
 		gamelog.L.Error().Err(err).Msg("Failed to add arena onto arena manager")
 		return
@@ -307,30 +328,28 @@ func (am *ArenaManager) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	arena.Start()
 }
 
-func (am *ArenaManager) NewArena(wsConn *websocket.Conn) (*Arena, error) {
+func (am *ArenaManager) NewArena(battleArena *boiler.BattleArena, wsConn *websocket.Conn) (*Arena, error) {
 	am.Lock()
 	defer am.Unlock()
-
-	// assign arena to story
-	ba, err := boiler.BattleArenas(
-		boiler.BattleArenaWhere.Type.EQ(boiler.ArenaTypeEnumSTORY),
-	).One(gamedb.StdConn)
-	if err != nil {
-		gamelog.L.Error().Err(err).Msg("Failed to get story mode battle arena from db")
-		return nil, terror.Error(err, "Failed to get story mode battle arena from db")
-	}
+	var err error
 
 	// if previous arena is not closed properly.
-	if a, ok := am.arenas[ba.ID]; ok {
+	if a, ok := am.arenas[battleArena.ID]; ok {
 		// set connected flag of the prev arena to false
 		a.connected.Store(false)
 
+		// change arena stage to hijacked
+		a.Stage.Store(ArenaStageHijacked)
+
+		// stop recording from previous arena
 		if btl := a.CurrentBattle(); btl != nil && btl.replaySession.ReplaySession != nil {
 			err = replay.RecordReplayRequest(btl.Battle, btl.replaySession.ReplaySession.ID, replay.StopRecording)
 			if err != nil {
 				gamelog.L.Error().Str("battle_id", btl.ID).Str("replay_id", btl.replaySession.ReplaySession.ID).Err(err).Msg("failed to stop recording during game client disconnection")
 			}
-			eventByte, err := json.Marshal(btl.replaySession.Events)
+
+			var eventByte []byte
+			eventByte, err = json.Marshal(btl.replaySession.Events)
 			if err != nil {
 				gamelog.L.Error().Err(err).Str("battle_id", btl.ID).Str("replay_id", btl.replaySession.ReplaySession.ID).Interface("Events", btl.replaySession.Events).Msg("Failed to marshal json into battle replay")
 			} else {
@@ -346,8 +365,9 @@ func (am *ArenaManager) NewArena(wsConn *websocket.Conn) (*Arena, error) {
 	}
 
 	arena := &Arena{
-		BattleArena:            ba,
-		Stage:                  atomic.NewInt32(ArenaStageIdle),
+		BattleArena:            battleArena,
+		Name:                   helpers.GenerateStupidArenaName(),
+		Stage:                  atomic.NewString(ArenaStageIdle),
 		socket:                 wsConn,
 		connected:              atomic.NewBool(true),
 		gameClientJsonDataChan: make(chan []byte, 3),
@@ -386,14 +406,15 @@ func (am *ArenaManager) NewArena(wsConn *websocket.Conn) (*Arena, error) {
 }
 
 const (
-	ArenaStageBacklog int32 = 0
-	ArenaStageIdle    int32 = 1
-	ArenaStageRunning int32 = 2
+	ArenaStageHijacked   string = "HIJACKED"
+	ArenaStageIdle       string = "IDLE"
+	ArenaStageProcessing string = "PROCESSING"
 )
 
 type Arena struct {
 	*boiler.BattleArena
-	Stage                    *atomic.Int32 // backlog, idle, running
+	Name                     string
+	Stage                    *atomic.String // hijacked, idle, running
 	socket                   *websocket.Conn
 	connected                *atomic.Bool
 	timeout                  time.Duration
@@ -1718,7 +1739,7 @@ func (arena *Arena) BeginBattle() {
 		gamelog.L.Info().Msg("Running unfinished battle map")
 	}
 
-	arena.Stage.Store(ArenaStageRunning)
+	arena.Stage.Store(ArenaStageProcessing)
 
 	// broadcast battle lobby change
 	go BroadcastBattleLobbyUpdate(battleLobby.ID)

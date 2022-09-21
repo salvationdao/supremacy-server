@@ -19,6 +19,12 @@ ALTER TABLE battle_war_machine_queues
 ALTER TABLE battle_map_queue
     RENAME TO battle_map_queue_old;
 
+ALTER TABLE battle_arena
+    RENAME COLUMN type TO type_old;
+
+ALTER TABLE battle_arena
+    ALTER COLUMN gid SET NOT NULL;
+
 CREATE INDEX IF NOT EXISTS idx_player_kill_log_offering_id ON player_kill_log (ability_offering_id);
 
 CREATE TABLE battle_lobbies
@@ -31,14 +37,22 @@ CREATE TABLE battle_lobbies
     second_faction_cut       DECIMAL     NOT NULL DEFAULT 0,
     third_faction_cut        DECIMAL     NOT NULL DEFAULT 0,
     each_faction_mech_amount INT         NOT NULL DEFAULT 3,
-    game_map_id              UUID        REFERENCES game_maps (id),
+    game_map_id              UUID REFERENCES game_maps (id),
     generated_by_system      BOOL        NOT NULL DEFAULT FALSE,
+
+    -- players set as private room
     password                 TEXT,
+
+    -- schedule
+    will_not_start_until     TIMESTAMPTZ,
 
     -- battle queue
     ready_at                 TIMESTAMPTZ,                  -- order of the battle lobby get in battle arena
     assigned_to_battle_id    UUID REFERENCES battles (id), -- set battle id, if in battle
     ended_at                 TIMESTAMPTZ,                  -- set when battle is completed
+
+    -- lobby allocation
+    assigned_to_arena_id     UUID REFERENCES battle_arena (id),
 
     created_at               TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at               TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -47,6 +61,7 @@ CREATE TABLE battle_lobbies
 
 CREATE INDEX idx_battle_lobby_complete_check ON battle_lobbies (ended_at, deleted_at);
 CREATE INDEX idx_battle_lobby_queue_available_check ON battle_lobbies (ready_at, deleted_at);
+CREATE INDEX idx_battle_lobby_ready_available_check ON battle_lobbies (ready_at, ended_at, deleted_at);
 CREATE INDEX idx_battle_lobby_queue_position_check ON battle_lobbies (ready_at, assigned_to_battle_id, ended_at, deleted_at);
 
 

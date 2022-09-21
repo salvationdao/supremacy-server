@@ -7,7 +7,9 @@ DROP INDEX IF EXISTS idx_battle_lobbies_mechs_lobby_queue_check;
 DROP TABLE IF EXISTS battle_lobbies_mechs;
 
 DROP INDEX IF EXISTS idx_battle_lobby_complete_check;
+DROP INDEX IF EXISTS idx_battle_lobby_scheduled_at;
 DROP INDEX IF EXISTS idx_battle_lobby_queue_available_check;
+DROP INDEX IF EXISTS idx_battle_lobby_ready_available_check;
 DROP INDEX IF EXISTS idx_battle_lobby_queue_position_check;
 DROP TABLE IF EXISTS battle_lobbies;
 
@@ -21,3 +23,4 @@ ALTER TABLE repair_cases DROP COLUMN IF EXISTS paused_at;
 
 ALTER TABLE battles RENAME COLUMN ended_battle_seconds_old TO ended_battle_seconds;
 ALTER TABLE battles RENAME COLUMN started_battle_seconds_old TO started_battle_seconds;
+ALTER TABLE battle_arena RENAME COLUMN type_old TO type;
