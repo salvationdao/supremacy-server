@@ -16,7 +16,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 )
 
@@ -295,6 +294,7 @@ func SyncMechModels(f io.Reader, db *sql.DB) error {
 			ShieldRechargeRate:      record[15],
 			ShieldRechargePowerCost: record[16],
 			ShieldTypeID:            record[17],
+			ShieldRechargeDelay:     record[18],
 		}
 
 		MechModels = append(MechModels, *mechModel)
@@ -321,9 +321,10 @@ func SyncMechModels(f io.Reader, db *sql.DB) error {
 												shield_max,
 												shield_recharge_rate,
 												shield_recharge_power_cost,
-			                             		shield_type_id
+			                             		shield_type_id,
+			                             		shield_recharge_delay
 			                                   )
-			VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)
+			VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18)
 			ON CONFLICT (id)
 			DO
 				UPDATE SET 
@@ -343,7 +344,8 @@ func SyncMechModels(f io.Reader, db *sql.DB) error {
 							shield_max=$14,
 							shield_recharge_rate=$15,
 							shield_recharge_power_cost=$16,
-							shield_type_id=$17;
+							shield_type_id=$17,
+							shield_recharge_delay=$18;
 		`,
 			mechModel.ID,
 			mechModel.Label,
@@ -362,6 +364,7 @@ func SyncMechModels(f io.Reader, db *sql.DB) error {
 			mechModel.ShieldRechargeRate,
 			mechModel.ShieldRechargePowerCost,
 			mechModel.ShieldTypeID,
+			mechModel.ShieldRechargeDelay,
 		)
 		if err != nil {
 			fmt.Println("ERROR: " + err.Error())

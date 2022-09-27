@@ -270,20 +270,20 @@ dev-give-mech-crates:
 sync-data:
 	mkdir -p ./server/synctool/temp-sync
 	rm -rf ./server/synctool/temp-sync/supremacy-static-data
-	git clone git@github.com:ninja-syndicate/supremacy-static-data.git -b develop ./server/synctool/temp-sync/supremacy-static-data
+	git clone git@github.com:ninja-syndicate/supremacy-static-data.git -b vincent/se-76-add-new-value-to-mechs-for ./server/synctool/temp-sync/supremacy-static-data
 	make sync
 
 .PHONY: dev-sync-data
 dev-sync-data:
 	mkdir -p ./server/synctool/temp-sync
 	rm -rf ./server/synctool/temp-sync/supremacy-static-data
-	git clone git@github.com:ninja-syndicate/supremacy-static-data.git -b develop ./server/synctool/temp-sync/supremacy-static-data
+	git clone git@github.com:ninja-syndicate/supremacy-static-data.git -b vincent/se-76-add-new-value-to-mechs-for ./server/synctool/temp-sync/supremacy-static-data
 	make dev-sync
 
 .PHONY: mac-sync-data
 mac-sync-data:
 	cd ./server/synctool && rm -rf temp-sync && mkdir temp-sync
-	cd ./server/synctool/temp-sync && git clone git@github.com:ninja-syndicate/supremacy-static-data.git -b develop
+	cd ./server/synctool/temp-sync && git clone git@github.com:ninja-syndicate/supremacy-static-data.git -b vincent/se-76-add-new-value-to-mechs-for
 	cd ../../../
 	make dev-sync
 
