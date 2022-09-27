@@ -6,8 +6,6 @@ import (
 	"database/sql"
 	"encoding/csv"
 	"fmt"
-	"github.com/volatiletech/null/v8"
-	"github.com/volatiletech/sqlboiler/v4/boil"
 	"io"
 	"log"
 	"net/http"
@@ -17,6 +15,9 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/volatiletech/null/v8"
+	"github.com/volatiletech/sqlboiler/v4/boil"
 )
 
 type StaticSyncTool struct {
@@ -56,6 +57,16 @@ func SyncTool(dt *StaticSyncTool) error {
 	}
 	f.Close()
 
+	f, err = readFile(fmt.Sprintf("%sweapon_skins.csv", dt.FilePath))
+	if err != nil {
+		return err
+	}
+	err = SyncWeaponSkins(f, dt.DB)
+	if err != nil {
+		return err
+	}
+	f.Close()
+
 	f, err = readFile(fmt.Sprintf("%smech_skins.csv", dt.FilePath))
 	if err != nil {
 		return err
@@ -90,16 +101,6 @@ func SyncTool(dt *StaticSyncTool) error {
 	//if err != nil {
 	//	return err
 	//}
-
-	f, err = readFile(fmt.Sprintf("%sweapon_skins.csv", dt.FilePath))
-	if err != nil {
-		return err
-	}
-	err = SyncWeaponSkins(f, dt.DB)
-	if err != nil {
-		return err
-	}
-	f.Close()
 
 	f, err = readFile(fmt.Sprintf("%sweapons.csv", dt.FilePath))
 	if err != nil {
@@ -517,18 +518,19 @@ func SyncMechSkins(f io.Reader, db *sql.DB) error {
 	var MechSkins []types.MechSkin
 	for _, record := range records {
 		mechModel := &types.MechSkin{
-			ID:               record[0],
-			Collection:       record[1],
-			Label:            record[2],
-			Tier:             record[3],
-			DefaultLevel:     record[5],
-			ImageUrl:         null.NewString(record[6], record[6] != ""),
-			AnimationUrl:     null.NewString(record[7], record[7] != ""),
-			CardAnimationUrl: null.NewString(record[8], record[8] != ""),
-			LargeImageUrl:    null.NewString(record[9], record[9] != ""),
-			AvatarUrl:        null.NewString(record[10], record[10] != ""),
-			BackgroundColor:  null.NewString(record[11], record[11] != ""),
-			YoutubeUrl:       null.NewString(record[12], record[12] != ""),
+			ID:                    record[0],
+			Collection:            record[1],
+			Label:                 record[2],
+			Tier:                  record[3],
+			DefaultLevel:          record[5],
+			ImageUrl:              null.NewString(record[6], record[6] != ""),
+			AnimationUrl:          null.NewString(record[7], record[7] != ""),
+			CardAnimationUrl:      null.NewString(record[8], record[8] != ""),
+			LargeImageUrl:         null.NewString(record[9], record[9] != ""),
+			AvatarUrl:             null.NewString(record[10], record[10] != ""),
+			BackgroundColor:       null.NewString(record[11], record[11] != ""),
+			YoutubeUrl:            null.NewString(record[12], record[12] != ""),
+			BlueprintWeaponSkinID: null.NewString(record[13], record[13] != ""),
 		}
 
 		MechSkins = append(MechSkins, *mechModel)
@@ -550,9 +552,10 @@ func SyncMechSkins(f io.Reader, db *sql.DB) error {
 			                                large_image_url,
 			                                avatar_url,
 			                                background_color,
-			                                youtube_url
+			                                youtube_url,
+											blueprint_weapon_skin_id
 			                                )
-			VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
+			VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
 			ON CONFLICT (id)
 			DO
 			    UPDATE SET id=$1,
@@ -566,7 +569,8 @@ func SyncMechSkins(f io.Reader, db *sql.DB) error {
 			               large_image_url=$9,
 			               avatar_url=$10,
 			               background_color=$11,
-			               youtube_url=$12;
+			               youtube_url=$12,
+						   blueprint_weapon_skin_id=$13;
 		`,
 			mechSkin.ID,
 			mechSkin.Collection,
@@ -580,6 +584,7 @@ func SyncMechSkins(f io.Reader, db *sql.DB) error {
 			mechSkin.AvatarUrl,
 			mechSkin.BackgroundColor,
 			mechSkin.YoutubeUrl,
+			mechSkin.BlueprintWeaponSkinID,
 		)
 		if err != nil {
 			fmt.Println(err.Error()+mechSkin.ID, mechSkin.Label)

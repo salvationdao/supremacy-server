@@ -33,6 +33,8 @@ type Mech struct {
 	LimitedReleaseTokenID null.Int64 `json:"limited_release_token_id,omitempty"`
 	CollectionItemID      string     `json:"-"`
 
+	MechType string `json:"mech_type"`
+
 	//// stats
 	// speed
 	Speed        int `json:"speed"`
@@ -64,25 +66,26 @@ type Mech struct {
 	ItemSaleID    null.String `json:"item_sale_id"`
 
 	// Connected objects
-	Owner            *User          `json:"user"`
-	FactionID        null.String    `json:"faction_id"`
-	Faction          *Faction       `json:"faction,omitempty"`
-	BlueprintID      string         `json:"blueprint_id"`
-	Blueprint        *BlueprintMech `json:"blueprint_mech,omitempty"`
-	BrandID          string         `json:"brand_id"`
-	Brand            *Brand         `json:"brand"`
-	ChassisSkinID    string         `json:"chassis_skin_id,omitempty"`
-	ChassisSkin      *MechSkin      `json:"chassis_skin,omitempty"`
-	IntroAnimationID null.String    `json:"intro_animation_id,omitempty"`
-	IntroAnimation   *MechAnimation `json:"intro_animation,omitempty"`
-	OutroAnimationID null.String    `json:"outro_animation_id,omitempty"`
-	OutroAnimation   *MechAnimation `json:"outro_animation,omitempty"`
-	PowerCoreID      null.String    `json:"power_core_id,omitempty"`
-	PowerCore        *PowerCore     `json:"power_core,omitempty"`
-	Weapons          WeaponSlice    `json:"weapons"`
-	Utility          UtilitySlice   `json:"utility"`
-	UpdatedAt        time.Time      `json:"updated_at"`
-	CreatedAt        time.Time      `json:"created_at"`
+	Owner                                 *User          `json:"user"`
+	FactionID                             null.String    `json:"faction_id"`
+	Faction                               *Faction       `json:"faction,omitempty"`
+	BlueprintID                           string         `json:"blueprint_id"`
+	BrandID                               string         `json:"brand_id"`
+	Brand                                 *Brand         `json:"brand"`
+	ChassisSkinID                         string         `json:"chassis_skin_id,omitempty"`
+	ChassisSkin                           *MechSkin      `json:"chassis_skin,omitempty"`
+	IntroAnimationID                      null.String    `json:"intro_animation_id,omitempty"`
+	IntroAnimation                        *MechAnimation `json:"intro_animation,omitempty"`
+	OutroAnimationID                      null.String    `json:"outro_animation_id,omitempty"`
+	OutroAnimation                        *MechAnimation `json:"outro_animation,omitempty"`
+	PowerCoreID                           null.String    `json:"power_core_id,omitempty"`
+	PowerCore                             *PowerCore     `json:"power_core,omitempty"`
+	Weapons                               WeaponSlice    `json:"weapons"`
+	Utility                               UtilitySlice   `json:"utility"`
+	UpdatedAt                             time.Time      `json:"updated_at"`
+	CreatedAt                             time.Time      `json:"created_at"`
+	BlueprintWeaponIDsWithSkinInheritance []string       `json:"blueprint_weapon_ids_with_skin_inheritance"`
+	CompatibleBlueprintMechSkinIDs        []string       `json:"compatible_blueprint_mech_skin_ids"`
 }
 
 type BlueprintMech struct {

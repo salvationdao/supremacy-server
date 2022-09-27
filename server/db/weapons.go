@@ -112,6 +112,7 @@ func InsertNewWeapon(tx *sql.Tx, ownerID uuid.UUID, weapon *server.BlueprintWeap
 		GenesisTokenID:        weapon.GenesisTokenID,
 		LimitedReleaseTokenID: weapon.LimitedReleaseTokenID,
 		EquippedWeaponSkinID:  wpnSkin.ID,
+		LockedToMech:          weapon.ID == "c1c78867-9de7-43d3-97e9-91381800f38e" || weapon.ID == "41099781-8586-4783-9d1c-b515a386fe9f" || weapon.ID == "e9fc2417-6a5b-489d-b82e-42942535af90",
 	}
 
 	err = newWeapon.Insert(tx, boil.Infer())
@@ -245,15 +246,8 @@ func AttachWeaponToMech(trx *sql.Tx, ownerID, mechID, weaponID string) error {
 		return terror.Error(err)
 	}
 
-	// check current weapon count
-	if len(mech.R.ChassisMechWeapons)+1 > mech.R.Blueprint.WeaponHardpoints {
-		err := fmt.Errorf("weapon cannot fit")
-		gamelog.L.Error().Err(err).Str("weaponID", weaponID).Msg("adding this weapon brings mechs weapons over mechs weapon hardpoints")
-		return terror.Error(err, fmt.Sprintf("War machine already has %d weapons equipped and is only has %d weapon hardpoints.", len(mech.R.ChassisMechWeapons), mech.R.Blueprint.WeaponHardpoints))
-	}
-
 	// check weapon isn't already equipped to another war machine
-	exists, err := boiler.MechWeapons(boiler.MechWeaponWhere.WeaponID.EQ(weaponID)).Exists(tx)
+	exists, err := boiler.MechWeapons(boiler.MechWeaponWhere.WeaponID.EQ(null.StringFrom(weaponID))).Exists(tx)
 	if err != nil {
 		gamelog.L.Error().Err(err).Str("weaponID", weaponID).Msg("failed to check if a mech and weapon join already exists")
 		return terror.Error(err)
@@ -264,23 +258,31 @@ func AttachWeaponToMech(trx *sql.Tx, ownerID, mechID, weaponID string) error {
 		return terror.Error(err, "This weapon is already equipped to another war machine, try again or contact support.")
 	}
 
-	weapon.EquippedOn = null.StringFrom(mech.ID)
+	// get next available slot
+	availableSlot, err := boiler.MechWeapons(
+		boiler.MechWeaponWhere.ChassisID.EQ(mech.ID),
+		boiler.MechWeaponWhere.WeaponID.IsNull(),
+		qm.OrderBy(fmt.Sprintf("%s ASC", boiler.MechWeaponColumns.SlotNumber)),
+	).One(tx)
+	if errors.Is(err, sql.ErrNoRows) {
+		gamelog.L.Error().Err(err).Str("mechID", mech.ID).Msg("no available slots on mech to insert weapon")
+		return terror.Error(err, "There are no more slots on this mech to equip this weapon.")
+	} else if err != nil {
+		gamelog.L.Error().Err(err).Str("mechID", mech.ID).Msg("failed to check for available weapon slots on mech")
+		return terror.Error(err)
+	}
 
+	weapon.EquippedOn = null.StringFrom(mech.ID)
 	_, err = weapon.Update(tx, boil.Infer())
 	if err != nil {
 		gamelog.L.Error().Err(err).Interface("weapon", weapon).Msg("failed to update weapon")
 		return terror.Error(err, "Issue preventing equipping this weapon to the war machine, try again or contact support.")
 	}
 
-	weaponMechJoin := boiler.MechWeapon{
-		ChassisID:  mech.ID,
-		WeaponID:   weapon.ID,
-		SlotNumber: len(mech.R.ChassisMechWeapons), // slot number starts at 0, so if we currently have 2 equipped and this is the 3rd, it will be slot 2.
-	}
-
-	err = weaponMechJoin.Insert(tx, boil.Infer())
+	availableSlot.WeaponID = null.StringFrom(weapon.ID)
+	_, err = availableSlot.Update(tx, boil.Infer())
 	if err != nil {
-		gamelog.L.Error().Err(err).Interface("weaponMechJoin", weaponMechJoin).Msg(" failed to equip weapon to war machine")
+		gamelog.L.Error().Err(err).Interface("weapon", weapon).Msg("failed to update mech_weapon entry")
 		return terror.Error(err, "Issue preventing equipping this weapon to the war machine, try again or contact support.")
 	}
 
@@ -307,13 +309,46 @@ func CheckWeaponAttached(weaponID string) (bool, error) {
 		boiler.WeaponWhere.ID.EQ(weaponID),
 		qm.Expr(
 			boiler.WeaponWhere.EquippedOn.IsNotNull(),
-			qm.Or(fmt.Sprintf(`%s IS NOT NULL`, qm.Rels(boiler.TableNames.MechWeapons, boiler.MechWeaponColumns.ID))),
+			qm.Or(fmt.Sprintf(`%s = ?`, qm.Rels(boiler.TableNames.MechWeapons, boiler.MechWeaponColumns.WeaponID)), weaponID),
 		),
 	).Exists(gamedb.StdConn)
 	if err != nil {
 		return false, terror.Error(err)
 	}
 	return exists, nil
+}
+
+func IsWeaponColumn(col string) bool {
+	switch col {
+	case
+		boiler.WeaponColumns.ID,
+		boiler.WeaponColumns.SlugDontUse,
+		boiler.WeaponColumns.DamageDontUse,
+		boiler.WeaponColumns.DeletedAt,
+		boiler.WeaponColumns.UpdatedAt,
+		boiler.WeaponColumns.CreatedAt,
+		boiler.WeaponColumns.BlueprintID,
+		boiler.WeaponColumns.EquippedOn,
+		boiler.WeaponColumns.DefaultDamageTypeDontUse,
+		boiler.WeaponColumns.GenesisTokenID,
+		boiler.WeaponColumns.LimitedReleaseTokenID,
+		boiler.WeaponColumns.DamageFalloffDontUse,
+		boiler.WeaponColumns.DamageFalloffRateDontUse,
+		boiler.WeaponColumns.RadiusDontUse,
+		boiler.WeaponColumns.RadiusDamageFalloffDontUse,
+		boiler.WeaponColumns.SpreadDontUse,
+		boiler.WeaponColumns.RateOfFireDontUse,
+		boiler.WeaponColumns.ProjectileSpeedDontUse,
+		boiler.WeaponColumns.EnergyCostDontUse,
+		boiler.WeaponColumns.IsMeleeDontUse,
+		boiler.WeaponColumns.MaxAmmoDontUse,
+		boiler.WeaponColumns.LockedToMech,
+		boiler.WeaponColumns.EquippedWeaponSkinID,
+		boiler.WeaponColumns.BlueprintIDOld:
+		return true
+	default:
+		return false
+	}
 }
 
 type WeaponListOpts struct {
@@ -330,6 +365,8 @@ type WeaponListOpts struct {
 	DisplayHidden                 bool
 	ExcludeMarketLocked           bool
 	IncludeMarketListed           bool
+	ExcludeMechLocked             bool
+	ExcludeIDs                    []string
 	FilterRarities                []string               `json:"rarities"`
 	FilterWeaponTypes             []string               `json:"weapon_types"`
 	FilterEquippedStatuses        []string               `json:"equipped_statuses"`
@@ -388,16 +425,25 @@ func WeaponList(opts *WeaponListOpts) (int64, []*server.Weapon, error) {
 	if !opts.DisplayHidden {
 		queryMods = append(queryMods, boiler.CollectionItemWhere.AssetHidden.IsNull())
 	}
+	if opts.ExcludeMechLocked {
+		queryMods = append(queryMods,
+			boiler.WeaponWhere.LockedToMech.EQ(false),
+		)
+	}
 
 	// Filters
 	if opts.Filter != nil {
 		// if we have filter
 		for i, f := range opts.Filter.Items {
 			// validate it is the right table and valid column
-			if f.Table == boiler.TableNames.Weapons && IsMechColumn(f.Column) {
+			if f.Table == boiler.TableNames.Weapons && IsWeaponColumn(f.Column) {
 				queryMods = append(queryMods, GenerateListFilterQueryMod(*f, i+1, opts.Filter.LinkOperator))
 			}
 		}
+	}
+
+	if len(opts.ExcludeIDs) > 0 {
+		queryMods = append(queryMods, boiler.WeaponWhere.ID.NIN(opts.ExcludeIDs))
 	}
 
 	if len(opts.FilterRarities) > 0 {

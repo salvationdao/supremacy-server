@@ -14,14 +14,13 @@ import (
 type WeaponSkin struct {
 	*CollectionItem
 	*Images
-	SkinSwatch  *Images
-	ID          string      `json:"id"`
-	BlueprintID string      `json:"blueprint_id"`
-	Label       string      `json:"label"`
-	WeaponType  string      `json:"weapon_type"`
-	EquippedOn  null.String `json:"equipped_on,omitempty"`
-	Tier        string      `json:"tier"`
-	CreatedAt   time.Time   `json:"created_at"`
+	SkinSwatch   *Images             `json:"swatch_images"`
+	ID           string              `json:"id"`
+	BlueprintID  string              `json:"blueprint_id"`
+	Label        string              `json:"label"`
+	StatModifier decimal.NullDecimal `json:"stat_modifier,omitempty"`
+	EquippedOn   null.String         `json:"equipped_on,omitempty"`
+	CreatedAt    time.Time           `json:"created_at"`
 
 	EquippedOnDetails *EquippedOnDetails
 }
@@ -111,11 +110,11 @@ func WeaponSkinFromBoiler(weaponSkin *boiler.WeaponSkin, collection *boiler.Coll
 			AnimationURL:     blueprintWeaponSkin.AnimationURL,
 			YoutubeURL:       blueprintWeaponSkin.YoutubeURL,
 		},
-		Label:       weaponSkin.R.Blueprint.Label,
-		Tier:        weaponSkin.R.Blueprint.Tier,
-		ID:          weaponSkin.ID,
-		BlueprintID: weaponSkin.BlueprintID,
-		EquippedOn:  weaponSkin.EquippedOn,
-		CreatedAt:   weaponSkin.CreatedAt,
+		Label:        weaponSkin.R.Blueprint.Label,
+		StatModifier: weaponSkin.R.Blueprint.StatModifier,
+		ID:           weaponSkin.ID,
+		BlueprintID:  weaponSkin.BlueprintID,
+		EquippedOn:   weaponSkin.EquippedOn,
+		CreatedAt:    weaponSkin.CreatedAt,
 	}
 }

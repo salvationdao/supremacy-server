@@ -23,79 +23,79 @@ import (
 
 // MechWeapon is an object representing the database table.
 type MechWeapon struct {
-	ID         string    `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
-	ChassisID  string    `boiler:"chassis_id" boil:"chassis_id" json:"chassis_id" toml:"chassis_id" yaml:"chassis_id"`
-	WeaponID   string    `boiler:"weapon_id" boil:"weapon_id" json:"weapon_id" toml:"weapon_id" yaml:"weapon_id"`
-	SlotNumber int       `boiler:"slot_number" boil:"slot_number" json:"slot_number" toml:"slot_number" yaml:"slot_number"`
-	DeletedAt  null.Time `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
-	UpdatedAt  time.Time `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
-	CreatedAt  time.Time `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
-	AllowMelee bool      `boiler:"allow_melee" boil:"allow_melee" json:"allow_melee" toml:"allow_melee" yaml:"allow_melee"`
+	ChassisID       string      `boiler:"chassis_id" boil:"chassis_id" json:"chassis_id" toml:"chassis_id" yaml:"chassis_id"`
+	WeaponID        null.String `boiler:"weapon_id" boil:"weapon_id" json:"weapon_id,omitempty" toml:"weapon_id" yaml:"weapon_id,omitempty"`
+	SlotNumber      int         `boiler:"slot_number" boil:"slot_number" json:"slot_number" toml:"slot_number" yaml:"slot_number"`
+	DeletedAt       null.Time   `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
+	UpdatedAt       time.Time   `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
+	CreatedAt       time.Time   `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
+	AllowMelee      bool        `boiler:"allow_melee" boil:"allow_melee" json:"allow_melee" toml:"allow_melee" yaml:"allow_melee"`
+	IsSkinInherited bool        `boiler:"is_skin_inherited" boil:"is_skin_inherited" json:"is_skin_inherited" toml:"is_skin_inherited" yaml:"is_skin_inherited"`
 
 	R *mechWeaponR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L mechWeaponL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 }
 
 var MechWeaponColumns = struct {
-	ID         string
-	ChassisID  string
-	WeaponID   string
-	SlotNumber string
-	DeletedAt  string
-	UpdatedAt  string
-	CreatedAt  string
-	AllowMelee string
+	ChassisID       string
+	WeaponID        string
+	SlotNumber      string
+	DeletedAt       string
+	UpdatedAt       string
+	CreatedAt       string
+	AllowMelee      string
+	IsSkinInherited string
 }{
-	ID:         "id",
-	ChassisID:  "chassis_id",
-	WeaponID:   "weapon_id",
-	SlotNumber: "slot_number",
-	DeletedAt:  "deleted_at",
-	UpdatedAt:  "updated_at",
-	CreatedAt:  "created_at",
-	AllowMelee: "allow_melee",
+	ChassisID:       "chassis_id",
+	WeaponID:        "weapon_id",
+	SlotNumber:      "slot_number",
+	DeletedAt:       "deleted_at",
+	UpdatedAt:       "updated_at",
+	CreatedAt:       "created_at",
+	AllowMelee:      "allow_melee",
+	IsSkinInherited: "is_skin_inherited",
 }
 
 var MechWeaponTableColumns = struct {
-	ID         string
-	ChassisID  string
-	WeaponID   string
-	SlotNumber string
-	DeletedAt  string
-	UpdatedAt  string
-	CreatedAt  string
-	AllowMelee string
+	ChassisID       string
+	WeaponID        string
+	SlotNumber      string
+	DeletedAt       string
+	UpdatedAt       string
+	CreatedAt       string
+	AllowMelee      string
+	IsSkinInherited string
 }{
-	ID:         "mech_weapons.id",
-	ChassisID:  "mech_weapons.chassis_id",
-	WeaponID:   "mech_weapons.weapon_id",
-	SlotNumber: "mech_weapons.slot_number",
-	DeletedAt:  "mech_weapons.deleted_at",
-	UpdatedAt:  "mech_weapons.updated_at",
-	CreatedAt:  "mech_weapons.created_at",
-	AllowMelee: "mech_weapons.allow_melee",
+	ChassisID:       "mech_weapons.chassis_id",
+	WeaponID:        "mech_weapons.weapon_id",
+	SlotNumber:      "mech_weapons.slot_number",
+	DeletedAt:       "mech_weapons.deleted_at",
+	UpdatedAt:       "mech_weapons.updated_at",
+	CreatedAt:       "mech_weapons.created_at",
+	AllowMelee:      "mech_weapons.allow_melee",
+	IsSkinInherited: "mech_weapons.is_skin_inherited",
 }
 
 // Generated where
 
 var MechWeaponWhere = struct {
-	ID         whereHelperstring
-	ChassisID  whereHelperstring
-	WeaponID   whereHelperstring
-	SlotNumber whereHelperint
-	DeletedAt  whereHelpernull_Time
-	UpdatedAt  whereHelpertime_Time
-	CreatedAt  whereHelpertime_Time
-	AllowMelee whereHelperbool
+	ChassisID       whereHelperstring
+	WeaponID        whereHelpernull_String
+	SlotNumber      whereHelperint
+	DeletedAt       whereHelpernull_Time
+	UpdatedAt       whereHelpertime_Time
+	CreatedAt       whereHelpertime_Time
+	AllowMelee      whereHelperbool
+	IsSkinInherited whereHelperbool
 }{
-	ID:         whereHelperstring{field: "\"mech_weapons\".\"id\""},
-	ChassisID:  whereHelperstring{field: "\"mech_weapons\".\"chassis_id\""},
-	WeaponID:   whereHelperstring{field: "\"mech_weapons\".\"weapon_id\""},
-	SlotNumber: whereHelperint{field: "\"mech_weapons\".\"slot_number\""},
-	DeletedAt:  whereHelpernull_Time{field: "\"mech_weapons\".\"deleted_at\""},
-	UpdatedAt:  whereHelpertime_Time{field: "\"mech_weapons\".\"updated_at\""},
-	CreatedAt:  whereHelpertime_Time{field: "\"mech_weapons\".\"created_at\""},
-	AllowMelee: whereHelperbool{field: "\"mech_weapons\".\"allow_melee\""},
+	ChassisID:       whereHelperstring{field: "\"mech_weapons\".\"chassis_id\""},
+	WeaponID:        whereHelpernull_String{field: "\"mech_weapons\".\"weapon_id\""},
+	SlotNumber:      whereHelperint{field: "\"mech_weapons\".\"slot_number\""},
+	DeletedAt:       whereHelpernull_Time{field: "\"mech_weapons\".\"deleted_at\""},
+	UpdatedAt:       whereHelpertime_Time{field: "\"mech_weapons\".\"updated_at\""},
+	CreatedAt:       whereHelpertime_Time{field: "\"mech_weapons\".\"created_at\""},
+	AllowMelee:      whereHelperbool{field: "\"mech_weapons\".\"allow_melee\""},
+	IsSkinInherited: whereHelperbool{field: "\"mech_weapons\".\"is_skin_inherited\""},
 }
 
 // MechWeaponRels is where relationship names are stored.
@@ -122,10 +122,10 @@ func (*mechWeaponR) NewStruct() *mechWeaponR {
 type mechWeaponL struct{}
 
 var (
-	mechWeaponAllColumns            = []string{"id", "chassis_id", "weapon_id", "slot_number", "deleted_at", "updated_at", "created_at", "allow_melee"}
-	mechWeaponColumnsWithoutDefault = []string{"chassis_id", "weapon_id", "slot_number"}
-	mechWeaponColumnsWithDefault    = []string{"id", "deleted_at", "updated_at", "created_at", "allow_melee"}
-	mechWeaponPrimaryKeyColumns     = []string{"id"}
+	mechWeaponAllColumns            = []string{"chassis_id", "weapon_id", "slot_number", "deleted_at", "updated_at", "created_at", "allow_melee", "is_skin_inherited"}
+	mechWeaponColumnsWithoutDefault = []string{"chassis_id", "slot_number"}
+	mechWeaponColumnsWithDefault    = []string{"weapon_id", "deleted_at", "updated_at", "created_at", "allow_melee", "is_skin_inherited"}
+	mechWeaponPrimaryKeyColumns     = []string{"chassis_id", "slot_number"}
 	mechWeaponGeneratedColumns      = []string{}
 )
 
@@ -523,7 +523,9 @@ func (mechWeaponL) LoadWeapon(e boil.Executor, singular bool, maybeMechWeapon in
 		if object.R == nil {
 			object.R = &mechWeaponR{}
 		}
-		args = append(args, object.WeaponID)
+		if !queries.IsNil(object.WeaponID) {
+			args = append(args, object.WeaponID)
+		}
 
 	} else {
 	Outer:
@@ -533,12 +535,14 @@ func (mechWeaponL) LoadWeapon(e boil.Executor, singular bool, maybeMechWeapon in
 			}
 
 			for _, a := range args {
-				if a == obj.WeaponID {
+				if queries.Equal(a, obj.WeaponID) {
 					continue Outer
 				}
 			}
 
-			args = append(args, obj.WeaponID)
+			if !queries.IsNil(obj.WeaponID) {
+				args = append(args, obj.WeaponID)
+			}
 
 		}
 	}
@@ -597,7 +601,7 @@ func (mechWeaponL) LoadWeapon(e boil.Executor, singular bool, maybeMechWeapon in
 
 	for _, local := range slice {
 		for _, foreign := range resultSlice {
-			if local.WeaponID == foreign.ID {
+			if queries.Equal(local.WeaponID, foreign.ID) {
 				local.R.Weapon = foreign
 				if foreign.R == nil {
 					foreign.R = &weaponR{}
@@ -627,7 +631,7 @@ func (o *MechWeapon) SetChassis(exec boil.Executor, insert bool, related *Mech) 
 		strmangle.SetParamNames("\"", "\"", 1, []string{"chassis_id"}),
 		strmangle.WhereClause("\"", "\"", 2, mechWeaponPrimaryKeyColumns),
 	)
-	values := []interface{}{related.ID, o.ID}
+	values := []interface{}{related.ID, o.ChassisID, o.SlotNumber}
 
 	if boil.DebugMode {
 		fmt.Fprintln(boil.DebugWriter, updateQuery)
@@ -673,7 +677,7 @@ func (o *MechWeapon) SetWeapon(exec boil.Executor, insert bool, related *Weapon)
 		strmangle.SetParamNames("\"", "\"", 1, []string{"weapon_id"}),
 		strmangle.WhereClause("\"", "\"", 2, mechWeaponPrimaryKeyColumns),
 	)
-	values := []interface{}{related.ID, o.ID}
+	values := []interface{}{related.ID, o.ChassisID, o.SlotNumber}
 
 	if boil.DebugMode {
 		fmt.Fprintln(boil.DebugWriter, updateQuery)
@@ -683,7 +687,7 @@ func (o *MechWeapon) SetWeapon(exec boil.Executor, insert bool, related *Weapon)
 		return errors.Wrap(err, "failed to update local table")
 	}
 
-	o.WeaponID = related.ID
+	queries.Assign(&o.WeaponID, related.ID)
 	if o.R == nil {
 		o.R = &mechWeaponR{
 			Weapon: related,
@@ -703,6 +707,28 @@ func (o *MechWeapon) SetWeapon(exec boil.Executor, insert bool, related *Weapon)
 	return nil
 }
 
+// RemoveWeapon relationship.
+// Sets o.R.Weapon to nil.
+// Removes o from all passed in related items' relationships struct (Optional).
+func (o *MechWeapon) RemoveWeapon(exec boil.Executor, related *Weapon) error {
+	var err error
+
+	queries.SetScanner(&o.WeaponID, nil)
+	if _, err = o.Update(exec, boil.Whitelist("weapon_id")); err != nil {
+		return errors.Wrap(err, "failed to update local table")
+	}
+
+	if o.R != nil {
+		o.R.Weapon = nil
+	}
+	if related == nil || related.R == nil {
+		return nil
+	}
+
+	related.R.MechWeapon = nil
+	return nil
+}
+
 // MechWeapons retrieves all the records using an executor.
 func MechWeapons(mods ...qm.QueryMod) mechWeaponQuery {
 	mods = append(mods, qm.From("\"mech_weapons\""), qmhelper.WhereIsNull("\"mech_weapons\".\"deleted_at\""))
@@ -711,7 +737,7 @@ func MechWeapons(mods ...qm.QueryMod) mechWeaponQuery {
 
 // FindMechWeapon retrieves a single record by ID with an executor.
 // If selectCols is empty Find will return all columns.
-func FindMechWeapon(exec boil.Executor, iD string, selectCols ...string) (*MechWeapon, error) {
+func FindMechWeapon(exec boil.Executor, chassisID string, slotNumber int, selectCols ...string) (*MechWeapon, error) {
 	mechWeaponObj := &MechWeapon{}
 
 	sel := "*"
@@ -719,10 +745,10 @@ func FindMechWeapon(exec boil.Executor, iD string, selectCols ...string) (*MechW
 		sel = strings.Join(strmangle.IdentQuoteSlice(dialect.LQ, dialect.RQ, selectCols), ",")
 	}
 	query := fmt.Sprintf(
-		"select %s from \"mech_weapons\" where \"id\"=$1 and \"deleted_at\" is null", sel,
+		"select %s from \"mech_weapons\" where \"chassis_id\"=$1 AND \"slot_number\"=$2 and \"deleted_at\" is null", sel,
 	)
 
-	q := queries.Raw(query, iD)
+	q := queries.Raw(query, chassisID, slotNumber)
 
 	err := q.Bind(nil, exec, mechWeaponObj)
 	if err != nil {
@@ -1093,12 +1119,12 @@ func (o *MechWeapon) Delete(exec boil.Executor, hardDelete bool) (int64, error) 
 	)
 	if hardDelete {
 		args = queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(o)), mechWeaponPrimaryKeyMapping)
-		sql = "DELETE FROM \"mech_weapons\" WHERE \"id\"=$1"
+		sql = "DELETE FROM \"mech_weapons\" WHERE \"chassis_id\"=$1 AND \"slot_number\"=$2"
 	} else {
 		currTime := time.Now().In(boil.GetLocation())
 		o.DeletedAt = null.TimeFrom(currTime)
 		wl := []string{"deleted_at"}
-		sql = fmt.Sprintf("UPDATE \"mech_weapons\" SET %s WHERE \"id\"=$2",
+		sql = fmt.Sprintf("UPDATE \"mech_weapons\" SET %s WHERE \"chassis_id\"=$2 AND \"slot_number\"=$3",
 			strmangle.SetParamNames("\"", "\"", 1, wl),
 		)
 		valueMapping, err := queries.BindMapping(mechWeaponType, mechWeaponMapping, append(wl, mechWeaponPrimaryKeyColumns...))
@@ -1223,7 +1249,7 @@ func (o MechWeaponSlice) DeleteAll(exec boil.Executor, hardDelete bool) (int64, 
 // Reload refetches the object from the database
 // using the primary keys with an executor.
 func (o *MechWeapon) Reload(exec boil.Executor) error {
-	ret, err := FindMechWeapon(exec, o.ID)
+	ret, err := FindMechWeapon(exec, o.ChassisID, o.SlotNumber)
 	if err != nil {
 		return err
 	}
@@ -1263,15 +1289,15 @@ func (o *MechWeaponSlice) ReloadAll(exec boil.Executor) error {
 }
 
 // MechWeaponExists checks if the MechWeapon row exists.
-func MechWeaponExists(exec boil.Executor, iD string) (bool, error) {
+func MechWeaponExists(exec boil.Executor, chassisID string, slotNumber int) (bool, error) {
 	var exists bool
-	sql := "select exists(select 1 from \"mech_weapons\" where \"id\"=$1 and \"deleted_at\" is null limit 1)"
+	sql := "select exists(select 1 from \"mech_weapons\" where \"chassis_id\"=$1 AND \"slot_number\"=$2 and \"deleted_at\" is null limit 1)"
 
 	if boil.DebugMode {
 		fmt.Fprintln(boil.DebugWriter, sql)
-		fmt.Fprintln(boil.DebugWriter, iD)
+		fmt.Fprintln(boil.DebugWriter, chassisID, slotNumber)
 	}
-	row := exec.QueryRow(sql, iD)
+	row := exec.QueryRow(sql, chassisID, slotNumber)
 
 	err := row.Scan(&exists)
 	if err != nil {
