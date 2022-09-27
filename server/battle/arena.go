@@ -66,9 +66,8 @@ type ArenaManager struct {
 	arenas           map[string]*Arena
 	deadlock.RWMutex // lock for arena
 
-	ChallengeFundUpdateChan      chan bool
-	ScheduledLobbyCheckpointChan chan bool
-	LobbyFuncMx                  *deadlock.Mutex
+	ChallengeFundUpdateChan chan bool
+	LobbyFuncMx             *deadlock.Mutex
 }
 
 type Opts struct {
@@ -96,9 +95,8 @@ func NewArenaManager(opts *Opts) (*ArenaManager, error) {
 		QuestManager:             opts.QuestManager,
 		arenas:                   make(map[string]*Arena),
 
-		ChallengeFundUpdateChan:      make(chan bool),
-		ScheduledLobbyCheckpointChan: make(chan bool),
-		LobbyFuncMx:                  &deadlock.Mutex{},
+		ChallengeFundUpdateChan: make(chan bool),
+		LobbyFuncMx:             &deadlock.Mutex{},
 	}
 
 	am.server = &http.Server{

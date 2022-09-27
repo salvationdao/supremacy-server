@@ -496,11 +496,6 @@ func (api *API) BattleLobbyJoin(ctx context.Context, user *boiler.Player, factio
 		// kick
 		if lobbyReady {
 			api.ArenaManager.KickIdleArenas()
-
-			// set scheduled battle lobby checkpoint to prevent arenas from hanging
-			if bl.WillNotStartUntil.Valid {
-				api.ArenaManager.ScheduledLobbyCheckpointChan <- true
-			}
 		}
 
 		// broadcast mech queue position
