@@ -68,8 +68,8 @@ type BattleHistoryRecord struct {
 	RunnerUp       int64             `json:"runner_up"`
 	Loser          int64             `json:"loser"`
 	Signature      string            `json:"signature"`
-	MechDetails    []*MechDetails    `json:"mech_details"`
-	OnlineCitizens []*OnlineCitizens `json:"online_citizens"`
+	MechDetails    []*MechDetails    `json:"mech_details,omitempty"`
+	OnlineCitizens []*OnlineCitizens `json:"online_citizens,omitempty"`
 }
 
 // BattleHistoryController holds handlers for battle history requests
@@ -296,50 +296,56 @@ func BattleRecord(b *boiler.Battle, signerPrivateKeyHex string) (*BattleHistoryR
 		break
 	}
 
-	zaiMechDetails, err := getMechMechOwnerDetails(ZaibatsuShortcode, b.ID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get zaibatsu mech details")
-	}
-	rmMechDetails, err := getMechMechOwnerDetails(RedMountainShortcode, b.ID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get red mountain mech details")
-	}
-	bcMechDetails, err := getMechMechOwnerDetails(BostonShortcode, b.ID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get boston mech details")
-	}
-
-	mechDetails := []*MechDetails{}
-
-	mechDetails = append(mechDetails, zaiMechDetails, rmMechDetails, bcMechDetails)
-
-	zaiOnlineCitizens, err := getOnlineCitizensDetails(ZaibatsuShortcode, b.ID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get zaibatsu online citizens")
-	}
-	rmOnlineCitizens, err := getOnlineCitizensDetails(RedMountainShortcode, b.ID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get red mountain online citizens")
-	}
-	bcOnlineCitizens, err := getOnlineCitizensDetails(BostonShortcode, b.ID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get boston online citizens")
-	}
-
-	onlineCitizens := []*OnlineCitizens{}
-
-	onlineCitizens = append(onlineCitizens, zaiOnlineCitizens, rmOnlineCitizens, bcOnlineCitizens)
-
 	result := &BattleHistoryRecord{
-		Number:         b.BattleNumber,
-		StartedAt:      b.StartedAt.Unix(),
-		EndedAt:        endUnix,
-		Winner:         int64(FactionMap[winner]),
-		RunnerUp:       int64(FactionMap[runnerUp]),
-		Loser:          int64(FactionMap[loser]),
-		MechDetails:    mechDetails,
-		OnlineCitizens: onlineCitizens,
+		Number:    b.BattleNumber,
+		StartedAt: b.StartedAt.Unix(),
+		EndedAt:   endUnix,
+		Winner:    int64(FactionMap[winner]),
+		RunnerUp:  int64(FactionMap[runnerUp]),
+		Loser:     int64(FactionMap[loser]),
 	}
+
+	func() {
+		zaiMechDetails, err := getMechMechOwnerDetails(ZaibatsuShortcode, b.ID)
+		if err != nil {
+			return
+		}
+		rmMechDetails, err := getMechMechOwnerDetails(RedMountainShortcode, b.ID)
+		if err != nil {
+			return
+		}
+		bcMechDetails, err := getMechMechOwnerDetails(BostonShortcode, b.ID)
+		if err != nil {
+			return
+		}
+
+		mechDetails := []*MechDetails{}
+
+		mechDetails = append(mechDetails, zaiMechDetails, rmMechDetails, bcMechDetails)
+
+		result.MechDetails = mechDetails
+	}()
+
+	func() {
+		zaiOnlineCitizens, err := getOnlineCitizensDetails(ZaibatsuShortcode, b.ID)
+		if err != nil {
+			return
+		}
+		rmOnlineCitizens, err := getOnlineCitizensDetails(RedMountainShortcode, b.ID)
+		if err != nil {
+			return
+		}
+		bcOnlineCitizens, err := getOnlineCitizensDetails(BostonShortcode, b.ID)
+		if err != nil {
+			return
+		}
+
+		onlineCitizens := []*OnlineCitizens{}
+
+		onlineCitizens = append(onlineCitizens, zaiOnlineCitizens, rmOnlineCitizens, bcOnlineCitizens)
+
+		result.OnlineCitizens = onlineCitizens
+	}()
 
 	if winner != NoneShortcode && runnerUp != NoneShortcode && loser != NoneShortcode {
 		signer := bridge.NewSigner(signerPrivateKeyHex)
