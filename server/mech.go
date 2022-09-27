@@ -3,6 +3,7 @@ package server
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/shopspring/decimal"
 	"server/db/boiler"
 	"time"
 
@@ -43,13 +44,14 @@ type Mech struct {
 	MaxHitpoints        int `json:"max_hitpoints"`
 	BoostedMaxHitpoints int `json:"boosted_max_hitpoints"`
 	// shield
-	Shield                    int    `json:"shield"`
-	ShieldRechargeRate        int    `json:"shield_recharge_rate"`
-	BoostedShieldRechargeRate int    `json:"boosted_shield_recharge_rate"`
-	ShieldRechargePowerCost   int    `json:"shield_recharge_power_cost"`
-	ShieldTypeID              string `json:"shield_type"`
-	ShieldTypeLabel           string `json:"shield_type_label"`
-	ShieldTypeDescription     string `json:"shield_type_description"`
+	Shield                    int             `json:"shield"`
+	ShieldRechargeRate        int             `json:"shield_recharge_rate"`
+	BoostedShieldRechargeRate int             `json:"boosted_shield_recharge_rate"`
+	ShieldRechargeDelay       decimal.Decimal `json:"shield_recharge_delay"`
+	ShieldRechargePowerCost   int             `json:"shield_recharge_power_cost"`
+	ShieldTypeID              string          `json:"shield_type"`
+	ShieldTypeLabel           string          `json:"shield_type_label"`
+	ShieldTypeDescription     string          `json:"shield_type_description"`
 	// slots
 	WeaponHardpoints int `json:"weapon_hardpoints"`
 	UtilitySlots     int `json:"utility_slots"`

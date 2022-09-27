@@ -18,7 +18,6 @@ import (
 	"time"
 	"unicode"
 
-	"github.com/davecgh/go-spew/spew"
 	"github.com/go-chi/chi/v5"
 
 	"github.com/kevinms/leakybucket-go"
@@ -1372,8 +1371,6 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetMechEquipHandler(ctx context.Con
 		l.Error().Msg(fmt.Sprintf("cannot modify mech: %s", reason.String()))
 		return terror.Error(terror.ErrForbidden, fmt.Sprintf("This mech cannot be modified: %s", reason.String()))
 	}
-
-	spew.Dump(req.Payload)
 
 	tx, err := gamedb.StdConn.Begin()
 	if err != nil {

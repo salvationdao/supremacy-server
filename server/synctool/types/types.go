@@ -1,8 +1,6 @@
 package types
 
-import (
-	"github.com/volatiletech/null/v8"
-)
+import "github.com/volatiletech/null/v8"
 
 type MechModel struct {
 	ID                      string      `json:"id"`
@@ -22,6 +20,7 @@ type MechModel struct {
 	ShieldRechargeRate      string      `json:"shield_recharge_rate"`
 	ShieldRechargePowerCost string      `json:"shield_recharge_power_cost"`
 	ShieldTypeID            string      `json:"shield_type_id"`
+	ShieldRechargeDelay     string      `json:"shield_recharge_delay"`
 }
 
 type Brands struct {
