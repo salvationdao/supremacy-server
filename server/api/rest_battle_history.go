@@ -3,6 +3,8 @@ package api
 import (
 	"database/sql"
 	"fmt"
+	"github.com/ninja-software/terror/v2"
+	"github.com/volatiletech/null/v8"
 	"net/http"
 	"os"
 	"server"
@@ -42,14 +44,32 @@ type CurrentBattle struct {
 	ExpiresAt int64  `json:"expires_at"`
 	Signature string `json:"signature"`
 }
+
+type MechDetails struct {
+	Faction    int64                 `json:"faction"`
+	MechOwners []*PlayerShortDetails `json:"mech_owners"`
+}
+
+type OnlineCitizens struct {
+	Faction       int64                 `json:"faction"`
+	PlayerDetails []*PlayerShortDetails `json:"player_details"`
+}
+
+type PlayerShortDetails struct {
+	Username string `json:"username"`
+	GID      int    `json:"gid"`
+}
+
 type BattleHistoryRecord struct {
-	Number    int    `json:"number"`
-	StartedAt int64  `json:"started_at"`
-	EndedAt   *int64 `json:"ended_at"`
-	Winner    int64  `json:"winner"`
-	RunnerUp  int64  `json:"runner_up"`
-	Loser     int64  `json:"loser"`
-	Signature string `json:"signature"`
+	Number         int               `json:"number"`
+	StartedAt      int64             `json:"started_at"`
+	EndedAt        *int64            `json:"ended_at"`
+	Winner         int64             `json:"winner"`
+	RunnerUp       int64             `json:"runner_up"`
+	Loser          int64             `json:"loser"`
+	Signature      string            `json:"signature"`
+	MechDetails    []*MechDetails    `json:"mech_details"`
+	OnlineCitizens []*OnlineCitizens `json:"online_citizens"`
 }
 
 // BattleHistoryController holds handlers for battle history requests
@@ -276,13 +296,49 @@ func BattleRecord(b *boiler.Battle, signerPrivateKeyHex string) (*BattleHistoryR
 		break
 	}
 
+	zaiMechDetails, err := getMechMechOwnerDetails(ZaibatsuShortcode, b.ID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get zaibatsu mech details")
+	}
+	rmMechDetails, err := getMechMechOwnerDetails(RedMountainShortcode, b.ID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get red mountain mech details")
+	}
+	bcMechDetails, err := getMechMechOwnerDetails(BostonShortcode, b.ID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get boston mech details")
+	}
+
+	var mechDetails []*MechDetails
+
+	mechDetails = append(mechDetails, zaiMechDetails, rmMechDetails, bcMechDetails)
+
+	zaiOnlineCitizens, err := getOnlineCitizensDetails(ZaibatsuShortcode, b.ID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get zaibatsu online citizens")
+	}
+	rmOnlineCitizens, err := getOnlineCitizensDetails(RedMountainShortcode, b.ID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get red mountain online citizens")
+	}
+	bcOnlineCitizens, err := getOnlineCitizensDetails(BostonShortcode, b.ID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get boston online citizens")
+	}
+
+	var onlineCitizens []*OnlineCitizens
+
+	onlineCitizens = append(onlineCitizens, zaiOnlineCitizens, rmOnlineCitizens, bcOnlineCitizens)
+
 	result := &BattleHistoryRecord{
-		Number:    b.BattleNumber,
-		StartedAt: b.StartedAt.Unix(),
-		EndedAt:   endUnix,
-		Winner:    int64(FactionMap[winner]),
-		RunnerUp:  int64(FactionMap[runnerUp]),
-		Loser:     int64(FactionMap[loser]),
+		Number:         b.BattleNumber,
+		StartedAt:      b.StartedAt.Unix(),
+		EndedAt:        endUnix,
+		Winner:         int64(FactionMap[winner]),
+		RunnerUp:       int64(FactionMap[runnerUp]),
+		Loser:          int64(FactionMap[loser]),
+		MechDetails:    mechDetails,
+		OnlineCitizens: onlineCitizens,
 	}
 
 	if winner != NoneShortcode && runnerUp != NoneShortcode && loser != NoneShortcode {
@@ -302,4 +358,102 @@ func BattleRecord(b *boiler.Battle, signerPrivateKeyHex string) (*BattleHistoryR
 	}
 
 	return result, nil
+}
+
+func getMechMechOwnerDetails(factionShortcode FactionShortcode, battleID string) (*MechDetails, error) {
+	factionID := ""
+	switch FactionMap[factionShortcode] {
+	case 1:
+		factionID = server.ZaibatsuFactionID
+	case 2:
+		factionID = server.RedMountainFactionID
+	case 3:
+		factionID = server.BostonCyberneticsFactionID
+	}
+
+	if factionID == "" {
+		return nil, terror.Error(fmt.Errorf("failed to get faction id from faction shortcode"), "Failed to get faction id from faction shortcode")
+	}
+
+	mechDetails := &MechDetails{
+		Faction: int64(FactionMap[factionShortcode]),
+	}
+
+	battleMechs, err := boiler.BattleMechs(
+		boiler.BattleMechWhere.BattleID.EQ(battleID),
+		boiler.BattleMechWhere.MechID.EQ(factionID),
+		qm.Load(boiler.BattleMechRels.Owner),
+	).All(gamedb.StdConn)
+	if err != nil {
+		return nil, terror.Error(err, "Failed to find battle mech details")
+	}
+
+	mechOwnersShortDetails := []*PlayerShortDetails{}
+
+	for _, mech := range battleMechs {
+		if mech.R != nil && mech.R.Owner != nil {
+			mechOwnersShortDetail := &PlayerShortDetails{
+				GID: mech.R.Owner.Gid,
+			}
+
+			if mech.R.Owner.Username.Valid {
+				mechOwnersShortDetail.Username = mech.R.Owner.Username.String
+			}
+
+			mechOwnersShortDetails = append(mechOwnersShortDetails, mechOwnersShortDetail)
+		}
+	}
+
+	mechDetails.MechOwners = mechOwnersShortDetails
+	return mechDetails, nil
+}
+
+func getOnlineCitizensDetails(factionShortcode FactionShortcode, battleID string) (*OnlineCitizens, error) {
+	factionID := ""
+	switch FactionMap[factionShortcode] {
+	case 1:
+		factionID = server.ZaibatsuFactionID
+	case 2:
+		factionID = server.RedMountainFactionID
+	case 3:
+		factionID = server.BostonCyberneticsFactionID
+	}
+
+	if factionID == "" {
+		return nil, terror.Error(fmt.Errorf("failed to get faction id from faction shortcode"), "Failed to get faction id from faction shortcode")
+	}
+
+	onlineCitizen := &OnlineCitizens{
+		Faction: int64(FactionMap[factionShortcode]),
+	}
+
+	battleViewers, err := boiler.Players(
+		boiler.PlayerWhere.FactionID.EQ(null.StringFrom(factionID)),
+		qm.Where(fmt.Sprintf(
+			"EXISTS (SELECT 1 FROM %s WHERE player_id = %s AND battle_id = ?)",
+			boiler.TableNames.BattleViewers,
+			boiler.PlayerTableColumns.ID,
+		),
+			battleID,
+		),
+	).All(gamedb.StdConn)
+	if err != nil {
+		return nil, terror.Error(err, "failed to get battle viewers for citizen details")
+	}
+
+	playerShortDetails := []*PlayerShortDetails{}
+	for _, viewer := range battleViewers {
+		playerShortDetail := &PlayerShortDetails{
+			GID: viewer.Gid,
+		}
+
+		if viewer.Username.Valid {
+			playerShortDetail.Username = viewer.Username.String
+		}
+
+		playerShortDetails = append(playerShortDetails, playerShortDetail)
+	}
+
+	onlineCitizen.PlayerDetails = playerShortDetails
+	return onlineCitizen, nil
 }
