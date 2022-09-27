@@ -309,7 +309,7 @@ func BattleRecord(b *boiler.Battle, signerPrivateKeyHex string) (*BattleHistoryR
 		return nil, fmt.Errorf("failed to get boston mech details")
 	}
 
-	var mechDetails []*MechDetails
+	mechDetails := []*MechDetails{}
 
 	mechDetails = append(mechDetails, zaiMechDetails, rmMechDetails, bcMechDetails)
 
@@ -326,7 +326,7 @@ func BattleRecord(b *boiler.Battle, signerPrivateKeyHex string) (*BattleHistoryR
 		return nil, fmt.Errorf("failed to get boston online citizens")
 	}
 
-	var onlineCitizens []*OnlineCitizens
+	onlineCitizens := []*OnlineCitizens{}
 
 	onlineCitizens = append(onlineCitizens, zaiOnlineCitizens, rmOnlineCitizens, bcOnlineCitizens)
 
