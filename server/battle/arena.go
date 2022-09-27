@@ -66,8 +66,9 @@ type ArenaManager struct {
 	arenas           map[string]*Arena
 	deadlock.RWMutex // lock for arena
 
-	ChallengeFundUpdateChan chan bool
-	LobbyFuncMx             *deadlock.Mutex
+	ChallengeFundUpdateChan      chan bool
+	ScheduledLobbyCheckpointChan chan bool
+	LobbyFuncMx                  *deadlock.Mutex
 }
 
 type Opts struct {
@@ -95,8 +96,9 @@ func NewArenaManager(opts *Opts) (*ArenaManager, error) {
 		QuestManager:             opts.QuestManager,
 		arenas:                   make(map[string]*Arena),
 
-		ChallengeFundUpdateChan: make(chan bool),
-		LobbyFuncMx:             &deadlock.Mutex{},
+		ChallengeFundUpdateChan:      make(chan bool),
+		ScheduledLobbyCheckpointChan: make(chan bool),
+		LobbyFuncMx:                  &deadlock.Mutex{},
 	}
 
 	am.server = &http.Server{
@@ -246,6 +248,7 @@ func (am *ArenaManager) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// broadcast a new arena list to frontend
 	ws.PublishMessage("/public/arena_list", server.HubKeyBattleArenaListSubscribe, am.AvailableBattleArenas())
 
+	// handle arena close
 	defer func() {
 		am.Lock()
 		defer am.Unlock()
@@ -313,6 +316,13 @@ func (am *ArenaManager) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				if err != nil {
 					gamelog.L.Error().Str("battle_id", btl.ID).Str("replay_id", btl.replaySession.ReplaySession.ID).Err(err).Msg("Failed to update replay session")
 				}
+			}
+		}
+
+		// kick idle arenas
+		for _, a := range am.arenas {
+			if a.connected.Load() && a.Stage.Load() == ArenaStageIdle {
+				go a.BeginBattle()
 			}
 		}
 	}()
@@ -1572,29 +1582,24 @@ func (arena *Arena) GameClientJsonDataParser() {
 
 // assignBattleLobby assign the next
 // skipLobbyCheck ONLY happen on the battle end
-func (arena *Arena) assignBattleLobby(skipLobbyCheck bool) {
-	arena.Manager.Lock()
-	defer arena.Manager.Unlock()
-
+func (arena *Arena) assignBattleLobby() {
 	battleLobbyID := arena.currentLobbyID.Load()
 
-	if !skipLobbyCheck {
-		//  check current lobby is valid
-		if battleLobbyID != "" {
-			bl, err := boiler.BattleLobbies(
-				boiler.BattleLobbyWhere.ID.EQ(battleLobbyID),
-				boiler.BattleLobbyWhere.ReadyAt.IsNotNull(),
-				boiler.BattleLobbyWhere.EndedAt.IsNull(),
-			).One(gamedb.StdConn)
-			if err != nil && !errors.Is(err, sql.ErrNoRows) {
-				gamelog.L.Error().Err(err).Msg("Failed to load battle lobby")
-			}
+	//  check current lobby is valid
+	if battleLobbyID != "" {
+		bl, err := boiler.BattleLobbies(
+			boiler.BattleLobbyWhere.ID.EQ(battleLobbyID),
+			boiler.BattleLobbyWhere.ReadyAt.IsNotNull(),
+			boiler.BattleLobbyWhere.EndedAt.IsNull(),
+		).One(gamedb.StdConn)
+		if err != nil && !errors.Is(err, sql.ErrNoRows) {
+			gamelog.L.Error().Err(err).Msg("Failed to load battle lobby")
+		}
 
-			// if assigned lobby is valid
-			if bl != nil {
-				arena.Stage.Store(ArenaStageProcessing)
-				return
-			}
+		// if assigned lobby is valid
+		if bl != nil {
+			arena.Stage.Store(ArenaStageProcessing)
+			return
 		}
 	}
 
@@ -1750,7 +1755,9 @@ func (arena *Arena) BeginBattle() {
 		gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("Failed to clean up unfinished mech move command")
 	}
 
-	arena.assignBattleLobby(false)
+	arena.Manager.Lock()
+	arena.assignBattleLobby()
+	arena.Manager.Unlock()
 
 	// return, if the stage of the arena is still idle
 	if arena.Stage.Load() == ArenaStageIdle || arena.currentLobbyID.Load() == "" {
@@ -1829,7 +1836,13 @@ func (arena *Arena) BeginBattle() {
 
 	// insert battle lobby
 	battleLobby.AssignedToBattleID = null.StringFrom(battle.ID)
-	_, err = battleLobby.Update(gamedb.StdConn, boil.Whitelist(boiler.BattleLobbyColumns.AssignedToBattleID))
+	battleLobby.AssignedToArenaID = null.StringFrom(arena.ID)
+	_, err = battleLobby.Update(gamedb.StdConn,
+		boil.Whitelist(
+			boiler.BattleLobbyColumns.AssignedToBattleID,
+			boiler.BattleLobbyColumns.AssignedToArenaID,
+		),
+	)
 	if err != nil {
 		gamelog.L.Error().Err(err).Interface("battle lobby", battleLobby).Msg("unable to update battle lobby")
 		arena.Stage.Store(ArenaStageIdle)

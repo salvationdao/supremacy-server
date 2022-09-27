@@ -1,10 +1,13 @@
 package battle
 
 import (
+	"database/sql"
 	"fmt"
+	"github.com/friendsofgo/errors"
 	"github.com/ninja-software/terror/v2"
 	"github.com/ninja-syndicate/ws"
 	"github.com/shopspring/decimal"
+	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 	"server"
@@ -14,6 +17,66 @@ import (
 	"server/gamelog"
 	"time"
 )
+
+func (am *ArenaManager) ScheduleLobbyChecker() {
+	l := gamelog.L.With().Str("func", "ScheduleLobbyChecker").Logger()
+
+	now := time.Now()
+	defaultWaitTime := 10 * time.Second
+	currentCheckpoint := now.Add(defaultWaitTime)
+
+	// set timer
+	timer := time.NewTimer(currentCheckpoint.Sub(now))
+
+	for {
+		select {
+
+		// channel for update timer
+		case <-am.ScheduledLobbyCheckpointChan:
+			earliestScheduledBattleLobby, err := boiler.BattleLobbies(
+				boiler.BattleLobbyWhere.ReadyAt.IsNotNull(),
+				boiler.BattleLobbyWhere.WillNotStartUntil.IsNotNull(),
+				boiler.BattleLobbyWhere.AssignedToBattleID.IsNull(),
+				boiler.BattleLobbyWhere.WillNotStartUntil.LT(null.TimeFrom(currentCheckpoint)),
+				boiler.BattleLobbyWhere.EndedAt.IsNull(),
+				qm.OrderBy(boiler.BattleLobbyColumns.WillNotStartUntil),
+			).One(gamedb.StdConn)
+			if err != nil && !errors.Is(err, sql.ErrNoRows) {
+				l.Error().Err(err).Msg("Failed to load earliest scheduled battle lobby.")
+			}
+
+			if earliestScheduledBattleLobby != nil {
+				newCheckpoint := earliestScheduledBattleLobby.WillNotStartUntil.Time.Add(defaultWaitTime)
+				if newCheckpoint.After(time.Now()) && newCheckpoint.Before(currentCheckpoint) {
+					currentCheckpoint = newCheckpoint
+					timer.Reset(time.Now().Sub(currentCheckpoint))
+				}
+			}
+
+		case <-timer.C:
+			// kick idle arenas
+			am.KickIdleArenas()
+
+			// get the next scheduled battle lobby
+			nextScheduledBattleLobby, err := boiler.BattleLobbies(
+				boiler.BattleLobbyWhere.ReadyAt.IsNotNull(),
+				boiler.BattleLobbyWhere.WillNotStartUntil.IsNotNull(),
+				boiler.BattleLobbyWhere.WillNotStartUntil.GT(null.TimeFrom(currentCheckpoint)),
+				boiler.BattleLobbyWhere.EndedAt.IsNull(),
+				qm.OrderBy(boiler.BattleLobbyColumns.WillNotStartUntil),
+			).One(gamedb.StdConn)
+			if err != nil && !errors.Is(err, sql.ErrNoRows) {
+				l.Error().Err(err).Msg("Failed to load next scheduled battle lobby.")
+			}
+
+			if nextScheduledBattleLobby != nil {
+				newCheckpoint := nextScheduledBattleLobby.WillNotStartUntil.Time.Add(defaultWaitTime)
+				currentCheckpoint = newCheckpoint
+				timer.Reset(time.Now().Sub(newCheckpoint))
+			}
+		}
+	}
+}
 
 func (am *ArenaManager) SendBattleQueueFunc(fn func() error) error {
 	am.BattleQueueFuncMx.Lock()
@@ -116,28 +179,6 @@ func (am *ArenaManager) DefaultPublicLobbiesCheck() error {
 	}
 
 	return nil
-}
-
-func BroadcastBattleBountiesUpdate(battleBountyIDs ...string) {
-	bbs, err := boiler.BattleBounties(
-		qm.Select(
-			boiler.BattleBountyColumns.ID,
-			boiler.BattleBountyColumns.BattleLobbyID,
-			boiler.BattleBountyColumns.TargetedMechID,
-			boiler.BattleBountyColumns.Amount,
-			boiler.BattleBountyColumns.OfferedByID,
-			boiler.BattleBountyColumns.PayoutTXID,
-			boiler.BattleBountyColumns.RefundTXID,
-		),
-		boiler.BattleBountyWhere.ID.IN(battleBountyIDs),
-		qm.Load(boiler.BattleBountyRels.OfferedBy),
-	).All(gamedb.StdConn)
-	if err != nil {
-		gamelog.L.Error().Err(err).Strs("battle bounty id list", battleBountyIDs).Msg("Failed to load battle bounties")
-		return
-	}
-
-	ws.PublishMessage("/secure/battle_bounties", server.HubKeyBattleBountyListUpdate, server.BattleBountiesFromBoiler(bbs))
 }
 
 func BroadcastMechQueueStatus(playerID string, mechIDs ...string) {

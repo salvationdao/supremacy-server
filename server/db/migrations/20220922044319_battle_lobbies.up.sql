@@ -100,23 +100,3 @@ CREATE TABLE battle_lobbies_mechs
 CREATE INDEX idx_battle_lobbies_mechs_queue_battle_check ON battle_lobbies_mechs (mech_id, ended_at, assigned_to_battle_id, refund_tx_id, deleted_at);
 CREATE INDEX idx_battle_lobbies_mechs_queue_check ON battle_lobbies_mechs (mech_id, ended_at, refund_tx_id, deleted_at);
 CREATE INDEX idx_battle_lobbies_mechs_lobby_queue_check ON battle_lobbies_mechs (battle_lobby_id, refund_tx_id, deleted_at);
-
--- only able to set bounties when the lobby is marked as READY
-CREATE TABLE battle_bounties
-(
-    id               UUID PRIMARY KEY     DEFAULT gen_random_uuid(),
-    battle_lobby_id  UUID        NOT NULL REFERENCES battle_lobbies (id),
-    offered_by_id    UUID        NOT NULL REFERENCES players (id),
-    targeted_mech_id UUID        NOT NULL REFERENCES mechs (id),
-
-    amount           NUMERIC(28) NOT NULL DEFAULT 0,
-    paid_tx_id       TEXT,
-    payout_tx_id     TEXT,
-    refund_tx_id     TEXT,
-    tax_tx_id        TEXT,
-    created_at       TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at       TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    deleted_at       TIMESTAMPTZ
-);
-
-CREATE INDEX IF NOT EXISTS idx_battle_bounties_available_check ON battle_bounties (battle_lobby_id, payout_tx_id, refund_tx_id, deleted_at);
