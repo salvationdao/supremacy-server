@@ -26,7 +26,6 @@ const KeySaleAbilityInflationPercentage KVKey = "sale_ability_inflation_percenta
 
 const KeySaleAbilityTimeBetweenRefreshSeconds KVKey = "sale_ability_time_between_refresh_seconds"
 const KeySaleAbilityPurchaseLimit KVKey = "sale_ability_purchase_limit"
-const KeySaleAbilityClaimLimit KVKey = "sale_ability_claim_limit"
 const KeySaleAbilityPriceTickerIntervalSeconds KVKey = "sale_ability_price_ticker_interval_seconds"
 const KeySaleAbilityLimit KVKey = "sale_ability_limit"
 
