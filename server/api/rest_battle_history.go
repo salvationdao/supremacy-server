@@ -308,14 +308,17 @@ func BattleRecord(b *boiler.Battle, signerPrivateKeyHex string) (*BattleHistoryR
 	func() {
 		zaiMechDetails, err := getMechMechOwnerDetails(ZaibatsuShortcode, b.ID)
 		if err != nil {
+			gamelog.L.Error().Err(err).Str("Faction Shortcode", string(ZaibatsuShortcode)).Str("Battle ID", b.ID).Msg("Failed to get online mech owner details")
 			return
 		}
 		rmMechDetails, err := getMechMechOwnerDetails(RedMountainShortcode, b.ID)
 		if err != nil {
+			gamelog.L.Error().Err(err).Str("Faction Shortcode", string(RedMountainShortcode)).Str("Battle ID", b.ID).Msg("Failed to get online mech owner details")
 			return
 		}
 		bcMechDetails, err := getMechMechOwnerDetails(BostonShortcode, b.ID)
 		if err != nil {
+			gamelog.L.Error().Err(err).Str("Faction Shortcode", string(BostonShortcode)).Str("Battle ID", b.ID).Msg("Failed to get online mech owner details")
 			return
 		}
 
@@ -329,14 +332,17 @@ func BattleRecord(b *boiler.Battle, signerPrivateKeyHex string) (*BattleHistoryR
 	func() {
 		zaiOnlineCitizens, err := getOnlineCitizensDetails(ZaibatsuShortcode, b.ID)
 		if err != nil {
+			gamelog.L.Error().Err(err).Str("Faction Shortcode", string(ZaibatsuShortcode)).Str("Battle ID", b.ID).Msg("Failed to get online citizen details")
 			return
 		}
 		rmOnlineCitizens, err := getOnlineCitizensDetails(RedMountainShortcode, b.ID)
 		if err != nil {
+			gamelog.L.Error().Err(err).Str("Faction Shortcode", string(RedMountainShortcode)).Str("Battle ID", b.ID).Msg("Failed to get online citizen details")
 			return
 		}
 		bcOnlineCitizens, err := getOnlineCitizensDetails(BostonShortcode, b.ID)
 		if err != nil {
+			gamelog.L.Error().Err(err).Str("Faction Shortcode", string(BostonShortcode)).Str("Battle ID", b.ID).Msg("Failed to get online citizen details")
 			return
 		}
 
