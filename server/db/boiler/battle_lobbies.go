@@ -40,6 +40,7 @@ type BattleLobby struct {
 	AssignedToBattleID    null.String     `boiler:"assigned_to_battle_id" boil:"assigned_to_battle_id" json:"assigned_to_battle_id,omitempty" toml:"assigned_to_battle_id" yaml:"assigned_to_battle_id,omitempty"`
 	EndedAt               null.Time       `boiler:"ended_at" boil:"ended_at" json:"ended_at,omitempty" toml:"ended_at" yaml:"ended_at,omitempty"`
 	AssignedToArenaID     null.String     `boiler:"assigned_to_arena_id" boil:"assigned_to_arena_id" json:"assigned_to_arena_id,omitempty" toml:"assigned_to_arena_id" yaml:"assigned_to_arena_id,omitempty"`
+	IsAiDrivenMatch       bool            `boiler:"is_ai_driven_match" boil:"is_ai_driven_match" json:"is_ai_driven_match" toml:"is_ai_driven_match" yaml:"is_ai_driven_match"`
 	CreatedAt             time.Time       `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
 	UpdatedAt             time.Time       `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
 	DeletedAt             null.Time       `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
@@ -65,6 +66,7 @@ var BattleLobbyColumns = struct {
 	AssignedToBattleID    string
 	EndedAt               string
 	AssignedToArenaID     string
+	IsAiDrivenMatch       string
 	CreatedAt             string
 	UpdatedAt             string
 	DeletedAt             string
@@ -85,6 +87,7 @@ var BattleLobbyColumns = struct {
 	AssignedToBattleID:    "assigned_to_battle_id",
 	EndedAt:               "ended_at",
 	AssignedToArenaID:     "assigned_to_arena_id",
+	IsAiDrivenMatch:       "is_ai_driven_match",
 	CreatedAt:             "created_at",
 	UpdatedAt:             "updated_at",
 	DeletedAt:             "deleted_at",
@@ -107,6 +110,7 @@ var BattleLobbyTableColumns = struct {
 	AssignedToBattleID    string
 	EndedAt               string
 	AssignedToArenaID     string
+	IsAiDrivenMatch       string
 	CreatedAt             string
 	UpdatedAt             string
 	DeletedAt             string
@@ -127,6 +131,7 @@ var BattleLobbyTableColumns = struct {
 	AssignedToBattleID:    "battle_lobbies.assigned_to_battle_id",
 	EndedAt:               "battle_lobbies.ended_at",
 	AssignedToArenaID:     "battle_lobbies.assigned_to_arena_id",
+	IsAiDrivenMatch:       "battle_lobbies.is_ai_driven_match",
 	CreatedAt:             "battle_lobbies.created_at",
 	UpdatedAt:             "battle_lobbies.updated_at",
 	DeletedAt:             "battle_lobbies.deleted_at",
@@ -151,6 +156,7 @@ var BattleLobbyWhere = struct {
 	AssignedToBattleID    whereHelpernull_String
 	EndedAt               whereHelpernull_Time
 	AssignedToArenaID     whereHelpernull_String
+	IsAiDrivenMatch       whereHelperbool
 	CreatedAt             whereHelpertime_Time
 	UpdatedAt             whereHelpertime_Time
 	DeletedAt             whereHelpernull_Time
@@ -171,6 +177,7 @@ var BattleLobbyWhere = struct {
 	AssignedToBattleID:    whereHelpernull_String{field: "\"battle_lobbies\".\"assigned_to_battle_id\""},
 	EndedAt:               whereHelpernull_Time{field: "\"battle_lobbies\".\"ended_at\""},
 	AssignedToArenaID:     whereHelpernull_String{field: "\"battle_lobbies\".\"assigned_to_arena_id\""},
+	IsAiDrivenMatch:       whereHelperbool{field: "\"battle_lobbies\".\"is_ai_driven_match\""},
 	CreatedAt:             whereHelpertime_Time{field: "\"battle_lobbies\".\"created_at\""},
 	UpdatedAt:             whereHelpertime_Time{field: "\"battle_lobbies\".\"updated_at\""},
 	DeletedAt:             whereHelpernull_Time{field: "\"battle_lobbies\".\"deleted_at\""},
@@ -209,9 +216,9 @@ func (*battleLobbyR) NewStruct() *battleLobbyR {
 type battleLobbyL struct{}
 
 var (
-	battleLobbyAllColumns            = []string{"id", "host_by_id", "number", "entry_fee", "first_faction_cut", "second_faction_cut", "third_faction_cut", "each_faction_mech_amount", "game_map_id", "generated_by_system", "password", "will_not_start_until", "ready_at", "assigned_to_battle_id", "ended_at", "assigned_to_arena_id", "created_at", "updated_at", "deleted_at"}
+	battleLobbyAllColumns            = []string{"id", "host_by_id", "number", "entry_fee", "first_faction_cut", "second_faction_cut", "third_faction_cut", "each_faction_mech_amount", "game_map_id", "generated_by_system", "password", "will_not_start_until", "ready_at", "assigned_to_battle_id", "ended_at", "assigned_to_arena_id", "is_ai_driven_match", "created_at", "updated_at", "deleted_at"}
 	battleLobbyColumnsWithoutDefault = []string{"host_by_id"}
-	battleLobbyColumnsWithDefault    = []string{"id", "number", "entry_fee", "first_faction_cut", "second_faction_cut", "third_faction_cut", "each_faction_mech_amount", "game_map_id", "generated_by_system", "password", "will_not_start_until", "ready_at", "assigned_to_battle_id", "ended_at", "assigned_to_arena_id", "created_at", "updated_at", "deleted_at"}
+	battleLobbyColumnsWithDefault    = []string{"id", "number", "entry_fee", "first_faction_cut", "second_faction_cut", "third_faction_cut", "each_faction_mech_amount", "game_map_id", "generated_by_system", "password", "will_not_start_until", "ready_at", "assigned_to_battle_id", "ended_at", "assigned_to_arena_id", "is_ai_driven_match", "created_at", "updated_at", "deleted_at"}
 	battleLobbyPrimaryKeyColumns     = []string{"id"}
 	battleLobbyGeneratedColumns      = []string{}
 )

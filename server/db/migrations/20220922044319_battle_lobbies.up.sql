@@ -54,6 +54,9 @@ CREATE TABLE battle_lobbies
     -- lobby allocation
     assigned_to_arena_id     UUID REFERENCES battle_arena (id),
 
+    -- AI driven battle
+    is_ai_driven_match       BOOL        NOT NULL DEFAULT FALSE,
+
     created_at               TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at               TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     deleted_at               TIMESTAMPTZ

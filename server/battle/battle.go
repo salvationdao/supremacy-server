@@ -442,6 +442,8 @@ func (btl *Battle) handleBattleEnd(payload *BattleEndPayload) {
 		gamelog.L.Error().Str("log_name", "battle arena").Interface("battle", btl.Battle).Msg("Failed to up date end_at of current battle.")
 	}
 
+	oldLobbyID := btl.arena.currentLobbyID.Load()
+
 	// close battle lobby
 	btl.lobby.EndedAt = null.TimeFrom(now)
 	_, err = btl.lobby.Update(gamedb.StdConn, boil.Whitelist(boiler.BattleLobbyColumns.EndedAt))
@@ -457,6 +459,11 @@ func (btl *Battle) handleBattleEnd(payload *BattleEndPayload) {
 
 	// pre-assign next battle lobby
 	btl.arena.assignBattleLobby()
+
+	newLobbyID := btl.arena.currentLobbyID.Load()
+
+	// broadcast lobby changes
+	go BroadcastBattleLobbyUpdate(oldLobbyID, newLobbyID)
 
 	btl.arena.Manager.Unlock()
 
@@ -697,9 +704,6 @@ func (btl *Battle) handleBattleEnd(payload *BattleEndPayload) {
 	for playerID, mechIDs := range playerMechMap {
 		go BroadcastMechQueueStatus(playerID, mechIDs...)
 	}
-
-	// broadcast battle changed battle lobby
-	go BroadcastBattleLobbyUpdate(btl.lobby.ID)
 
 	// broadcast battle eta
 	go func() {

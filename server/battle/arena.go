@@ -105,11 +105,22 @@ func NewArenaManager(opts *Opts) (*ArenaManager, error) {
 		WriteTimeout: am.timeout,
 	}
 
+	// delete all the unfinished AI driven battles
+	_, err := boiler.BattleLobbies(
+		boiler.BattleLobbyWhere.EndedAt.IsNull(),
+		boiler.BattleLobbyWhere.IsAiDrivenMatch.EQ(true),
+	).UpdateAll(gamedb.StdConn, boiler.M{
+		boiler.BattleLobbyColumns.DeletedAt: null.TimeFrom(time.Now()),
+	})
+	if err != nil {
+		return nil, terror.Error(err, "Failed to delete unfinished AI battles.")
+	}
+
 	// start player rank updater
 	am.PlayerRankUpdater()
 
 	// check default battle lobbies
-	err := am.SetDefaultPublicBattleLobbies()
+	err = am.SetDefaultPublicBattleLobbies()
 	if err != nil {
 		return nil, err
 	}
@@ -1725,7 +1736,11 @@ func (arena *Arena) assignBattleLobby() {
 	// if no available lobby
 	if bl == nil {
 		gamelog.L.Debug().Str("battle arena id", arena.ID).Msg("no lobby is available")
-		return
+		bl, err = GenerateAIDrivenBattle()
+		if err != nil {
+			gamelog.L.Error().Err(err).Msg("Failed to generate AI driven match.")
+			return
+		}
 	}
 
 	// assign battle lobby
