@@ -28,7 +28,17 @@ type StaticSyncTool struct {
 
 func SyncTool(dt *StaticSyncTool) error {
 
-	f, err := readFile(fmt.Sprintf("%sfactions.csv", dt.FilePath))
+	f, err := readFile(fmt.Sprintf("%sbattle_arena.csv", dt.FilePath))
+	if err != nil {
+		return err
+	}
+	err = SyncBattleArenas(f, dt.DB)
+	if err != nil {
+		return err
+	}
+	f.Close()
+
+	f, err = readFile(fmt.Sprintf("%sfactions.csv", dt.FilePath))
 	if err != nil {
 		return err
 	}
@@ -259,6 +269,41 @@ func RemoveFKContraints(dt StaticSyncTool) error {
 	}
 
 	fmt.Println("Finished removing constraints")
+
+	return nil
+}
+
+func SyncBattleArenas(f io.Reader, db *sql.DB) error {
+
+	r := csv.NewReader(f)
+	if _, err := r.Read(); err != nil {
+		return err
+	}
+
+	records, err := r.ReadAll()
+	if err != nil {
+		return err
+	}
+
+	for _, record := range records {
+		battleArena := &boiler.BattleArena{
+			ID: record[0],
+		}
+
+		if record[1] != "" {
+			battleArena.DeletedAt = null.TimeFrom(time.Now())
+		}
+
+		err = battleArena.Upsert(db, false, []string{boiler.BattleArenaColumns.ID}, boil.Whitelist(boiler.BattleArenaColumns.DeletedAt), boil.Infer())
+		if err != nil {
+			fmt.Println(err.Error(), battleArena.ID)
+			return err
+		}
+
+		fmt.Println("UPDATED: " + battleArena.ID)
+	}
+
+	fmt.Println("Finish syncing battle arenas")
 
 	return nil
 }

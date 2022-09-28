@@ -19,12 +19,6 @@ ALTER TABLE battle_war_machine_queues
 ALTER TABLE battle_map_queue
     RENAME TO battle_map_queue_old;
 
-ALTER TABLE battle_arena
-    RENAME COLUMN type TO type_old;
-
-ALTER TABLE battle_arena
-    ALTER COLUMN gid SET NOT NULL;
-
 CREATE INDEX IF NOT EXISTS idx_player_kill_log_offering_id ON player_kill_log (ability_offering_id);
 
 CREATE TABLE battle_lobbies

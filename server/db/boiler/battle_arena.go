@@ -24,7 +24,6 @@ import (
 // BattleArena is an object representing the database table.
 type BattleArena struct {
 	ID        string    `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
-	TypeOld   string    `boiler:"type_old" boil:"type_old" json:"type_old" toml:"type_old" yaml:"type_old"`
 	Gid       int       `boiler:"gid" boil:"gid" json:"gid" toml:"gid" yaml:"gid"`
 	CreatedAt time.Time `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
 	UpdatedAt time.Time `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
@@ -36,14 +35,12 @@ type BattleArena struct {
 
 var BattleArenaColumns = struct {
 	ID        string
-	TypeOld   string
 	Gid       string
 	CreatedAt string
 	UpdatedAt string
 	DeletedAt string
 }{
 	ID:        "id",
-	TypeOld:   "type_old",
 	Gid:       "gid",
 	CreatedAt: "created_at",
 	UpdatedAt: "updated_at",
@@ -52,14 +49,12 @@ var BattleArenaColumns = struct {
 
 var BattleArenaTableColumns = struct {
 	ID        string
-	TypeOld   string
 	Gid       string
 	CreatedAt string
 	UpdatedAt string
 	DeletedAt string
 }{
 	ID:        "battle_arena.id",
-	TypeOld:   "battle_arena.type_old",
 	Gid:       "battle_arena.gid",
 	CreatedAt: "battle_arena.created_at",
 	UpdatedAt: "battle_arena.updated_at",
@@ -70,14 +65,12 @@ var BattleArenaTableColumns = struct {
 
 var BattleArenaWhere = struct {
 	ID        whereHelperstring
-	TypeOld   whereHelperstring
 	Gid       whereHelperint
 	CreatedAt whereHelpertime_Time
 	UpdatedAt whereHelpertime_Time
 	DeletedAt whereHelpernull_Time
 }{
 	ID:        whereHelperstring{field: "\"battle_arena\".\"id\""},
-	TypeOld:   whereHelperstring{field: "\"battle_arena\".\"type_old\""},
 	Gid:       whereHelperint{field: "\"battle_arena\".\"gid\""},
 	CreatedAt: whereHelpertime_Time{field: "\"battle_arena\".\"created_at\""},
 	UpdatedAt: whereHelpertime_Time{field: "\"battle_arena\".\"updated_at\""},
@@ -117,8 +110,8 @@ func (*battleArenaR) NewStruct() *battleArenaR {
 type battleArenaL struct{}
 
 var (
-	battleArenaAllColumns            = []string{"id", "type_old", "gid", "created_at", "updated_at", "deleted_at"}
-	battleArenaColumnsWithoutDefault = []string{"type_old"}
+	battleArenaAllColumns            = []string{"id", "gid", "created_at", "updated_at", "deleted_at"}
+	battleArenaColumnsWithoutDefault = []string{}
 	battleArenaColumnsWithDefault    = []string{"id", "gid", "created_at", "updated_at", "deleted_at"}
 	battleArenaPrimaryKeyColumns     = []string{"id"}
 	battleArenaGeneratedColumns      = []string{}

@@ -20,8 +20,18 @@ func (api *API) SyncStaticData(w http.ResponseWriter, r *http.Request) (int, err
 
 	timeout := time.Minute
 
-	url := fmt.Sprintf("%s/%s/factions.csv", api.SyncConfig.FilePath, branch)
+	url := fmt.Sprintf("%s/%s/sbattle_arena.csv", api.SyncConfig.FilePath, branch)
 	f, err := synctool.DownloadFile(api.ctx, url, timeout)
+	if err != nil {
+		return http.StatusInternalServerError, terror.Error(err, "Failed to sync battle arena data")
+	}
+	err = synctool.SyncBattleArenas(f, gamedb.StdConn)
+	if err != nil {
+		return http.StatusInternalServerError, terror.Error(err, "Failed to sync battle arena with db")
+	}
+
+	url = fmt.Sprintf("%s/%s/factions.csv", api.SyncConfig.FilePath, branch)
+	f, err = synctool.DownloadFile(api.ctx, url, timeout)
 	if err != nil {
 		return http.StatusInternalServerError, terror.Error(err, "Failed to sync faction data")
 	}
