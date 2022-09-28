@@ -5944,7 +5944,7 @@ func (o *Mech) AddChassisMechUtilities(exec boil.Executor, insert bool, related 
 				strmangle.SetParamNames("\"", "\"", 1, []string{"chassis_id"}),
 				strmangle.WhereClause("\"", "\"", 2, mechUtilityPrimaryKeyColumns),
 			)
-			values := []interface{}{o.ID, rel.ID}
+			values := []interface{}{o.ID, rel.ChassisID, rel.SlotNumber}
 
 			if boil.DebugMode {
 				fmt.Fprintln(boil.DebugWriter, updateQuery)
@@ -5996,7 +5996,7 @@ func (o *Mech) AddChassisMechWeapons(exec boil.Executor, insert bool, related ..
 				strmangle.SetParamNames("\"", "\"", 1, []string{"chassis_id"}),
 				strmangle.WhereClause("\"", "\"", 2, mechWeaponPrimaryKeyColumns),
 			)
-			values := []interface{}{o.ID, rel.ID}
+			values := []interface{}{o.ID, rel.ChassisID, rel.SlotNumber}
 
 			if boil.DebugMode {
 				fmt.Fprintln(boil.DebugWriter, updateQuery)

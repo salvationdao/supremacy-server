@@ -341,7 +341,7 @@ type PlayerAvatarListResp struct {
 const HubKeyPlayerAvatarList = "PLAYER:AVATAR:LIST"
 
 func (pc *PlayerController) ProfileAvatarListHandler(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
-	req := &PlayerAssetWeaponListRequest{}
+	req := &PlayerAvatarListRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
 		return terror.Error(err, "Invalid request received.")

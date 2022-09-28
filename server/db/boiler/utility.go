@@ -1239,7 +1239,7 @@ func (o *Utility) SetMechUtility(exec boil.Executor, insert bool, related *MechU
 			strmangle.SetParamNames("\"", "\"", 1, []string{"utility_id"}),
 			strmangle.WhereClause("\"", "\"", 2, mechUtilityPrimaryKeyColumns),
 		)
-		values := []interface{}{o.ID, related.ID}
+		values := []interface{}{o.ID, related.ChassisID, related.SlotNumber}
 
 		if boil.DebugMode {
 			fmt.Fprintln(boil.DebugWriter, updateQuery)

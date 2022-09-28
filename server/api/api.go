@@ -332,7 +332,9 @@ func NewAPI(
 
 				s.WS("/mech/{mech_id}/details", HubKeyPlayerAssetMechDetail, server.MustSecureFaction(pasc.PlayerAssetMechDetail))
 				s.WS("/mech/{mech_id}/brief_info", HubKeyPlayerAssetMechDetail, server.MustSecureFaction(pasc.PlayerAssetMechBriefInfo))
+				s.WS("/utility/{utility_id}/details", HubKeyPlayerAssetUtilityDetail, server.MustSecureFaction(pasc.PlayerAssetUtilityDetail))
 				s.WS("/weapon/{weapon_id}/details", HubKeyPlayerAssetWeaponDetail, server.MustSecureFaction(pasc.PlayerAssetWeaponDetail))
+				s.WS("/power_core/{power_core_id}/details", HubKeyPlayerAssetPowerCoreDetail, server.MustSecureFaction(pasc.PlayerAssetPowerCoreDetail))
 
 				s.WS("/crate/{crate_id}", server.HubKeyMysteryCrateSubscribe, server.MustSecureFaction(ssc.MysteryCrateSubscribeHandler))
 				s.WS("/queue/{mech_id}", server.HubKeyPlayerAssetMechQueueSubscribe, server.MustSecureFaction(api.PlayerAssetMechQueueSubscribeHandler))

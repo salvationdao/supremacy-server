@@ -3,15 +3,16 @@ package db
 import (
 	"database/sql"
 	"fmt"
+	"server"
+	"server/db/boiler"
+	"server/gamedb"
+	"server/gamelog"
+
 	"github.com/gofrs/uuid"
 	"github.com/ninja-software/terror/v2"
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
-	"server"
-	"server/db/boiler"
-	"server/gamedb"
-	"server/gamelog"
 )
 
 func InsertNewWeaponSkin(tx *sql.Tx, ownerID uuid.UUID, blueprintWeaponSkin *server.BlueprintWeaponSkin, modelID *string) (*server.WeaponSkin, error) {
@@ -271,6 +272,7 @@ func WeaponSkinList(opts *WeaponSkinListOpts) (int64, []*server.WeaponSkin, erro
 			qm.Rels(boiler.TableNames.WeaponSkin, boiler.WeaponSkinColumns.ID),
 			qm.Rels(boiler.TableNames.WeaponSkin, boiler.WeaponSkinColumns.EquippedOn),
 			qm.Rels(boiler.TableNames.BlueprintWeaponSkin, boiler.BlueprintWeaponSkinColumns.ID),
+			qm.Rels(boiler.TableNames.BlueprintWeaponSkin, boiler.BlueprintWeaponSkinColumns.StatModifier),
 			qm.Rels(boiler.TableNames.BlueprintWeaponSkin, boiler.BlueprintWeaponSkinColumns.Label),
 			qm.Rels(boiler.TableNames.BlueprintWeaponSkin, boiler.BlueprintWeaponSkinColumns.Tier),
 			qm.Rels(boiler.TableNames.BlueprintWeaponSkin, boiler.BlueprintWeaponSkinColumns.ImageURL),
@@ -341,6 +343,7 @@ func WeaponSkinList(opts *WeaponSkinListOpts) (int64, []*server.WeaponSkin, erro
 			&ws.ID,
 			&ws.EquippedOn,
 			&ws.BlueprintID,
+			&ws.StatModifier,
 			&ws.Label,
 			&ws.Tier,
 			&ws.SkinSwatch.ImageURL,
@@ -365,6 +368,6 @@ func WeaponSkinList(opts *WeaponSkinListOpts) (int64, []*server.WeaponSkin, erro
 		}
 		weaponSkins = append(weaponSkins, ws)
 	}
-	
+
 	return total, weaponSkins, nil
 }

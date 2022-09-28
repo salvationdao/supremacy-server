@@ -12,13 +12,14 @@ import (
 type MechSkin struct {
 	*CollectionItem
 	*Images
-	SkinSwatch            *Images
+	SkinSwatch            *Images     `json:"swatch_images"`
 	ID                    string      `json:"id"`
 	BlueprintID           string      `json:"blueprint_id"`
 	GenesisTokenID        null.Int64  `json:"genesis_token_id,omitempty"`
 	LimitedReleaseTokenID null.Int64  `json:"limited_release_token_id,omitempty"`
 	Label                 string      `json:"label"`
 	Level                 int         `json:"level"`
+	DefaultLevel          int         `json:"default_level"`
 	EquippedOn            null.String `json:"equipped_on,omitempty"`
 	LockedToMech          bool        `json:"locked_to_mech"`
 	CreatedAt             time.Time   `json:"created_at"`
@@ -95,7 +96,18 @@ func MechSkinFromBoiler(skin *boiler.MechSkin, collection *boiler.CollectionItem
 			XsynLocked:     collection.XsynLocked,
 			AssetHidden:    collection.AssetHidden,
 		},
-		Images: &Images{
+		Label:          skin.R.Blueprint.Label,
+		ID:             skin.ID,
+		BlueprintID:    skin.BlueprintID,
+		GenesisTokenID: skin.GenesisTokenID,
+		EquippedOn:     skin.EquippedOn,
+		CreatedAt:      skin.CreatedAt,
+		Level:          skin.Level,
+		DefaultLevel:   skin.R.Blueprint.DefaultLevel,
+	}
+
+	if skinDetails != nil {
+		mskin.Images = &Images{
 			ImageURL:         skinDetails.ImageURL,
 			CardAnimationURL: skinDetails.CardAnimationURL,
 			AvatarURL:        skinDetails.AvatarURL,
@@ -103,8 +115,11 @@ func MechSkinFromBoiler(skin *boiler.MechSkin, collection *boiler.CollectionItem
 			BackgroundColor:  skinDetails.BackgroundColor,
 			AnimationURL:     skinDetails.AnimationURL,
 			YoutubeURL:       skinDetails.YoutubeURL,
-		},
-		SkinSwatch: &Images{
+		}
+	}
+
+	if blueprintMechSkinDetails != nil {
+		mskin.SkinSwatch = &Images{
 			ImageURL:         blueprintMechSkinDetails.ImageURL,
 			CardAnimationURL: blueprintMechSkinDetails.CardAnimationURL,
 			AvatarURL:        blueprintMechSkinDetails.AvatarURL,
@@ -112,13 +127,7 @@ func MechSkinFromBoiler(skin *boiler.MechSkin, collection *boiler.CollectionItem
 			BackgroundColor:  blueprintMechSkinDetails.BackgroundColor,
 			AnimationURL:     blueprintMechSkinDetails.AnimationURL,
 			YoutubeURL:       blueprintMechSkinDetails.YoutubeURL,
-		},
-		Label:          skin.R.Blueprint.Label,
-		ID:             skin.ID,
-		BlueprintID:    skin.BlueprintID,
-		GenesisTokenID: skin.GenesisTokenID,
-		EquippedOn:     skin.EquippedOn,
-		CreatedAt:      skin.CreatedAt,
+		}
 	}
 
 	return mskin

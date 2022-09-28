@@ -14,6 +14,7 @@ type PowerCore struct {
 	*CollectionItem
 	*Images
 	ID                    string          `json:"id"`
+	BlueprintID           null.String     `json:"blueprint_id"`
 	Label                 string          `json:"label"`
 	Size                  string          `json:"size"`
 	Capacity              decimal.Decimal `json:"capacity"`
@@ -94,16 +95,16 @@ func BlueprintPowerCoreFromBoiler(core *boiler.BlueprintPowerCore) *BlueprintPow
 func PowerCoreFromBoiler(skin *boiler.PowerCore, collection *boiler.CollectionItem) *PowerCore {
 	return &PowerCore{
 		CollectionItem: &CollectionItem{
-			CollectionSlug:   collection.CollectionSlug,
-			Hash:             collection.Hash,
-			TokenID:          collection.TokenID,
-			ItemType:         collection.ItemType,
-			ItemID:           collection.ItemID,
-			Tier:             collection.Tier,
-			OwnerID:          collection.OwnerID,
-			MarketLocked:     collection.MarketLocked,
-			XsynLocked:       collection.XsynLocked,
-			AssetHidden:      collection.AssetHidden,
+			CollectionSlug: collection.CollectionSlug,
+			Hash:           collection.Hash,
+			TokenID:        collection.TokenID,
+			ItemType:       collection.ItemType,
+			ItemID:         collection.ItemID,
+			Tier:           collection.Tier,
+			OwnerID:        collection.OwnerID,
+			MarketLocked:   collection.MarketLocked,
+			XsynLocked:     collection.XsynLocked,
+			AssetHidden:    collection.AssetHidden,
 		},
 		Images: &Images{
 			ImageURL:         skin.R.Blueprint.ImageURL,
@@ -115,13 +116,14 @@ func PowerCoreFromBoiler(skin *boiler.PowerCore, collection *boiler.CollectionIt
 			YoutubeURL:       skin.R.Blueprint.YoutubeURL,
 		},
 		ID:           skin.ID,
-		Label:        skin.Label,
-		Size:         skin.Size,
-		Capacity:     skin.Capacity,
-		MaxDrawRate:  skin.MaxDrawRate,
-		RechargeRate: skin.RechargeRate,
-		Armour:       skin.Armour,
-		MaxHitpoints: skin.MaxHitpoints,
+		BlueprintID:  skin.BlueprintID,
+		Label:        skin.R.Blueprint.Label,
+		Size:         skin.R.Blueprint.Size,
+		Capacity:     skin.R.Blueprint.Capacity,
+		MaxDrawRate:  skin.R.Blueprint.MaxDrawRate,
+		RechargeRate: skin.R.Blueprint.RechargeRate,
+		Armour:       skin.R.Blueprint.Armour,
+		MaxHitpoints: skin.R.Blueprint.MaxHitpoints,
 		EquippedOn:   skin.EquippedOn,
 		CreatedAt:    skin.CreatedAt,
 	}

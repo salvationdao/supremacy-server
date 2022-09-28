@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/friendsofgo/errors"
+	"github.com/shopspring/decimal"
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries"
@@ -23,25 +24,26 @@ import (
 
 // BlueprintMech is an object representing the database table.
 type BlueprintMech struct {
-	ID                      string      `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
-	Label                   string      `boiler:"label" boil:"label" json:"label" toml:"label" yaml:"label"`
-	CreatedAt               time.Time   `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
-	DefaultChassisSkinID    string      `boiler:"default_chassis_skin_id" boil:"default_chassis_skin_id" json:"default_chassis_skin_id" toml:"default_chassis_skin_id" yaml:"default_chassis_skin_id"`
-	BrandID                 string      `boiler:"brand_id" boil:"brand_id" json:"brand_id" toml:"brand_id" yaml:"brand_id"`
-	MechType                string      `boiler:"mech_type" boil:"mech_type" json:"mech_type" toml:"mech_type" yaml:"mech_type"`
-	RepairBlocks            int         `boiler:"repair_blocks" boil:"repair_blocks" json:"repair_blocks" toml:"repair_blocks" yaml:"repair_blocks"`
-	BoostStat               null.String `boiler:"boost_stat" boil:"boost_stat" json:"boost_stat,omitempty" toml:"boost_stat" yaml:"boost_stat,omitempty"`
-	WeaponHardpoints        int         `boiler:"weapon_hardpoints" boil:"weapon_hardpoints" json:"weapon_hardpoints" toml:"weapon_hardpoints" yaml:"weapon_hardpoints"`
-	PowerCoreSize           string      `boiler:"power_core_size" boil:"power_core_size" json:"power_core_size" toml:"power_core_size" yaml:"power_core_size"`
-	UtilitySlots            int         `boiler:"utility_slots" boil:"utility_slots" json:"utility_slots" toml:"utility_slots" yaml:"utility_slots"`
-	Speed                   int         `boiler:"speed" boil:"speed" json:"speed" toml:"speed" yaml:"speed"`
-	MaxHitpoints            int         `boiler:"max_hitpoints" boil:"max_hitpoints" json:"max_hitpoints" toml:"max_hitpoints" yaml:"max_hitpoints"`
-	Collection              string      `boiler:"collection" boil:"collection" json:"collection" toml:"collection" yaml:"collection"`
-	AvailabilityID          null.String `boiler:"availability_id" boil:"availability_id" json:"availability_id,omitempty" toml:"availability_id" yaml:"availability_id,omitempty"`
-	ShieldTypeID            string      `boiler:"shield_type_id" boil:"shield_type_id" json:"shield_type_id" toml:"shield_type_id" yaml:"shield_type_id"`
-	ShieldMax               int         `boiler:"shield_max" boil:"shield_max" json:"shield_max" toml:"shield_max" yaml:"shield_max"`
-	ShieldRechargeRate      int         `boiler:"shield_recharge_rate" boil:"shield_recharge_rate" json:"shield_recharge_rate" toml:"shield_recharge_rate" yaml:"shield_recharge_rate"`
-	ShieldRechargePowerCost int         `boiler:"shield_recharge_power_cost" boil:"shield_recharge_power_cost" json:"shield_recharge_power_cost" toml:"shield_recharge_power_cost" yaml:"shield_recharge_power_cost"`
+	ID                      string          `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
+	Label                   string          `boiler:"label" boil:"label" json:"label" toml:"label" yaml:"label"`
+	CreatedAt               time.Time       `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
+	DefaultChassisSkinID    string          `boiler:"default_chassis_skin_id" boil:"default_chassis_skin_id" json:"default_chassis_skin_id" toml:"default_chassis_skin_id" yaml:"default_chassis_skin_id"`
+	BrandID                 string          `boiler:"brand_id" boil:"brand_id" json:"brand_id" toml:"brand_id" yaml:"brand_id"`
+	MechType                string          `boiler:"mech_type" boil:"mech_type" json:"mech_type" toml:"mech_type" yaml:"mech_type"`
+	RepairBlocks            int             `boiler:"repair_blocks" boil:"repair_blocks" json:"repair_blocks" toml:"repair_blocks" yaml:"repair_blocks"`
+	BoostStat               null.String     `boiler:"boost_stat" boil:"boost_stat" json:"boost_stat,omitempty" toml:"boost_stat" yaml:"boost_stat,omitempty"`
+	WeaponHardpoints        int             `boiler:"weapon_hardpoints" boil:"weapon_hardpoints" json:"weapon_hardpoints" toml:"weapon_hardpoints" yaml:"weapon_hardpoints"`
+	PowerCoreSize           string          `boiler:"power_core_size" boil:"power_core_size" json:"power_core_size" toml:"power_core_size" yaml:"power_core_size"`
+	UtilitySlots            int             `boiler:"utility_slots" boil:"utility_slots" json:"utility_slots" toml:"utility_slots" yaml:"utility_slots"`
+	Speed                   int             `boiler:"speed" boil:"speed" json:"speed" toml:"speed" yaml:"speed"`
+	MaxHitpoints            int             `boiler:"max_hitpoints" boil:"max_hitpoints" json:"max_hitpoints" toml:"max_hitpoints" yaml:"max_hitpoints"`
+	Collection              string          `boiler:"collection" boil:"collection" json:"collection" toml:"collection" yaml:"collection"`
+	AvailabilityID          null.String     `boiler:"availability_id" boil:"availability_id" json:"availability_id,omitempty" toml:"availability_id" yaml:"availability_id,omitempty"`
+	ShieldTypeID            string          `boiler:"shield_type_id" boil:"shield_type_id" json:"shield_type_id" toml:"shield_type_id" yaml:"shield_type_id"`
+	ShieldMax               int             `boiler:"shield_max" boil:"shield_max" json:"shield_max" toml:"shield_max" yaml:"shield_max"`
+	ShieldRechargeRate      int             `boiler:"shield_recharge_rate" boil:"shield_recharge_rate" json:"shield_recharge_rate" toml:"shield_recharge_rate" yaml:"shield_recharge_rate"`
+	ShieldRechargePowerCost int             `boiler:"shield_recharge_power_cost" boil:"shield_recharge_power_cost" json:"shield_recharge_power_cost" toml:"shield_recharge_power_cost" yaml:"shield_recharge_power_cost"`
+	ShieldRechargeDelay     decimal.Decimal `boiler:"shield_recharge_delay" boil:"shield_recharge_delay" json:"shield_recharge_delay" toml:"shield_recharge_delay" yaml:"shield_recharge_delay"`
 
 	R *blueprintMechR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L blueprintMechL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -67,6 +69,7 @@ var BlueprintMechColumns = struct {
 	ShieldMax               string
 	ShieldRechargeRate      string
 	ShieldRechargePowerCost string
+	ShieldRechargeDelay     string
 }{
 	ID:                      "id",
 	Label:                   "label",
@@ -87,6 +90,7 @@ var BlueprintMechColumns = struct {
 	ShieldMax:               "shield_max",
 	ShieldRechargeRate:      "shield_recharge_rate",
 	ShieldRechargePowerCost: "shield_recharge_power_cost",
+	ShieldRechargeDelay:     "shield_recharge_delay",
 }
 
 var BlueprintMechTableColumns = struct {
@@ -109,6 +113,7 @@ var BlueprintMechTableColumns = struct {
 	ShieldMax               string
 	ShieldRechargeRate      string
 	ShieldRechargePowerCost string
+	ShieldRechargeDelay     string
 }{
 	ID:                      "blueprint_mechs.id",
 	Label:                   "blueprint_mechs.label",
@@ -129,6 +134,7 @@ var BlueprintMechTableColumns = struct {
 	ShieldMax:               "blueprint_mechs.shield_max",
 	ShieldRechargeRate:      "blueprint_mechs.shield_recharge_rate",
 	ShieldRechargePowerCost: "blueprint_mechs.shield_recharge_power_cost",
+	ShieldRechargeDelay:     "blueprint_mechs.shield_recharge_delay",
 }
 
 // Generated where
@@ -153,6 +159,7 @@ var BlueprintMechWhere = struct {
 	ShieldMax               whereHelperint
 	ShieldRechargeRate      whereHelperint
 	ShieldRechargePowerCost whereHelperint
+	ShieldRechargeDelay     whereHelperdecimal_Decimal
 }{
 	ID:                      whereHelperstring{field: "\"blueprint_mechs\".\"id\""},
 	Label:                   whereHelperstring{field: "\"blueprint_mechs\".\"label\""},
@@ -173,6 +180,7 @@ var BlueprintMechWhere = struct {
 	ShieldMax:               whereHelperint{field: "\"blueprint_mechs\".\"shield_max\""},
 	ShieldRechargeRate:      whereHelperint{field: "\"blueprint_mechs\".\"shield_recharge_rate\""},
 	ShieldRechargePowerCost: whereHelperint{field: "\"blueprint_mechs\".\"shield_recharge_power_cost\""},
+	ShieldRechargeDelay:     whereHelperdecimal_Decimal{field: "\"blueprint_mechs\".\"shield_recharge_delay\""},
 }
 
 // BlueprintMechRels is where relationship names are stored.
@@ -223,9 +231,9 @@ func (*blueprintMechR) NewStruct() *blueprintMechR {
 type blueprintMechL struct{}
 
 var (
-	blueprintMechAllColumns            = []string{"id", "label", "created_at", "default_chassis_skin_id", "brand_id", "mech_type", "repair_blocks", "boost_stat", "weapon_hardpoints", "power_core_size", "utility_slots", "speed", "max_hitpoints", "collection", "availability_id", "shield_type_id", "shield_max", "shield_recharge_rate", "shield_recharge_power_cost"}
+	blueprintMechAllColumns            = []string{"id", "label", "created_at", "default_chassis_skin_id", "brand_id", "mech_type", "repair_blocks", "boost_stat", "weapon_hardpoints", "power_core_size", "utility_slots", "speed", "max_hitpoints", "collection", "availability_id", "shield_type_id", "shield_max", "shield_recharge_rate", "shield_recharge_power_cost", "shield_recharge_delay"}
 	blueprintMechColumnsWithoutDefault = []string{"label", "default_chassis_skin_id", "brand_id", "mech_type", "shield_type_id"}
-	blueprintMechColumnsWithDefault    = []string{"id", "created_at", "repair_blocks", "boost_stat", "weapon_hardpoints", "power_core_size", "utility_slots", "speed", "max_hitpoints", "collection", "availability_id", "shield_max", "shield_recharge_rate", "shield_recharge_power_cost"}
+	blueprintMechColumnsWithDefault    = []string{"id", "created_at", "repair_blocks", "boost_stat", "weapon_hardpoints", "power_core_size", "utility_slots", "speed", "max_hitpoints", "collection", "availability_id", "shield_max", "shield_recharge_rate", "shield_recharge_power_cost", "shield_recharge_delay"}
 	blueprintMechPrimaryKeyColumns     = []string{"id"}
 	blueprintMechGeneratedColumns      = []string{}
 )

@@ -1,8 +1,6 @@
 package types
 
-import (
-	"github.com/volatiletech/null/v8"
-)
+import "github.com/volatiletech/null/v8"
 
 type MechModel struct {
 	ID                      string      `json:"id"`
@@ -22,6 +20,7 @@ type MechModel struct {
 	ShieldRechargeRate      string      `json:"shield_recharge_rate"`
 	ShieldRechargePowerCost string      `json:"shield_recharge_power_cost"`
 	ShieldTypeID            string      `json:"shield_type_id"`
+	ShieldRechargeDelay     string      `json:"shield_recharge_delay"`
 }
 
 type Brands struct {
@@ -48,18 +47,19 @@ type Faction struct {
 }
 
 type MechSkin struct {
-	ID               string      `json:"id"`
-	Collection       string      `json:"collection"`
-	Label            string      `json:"label"`
-	Tier             string      `json:"tier"`
-	DefaultLevel     string      `json:"default_level"`
-	ImageUrl         null.String `json:"image_url"`
-	AnimationUrl     null.String `json:"animation_url"`
-	CardAnimationUrl null.String `json:"card_animation_url"`
-	LargeImageUrl    null.String `json:"large_image_url"`
-	AvatarUrl        null.String `json:"avatar_url"`
-	BackgroundColor  null.String `json:"background_color"`
-	YoutubeUrl       null.String `json:"youtube_url"`
+	ID                    string      `json:"id"`
+	Collection            string      `json:"collection"`
+	Label                 string      `json:"label"`
+	Tier                  string      `json:"tier"`
+	DefaultLevel          string      `json:"default_level"`
+	BlueprintWeaponSkinID null.String `json:"blueprint_weapon_skin_id"`
+	ImageUrl              null.String `json:"image_url"`
+	AnimationUrl          null.String `json:"animation_url"`
+	CardAnimationUrl      null.String `json:"card_animation_url"`
+	LargeImageUrl         null.String `json:"large_image_url"`
+	AvatarUrl             null.String `json:"avatar_url"`
+	BackgroundColor       null.String `json:"background_color"`
+	YoutubeUrl            null.String `json:"youtube_url"`
 }
 
 type MechModelSkinCompatibility struct {

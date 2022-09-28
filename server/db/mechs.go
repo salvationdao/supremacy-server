@@ -64,12 +64,14 @@ func getDefaultMechQueryMods() []qm.QueryMod {
 			qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.ID),
 			qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.Name),
 			qm.Rels(boiler.TableNames.BlueprintMechs, boiler.BlueprintMechColumns.Label),
+			qm.Rels(boiler.TableNames.BlueprintMechs, boiler.BlueprintMechColumns.MechType),
 			qm.Rels(boiler.TableNames.BlueprintMechs, boiler.BlueprintMechColumns.WeaponHardpoints),
 			qm.Rels(boiler.TableNames.BlueprintMechs, boiler.BlueprintMechColumns.UtilitySlots),
 			qm.Rels(boiler.TableNames.BlueprintMechs, boiler.BlueprintMechColumns.Speed),
 			qm.Rels(boiler.TableNames.BlueprintMechs, boiler.BlueprintMechColumns.MaxHitpoints),
 			qm.Rels(boiler.TableNames.BlueprintMechs, boiler.BlueprintMechColumns.ShieldMax),
 			qm.Rels(boiler.TableNames.BlueprintMechs, boiler.BlueprintMechColumns.ShieldRechargeRate),
+			qm.Rels(boiler.TableNames.BlueprintMechs, boiler.BlueprintMechColumns.ShieldRechargeDelay),
 			qm.Rels(boiler.TableNames.BlueprintMechs, boiler.BlueprintMechColumns.ShieldRechargePowerCost),
 			qm.Rels(boiler.TableNames.BlueprintMechs, boiler.BlueprintMechColumns.ShieldTypeID),
 			qm.Rels(boiler.TableNames.BlueprintShieldTypes, boiler.BlueprintShieldTypeColumns.Label),
@@ -160,11 +162,28 @@ func getDefaultMechQueryMods() []qm.QueryMod {
 		)),
 		// outer join power cores
 		qm.LeftOuterJoin(fmt.Sprintf(`(
-					SELECT _pc.*,_ci.hash, _ci.token_id, _ci.tier, _ci.owner_id, _bppc.image_url as image_url, _bppc.avatar_url as avatar_url, _bppc.card_animation_url as card_animation_url, _bppc.animation_url as animation_url
-					FROM power_cores _pc
-					INNER JOIN collection_items _ci on _ci.item_id = _pc.id
-					INNER JOIN blueprint_power_cores _bppc on _pc.blueprint_id = _bppc.id
-					) %s ON %s = %s`, // TODO: make this boiler/typesafe
+				SELECT
+				_pc.*,
+				_ci.hash,
+				_ci.token_id,
+				_ci.tier,
+				_ci.owner_id,
+				_bppc.label,
+				_bppc.size,
+				_bppc.capacity,
+				_bppc.max_draw_rate,
+				_bppc.recharge_rate,
+				_bppc.armour,
+				_bppc.max_hitpoints,
+				_bppc.image_url AS image_url,
+				_bppc.avatar_url AS avatar_url,
+				_bppc.card_animation_url AS card_animation_url,
+				_bppc.animation_url AS animation_url
+			FROM
+				power_cores _pc
+				INNER JOIN collection_items _ci ON _ci.item_id = _pc.id
+				INNER JOIN blueprint_power_cores _bppc ON _pc.blueprint_id = _bppc.id
+			) %s ON %s = %s`, // TODO: make this boiler/typesafe
 			boiler.TableNames.PowerCores,
 			qm.Rels(boiler.TableNames.PowerCores, boiler.PowerCoreColumns.ID),
 			qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.PowerCoreID),
@@ -189,11 +208,28 @@ func getDefaultMechQueryMods() []qm.QueryMod {
 		)),
 		// inner join skin
 		qm.InnerJoin(fmt.Sprintf(`(
-					SELECT _ms.*, _ci.hash, _ci.token_id, _bpms.tier, _ci.owner_id, _bpms.label
-					FROM mech_skin _ms
-					INNER JOIN collection_items _ci on _ci.item_id = _ms.id
-					INNER JOIN blueprint_mech_skin _bpms on _bpms.id = _ms.blueprint_id
-				 )%s ON %s = %s`, // TODO: make this boiler/typesafe
+			SELECT
+				_ms.*,
+				_ci.hash,
+				_ci.token_id,
+				_ci.tier,
+				_ci.owner_id,
+				_bpms.label,
+				_bpms.default_level,
+				json_build_object(
+					'image_url', _bpms.image_url,
+					'card_animation_url', _bpms.card_animation_url,
+					'avatar_url', _bpms.avatar_url,
+					'large_image_url', _bpms.large_image_url,
+					'background_color', _bpms.background_color,
+					'animation_url', _bpms.animation_url,
+					'youtube_url', _bpms.youtube_url
+				) AS swatch_images
+			FROM
+				mech_skin _ms
+				INNER JOIN collection_items _ci ON _ci.item_id = _ms.id
+				INNER JOIN blueprint_mech_skin _bpms ON _bpms.id = _ms.blueprint_id
+			)%s ON %s = %s`, // TODO: make this boiler/typesafe
 			boiler.TableNames.MechSkin,
 			qm.Rels(boiler.TableNames.MechSkin, boiler.MechSkinColumns.ID),
 			qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.ChassisSkinID),
@@ -226,9 +262,9 @@ func getDefaultMechQueryMods() []qm.QueryMod {
 			fmt.Sprintf(`
 					(
 						SELECT 
-								mw.chassis_id, 
+								mw.%s, 
 								json_agg(w2) as weapons
-						FROM mech_weapons mw
+						FROM %s mw
 						INNER JOIN
 							(
 								SELECT 	
@@ -239,13 +275,34 @@ func getDefaultMechQueryMods() []qm.QueryMod {
 										_ci.owner_id,
 										to_json(_ws) as weapon_skin,
 										_bpw.label,
+										_bpw.weapon_type,
+										_bpw.damage,
+										_bpw.default_damage_type,
+										_bpw.damage_falloff,
+										_bpw.damage_falloff_rate,
+										_bpw.spread,
+										_bpw.rate_of_fire,
+										_bpw.radius,
+										_bpw.radius_damage_falloff,
+										_bpw.projectile_speed,
+										_bpw.power_cost,
+										_bpw.max_ammo,
+										_bpw.is_melee,
+										_bpw.projectile_amount,
+										_bpw.dot_tick_damage,
+										_bpw.dot_max_ticks,
+										_bpw.is_arced,
+										_bpw.charge_time_seconds,
+										_bpw.burst_rate_of_fire,
 										_wmsc.image_url as image_url,
 										_wmsc.avatar_url as avatar_url,
 										_wmsc.card_animation_url as card_animation_url,
-										_wmsc.animation_url as animation_url
+										_wmsc.animation_url as animation_url,
+										_mw.slot_number AS slot_number
 								FROM weapons _w
 								INNER JOIN collection_items _ci on _ci.item_id = _w.id
 								INNER JOIN blueprint_weapons _bpw on _bpw.id = _w.blueprint_id
+								INNER JOIN mech_weapons _mw ON _mw.weapon_id = _w.id
 								INNER JOIN (
 										SELECT 
 												__ws.*,
@@ -260,6 +317,8 @@ func getDefaultMechQueryMods() []qm.QueryMod {
 							) w2 ON mw.weapon_id = w2.id
 						GROUP BY mw.chassis_id
 				) %s on %s = %s `,
+				boiler.MechWeaponColumns.ChassisID,
+				boiler.TableNames.MechWeapons,
 				weaponsTableName,
 				qm.Rels(weaponsTableName, boiler.MechWeaponColumns.ChassisID),
 				qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.ID),
@@ -269,12 +328,13 @@ func getDefaultMechQueryMods() []qm.QueryMod {
 			// TODO: make this boiler/typesafe
 			fmt.Sprintf(`
 				(
-					SELECT 
-							mw.chassis_id, 
-							json_agg(_u) as utility
-					FROM mech_utility mw
-					INNER JOIN (
-						SELECT
+					SELECT
+						mu.chassis_id,
+						json_agg(_u) AS utility
+					FROM
+						mech_utility mu
+						INNER JOIN (
+							SELECT
 								_u.*,
 								_ci.hash,
 								_ci.token_id,
@@ -284,14 +344,17 @@ func getDefaultMechQueryMods() []qm.QueryMod {
 								_bpu.avatar_url as avatar_url,
 								_bpu.card_animation_url as card_animation_url,
 								_bpu.animation_url as animation_url,
-								_bpu.label as label
-								--to_json(_us) as shield
+								_bpu.label as label,
+								_mu.slot_number AS slot_number
+								-- to_json(_us) as shield
 						FROM utility _u
 						INNER JOIN collection_items _ci on _ci.item_id = _u.id
 						INNER JOIN blueprint_utility _bpu on _bpu.id = _u.blueprint_id
-						--INNER JOIN blueprint_utility_shield _us ON _us.blueprint_utility_id = _u.blueprint_id
-					) _u ON mw.utility_id = _u.id
-					GROUP BY mw.chassis_id
+						-- INNER JOIN blueprint_utility_shield _us ON _us.blueprint_utility_id = _u.blueprint_id
+						INNER JOIN mech_utility _mu ON _mu.utility_id = _u.id
+					) _u ON mu.utility_id = _u.id
+					GROUP BY
+						mu.chassis_id
 				) %s on %s = %s `,
 				utilityTableName,
 				qm.Rels(utilityTableName, boiler.MechUtilityColumns.ChassisID),
@@ -325,6 +388,92 @@ func DefaultMechs() ([]*server.Mech, error) {
 }
 
 var ErrNotAllMechsReturned = fmt.Errorf("not all mechs returned")
+
+func GetBlueprintWeaponsIDsWithCompatibleSkinInheritanceFromMechID(conn boil.Executor, mechID string) ([]string, error) {
+	// select
+	// bw.id
+	// from mechs m
+	// inner join mech_skin ms on ms.id = m.chassis_skin_id
+	// inner join blueprint_mech_skin bms on bms.id = ms.blueprint_id
+	// inner join weapon_model_skin_compatibilities wmsc on wmsc.blueprint_weapon_skin_id  = bms.blueprint_weapon_skin_id
+	// inner join weapon_models wm on wm.id = wmsc.weapon_model_id
+	// inner join blueprint_weapons bw on bw.weapon_model_id = wm.id
+	// where m.id = 'cda9cff8-4c03-45f8-b59c-2cefd68e1386';
+
+	var result []struct {
+		ID string `boil:"id"`
+	}
+	err := boiler.NewQuery(
+		qm.Select(fmt.Sprintf("%s as id", qm.Rels(boiler.TableNames.BlueprintWeapons, boiler.BlueprintWeaponColumns.ID))),
+		qm.From(boiler.TableNames.Mechs),
+		qm.InnerJoin(fmt.Sprintf("%s on %s = %s",
+			boiler.TableNames.MechSkin,
+			qm.Rels(boiler.TableNames.MechSkin, boiler.MechSkinColumns.ID),
+			qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.ChassisSkinID),
+		)),
+		qm.InnerJoin(fmt.Sprintf("%s on %s = %s",
+			boiler.TableNames.BlueprintMechSkin,
+			qm.Rels(boiler.TableNames.BlueprintMechSkin, boiler.BlueprintMechSkinColumns.ID),
+			qm.Rels(boiler.TableNames.MechSkin, boiler.MechSkinColumns.BlueprintID),
+		)),
+		qm.InnerJoin(fmt.Sprintf("%s on %s = %s",
+			boiler.TableNames.WeaponModelSkinCompatibilities,
+			qm.Rels(boiler.TableNames.WeaponModelSkinCompatibilities, boiler.WeaponModelSkinCompatibilityColumns.BlueprintWeaponSkinID),
+			qm.Rels(boiler.TableNames.BlueprintMechSkin, boiler.BlueprintMechSkinColumns.BlueprintWeaponSkinID),
+		)),
+		qm.InnerJoin(fmt.Sprintf("%s on %s = %s",
+			boiler.TableNames.BlueprintWeapons,
+			qm.Rels(boiler.TableNames.BlueprintWeapons, boiler.BlueprintWeaponColumns.ID),
+			qm.Rels(boiler.TableNames.WeaponModelSkinCompatibilities, boiler.WeaponModelSkinCompatibilityColumns.WeaponModelID),
+		)),
+		qm.Where(fmt.Sprintf("%s = ?", qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.ID)),
+			mechID,
+		),
+	).Bind(nil, conn, &result)
+	if err != nil {
+		return []string{}, err
+	}
+
+	ids := []string{}
+	for _, i := range result {
+		ids = append(ids, i.ID)
+	}
+
+	return ids, nil
+}
+
+func GetCompatibleBlueprintMechSkinIDsFromMechID(conn boil.Executor, mechID string) ([]string, error) {
+	// select
+	// mmsc.blueprint_mech_skin_id
+	// from mechs m
+	// inner join mech_model_skin_compatibilities mmsc on mmsc.mech_model_id = m.blueprint_id
+	// where m.id = 'cda9cff8-4c03-45f8-b59c-2cefd68e1386';
+
+	var result []struct {
+		ID string `boil:"id"`
+	}
+	err := boiler.NewQuery(
+		qm.Select(fmt.Sprintf("%s as id", boiler.MechModelSkinCompatibilityTableColumns.BlueprintMechSkinID)),
+		qm.From(boiler.TableNames.Mechs),
+		qm.InnerJoin(fmt.Sprintf("%s on %s = %s",
+			boiler.TableNames.MechModelSkinCompatibilities,
+			boiler.MechModelSkinCompatibilityTableColumns.MechModelID,
+			boiler.MechTableColumns.BlueprintID,
+		)),
+		qm.Where(fmt.Sprintf("%s = ?", boiler.MechTableColumns.ID),
+			mechID),
+	).Bind(nil, conn, &result)
+	if err != nil {
+		return []string{}, err
+	}
+
+	ids := []string{}
+	for _, i := range result {
+		ids = append(ids, i.ID)
+	}
+
+	return ids, nil
+}
 
 func Mech(conn boil.Executor, mechID string) (*server.Mech, error) {
 	bm := benchmark.New()
@@ -388,12 +537,14 @@ func Mech(conn boil.Executor, mechID string) (*server.Mech, error) {
 			&mc.ID,
 			&mc.Name,
 			&mc.Label,
+			&mc.MechType,
 			&mc.WeaponHardpoints,
 			&mc.UtilitySlots,
 			&mc.Speed,
 			&mc.MaxHitpoints,
 			&mc.Shield,
 			&mc.ShieldRechargeRate,
+			&mc.ShieldRechargeDelay,
 			&mc.ShieldRechargePowerCost,
 			&mc.ShieldTypeID,
 			&mc.ShieldTypeLabel,
@@ -432,6 +583,22 @@ func Mech(conn boil.Executor, mechID string) (*server.Mech, error) {
 
 	if mc.ID == "" {
 		return nil, fmt.Errorf("unable to find mech with id %s", mechID)
+	}
+
+	compatibleWeapons, err := GetBlueprintWeaponsIDsWithCompatibleSkinInheritanceFromMechID(gamedb.StdConn, mc.ID)
+	if err != nil {
+		return nil, fmt.Errorf("unable to find skin inherited weapon models for mech with id %s", mc.ID)
+	}
+	mc.BlueprintWeaponIDsWithSkinInheritance = compatibleWeapons
+
+	compatibleSkins, err := GetCompatibleBlueprintMechSkinIDsFromMechID(gamedb.StdConn, mc.ID)
+	if err != nil {
+		return nil, fmt.Errorf("unable to find compatible skins for mech with id %s", mc.ID)
+	}
+	mc.CompatibleBlueprintMechSkinIDs = compatibleSkins
+
+	if mc.ChassisSkin.Images == nil {
+		mc.ChassisSkin.Images = mc.Images
 	}
 
 	err = mc.SetBoostedStats()
@@ -502,6 +669,7 @@ func Mechs(mechIDs ...string) ([]*server.Mech, error) {
 			&mc.Stats.TotalLosses,
 			&mc.ID,
 			&mc.Name,
+			&mc.MechType,
 			&mc.Label,
 			&mc.WeaponHardpoints,
 			&mc.UtilitySlots,
@@ -509,6 +677,7 @@ func Mechs(mechIDs ...string) ([]*server.Mech, error) {
 			&mc.MaxHitpoints,
 			&mc.Shield,
 			&mc.ShieldRechargeRate,
+			&mc.ShieldRechargeDelay,
 			&mc.ShieldRechargePowerCost,
 			&mc.ShieldTypeID,
 			&mc.ShieldTypeLabel,
@@ -1044,6 +1213,7 @@ func MechList(opts *MechListOpts) (int64, []*server.Mech, error) {
 			qm.Rels(boiler.TableNames.BlueprintMechs, boiler.BlueprintMechColumns.MaxHitpoints),
 			qm.Rels(boiler.TableNames.BlueprintMechs, boiler.BlueprintMechColumns.ShieldMax),
 			qm.Rels(boiler.TableNames.BlueprintMechs, boiler.BlueprintMechColumns.ShieldRechargeRate),
+			qm.Rels(boiler.TableNames.BlueprintMechs, boiler.BlueprintMechColumns.ShieldRechargeDelay),
 			qm.Rels(boiler.TableNames.BlueprintMechs, boiler.BlueprintMechColumns.ShieldRechargePowerCost),
 			qm.Rels(boiler.TableNames.BlueprintMechs, boiler.BlueprintMechColumns.ShieldTypeID),
 			qm.Rels(boiler.TableNames.BlueprintShieldTypes, boiler.BlueprintShieldTypeColumns.Label),
@@ -1138,6 +1308,7 @@ func MechList(opts *MechListOpts) (int64, []*server.Mech, error) {
 			&mc.MaxHitpoints,
 			&mc.Shield,
 			&mc.ShieldRechargeRate,
+			&mc.ShieldRechargeDelay,
 			&mc.ShieldRechargePowerCost,
 			&mc.ShieldTypeID,
 			&mc.ShieldTypeLabel,
