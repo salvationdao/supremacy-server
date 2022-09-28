@@ -28,10 +28,11 @@ type UserReq struct {
 }
 
 type UserResp struct {
-	ID            string
-	Username      string
-	FactionID     null.String
-	PublicAddress null.String
+	ID               string
+	Username         string
+	FactionID        null.String
+	PublicAddress    null.String
+	AcceptsMarketing null.Bool
 }
 
 // UserGet get user by id
@@ -146,6 +147,26 @@ func (pp *XsynXrpcClient) UserFactionEnlist(userID string, factionID string) err
 	err := pp.XrpcClient.Call("S.UserFactionEnlistHandler", UserFactionEnlistReq{pp.ApiKey, userID, factionID}, resp)
 	if err != nil {
 		gamelog.L.Err(err).Str("method", "UserFactionEnlistHandler").Msg("rpc error")
+		return err
+	}
+
+	return nil
+}
+
+type UserMarketingUpdateReq struct {
+	ApiKey           string
+	UserID           string `json:"userID"`
+	AcceptsMarketing bool   `json:"acceptsMarketing"`
+}
+
+type UserMarketingUpdateResp struct{}
+
+// UserMarketingUpdate updates user's marketing preferences
+func (pp *XsynXrpcClient) UserMarketingUpdate(userID string, acceptsMarketing bool) error {
+	resp := &UserMarketingUpdateResp{}
+	err := pp.XrpcClient.Call("S.UserMarketingUpdateHandler", UserMarketingUpdateReq{pp.ApiKey, userID, acceptsMarketing}, resp)
+	if err != nil {
+		gamelog.L.Err(err).Str("method", "UserMarketingUpdateHandler").Msg("rpc error")
 		return err
 	}
 
