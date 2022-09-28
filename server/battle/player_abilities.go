@@ -11,7 +11,6 @@ import (
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
-	"server/helpers"
 	"time"
 
 	"github.com/sasha-s/go-deadlock"
@@ -520,7 +519,7 @@ func (am *ArenaManager) PlayerAbilityUse(ctx context.Context, user *boiler.Playe
 
 	// Create consumed_abilities entry
 	ca := boiler.ConsumedAbility{
-		BattleID:            arena.CurrentBattle().BattleID,
+		BattleID:            arena.CurrentBattle().ID,
 		ConsumedBy:          player.ID,
 		BlueprintID:         pa.BlueprintID,
 		GameClientAbilityID: bpa.GameClientAbilityID,
@@ -685,7 +684,7 @@ func (arena *Arena) BroadcastFactionMechCommands(factionID string) error {
 	}
 
 	logs, err := boiler.MechMoveCommandLogs(
-		boiler.MechMoveCommandLogWhere.MechID.IN(helpers.UUIDArray2StrArray(ids)),
+		boiler.MechMoveCommandLogWhere.MechID.IN(ids),
 		boiler.MechMoveCommandLogWhere.BattleID.EQ(arena.CurrentBattle().ID),
 		boiler.MechMoveCommandLogWhere.ReachedAt.IsNull(),
 		boiler.MechMoveCommandLogWhere.CancelledAt.IsNull(),
@@ -865,7 +864,7 @@ func (am *ArenaManager) MechAbilityTriggerHandler(ctx context.Context, user *boi
 		lastTrigger, err := boiler.BattleAbilityTriggers(
 			boiler.BattleAbilityTriggerWhere.OnMechID.EQ(null.StringFrom(wm.ID)),
 			boiler.BattleAbilityTriggerWhere.GameAbilityID.EQ(req.Payload.GameAbilityID),
-			boiler.BattleAbilityTriggerWhere.BattleID.EQ(btl.BattleID),
+			boiler.BattleAbilityTriggerWhere.BattleID.EQ(btl.ID),
 			boiler.BattleAbilityTriggerWhere.TriggerType.EQ(boiler.AbilityTriggerTypeMECH_ABILITY),
 		).One(gamedb.StdConn)
 		if err != nil && !errors.Is(err, sql.ErrNoRows) {
@@ -955,7 +954,7 @@ func (am *ArenaManager) MechAbilityTriggerHandler(ctx context.Context, user *boi
 		AbilityLabel:      ga.Label,
 		IsAllSyndicates:   false,
 		FactionID:         factionID,
-		BattleID:          btl.BattleID,
+		BattleID:          btl.ID,
 		AbilityOfferingID: offeringID.String(),
 		TriggeredAt:       now,
 		TriggerType:       boiler.AbilityTriggerTypeMECH_ABILITY,
@@ -1137,7 +1136,7 @@ func (arena *Arena) MechMoveCommandCreateHandler(ctx context.Context, user *boil
 		}
 
 		// check mech command quest
-		arena.QuestManager.MechCommanderQuestCheck(user.ID)
+		arena.Manager.QuestManager.MechCommanderQuestCheck(user.ID)
 
 		// broadcast mech command log
 		ws.PublishMessage(fmt.Sprintf("/faction/%s/arena/%s/mech_command/%s", wm.FactionID, arena.ID, wm.Hash), server.HubKeyMechMoveCommandSubscribe, &MechMoveCommandResponse{
@@ -1369,7 +1368,7 @@ func (am *ArenaManager) BattleAbilityOptIn(ctx context.Context, user *boiler.Pla
 	offeringID := as.BattleAbilityPool.BattleAbility.LoadOfferingID()
 
 	bao := boiler.BattleAbilityOptInLog{
-		BattleID:                btl.BattleID,
+		BattleID:                btl.ID,
 		PlayerID:                user.ID,
 		BattleAbilityOfferingID: offeringID,
 		FactionID:               factionID,

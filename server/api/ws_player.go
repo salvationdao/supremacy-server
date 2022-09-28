@@ -22,10 +22,8 @@ import (
 	"github.com/go-chi/chi/v5"
 
 	"github.com/gofrs/uuid"
-	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/ninja-software/terror/v2"
 	"github.com/ninja-syndicate/ws"
-	"github.com/rs/zerolog"
 	"github.com/shopspring/decimal"
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
@@ -34,9 +32,7 @@ import (
 )
 
 type PlayerController struct {
-	Conn *pgxpool.Pool
-	Log  *zerolog.Logger
-	API  *API
+	API *API
 }
 
 func NewPlayerController(api *API) *PlayerController {
@@ -66,8 +62,6 @@ func NewPlayerController(api *API) *PlayerController {
 
 	api.SecureUserCommand(HubKeyGameUserOnline, pc.UserOnline)
 
-	api.SecureUserCommand(HubKeyPlayerQueueStatus, pc.PlayerQueueStatusHandler)
-
 	// user profile commands
 	api.Command(HubKeyPlayerProfileGet, pc.PlayerProfileGetHandler)
 	api.SecureUserCommand(HubKeyPlayerUpdateUsername, pc.PlayerUpdateUsernameHandler)
@@ -87,23 +81,27 @@ func NewPlayerController(api *API) *PlayerController {
 	return pc
 }
 
-type PlayerQueueStatus struct {
-	TotalQueued int64 `json:"total_queued"`
-	QueueLimit  int64 `json:"queue_limit"`
-}
-
-const HubKeyPlayerQueueStatus = "PLAYER:QUEUE:STATUS"
-
 func (pc *PlayerController) PlayerQueueStatusHandler(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
-	queued, err := db.GetPlayerQueueCount(user.ID)
-	if err != nil {
-		return terror.Error(err, "Failed to get player queue status.")
+	resp := &server.PlayerQueueStatus{
+		TotalQueued: 0,
+		QueueLimit:  db.GetIntWithDefault(db.KeyPlayerQueueLimit, 10),
 	}
 
-	reply(&PlayerQueueStatus{
-		TotalQueued: queued,
-		QueueLimit:  int64(db.GetIntWithDefault(db.KeyPlayerQueueLimit, 10)),
-	})
+	blms, err := boiler.BattleLobbiesMechs(
+		boiler.BattleLobbiesMechWhere.OwnerID.EQ(user.ID),
+		boiler.BattleLobbiesMechWhere.RefundTXID.IsNull(),
+		boiler.BattleLobbiesMechWhere.EndedAt.IsNull(),
+	).All(gamedb.StdConn)
+	if err != nil {
+		gamelog.L.Error().Str("player id", user.ID).Err(err).Msg("Failed to load player battle queue mechs")
+		return terror.Error(err, "Failed to load player battle queue mechs")
+	}
+
+	if blms != nil {
+		resp.TotalQueued = len(blms)
+	}
+
+	reply(resp)
 	return nil
 }
 

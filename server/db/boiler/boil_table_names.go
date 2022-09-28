@@ -20,14 +20,16 @@ var TableNames = struct {
 	BattleEventsWarMachineDestroyedAssistedWarMachines string
 	BattleHistory                                      string
 	BattleKills                                        string
-	BattleMapQueue                                     string
+	BattleLobbies                                      string
+	BattleLobbiesMechs                                 string
+	BattleMapQueueOld                                  string
 	BattleMechs                                        string
-	BattleQueue                                        string
-	BattleQueueFees                                    string
+	BattleQueueFeesOld                                 string
 	BattleQueueNotifications                           string
+	BattleQueueOld                                     string
 	BattleReplays                                      string
 	BattleViewers                                      string
-	BattleWarMachineQueues                             string
+	BattleWarMachineQueuesOld                          string
 	BattleWins                                         string
 	Battles                                            string
 	Blobs                                              string
@@ -177,14 +179,16 @@ var TableNames = struct {
 	BattleEventsWarMachineDestroyedAssistedWarMachines: "battle_events_war_machine_destroyed_assisted_war_machines",
 	BattleHistory:                  "battle_history",
 	BattleKills:                    "battle_kills",
-	BattleMapQueue:                 "battle_map_queue",
+	BattleLobbies:                  "battle_lobbies",
+	BattleLobbiesMechs:             "battle_lobbies_mechs",
+	BattleMapQueueOld:              "battle_map_queue_old",
 	BattleMechs:                    "battle_mechs",
-	BattleQueue:                    "battle_queue",
-	BattleQueueFees:                "battle_queue_fees",
+	BattleQueueFeesOld:             "battle_queue_fees_old",
 	BattleQueueNotifications:       "battle_queue_notifications",
+	BattleQueueOld:                 "battle_queue_old",
 	BattleReplays:                  "battle_replays",
 	BattleViewers:                  "battle_viewers",
-	BattleWarMachineQueues:         "battle_war_machine_queues",
+	BattleWarMachineQueuesOld:      "battle_war_machine_queues_old",
 	BattleWins:                     "battle_wins",
 	Battles:                        "battles",
 	Blobs:                          "blobs",

@@ -121,3 +121,8 @@ type QuestStat struct {
 	RequestAmount int       `db:"request_amount" json:"request_amount"`
 	Obtained      bool      `db:"obtained" json:"obtained"`
 }
+
+type PlayerQueueStatus struct {
+	TotalQueued int `json:"total_queued"`
+	QueueLimit  int `json:"queue_limit"`
+}

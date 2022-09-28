@@ -1,6 +1,8 @@
 package server
 
 // player_abilities
+
+const HubKeyPlayerQueueStatus = "PLAYER:QUEUE:STATUS"
 const HubKeyPlayerAbilitiesList = "PLAYER:ABILITIES:LIST:SUBSCRIBE"
 const HubKeyMechMoveCommandSubscribe = "MECH:MOVE:COMMAND:SUBSCRIBE"
 
@@ -11,8 +13,6 @@ const HubKeySaleAbilityClaim = "SALE:ABILITY:CLAIM"
 const HubKeySaleAbilityPurchase = "SALE:ABILITY:PURCHASE"
 
 const HubKeyGlobalAnnouncementSubscribe = "GLOBAL_ANNOUNCEMENT:SUBSCRIBE"
-
-const WarMachineRepairStatusSubscribe = "WAR:MACHINE:REPAIR:STATUS:SUBSCRIBE"
 
 const HubKeySyndicateGeneralDetailSubscribe = "SYNDICATE:GENERAL:DETAIL:SUBSCRIBE"
 const HubKeySyndicateDirectorsSubscribe = "SYNDICATE:DIRECTORS:SUBSCRIBE"
@@ -77,3 +77,11 @@ const HubKeyShoppingCartUpdated = "FIAT:SHOPPING_CART:UPDATED"
 // battle abilities
 
 const HubKeyMiniMapAbilityDisplayList = "MINI:MAP:ABILITY:DISPLAY:LIST"
+
+// battle queue
+
+const HubKeyPlayerMechsBrief = "PLAYER:MECHS:BRIEF"
+
+const HubKeyBattleLobbyListUpdate = "BATTLE:LOBBY:LIST:UPDATE"
+const HubKeyPlayerAssetMechQueueSubscribe = "PLAYER:ASSET:MECH:QUEUE:SUBSCRIBE"
+const HubKeyBattleETAUpdate = "BATTLE:ETA:UPDATE"

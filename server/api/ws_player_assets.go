@@ -2592,3 +2592,12 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetUtilityListHandler(ctx context.C
 	})
 	return nil
 }
+
+func (api *API) PlayerMechs(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
+	resp, err := db.OwnedMechsBrief(user.ID)
+	if err != nil {
+		return err
+	}
+	reply(resp)
+	return nil
+}

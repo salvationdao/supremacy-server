@@ -37,34 +37,36 @@ func New() (*System, error) {
 		playerQuestChan: make(chan *playerQuestCheck, 50),
 	}
 
-	// insert quest events
-	r, err := boiler.QuestEvents(
-		boiler.QuestEventWhere.Name.EQ(QuestEventNameProvingGround),
-	).One(gamedb.StdConn)
-	if err != nil && !errors.Is(err, sql.ErrNoRows) {
-		return nil, terror.Error(err, "Failed to load staging quest")
-	}
-
-	if r == nil {
-		now := time.Now()
-		r = &boiler.QuestEvent{
-			Type:               boiler.QuestEventTypeProvingGrounds,
-			Name:               QuestEventNameProvingGround,
-			StartedAt:          now,
-			EndAt:              now.AddDate(0, 0, 10), // default value
-			DurationType:       boiler.QuestEventDurationTypeCustom,
-			CustomDurationDays: null.IntFrom(10),
-			Repeatable:         true,
-			QuestEventNumber:   1,
+	if !server.IsProductionEnv() {
+		// insert proving ground quest event
+		r, err := boiler.QuestEvents(
+			boiler.QuestEventWhere.Type.EQ(boiler.QuestEventTypeProvingGrounds),
+		).One(gamedb.StdConn)
+		if err != nil && !errors.Is(err, sql.ErrNoRows) {
+			return nil, terror.Error(err, "Failed to load staging quest")
 		}
-		err = r.Insert(gamedb.StdConn, boil.Infer())
-		if err != nil {
-			return nil, terror.Error(err, "Failed to insert staging quests.")
+
+		if r == nil {
+			now := time.Now()
+			r = &boiler.QuestEvent{
+				Type:               boiler.QuestEventTypeProvingGrounds,
+				Name:               QuestEventNameProvingGround,
+				StartedAt:          now,
+				EndAt:              now.AddDate(0, 0, 10), // default value
+				DurationType:       boiler.QuestEventDurationTypeCustom,
+				CustomDurationDays: null.IntFrom(10),
+				Repeatable:         true,
+				QuestEventNumber:   1,
+			}
+			err = r.Insert(gamedb.StdConn, boil.Infer())
+			if err != nil {
+				return nil, terror.Error(err, "Failed to insert staging quests.")
+			}
 		}
 	}
 
 	// check test quests exists
-	r, err = boiler.QuestEvents(
+	r, err := boiler.QuestEvents(
 		boiler.QuestEventWhere.Name.EQ(QuestEventNameDaily),
 	).One(gamedb.StdConn)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {

@@ -21,8 +21,8 @@ import (
 	"github.com/volatiletech/strmangle"
 )
 
-// BattleQueue is an object representing the database table.
-type BattleQueue struct {
+// BattleQueueOld is an object representing the database table.
+type BattleQueueOld struct {
 	QueuedAt                       time.Time   `boiler:"queued_at" boil:"queued_at" json:"queued_at" toml:"queued_at" yaml:"queued_at"`
 	FactionID                      string      `boiler:"faction_id" boil:"faction_id" json:"faction_id" toml:"faction_id" yaml:"faction_id"`
 	OwnerID                        string      `boiler:"owner_id" boil:"owner_id" json:"owner_id" toml:"owner_id" yaml:"owner_id"`
@@ -38,11 +38,11 @@ type BattleQueue struct {
 	FeeID                          null.String `boiler:"fee_id" boil:"fee_id" json:"fee_id,omitempty" toml:"fee_id" yaml:"fee_id,omitempty"`
 	SystemMessageNotified          bool        `boiler:"system_message_notified" boil:"system_message_notified" json:"system_message_notified" toml:"system_message_notified" yaml:"system_message_notified"`
 
-	R *battleQueueR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
-	L battleQueueL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
+	R *battleQueueOldR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
+	L battleQueueOldL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 }
 
-var BattleQueueColumns = struct {
+var BattleQueueOldColumns = struct {
 	QueuedAt                       string
 	FactionID                      string
 	OwnerID                        string
@@ -74,7 +74,7 @@ var BattleQueueColumns = struct {
 	SystemMessageNotified:          "system_message_notified",
 }
 
-var BattleQueueTableColumns = struct {
+var BattleQueueOldTableColumns = struct {
 	QueuedAt                       string
 	FactionID                      string
 	OwnerID                        string
@@ -90,25 +90,25 @@ var BattleQueueTableColumns = struct {
 	FeeID                          string
 	SystemMessageNotified          string
 }{
-	QueuedAt:                       "battle_queue.queued_at",
-	FactionID:                      "battle_queue.faction_id",
-	OwnerID:                        "battle_queue.owner_id",
-	BattleID:                       "battle_queue.battle_id",
-	Notified:                       "battle_queue.notified",
-	QueueFeeTXID:                   "battle_queue.queue_fee_tx_id",
-	QueueNotificationFeeTXID:       "battle_queue.queue_notification_fee_tx_id",
-	QueueFeeTXIDRefund:             "battle_queue.queue_fee_tx_id_refund",
-	QueueNotificationFeeTXIDRefund: "battle_queue.queue_notification_fee_tx_id_refund",
-	ID:                             "battle_queue.id",
-	UpdatedAt:                      "battle_queue.updated_at",
-	MechID:                         "battle_queue.mech_id",
-	FeeID:                          "battle_queue.fee_id",
-	SystemMessageNotified:          "battle_queue.system_message_notified",
+	QueuedAt:                       "battle_queue_old.queued_at",
+	FactionID:                      "battle_queue_old.faction_id",
+	OwnerID:                        "battle_queue_old.owner_id",
+	BattleID:                       "battle_queue_old.battle_id",
+	Notified:                       "battle_queue_old.notified",
+	QueueFeeTXID:                   "battle_queue_old.queue_fee_tx_id",
+	QueueNotificationFeeTXID:       "battle_queue_old.queue_notification_fee_tx_id",
+	QueueFeeTXIDRefund:             "battle_queue_old.queue_fee_tx_id_refund",
+	QueueNotificationFeeTXIDRefund: "battle_queue_old.queue_notification_fee_tx_id_refund",
+	ID:                             "battle_queue_old.id",
+	UpdatedAt:                      "battle_queue_old.updated_at",
+	MechID:                         "battle_queue_old.mech_id",
+	FeeID:                          "battle_queue_old.fee_id",
+	SystemMessageNotified:          "battle_queue_old.system_message_notified",
 }
 
 // Generated where
 
-var BattleQueueWhere = struct {
+var BattleQueueOldWhere = struct {
 	QueuedAt                       whereHelpertime_Time
 	FactionID                      whereHelperstring
 	OwnerID                        whereHelperstring
@@ -124,24 +124,24 @@ var BattleQueueWhere = struct {
 	FeeID                          whereHelpernull_String
 	SystemMessageNotified          whereHelperbool
 }{
-	QueuedAt:                       whereHelpertime_Time{field: "\"battle_queue\".\"queued_at\""},
-	FactionID:                      whereHelperstring{field: "\"battle_queue\".\"faction_id\""},
-	OwnerID:                        whereHelperstring{field: "\"battle_queue\".\"owner_id\""},
-	BattleID:                       whereHelpernull_String{field: "\"battle_queue\".\"battle_id\""},
-	Notified:                       whereHelperbool{field: "\"battle_queue\".\"notified\""},
-	QueueFeeTXID:                   whereHelpernull_String{field: "\"battle_queue\".\"queue_fee_tx_id\""},
-	QueueNotificationFeeTXID:       whereHelpernull_String{field: "\"battle_queue\".\"queue_notification_fee_tx_id\""},
-	QueueFeeTXIDRefund:             whereHelpernull_String{field: "\"battle_queue\".\"queue_fee_tx_id_refund\""},
-	QueueNotificationFeeTXIDRefund: whereHelpernull_String{field: "\"battle_queue\".\"queue_notification_fee_tx_id_refund\""},
-	ID:                             whereHelperstring{field: "\"battle_queue\".\"id\""},
-	UpdatedAt:                      whereHelpertime_Time{field: "\"battle_queue\".\"updated_at\""},
-	MechID:                         whereHelperstring{field: "\"battle_queue\".\"mech_id\""},
-	FeeID:                          whereHelpernull_String{field: "\"battle_queue\".\"fee_id\""},
-	SystemMessageNotified:          whereHelperbool{field: "\"battle_queue\".\"system_message_notified\""},
+	QueuedAt:                       whereHelpertime_Time{field: "\"battle_queue_old\".\"queued_at\""},
+	FactionID:                      whereHelperstring{field: "\"battle_queue_old\".\"faction_id\""},
+	OwnerID:                        whereHelperstring{field: "\"battle_queue_old\".\"owner_id\""},
+	BattleID:                       whereHelpernull_String{field: "\"battle_queue_old\".\"battle_id\""},
+	Notified:                       whereHelperbool{field: "\"battle_queue_old\".\"notified\""},
+	QueueFeeTXID:                   whereHelpernull_String{field: "\"battle_queue_old\".\"queue_fee_tx_id\""},
+	QueueNotificationFeeTXID:       whereHelpernull_String{field: "\"battle_queue_old\".\"queue_notification_fee_tx_id\""},
+	QueueFeeTXIDRefund:             whereHelpernull_String{field: "\"battle_queue_old\".\"queue_fee_tx_id_refund\""},
+	QueueNotificationFeeTXIDRefund: whereHelpernull_String{field: "\"battle_queue_old\".\"queue_notification_fee_tx_id_refund\""},
+	ID:                             whereHelperstring{field: "\"battle_queue_old\".\"id\""},
+	UpdatedAt:                      whereHelpertime_Time{field: "\"battle_queue_old\".\"updated_at\""},
+	MechID:                         whereHelperstring{field: "\"battle_queue_old\".\"mech_id\""},
+	FeeID:                          whereHelpernull_String{field: "\"battle_queue_old\".\"fee_id\""},
+	SystemMessageNotified:          whereHelperbool{field: "\"battle_queue_old\".\"system_message_notified\""},
 }
 
-// BattleQueueRels is where relationship names are stored.
-var BattleQueueRels = struct {
+// BattleQueueOldRels is where relationship names are stored.
+var BattleQueueOldRels = struct {
 	Battle                            string
 	Mech                              string
 	Faction                           string
@@ -157,55 +157,55 @@ var BattleQueueRels = struct {
 	QueueMechBattleQueueNotifications: "QueueMechBattleQueueNotifications",
 }
 
-// battleQueueR is where relationships are stored.
-type battleQueueR struct {
+// battleQueueOldR is where relationships are stored.
+type battleQueueOldR struct {
 	Battle                            *Battle                      `boiler:"Battle" boil:"Battle" json:"Battle" toml:"Battle" yaml:"Battle"`
 	Mech                              *Mech                        `boiler:"Mech" boil:"Mech" json:"Mech" toml:"Mech" yaml:"Mech"`
 	Faction                           *Faction                     `boiler:"Faction" boil:"Faction" json:"Faction" toml:"Faction" yaml:"Faction"`
-	Fee                               *BattleQueueFee              `boiler:"Fee" boil:"Fee" json:"Fee" toml:"Fee" yaml:"Fee"`
+	Fee                               *BattleQueueFeesOld          `boiler:"Fee" boil:"Fee" json:"Fee" toml:"Fee" yaml:"Fee"`
 	Owner                             *Player                      `boiler:"Owner" boil:"Owner" json:"Owner" toml:"Owner" yaml:"Owner"`
 	QueueMechBattleQueueNotifications BattleQueueNotificationSlice `boiler:"QueueMechBattleQueueNotifications" boil:"QueueMechBattleQueueNotifications" json:"QueueMechBattleQueueNotifications" toml:"QueueMechBattleQueueNotifications" yaml:"QueueMechBattleQueueNotifications"`
 }
 
 // NewStruct creates a new relationship struct
-func (*battleQueueR) NewStruct() *battleQueueR {
-	return &battleQueueR{}
+func (*battleQueueOldR) NewStruct() *battleQueueOldR {
+	return &battleQueueOldR{}
 }
 
-// battleQueueL is where Load methods for each relationship are stored.
-type battleQueueL struct{}
+// battleQueueOldL is where Load methods for each relationship are stored.
+type battleQueueOldL struct{}
 
 var (
-	battleQueueAllColumns            = []string{"queued_at", "faction_id", "owner_id", "battle_id", "notified", "queue_fee_tx_id", "queue_notification_fee_tx_id", "queue_fee_tx_id_refund", "queue_notification_fee_tx_id_refund", "id", "updated_at", "mech_id", "fee_id", "system_message_notified"}
-	battleQueueColumnsWithoutDefault = []string{"faction_id", "owner_id", "mech_id"}
-	battleQueueColumnsWithDefault    = []string{"queued_at", "battle_id", "notified", "queue_fee_tx_id", "queue_notification_fee_tx_id", "queue_fee_tx_id_refund", "queue_notification_fee_tx_id_refund", "id", "updated_at", "fee_id", "system_message_notified"}
-	battleQueuePrimaryKeyColumns     = []string{"mech_id"}
-	battleQueueGeneratedColumns      = []string{}
+	battleQueueOldAllColumns            = []string{"queued_at", "faction_id", "owner_id", "battle_id", "notified", "queue_fee_tx_id", "queue_notification_fee_tx_id", "queue_fee_tx_id_refund", "queue_notification_fee_tx_id_refund", "id", "updated_at", "mech_id", "fee_id", "system_message_notified"}
+	battleQueueOldColumnsWithoutDefault = []string{"faction_id", "owner_id", "mech_id"}
+	battleQueueOldColumnsWithDefault    = []string{"queued_at", "battle_id", "notified", "queue_fee_tx_id", "queue_notification_fee_tx_id", "queue_fee_tx_id_refund", "queue_notification_fee_tx_id_refund", "id", "updated_at", "fee_id", "system_message_notified"}
+	battleQueueOldPrimaryKeyColumns     = []string{"mech_id"}
+	battleQueueOldGeneratedColumns      = []string{}
 )
 
 type (
-	// BattleQueueSlice is an alias for a slice of pointers to BattleQueue.
-	// This should almost always be used instead of []BattleQueue.
-	BattleQueueSlice []*BattleQueue
-	// BattleQueueHook is the signature for custom BattleQueue hook methods
-	BattleQueueHook func(boil.Executor, *BattleQueue) error
+	// BattleQueueOldSlice is an alias for a slice of pointers to BattleQueueOld.
+	// This should almost always be used instead of []BattleQueueOld.
+	BattleQueueOldSlice []*BattleQueueOld
+	// BattleQueueOldHook is the signature for custom BattleQueueOld hook methods
+	BattleQueueOldHook func(boil.Executor, *BattleQueueOld) error
 
-	battleQueueQuery struct {
+	battleQueueOldQuery struct {
 		*queries.Query
 	}
 )
 
 // Cache for insert, update and upsert
 var (
-	battleQueueType                 = reflect.TypeOf(&BattleQueue{})
-	battleQueueMapping              = queries.MakeStructMapping(battleQueueType)
-	battleQueuePrimaryKeyMapping, _ = queries.BindMapping(battleQueueType, battleQueueMapping, battleQueuePrimaryKeyColumns)
-	battleQueueInsertCacheMut       sync.RWMutex
-	battleQueueInsertCache          = make(map[string]insertCache)
-	battleQueueUpdateCacheMut       sync.RWMutex
-	battleQueueUpdateCache          = make(map[string]updateCache)
-	battleQueueUpsertCacheMut       sync.RWMutex
-	battleQueueUpsertCache          = make(map[string]insertCache)
+	battleQueueOldType                 = reflect.TypeOf(&BattleQueueOld{})
+	battleQueueOldMapping              = queries.MakeStructMapping(battleQueueOldType)
+	battleQueueOldPrimaryKeyMapping, _ = queries.BindMapping(battleQueueOldType, battleQueueOldMapping, battleQueueOldPrimaryKeyColumns)
+	battleQueueOldInsertCacheMut       sync.RWMutex
+	battleQueueOldInsertCache          = make(map[string]insertCache)
+	battleQueueOldUpdateCacheMut       sync.RWMutex
+	battleQueueOldUpdateCache          = make(map[string]updateCache)
+	battleQueueOldUpsertCacheMut       sync.RWMutex
+	battleQueueOldUpsertCache          = make(map[string]insertCache)
 )
 
 var (
@@ -216,23 +216,23 @@ var (
 	_ = qmhelper.Where
 )
 
-var battleQueueAfterSelectHooks []BattleQueueHook
+var battleQueueOldAfterSelectHooks []BattleQueueOldHook
 
-var battleQueueBeforeInsertHooks []BattleQueueHook
-var battleQueueAfterInsertHooks []BattleQueueHook
+var battleQueueOldBeforeInsertHooks []BattleQueueOldHook
+var battleQueueOldAfterInsertHooks []BattleQueueOldHook
 
-var battleQueueBeforeUpdateHooks []BattleQueueHook
-var battleQueueAfterUpdateHooks []BattleQueueHook
+var battleQueueOldBeforeUpdateHooks []BattleQueueOldHook
+var battleQueueOldAfterUpdateHooks []BattleQueueOldHook
 
-var battleQueueBeforeDeleteHooks []BattleQueueHook
-var battleQueueAfterDeleteHooks []BattleQueueHook
+var battleQueueOldBeforeDeleteHooks []BattleQueueOldHook
+var battleQueueOldAfterDeleteHooks []BattleQueueOldHook
 
-var battleQueueBeforeUpsertHooks []BattleQueueHook
-var battleQueueAfterUpsertHooks []BattleQueueHook
+var battleQueueOldBeforeUpsertHooks []BattleQueueOldHook
+var battleQueueOldAfterUpsertHooks []BattleQueueOldHook
 
 // doAfterSelectHooks executes all "after Select" hooks.
-func (o *BattleQueue) doAfterSelectHooks(exec boil.Executor) (err error) {
-	for _, hook := range battleQueueAfterSelectHooks {
+func (o *BattleQueueOld) doAfterSelectHooks(exec boil.Executor) (err error) {
+	for _, hook := range battleQueueOldAfterSelectHooks {
 		if err := hook(exec, o); err != nil {
 			return err
 		}
@@ -242,8 +242,8 @@ func (o *BattleQueue) doAfterSelectHooks(exec boil.Executor) (err error) {
 }
 
 // doBeforeInsertHooks executes all "before insert" hooks.
-func (o *BattleQueue) doBeforeInsertHooks(exec boil.Executor) (err error) {
-	for _, hook := range battleQueueBeforeInsertHooks {
+func (o *BattleQueueOld) doBeforeInsertHooks(exec boil.Executor) (err error) {
+	for _, hook := range battleQueueOldBeforeInsertHooks {
 		if err := hook(exec, o); err != nil {
 			return err
 		}
@@ -253,8 +253,8 @@ func (o *BattleQueue) doBeforeInsertHooks(exec boil.Executor) (err error) {
 }
 
 // doAfterInsertHooks executes all "after Insert" hooks.
-func (o *BattleQueue) doAfterInsertHooks(exec boil.Executor) (err error) {
-	for _, hook := range battleQueueAfterInsertHooks {
+func (o *BattleQueueOld) doAfterInsertHooks(exec boil.Executor) (err error) {
+	for _, hook := range battleQueueOldAfterInsertHooks {
 		if err := hook(exec, o); err != nil {
 			return err
 		}
@@ -264,8 +264,8 @@ func (o *BattleQueue) doAfterInsertHooks(exec boil.Executor) (err error) {
 }
 
 // doBeforeUpdateHooks executes all "before Update" hooks.
-func (o *BattleQueue) doBeforeUpdateHooks(exec boil.Executor) (err error) {
-	for _, hook := range battleQueueBeforeUpdateHooks {
+func (o *BattleQueueOld) doBeforeUpdateHooks(exec boil.Executor) (err error) {
+	for _, hook := range battleQueueOldBeforeUpdateHooks {
 		if err := hook(exec, o); err != nil {
 			return err
 		}
@@ -275,8 +275,8 @@ func (o *BattleQueue) doBeforeUpdateHooks(exec boil.Executor) (err error) {
 }
 
 // doAfterUpdateHooks executes all "after Update" hooks.
-func (o *BattleQueue) doAfterUpdateHooks(exec boil.Executor) (err error) {
-	for _, hook := range battleQueueAfterUpdateHooks {
+func (o *BattleQueueOld) doAfterUpdateHooks(exec boil.Executor) (err error) {
+	for _, hook := range battleQueueOldAfterUpdateHooks {
 		if err := hook(exec, o); err != nil {
 			return err
 		}
@@ -286,8 +286,8 @@ func (o *BattleQueue) doAfterUpdateHooks(exec boil.Executor) (err error) {
 }
 
 // doBeforeDeleteHooks executes all "before Delete" hooks.
-func (o *BattleQueue) doBeforeDeleteHooks(exec boil.Executor) (err error) {
-	for _, hook := range battleQueueBeforeDeleteHooks {
+func (o *BattleQueueOld) doBeforeDeleteHooks(exec boil.Executor) (err error) {
+	for _, hook := range battleQueueOldBeforeDeleteHooks {
 		if err := hook(exec, o); err != nil {
 			return err
 		}
@@ -297,8 +297,8 @@ func (o *BattleQueue) doBeforeDeleteHooks(exec boil.Executor) (err error) {
 }
 
 // doAfterDeleteHooks executes all "after Delete" hooks.
-func (o *BattleQueue) doAfterDeleteHooks(exec boil.Executor) (err error) {
-	for _, hook := range battleQueueAfterDeleteHooks {
+func (o *BattleQueueOld) doAfterDeleteHooks(exec boil.Executor) (err error) {
+	for _, hook := range battleQueueOldAfterDeleteHooks {
 		if err := hook(exec, o); err != nil {
 			return err
 		}
@@ -308,8 +308,8 @@ func (o *BattleQueue) doAfterDeleteHooks(exec boil.Executor) (err error) {
 }
 
 // doBeforeUpsertHooks executes all "before Upsert" hooks.
-func (o *BattleQueue) doBeforeUpsertHooks(exec boil.Executor) (err error) {
-	for _, hook := range battleQueueBeforeUpsertHooks {
+func (o *BattleQueueOld) doBeforeUpsertHooks(exec boil.Executor) (err error) {
+	for _, hook := range battleQueueOldBeforeUpsertHooks {
 		if err := hook(exec, o); err != nil {
 			return err
 		}
@@ -319,8 +319,8 @@ func (o *BattleQueue) doBeforeUpsertHooks(exec boil.Executor) (err error) {
 }
 
 // doAfterUpsertHooks executes all "after Upsert" hooks.
-func (o *BattleQueue) doAfterUpsertHooks(exec boil.Executor) (err error) {
-	for _, hook := range battleQueueAfterUpsertHooks {
+func (o *BattleQueueOld) doAfterUpsertHooks(exec boil.Executor) (err error) {
+	for _, hook := range battleQueueOldAfterUpsertHooks {
 		if err := hook(exec, o); err != nil {
 			return err
 		}
@@ -329,33 +329,33 @@ func (o *BattleQueue) doAfterUpsertHooks(exec boil.Executor) (err error) {
 	return nil
 }
 
-// AddBattleQueueHook registers your hook function for all future operations.
-func AddBattleQueueHook(hookPoint boil.HookPoint, battleQueueHook BattleQueueHook) {
+// AddBattleQueueOldHook registers your hook function for all future operations.
+func AddBattleQueueOldHook(hookPoint boil.HookPoint, battleQueueOldHook BattleQueueOldHook) {
 	switch hookPoint {
 	case boil.AfterSelectHook:
-		battleQueueAfterSelectHooks = append(battleQueueAfterSelectHooks, battleQueueHook)
+		battleQueueOldAfterSelectHooks = append(battleQueueOldAfterSelectHooks, battleQueueOldHook)
 	case boil.BeforeInsertHook:
-		battleQueueBeforeInsertHooks = append(battleQueueBeforeInsertHooks, battleQueueHook)
+		battleQueueOldBeforeInsertHooks = append(battleQueueOldBeforeInsertHooks, battleQueueOldHook)
 	case boil.AfterInsertHook:
-		battleQueueAfterInsertHooks = append(battleQueueAfterInsertHooks, battleQueueHook)
+		battleQueueOldAfterInsertHooks = append(battleQueueOldAfterInsertHooks, battleQueueOldHook)
 	case boil.BeforeUpdateHook:
-		battleQueueBeforeUpdateHooks = append(battleQueueBeforeUpdateHooks, battleQueueHook)
+		battleQueueOldBeforeUpdateHooks = append(battleQueueOldBeforeUpdateHooks, battleQueueOldHook)
 	case boil.AfterUpdateHook:
-		battleQueueAfterUpdateHooks = append(battleQueueAfterUpdateHooks, battleQueueHook)
+		battleQueueOldAfterUpdateHooks = append(battleQueueOldAfterUpdateHooks, battleQueueOldHook)
 	case boil.BeforeDeleteHook:
-		battleQueueBeforeDeleteHooks = append(battleQueueBeforeDeleteHooks, battleQueueHook)
+		battleQueueOldBeforeDeleteHooks = append(battleQueueOldBeforeDeleteHooks, battleQueueOldHook)
 	case boil.AfterDeleteHook:
-		battleQueueAfterDeleteHooks = append(battleQueueAfterDeleteHooks, battleQueueHook)
+		battleQueueOldAfterDeleteHooks = append(battleQueueOldAfterDeleteHooks, battleQueueOldHook)
 	case boil.BeforeUpsertHook:
-		battleQueueBeforeUpsertHooks = append(battleQueueBeforeUpsertHooks, battleQueueHook)
+		battleQueueOldBeforeUpsertHooks = append(battleQueueOldBeforeUpsertHooks, battleQueueOldHook)
 	case boil.AfterUpsertHook:
-		battleQueueAfterUpsertHooks = append(battleQueueAfterUpsertHooks, battleQueueHook)
+		battleQueueOldAfterUpsertHooks = append(battleQueueOldAfterUpsertHooks, battleQueueOldHook)
 	}
 }
 
-// One returns a single battleQueue record from the query.
-func (q battleQueueQuery) One(exec boil.Executor) (*BattleQueue, error) {
-	o := &BattleQueue{}
+// One returns a single battleQueueOld record from the query.
+func (q battleQueueOldQuery) One(exec boil.Executor) (*BattleQueueOld, error) {
+	o := &BattleQueueOld{}
 
 	queries.SetLimit(q.Query, 1)
 
@@ -364,7 +364,7 @@ func (q battleQueueQuery) One(exec boil.Executor) (*BattleQueue, error) {
 		if errors.Cause(err) == sql.ErrNoRows {
 			return nil, sql.ErrNoRows
 		}
-		return nil, errors.Wrap(err, "boiler: failed to execute a one query for battle_queue")
+		return nil, errors.Wrap(err, "boiler: failed to execute a one query for battle_queue_old")
 	}
 
 	if err := o.doAfterSelectHooks(exec); err != nil {
@@ -374,16 +374,16 @@ func (q battleQueueQuery) One(exec boil.Executor) (*BattleQueue, error) {
 	return o, nil
 }
 
-// All returns all BattleQueue records from the query.
-func (q battleQueueQuery) All(exec boil.Executor) (BattleQueueSlice, error) {
-	var o []*BattleQueue
+// All returns all BattleQueueOld records from the query.
+func (q battleQueueOldQuery) All(exec boil.Executor) (BattleQueueOldSlice, error) {
+	var o []*BattleQueueOld
 
 	err := q.Bind(nil, exec, &o)
 	if err != nil {
-		return nil, errors.Wrap(err, "boiler: failed to assign all query results to BattleQueue slice")
+		return nil, errors.Wrap(err, "boiler: failed to assign all query results to BattleQueueOld slice")
 	}
 
-	if len(battleQueueAfterSelectHooks) != 0 {
+	if len(battleQueueOldAfterSelectHooks) != 0 {
 		for _, obj := range o {
 			if err := obj.doAfterSelectHooks(exec); err != nil {
 				return o, err
@@ -394,8 +394,8 @@ func (q battleQueueQuery) All(exec boil.Executor) (BattleQueueSlice, error) {
 	return o, nil
 }
 
-// Count returns the count of all BattleQueue records in the query.
-func (q battleQueueQuery) Count(exec boil.Executor) (int64, error) {
+// Count returns the count of all BattleQueueOld records in the query.
+func (q battleQueueOldQuery) Count(exec boil.Executor) (int64, error) {
 	var count int64
 
 	queries.SetSelect(q.Query, nil)
@@ -403,14 +403,14 @@ func (q battleQueueQuery) Count(exec boil.Executor) (int64, error) {
 
 	err := q.Query.QueryRow(exec).Scan(&count)
 	if err != nil {
-		return 0, errors.Wrap(err, "boiler: failed to count battle_queue rows")
+		return 0, errors.Wrap(err, "boiler: failed to count battle_queue_old rows")
 	}
 
 	return count, nil
 }
 
 // Exists checks if the row exists in the table.
-func (q battleQueueQuery) Exists(exec boil.Executor) (bool, error) {
+func (q battleQueueOldQuery) Exists(exec boil.Executor) (bool, error) {
 	var count int64
 
 	queries.SetSelect(q.Query, nil)
@@ -419,14 +419,14 @@ func (q battleQueueQuery) Exists(exec boil.Executor) (bool, error) {
 
 	err := q.Query.QueryRow(exec).Scan(&count)
 	if err != nil {
-		return false, errors.Wrap(err, "boiler: failed to check if battle_queue exists")
+		return false, errors.Wrap(err, "boiler: failed to check if battle_queue_old exists")
 	}
 
 	return count > 0, nil
 }
 
 // Battle pointed to by the foreign key.
-func (o *BattleQueue) Battle(mods ...qm.QueryMod) battleQuery {
+func (o *BattleQueueOld) Battle(mods ...qm.QueryMod) battleQuery {
 	queryMods := []qm.QueryMod{
 		qm.Where("\"id\" = ?", o.BattleID),
 	}
@@ -440,7 +440,7 @@ func (o *BattleQueue) Battle(mods ...qm.QueryMod) battleQuery {
 }
 
 // Mech pointed to by the foreign key.
-func (o *BattleQueue) Mech(mods ...qm.QueryMod) mechQuery {
+func (o *BattleQueueOld) Mech(mods ...qm.QueryMod) mechQuery {
 	queryMods := []qm.QueryMod{
 		qm.Where("\"id\" = ?", o.MechID),
 		qmhelper.WhereIsNull("deleted_at"),
@@ -455,7 +455,7 @@ func (o *BattleQueue) Mech(mods ...qm.QueryMod) mechQuery {
 }
 
 // Faction pointed to by the foreign key.
-func (o *BattleQueue) Faction(mods ...qm.QueryMod) factionQuery {
+func (o *BattleQueueOld) Faction(mods ...qm.QueryMod) factionQuery {
 	queryMods := []qm.QueryMod{
 		qm.Where("\"id\" = ?", o.FactionID),
 		qmhelper.WhereIsNull("deleted_at"),
@@ -470,7 +470,7 @@ func (o *BattleQueue) Faction(mods ...qm.QueryMod) factionQuery {
 }
 
 // Fee pointed to by the foreign key.
-func (o *BattleQueue) Fee(mods ...qm.QueryMod) battleQueueFeeQuery {
+func (o *BattleQueueOld) Fee(mods ...qm.QueryMod) battleQueueFeesOldQuery {
 	queryMods := []qm.QueryMod{
 		qm.Where("\"id\" = ?", o.FeeID),
 		qmhelper.WhereIsNull("deleted_at"),
@@ -478,14 +478,14 @@ func (o *BattleQueue) Fee(mods ...qm.QueryMod) battleQueueFeeQuery {
 
 	queryMods = append(queryMods, mods...)
 
-	query := BattleQueueFees(queryMods...)
-	queries.SetFrom(query.Query, "\"battle_queue_fees\"")
+	query := BattleQueueFeesOlds(queryMods...)
+	queries.SetFrom(query.Query, "\"battle_queue_fees_old\"")
 
 	return query
 }
 
 // Owner pointed to by the foreign key.
-func (o *BattleQueue) Owner(mods ...qm.QueryMod) playerQuery {
+func (o *BattleQueueOld) Owner(mods ...qm.QueryMod) playerQuery {
 	queryMods := []qm.QueryMod{
 		qm.Where("\"id\" = ?", o.OwnerID),
 		qmhelper.WhereIsNull("deleted_at"),
@@ -500,7 +500,7 @@ func (o *BattleQueue) Owner(mods ...qm.QueryMod) playerQuery {
 }
 
 // QueueMechBattleQueueNotifications retrieves all the battle_queue_notification's BattleQueueNotifications with an executor via queue_mech_id column.
-func (o *BattleQueue) QueueMechBattleQueueNotifications(mods ...qm.QueryMod) battleQueueNotificationQuery {
+func (o *BattleQueueOld) QueueMechBattleQueueNotifications(mods ...qm.QueryMod) battleQueueNotificationQuery {
 	var queryMods []qm.QueryMod
 	if len(mods) != 0 {
 		queryMods = append(queryMods, mods...)
@@ -522,20 +522,20 @@ func (o *BattleQueue) QueueMechBattleQueueNotifications(mods ...qm.QueryMod) bat
 
 // LoadBattle allows an eager lookup of values, cached into the
 // loaded structs of the objects. This is for an N-1 relationship.
-func (battleQueueL) LoadBattle(e boil.Executor, singular bool, maybeBattleQueue interface{}, mods queries.Applicator) error {
-	var slice []*BattleQueue
-	var object *BattleQueue
+func (battleQueueOldL) LoadBattle(e boil.Executor, singular bool, maybeBattleQueueOld interface{}, mods queries.Applicator) error {
+	var slice []*BattleQueueOld
+	var object *BattleQueueOld
 
 	if singular {
-		object = maybeBattleQueue.(*BattleQueue)
+		object = maybeBattleQueueOld.(*BattleQueueOld)
 	} else {
-		slice = *maybeBattleQueue.(*[]*BattleQueue)
+		slice = *maybeBattleQueueOld.(*[]*BattleQueueOld)
 	}
 
 	args := make([]interface{}, 0, 1)
 	if singular {
 		if object.R == nil {
-			object.R = &battleQueueR{}
+			object.R = &battleQueueOldR{}
 		}
 		if !queries.IsNil(object.BattleID) {
 			args = append(args, object.BattleID)
@@ -545,7 +545,7 @@ func (battleQueueL) LoadBattle(e boil.Executor, singular bool, maybeBattleQueue 
 	Outer:
 		for _, obj := range slice {
 			if obj.R == nil {
-				obj.R = &battleQueueR{}
+				obj.R = &battleQueueOldR{}
 			}
 
 			for _, a := range args {
@@ -590,7 +590,7 @@ func (battleQueueL) LoadBattle(e boil.Executor, singular bool, maybeBattleQueue 
 		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for battles")
 	}
 
-	if len(battleQueueAfterSelectHooks) != 0 {
+	if len(battleQueueOldAfterSelectHooks) != 0 {
 		for _, obj := range resultSlice {
 			if err := obj.doAfterSelectHooks(e); err != nil {
 				return err
@@ -608,7 +608,7 @@ func (battleQueueL) LoadBattle(e boil.Executor, singular bool, maybeBattleQueue 
 		if foreign.R == nil {
 			foreign.R = &battleR{}
 		}
-		foreign.R.BattleQueues = append(foreign.R.BattleQueues, object)
+		foreign.R.BattleQueueOlds = append(foreign.R.BattleQueueOlds, object)
 		return nil
 	}
 
@@ -619,7 +619,7 @@ func (battleQueueL) LoadBattle(e boil.Executor, singular bool, maybeBattleQueue 
 				if foreign.R == nil {
 					foreign.R = &battleR{}
 				}
-				foreign.R.BattleQueues = append(foreign.R.BattleQueues, local)
+				foreign.R.BattleQueueOlds = append(foreign.R.BattleQueueOlds, local)
 				break
 			}
 		}
@@ -630,20 +630,20 @@ func (battleQueueL) LoadBattle(e boil.Executor, singular bool, maybeBattleQueue 
 
 // LoadMech allows an eager lookup of values, cached into the
 // loaded structs of the objects. This is for an N-1 relationship.
-func (battleQueueL) LoadMech(e boil.Executor, singular bool, maybeBattleQueue interface{}, mods queries.Applicator) error {
-	var slice []*BattleQueue
-	var object *BattleQueue
+func (battleQueueOldL) LoadMech(e boil.Executor, singular bool, maybeBattleQueueOld interface{}, mods queries.Applicator) error {
+	var slice []*BattleQueueOld
+	var object *BattleQueueOld
 
 	if singular {
-		object = maybeBattleQueue.(*BattleQueue)
+		object = maybeBattleQueueOld.(*BattleQueueOld)
 	} else {
-		slice = *maybeBattleQueue.(*[]*BattleQueue)
+		slice = *maybeBattleQueueOld.(*[]*BattleQueueOld)
 	}
 
 	args := make([]interface{}, 0, 1)
 	if singular {
 		if object.R == nil {
-			object.R = &battleQueueR{}
+			object.R = &battleQueueOldR{}
 		}
 		args = append(args, object.MechID)
 
@@ -651,7 +651,7 @@ func (battleQueueL) LoadMech(e boil.Executor, singular bool, maybeBattleQueue in
 	Outer:
 		for _, obj := range slice {
 			if obj.R == nil {
-				obj.R = &battleQueueR{}
+				obj.R = &battleQueueOldR{}
 			}
 
 			for _, a := range args {
@@ -695,7 +695,7 @@ func (battleQueueL) LoadMech(e boil.Executor, singular bool, maybeBattleQueue in
 		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for mechs")
 	}
 
-	if len(battleQueueAfterSelectHooks) != 0 {
+	if len(battleQueueOldAfterSelectHooks) != 0 {
 		for _, obj := range resultSlice {
 			if err := obj.doAfterSelectHooks(e); err != nil {
 				return err
@@ -713,7 +713,7 @@ func (battleQueueL) LoadMech(e boil.Executor, singular bool, maybeBattleQueue in
 		if foreign.R == nil {
 			foreign.R = &mechR{}
 		}
-		foreign.R.BattleQueue = object
+		foreign.R.BattleQueueOld = object
 		return nil
 	}
 
@@ -724,7 +724,7 @@ func (battleQueueL) LoadMech(e boil.Executor, singular bool, maybeBattleQueue in
 				if foreign.R == nil {
 					foreign.R = &mechR{}
 				}
-				foreign.R.BattleQueue = local
+				foreign.R.BattleQueueOld = local
 				break
 			}
 		}
@@ -735,20 +735,20 @@ func (battleQueueL) LoadMech(e boil.Executor, singular bool, maybeBattleQueue in
 
 // LoadFaction allows an eager lookup of values, cached into the
 // loaded structs of the objects. This is for an N-1 relationship.
-func (battleQueueL) LoadFaction(e boil.Executor, singular bool, maybeBattleQueue interface{}, mods queries.Applicator) error {
-	var slice []*BattleQueue
-	var object *BattleQueue
+func (battleQueueOldL) LoadFaction(e boil.Executor, singular bool, maybeBattleQueueOld interface{}, mods queries.Applicator) error {
+	var slice []*BattleQueueOld
+	var object *BattleQueueOld
 
 	if singular {
-		object = maybeBattleQueue.(*BattleQueue)
+		object = maybeBattleQueueOld.(*BattleQueueOld)
 	} else {
-		slice = *maybeBattleQueue.(*[]*BattleQueue)
+		slice = *maybeBattleQueueOld.(*[]*BattleQueueOld)
 	}
 
 	args := make([]interface{}, 0, 1)
 	if singular {
 		if object.R == nil {
-			object.R = &battleQueueR{}
+			object.R = &battleQueueOldR{}
 		}
 		args = append(args, object.FactionID)
 
@@ -756,7 +756,7 @@ func (battleQueueL) LoadFaction(e boil.Executor, singular bool, maybeBattleQueue
 	Outer:
 		for _, obj := range slice {
 			if obj.R == nil {
-				obj.R = &battleQueueR{}
+				obj.R = &battleQueueOldR{}
 			}
 
 			for _, a := range args {
@@ -800,7 +800,7 @@ func (battleQueueL) LoadFaction(e boil.Executor, singular bool, maybeBattleQueue
 		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for factions")
 	}
 
-	if len(battleQueueAfterSelectHooks) != 0 {
+	if len(battleQueueOldAfterSelectHooks) != 0 {
 		for _, obj := range resultSlice {
 			if err := obj.doAfterSelectHooks(e); err != nil {
 				return err
@@ -818,7 +818,7 @@ func (battleQueueL) LoadFaction(e boil.Executor, singular bool, maybeBattleQueue
 		if foreign.R == nil {
 			foreign.R = &factionR{}
 		}
-		foreign.R.BattleQueues = append(foreign.R.BattleQueues, object)
+		foreign.R.BattleQueueOlds = append(foreign.R.BattleQueueOlds, object)
 		return nil
 	}
 
@@ -829,7 +829,7 @@ func (battleQueueL) LoadFaction(e boil.Executor, singular bool, maybeBattleQueue
 				if foreign.R == nil {
 					foreign.R = &factionR{}
 				}
-				foreign.R.BattleQueues = append(foreign.R.BattleQueues, local)
+				foreign.R.BattleQueueOlds = append(foreign.R.BattleQueueOlds, local)
 				break
 			}
 		}
@@ -840,20 +840,20 @@ func (battleQueueL) LoadFaction(e boil.Executor, singular bool, maybeBattleQueue
 
 // LoadFee allows an eager lookup of values, cached into the
 // loaded structs of the objects. This is for an N-1 relationship.
-func (battleQueueL) LoadFee(e boil.Executor, singular bool, maybeBattleQueue interface{}, mods queries.Applicator) error {
-	var slice []*BattleQueue
-	var object *BattleQueue
+func (battleQueueOldL) LoadFee(e boil.Executor, singular bool, maybeBattleQueueOld interface{}, mods queries.Applicator) error {
+	var slice []*BattleQueueOld
+	var object *BattleQueueOld
 
 	if singular {
-		object = maybeBattleQueue.(*BattleQueue)
+		object = maybeBattleQueueOld.(*BattleQueueOld)
 	} else {
-		slice = *maybeBattleQueue.(*[]*BattleQueue)
+		slice = *maybeBattleQueueOld.(*[]*BattleQueueOld)
 	}
 
 	args := make([]interface{}, 0, 1)
 	if singular {
 		if object.R == nil {
-			object.R = &battleQueueR{}
+			object.R = &battleQueueOldR{}
 		}
 		if !queries.IsNil(object.FeeID) {
 			args = append(args, object.FeeID)
@@ -863,7 +863,7 @@ func (battleQueueL) LoadFee(e boil.Executor, singular bool, maybeBattleQueue int
 	Outer:
 		for _, obj := range slice {
 			if obj.R == nil {
-				obj.R = &battleQueueR{}
+				obj.R = &battleQueueOldR{}
 			}
 
 			for _, a := range args {
@@ -884,9 +884,9 @@ func (battleQueueL) LoadFee(e boil.Executor, singular bool, maybeBattleQueue int
 	}
 
 	query := NewQuery(
-		qm.From(`battle_queue_fees`),
-		qm.WhereIn(`battle_queue_fees.id in ?`, args...),
-		qmhelper.WhereIsNull(`battle_queue_fees.deleted_at`),
+		qm.From(`battle_queue_fees_old`),
+		qm.WhereIn(`battle_queue_fees_old.id in ?`, args...),
+		qmhelper.WhereIsNull(`battle_queue_fees_old.deleted_at`),
 	)
 	if mods != nil {
 		mods.Apply(query)
@@ -894,22 +894,22 @@ func (battleQueueL) LoadFee(e boil.Executor, singular bool, maybeBattleQueue int
 
 	results, err := query.Query(e)
 	if err != nil {
-		return errors.Wrap(err, "failed to eager load BattleQueueFee")
+		return errors.Wrap(err, "failed to eager load BattleQueueFeesOld")
 	}
 
-	var resultSlice []*BattleQueueFee
+	var resultSlice []*BattleQueueFeesOld
 	if err = queries.Bind(results, &resultSlice); err != nil {
-		return errors.Wrap(err, "failed to bind eager loaded slice BattleQueueFee")
+		return errors.Wrap(err, "failed to bind eager loaded slice BattleQueueFeesOld")
 	}
 
 	if err = results.Close(); err != nil {
-		return errors.Wrap(err, "failed to close results of eager load for battle_queue_fees")
+		return errors.Wrap(err, "failed to close results of eager load for battle_queue_fees_old")
 	}
 	if err = results.Err(); err != nil {
-		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for battle_queue_fees")
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for battle_queue_fees_old")
 	}
 
-	if len(battleQueueAfterSelectHooks) != 0 {
+	if len(battleQueueOldAfterSelectHooks) != 0 {
 		for _, obj := range resultSlice {
 			if err := obj.doAfterSelectHooks(e); err != nil {
 				return err
@@ -925,9 +925,9 @@ func (battleQueueL) LoadFee(e boil.Executor, singular bool, maybeBattleQueue int
 		foreign := resultSlice[0]
 		object.R.Fee = foreign
 		if foreign.R == nil {
-			foreign.R = &battleQueueFeeR{}
+			foreign.R = &battleQueueFeesOldR{}
 		}
-		foreign.R.FeeBattleQueues = append(foreign.R.FeeBattleQueues, object)
+		foreign.R.FeeBattleQueueOlds = append(foreign.R.FeeBattleQueueOlds, object)
 		return nil
 	}
 
@@ -936,9 +936,9 @@ func (battleQueueL) LoadFee(e boil.Executor, singular bool, maybeBattleQueue int
 			if queries.Equal(local.FeeID, foreign.ID) {
 				local.R.Fee = foreign
 				if foreign.R == nil {
-					foreign.R = &battleQueueFeeR{}
+					foreign.R = &battleQueueFeesOldR{}
 				}
-				foreign.R.FeeBattleQueues = append(foreign.R.FeeBattleQueues, local)
+				foreign.R.FeeBattleQueueOlds = append(foreign.R.FeeBattleQueueOlds, local)
 				break
 			}
 		}
@@ -949,20 +949,20 @@ func (battleQueueL) LoadFee(e boil.Executor, singular bool, maybeBattleQueue int
 
 // LoadOwner allows an eager lookup of values, cached into the
 // loaded structs of the objects. This is for an N-1 relationship.
-func (battleQueueL) LoadOwner(e boil.Executor, singular bool, maybeBattleQueue interface{}, mods queries.Applicator) error {
-	var slice []*BattleQueue
-	var object *BattleQueue
+func (battleQueueOldL) LoadOwner(e boil.Executor, singular bool, maybeBattleQueueOld interface{}, mods queries.Applicator) error {
+	var slice []*BattleQueueOld
+	var object *BattleQueueOld
 
 	if singular {
-		object = maybeBattleQueue.(*BattleQueue)
+		object = maybeBattleQueueOld.(*BattleQueueOld)
 	} else {
-		slice = *maybeBattleQueue.(*[]*BattleQueue)
+		slice = *maybeBattleQueueOld.(*[]*BattleQueueOld)
 	}
 
 	args := make([]interface{}, 0, 1)
 	if singular {
 		if object.R == nil {
-			object.R = &battleQueueR{}
+			object.R = &battleQueueOldR{}
 		}
 		args = append(args, object.OwnerID)
 
@@ -970,7 +970,7 @@ func (battleQueueL) LoadOwner(e boil.Executor, singular bool, maybeBattleQueue i
 	Outer:
 		for _, obj := range slice {
 			if obj.R == nil {
-				obj.R = &battleQueueR{}
+				obj.R = &battleQueueOldR{}
 			}
 
 			for _, a := range args {
@@ -1014,7 +1014,7 @@ func (battleQueueL) LoadOwner(e boil.Executor, singular bool, maybeBattleQueue i
 		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for players")
 	}
 
-	if len(battleQueueAfterSelectHooks) != 0 {
+	if len(battleQueueOldAfterSelectHooks) != 0 {
 		for _, obj := range resultSlice {
 			if err := obj.doAfterSelectHooks(e); err != nil {
 				return err
@@ -1032,7 +1032,7 @@ func (battleQueueL) LoadOwner(e boil.Executor, singular bool, maybeBattleQueue i
 		if foreign.R == nil {
 			foreign.R = &playerR{}
 		}
-		foreign.R.OwnerBattleQueues = append(foreign.R.OwnerBattleQueues, object)
+		foreign.R.OwnerBattleQueueOlds = append(foreign.R.OwnerBattleQueueOlds, object)
 		return nil
 	}
 
@@ -1043,7 +1043,7 @@ func (battleQueueL) LoadOwner(e boil.Executor, singular bool, maybeBattleQueue i
 				if foreign.R == nil {
 					foreign.R = &playerR{}
 				}
-				foreign.R.OwnerBattleQueues = append(foreign.R.OwnerBattleQueues, local)
+				foreign.R.OwnerBattleQueueOlds = append(foreign.R.OwnerBattleQueueOlds, local)
 				break
 			}
 		}
@@ -1054,27 +1054,27 @@ func (battleQueueL) LoadOwner(e boil.Executor, singular bool, maybeBattleQueue i
 
 // LoadQueueMechBattleQueueNotifications allows an eager lookup of values, cached into the
 // loaded structs of the objects. This is for a 1-M or N-M relationship.
-func (battleQueueL) LoadQueueMechBattleQueueNotifications(e boil.Executor, singular bool, maybeBattleQueue interface{}, mods queries.Applicator) error {
-	var slice []*BattleQueue
-	var object *BattleQueue
+func (battleQueueOldL) LoadQueueMechBattleQueueNotifications(e boil.Executor, singular bool, maybeBattleQueueOld interface{}, mods queries.Applicator) error {
+	var slice []*BattleQueueOld
+	var object *BattleQueueOld
 
 	if singular {
-		object = maybeBattleQueue.(*BattleQueue)
+		object = maybeBattleQueueOld.(*BattleQueueOld)
 	} else {
-		slice = *maybeBattleQueue.(*[]*BattleQueue)
+		slice = *maybeBattleQueueOld.(*[]*BattleQueueOld)
 	}
 
 	args := make([]interface{}, 0, 1)
 	if singular {
 		if object.R == nil {
-			object.R = &battleQueueR{}
+			object.R = &battleQueueOldR{}
 		}
 		args = append(args, object.MechID)
 	} else {
 	Outer:
 		for _, obj := range slice {
 			if obj.R == nil {
-				obj.R = &battleQueueR{}
+				obj.R = &battleQueueOldR{}
 			}
 
 			for _, a := range args {
@@ -1150,10 +1150,10 @@ func (battleQueueL) LoadQueueMechBattleQueueNotifications(e boil.Executor, singu
 	return nil
 }
 
-// SetBattle of the battleQueue to the related item.
+// SetBattle of the battleQueueOld to the related item.
 // Sets o.R.Battle to related.
-// Adds o to related.R.BattleQueues.
-func (o *BattleQueue) SetBattle(exec boil.Executor, insert bool, related *Battle) error {
+// Adds o to related.R.BattleQueueOlds.
+func (o *BattleQueueOld) SetBattle(exec boil.Executor, insert bool, related *Battle) error {
 	var err error
 	if insert {
 		if err = related.Insert(exec, boil.Infer()); err != nil {
@@ -1162,9 +1162,9 @@ func (o *BattleQueue) SetBattle(exec boil.Executor, insert bool, related *Battle
 	}
 
 	updateQuery := fmt.Sprintf(
-		"UPDATE \"battle_queue\" SET %s WHERE %s",
+		"UPDATE \"battle_queue_old\" SET %s WHERE %s",
 		strmangle.SetParamNames("\"", "\"", 1, []string{"battle_id"}),
-		strmangle.WhereClause("\"", "\"", 2, battleQueuePrimaryKeyColumns),
+		strmangle.WhereClause("\"", "\"", 2, battleQueueOldPrimaryKeyColumns),
 	)
 	values := []interface{}{related.ID, o.MechID}
 
@@ -1178,7 +1178,7 @@ func (o *BattleQueue) SetBattle(exec boil.Executor, insert bool, related *Battle
 
 	queries.Assign(&o.BattleID, related.ID)
 	if o.R == nil {
-		o.R = &battleQueueR{
+		o.R = &battleQueueOldR{
 			Battle: related,
 		}
 	} else {
@@ -1187,10 +1187,10 @@ func (o *BattleQueue) SetBattle(exec boil.Executor, insert bool, related *Battle
 
 	if related.R == nil {
 		related.R = &battleR{
-			BattleQueues: BattleQueueSlice{o},
+			BattleQueueOlds: BattleQueueOldSlice{o},
 		}
 	} else {
-		related.R.BattleQueues = append(related.R.BattleQueues, o)
+		related.R.BattleQueueOlds = append(related.R.BattleQueueOlds, o)
 	}
 
 	return nil
@@ -1199,7 +1199,7 @@ func (o *BattleQueue) SetBattle(exec boil.Executor, insert bool, related *Battle
 // RemoveBattle relationship.
 // Sets o.R.Battle to nil.
 // Removes o from all passed in related items' relationships struct (Optional).
-func (o *BattleQueue) RemoveBattle(exec boil.Executor, related *Battle) error {
+func (o *BattleQueueOld) RemoveBattle(exec boil.Executor, related *Battle) error {
 	var err error
 
 	queries.SetScanner(&o.BattleID, nil)
@@ -1214,25 +1214,25 @@ func (o *BattleQueue) RemoveBattle(exec boil.Executor, related *Battle) error {
 		return nil
 	}
 
-	for i, ri := range related.R.BattleQueues {
+	for i, ri := range related.R.BattleQueueOlds {
 		if queries.Equal(o.BattleID, ri.BattleID) {
 			continue
 		}
 
-		ln := len(related.R.BattleQueues)
+		ln := len(related.R.BattleQueueOlds)
 		if ln > 1 && i < ln-1 {
-			related.R.BattleQueues[i] = related.R.BattleQueues[ln-1]
+			related.R.BattleQueueOlds[i] = related.R.BattleQueueOlds[ln-1]
 		}
-		related.R.BattleQueues = related.R.BattleQueues[:ln-1]
+		related.R.BattleQueueOlds = related.R.BattleQueueOlds[:ln-1]
 		break
 	}
 	return nil
 }
 
-// SetMech of the battleQueue to the related item.
+// SetMech of the battleQueueOld to the related item.
 // Sets o.R.Mech to related.
-// Adds o to related.R.BattleQueue.
-func (o *BattleQueue) SetMech(exec boil.Executor, insert bool, related *Mech) error {
+// Adds o to related.R.BattleQueueOld.
+func (o *BattleQueueOld) SetMech(exec boil.Executor, insert bool, related *Mech) error {
 	var err error
 	if insert {
 		if err = related.Insert(exec, boil.Infer()); err != nil {
@@ -1241,9 +1241,9 @@ func (o *BattleQueue) SetMech(exec boil.Executor, insert bool, related *Mech) er
 	}
 
 	updateQuery := fmt.Sprintf(
-		"UPDATE \"battle_queue\" SET %s WHERE %s",
+		"UPDATE \"battle_queue_old\" SET %s WHERE %s",
 		strmangle.SetParamNames("\"", "\"", 1, []string{"mech_id"}),
-		strmangle.WhereClause("\"", "\"", 2, battleQueuePrimaryKeyColumns),
+		strmangle.WhereClause("\"", "\"", 2, battleQueueOldPrimaryKeyColumns),
 	)
 	values := []interface{}{related.ID, o.MechID}
 
@@ -1257,7 +1257,7 @@ func (o *BattleQueue) SetMech(exec boil.Executor, insert bool, related *Mech) er
 
 	o.MechID = related.ID
 	if o.R == nil {
-		o.R = &battleQueueR{
+		o.R = &battleQueueOldR{
 			Mech: related,
 		}
 	} else {
@@ -1266,19 +1266,19 @@ func (o *BattleQueue) SetMech(exec boil.Executor, insert bool, related *Mech) er
 
 	if related.R == nil {
 		related.R = &mechR{
-			BattleQueue: o,
+			BattleQueueOld: o,
 		}
 	} else {
-		related.R.BattleQueue = o
+		related.R.BattleQueueOld = o
 	}
 
 	return nil
 }
 
-// SetFaction of the battleQueue to the related item.
+// SetFaction of the battleQueueOld to the related item.
 // Sets o.R.Faction to related.
-// Adds o to related.R.BattleQueues.
-func (o *BattleQueue) SetFaction(exec boil.Executor, insert bool, related *Faction) error {
+// Adds o to related.R.BattleQueueOlds.
+func (o *BattleQueueOld) SetFaction(exec boil.Executor, insert bool, related *Faction) error {
 	var err error
 	if insert {
 		if err = related.Insert(exec, boil.Infer()); err != nil {
@@ -1287,9 +1287,9 @@ func (o *BattleQueue) SetFaction(exec boil.Executor, insert bool, related *Facti
 	}
 
 	updateQuery := fmt.Sprintf(
-		"UPDATE \"battle_queue\" SET %s WHERE %s",
+		"UPDATE \"battle_queue_old\" SET %s WHERE %s",
 		strmangle.SetParamNames("\"", "\"", 1, []string{"faction_id"}),
-		strmangle.WhereClause("\"", "\"", 2, battleQueuePrimaryKeyColumns),
+		strmangle.WhereClause("\"", "\"", 2, battleQueueOldPrimaryKeyColumns),
 	)
 	values := []interface{}{related.ID, o.MechID}
 
@@ -1303,7 +1303,7 @@ func (o *BattleQueue) SetFaction(exec boil.Executor, insert bool, related *Facti
 
 	o.FactionID = related.ID
 	if o.R == nil {
-		o.R = &battleQueueR{
+		o.R = &battleQueueOldR{
 			Faction: related,
 		}
 	} else {
@@ -1312,19 +1312,19 @@ func (o *BattleQueue) SetFaction(exec boil.Executor, insert bool, related *Facti
 
 	if related.R == nil {
 		related.R = &factionR{
-			BattleQueues: BattleQueueSlice{o},
+			BattleQueueOlds: BattleQueueOldSlice{o},
 		}
 	} else {
-		related.R.BattleQueues = append(related.R.BattleQueues, o)
+		related.R.BattleQueueOlds = append(related.R.BattleQueueOlds, o)
 	}
 
 	return nil
 }
 
-// SetFee of the battleQueue to the related item.
+// SetFee of the battleQueueOld to the related item.
 // Sets o.R.Fee to related.
-// Adds o to related.R.FeeBattleQueues.
-func (o *BattleQueue) SetFee(exec boil.Executor, insert bool, related *BattleQueueFee) error {
+// Adds o to related.R.FeeBattleQueueOlds.
+func (o *BattleQueueOld) SetFee(exec boil.Executor, insert bool, related *BattleQueueFeesOld) error {
 	var err error
 	if insert {
 		if err = related.Insert(exec, boil.Infer()); err != nil {
@@ -1333,9 +1333,9 @@ func (o *BattleQueue) SetFee(exec boil.Executor, insert bool, related *BattleQue
 	}
 
 	updateQuery := fmt.Sprintf(
-		"UPDATE \"battle_queue\" SET %s WHERE %s",
+		"UPDATE \"battle_queue_old\" SET %s WHERE %s",
 		strmangle.SetParamNames("\"", "\"", 1, []string{"fee_id"}),
-		strmangle.WhereClause("\"", "\"", 2, battleQueuePrimaryKeyColumns),
+		strmangle.WhereClause("\"", "\"", 2, battleQueueOldPrimaryKeyColumns),
 	)
 	values := []interface{}{related.ID, o.MechID}
 
@@ -1349,7 +1349,7 @@ func (o *BattleQueue) SetFee(exec boil.Executor, insert bool, related *BattleQue
 
 	queries.Assign(&o.FeeID, related.ID)
 	if o.R == nil {
-		o.R = &battleQueueR{
+		o.R = &battleQueueOldR{
 			Fee: related,
 		}
 	} else {
@@ -1357,11 +1357,11 @@ func (o *BattleQueue) SetFee(exec boil.Executor, insert bool, related *BattleQue
 	}
 
 	if related.R == nil {
-		related.R = &battleQueueFeeR{
-			FeeBattleQueues: BattleQueueSlice{o},
+		related.R = &battleQueueFeesOldR{
+			FeeBattleQueueOlds: BattleQueueOldSlice{o},
 		}
 	} else {
-		related.R.FeeBattleQueues = append(related.R.FeeBattleQueues, o)
+		related.R.FeeBattleQueueOlds = append(related.R.FeeBattleQueueOlds, o)
 	}
 
 	return nil
@@ -1370,7 +1370,7 @@ func (o *BattleQueue) SetFee(exec boil.Executor, insert bool, related *BattleQue
 // RemoveFee relationship.
 // Sets o.R.Fee to nil.
 // Removes o from all passed in related items' relationships struct (Optional).
-func (o *BattleQueue) RemoveFee(exec boil.Executor, related *BattleQueueFee) error {
+func (o *BattleQueueOld) RemoveFee(exec boil.Executor, related *BattleQueueFeesOld) error {
 	var err error
 
 	queries.SetScanner(&o.FeeID, nil)
@@ -1385,25 +1385,25 @@ func (o *BattleQueue) RemoveFee(exec boil.Executor, related *BattleQueueFee) err
 		return nil
 	}
 
-	for i, ri := range related.R.FeeBattleQueues {
+	for i, ri := range related.R.FeeBattleQueueOlds {
 		if queries.Equal(o.FeeID, ri.FeeID) {
 			continue
 		}
 
-		ln := len(related.R.FeeBattleQueues)
+		ln := len(related.R.FeeBattleQueueOlds)
 		if ln > 1 && i < ln-1 {
-			related.R.FeeBattleQueues[i] = related.R.FeeBattleQueues[ln-1]
+			related.R.FeeBattleQueueOlds[i] = related.R.FeeBattleQueueOlds[ln-1]
 		}
-		related.R.FeeBattleQueues = related.R.FeeBattleQueues[:ln-1]
+		related.R.FeeBattleQueueOlds = related.R.FeeBattleQueueOlds[:ln-1]
 		break
 	}
 	return nil
 }
 
-// SetOwner of the battleQueue to the related item.
+// SetOwner of the battleQueueOld to the related item.
 // Sets o.R.Owner to related.
-// Adds o to related.R.OwnerBattleQueues.
-func (o *BattleQueue) SetOwner(exec boil.Executor, insert bool, related *Player) error {
+// Adds o to related.R.OwnerBattleQueueOlds.
+func (o *BattleQueueOld) SetOwner(exec boil.Executor, insert bool, related *Player) error {
 	var err error
 	if insert {
 		if err = related.Insert(exec, boil.Infer()); err != nil {
@@ -1412,9 +1412,9 @@ func (o *BattleQueue) SetOwner(exec boil.Executor, insert bool, related *Player)
 	}
 
 	updateQuery := fmt.Sprintf(
-		"UPDATE \"battle_queue\" SET %s WHERE %s",
+		"UPDATE \"battle_queue_old\" SET %s WHERE %s",
 		strmangle.SetParamNames("\"", "\"", 1, []string{"owner_id"}),
-		strmangle.WhereClause("\"", "\"", 2, battleQueuePrimaryKeyColumns),
+		strmangle.WhereClause("\"", "\"", 2, battleQueueOldPrimaryKeyColumns),
 	)
 	values := []interface{}{related.ID, o.MechID}
 
@@ -1428,7 +1428,7 @@ func (o *BattleQueue) SetOwner(exec boil.Executor, insert bool, related *Player)
 
 	o.OwnerID = related.ID
 	if o.R == nil {
-		o.R = &battleQueueR{
+		o.R = &battleQueueOldR{
 			Owner: related,
 		}
 	} else {
@@ -1437,20 +1437,20 @@ func (o *BattleQueue) SetOwner(exec boil.Executor, insert bool, related *Player)
 
 	if related.R == nil {
 		related.R = &playerR{
-			OwnerBattleQueues: BattleQueueSlice{o},
+			OwnerBattleQueueOlds: BattleQueueOldSlice{o},
 		}
 	} else {
-		related.R.OwnerBattleQueues = append(related.R.OwnerBattleQueues, o)
+		related.R.OwnerBattleQueueOlds = append(related.R.OwnerBattleQueueOlds, o)
 	}
 
 	return nil
 }
 
 // AddQueueMechBattleQueueNotifications adds the given related objects to the existing relationships
-// of the battle_queue, optionally inserting them as new records.
+// of the battle_queue_old, optionally inserting them as new records.
 // Appends related to o.R.QueueMechBattleQueueNotifications.
 // Sets related.R.QueueMech appropriately.
-func (o *BattleQueue) AddQueueMechBattleQueueNotifications(exec boil.Executor, insert bool, related ...*BattleQueueNotification) error {
+func (o *BattleQueueOld) AddQueueMechBattleQueueNotifications(exec boil.Executor, insert bool, related ...*BattleQueueNotification) error {
 	var err error
 	for _, rel := range related {
 		if insert {
@@ -1479,7 +1479,7 @@ func (o *BattleQueue) AddQueueMechBattleQueueNotifications(exec boil.Executor, i
 	}
 
 	if o.R == nil {
-		o.R = &battleQueueR{
+		o.R = &battleQueueOldR{
 			QueueMechBattleQueueNotifications: related,
 		}
 	} else {
@@ -1499,12 +1499,12 @@ func (o *BattleQueue) AddQueueMechBattleQueueNotifications(exec boil.Executor, i
 }
 
 // SetQueueMechBattleQueueNotifications removes all previously related items of the
-// battle_queue replacing them completely with the passed
+// battle_queue_old replacing them completely with the passed
 // in related items, optionally inserting them as new records.
 // Sets o.R.QueueMech's QueueMechBattleQueueNotifications accordingly.
 // Replaces o.R.QueueMechBattleQueueNotifications with related.
 // Sets related.R.QueueMech's QueueMechBattleQueueNotifications accordingly.
-func (o *BattleQueue) SetQueueMechBattleQueueNotifications(exec boil.Executor, insert bool, related ...*BattleQueueNotification) error {
+func (o *BattleQueueOld) SetQueueMechBattleQueueNotifications(exec boil.Executor, insert bool, related ...*BattleQueueNotification) error {
 	query := "update \"battle_queue_notifications\" set \"queue_mech_id\" = null where \"queue_mech_id\" = $1"
 	values := []interface{}{o.MechID}
 	if boil.DebugMode {
@@ -1534,7 +1534,7 @@ func (o *BattleQueue) SetQueueMechBattleQueueNotifications(exec boil.Executor, i
 // RemoveQueueMechBattleQueueNotifications relationships from objects passed in.
 // Removes related items from R.QueueMechBattleQueueNotifications (uses pointer comparison, removal does not keep order)
 // Sets related.R.QueueMech.
-func (o *BattleQueue) RemoveQueueMechBattleQueueNotifications(exec boil.Executor, related ...*BattleQueueNotification) error {
+func (o *BattleQueueOld) RemoveQueueMechBattleQueueNotifications(exec boil.Executor, related ...*BattleQueueNotification) error {
 	if len(related) == 0 {
 		return nil
 	}
@@ -1571,47 +1571,47 @@ func (o *BattleQueue) RemoveQueueMechBattleQueueNotifications(exec boil.Executor
 	return nil
 }
 
-// BattleQueues retrieves all the records using an executor.
-func BattleQueues(mods ...qm.QueryMod) battleQueueQuery {
-	mods = append(mods, qm.From("\"battle_queue\""))
-	return battleQueueQuery{NewQuery(mods...)}
+// BattleQueueOlds retrieves all the records using an executor.
+func BattleQueueOlds(mods ...qm.QueryMod) battleQueueOldQuery {
+	mods = append(mods, qm.From("\"battle_queue_old\""))
+	return battleQueueOldQuery{NewQuery(mods...)}
 }
 
-// FindBattleQueue retrieves a single record by ID with an executor.
+// FindBattleQueueOld retrieves a single record by ID with an executor.
 // If selectCols is empty Find will return all columns.
-func FindBattleQueue(exec boil.Executor, mechID string, selectCols ...string) (*BattleQueue, error) {
-	battleQueueObj := &BattleQueue{}
+func FindBattleQueueOld(exec boil.Executor, mechID string, selectCols ...string) (*BattleQueueOld, error) {
+	battleQueueOldObj := &BattleQueueOld{}
 
 	sel := "*"
 	if len(selectCols) > 0 {
 		sel = strings.Join(strmangle.IdentQuoteSlice(dialect.LQ, dialect.RQ, selectCols), ",")
 	}
 	query := fmt.Sprintf(
-		"select %s from \"battle_queue\" where \"mech_id\"=$1", sel,
+		"select %s from \"battle_queue_old\" where \"mech_id\"=$1", sel,
 	)
 
 	q := queries.Raw(query, mechID)
 
-	err := q.Bind(nil, exec, battleQueueObj)
+	err := q.Bind(nil, exec, battleQueueOldObj)
 	if err != nil {
 		if errors.Cause(err) == sql.ErrNoRows {
 			return nil, sql.ErrNoRows
 		}
-		return nil, errors.Wrap(err, "boiler: unable to select from battle_queue")
+		return nil, errors.Wrap(err, "boiler: unable to select from battle_queue_old")
 	}
 
-	if err = battleQueueObj.doAfterSelectHooks(exec); err != nil {
-		return battleQueueObj, err
+	if err = battleQueueOldObj.doAfterSelectHooks(exec); err != nil {
+		return battleQueueOldObj, err
 	}
 
-	return battleQueueObj, nil
+	return battleQueueOldObj, nil
 }
 
 // Insert a single record using an executor.
 // See boil.Columns.InsertColumnSet documentation to understand column list inference for inserts.
-func (o *BattleQueue) Insert(exec boil.Executor, columns boil.Columns) error {
+func (o *BattleQueueOld) Insert(exec boil.Executor, columns boil.Columns) error {
 	if o == nil {
-		return errors.New("boiler: no battle_queue provided for insertion")
+		return errors.New("boiler: no battle_queue_old provided for insertion")
 	}
 
 	var err error
@@ -1625,33 +1625,33 @@ func (o *BattleQueue) Insert(exec boil.Executor, columns boil.Columns) error {
 		return err
 	}
 
-	nzDefaults := queries.NonZeroDefaultSet(battleQueueColumnsWithDefault, o)
+	nzDefaults := queries.NonZeroDefaultSet(battleQueueOldColumnsWithDefault, o)
 
 	key := makeCacheKey(columns, nzDefaults)
-	battleQueueInsertCacheMut.RLock()
-	cache, cached := battleQueueInsertCache[key]
-	battleQueueInsertCacheMut.RUnlock()
+	battleQueueOldInsertCacheMut.RLock()
+	cache, cached := battleQueueOldInsertCache[key]
+	battleQueueOldInsertCacheMut.RUnlock()
 
 	if !cached {
 		wl, returnColumns := columns.InsertColumnSet(
-			battleQueueAllColumns,
-			battleQueueColumnsWithDefault,
-			battleQueueColumnsWithoutDefault,
+			battleQueueOldAllColumns,
+			battleQueueOldColumnsWithDefault,
+			battleQueueOldColumnsWithoutDefault,
 			nzDefaults,
 		)
 
-		cache.valueMapping, err = queries.BindMapping(battleQueueType, battleQueueMapping, wl)
+		cache.valueMapping, err = queries.BindMapping(battleQueueOldType, battleQueueOldMapping, wl)
 		if err != nil {
 			return err
 		}
-		cache.retMapping, err = queries.BindMapping(battleQueueType, battleQueueMapping, returnColumns)
+		cache.retMapping, err = queries.BindMapping(battleQueueOldType, battleQueueOldMapping, returnColumns)
 		if err != nil {
 			return err
 		}
 		if len(wl) != 0 {
-			cache.query = fmt.Sprintf("INSERT INTO \"battle_queue\" (\"%s\") %%sVALUES (%s)%%s", strings.Join(wl, "\",\""), strmangle.Placeholders(dialect.UseIndexPlaceholders, len(wl), 1, 1))
+			cache.query = fmt.Sprintf("INSERT INTO \"battle_queue_old\" (\"%s\") %%sVALUES (%s)%%s", strings.Join(wl, "\",\""), strmangle.Placeholders(dialect.UseIndexPlaceholders, len(wl), 1, 1))
 		} else {
-			cache.query = "INSERT INTO \"battle_queue\" %sDEFAULT VALUES%s"
+			cache.query = "INSERT INTO \"battle_queue_old\" %sDEFAULT VALUES%s"
 		}
 
 		var queryOutput, queryReturning string
@@ -1678,22 +1678,22 @@ func (o *BattleQueue) Insert(exec boil.Executor, columns boil.Columns) error {
 	}
 
 	if err != nil {
-		return errors.Wrap(err, "boiler: unable to insert into battle_queue")
+		return errors.Wrap(err, "boiler: unable to insert into battle_queue_old")
 	}
 
 	if !cached {
-		battleQueueInsertCacheMut.Lock()
-		battleQueueInsertCache[key] = cache
-		battleQueueInsertCacheMut.Unlock()
+		battleQueueOldInsertCacheMut.Lock()
+		battleQueueOldInsertCache[key] = cache
+		battleQueueOldInsertCacheMut.Unlock()
 	}
 
 	return o.doAfterInsertHooks(exec)
 }
 
-// Update uses an executor to update the BattleQueue.
+// Update uses an executor to update the BattleQueueOld.
 // See boil.Columns.UpdateColumnSet documentation to understand column list inference for updates.
 // Update does not automatically update the record in case of default values. Use .Reload() to refresh the records.
-func (o *BattleQueue) Update(exec boil.Executor, columns boil.Columns) (int64, error) {
+func (o *BattleQueueOld) Update(exec boil.Executor, columns boil.Columns) (int64, error) {
 	currTime := time.Now().In(boil.GetLocation())
 
 	o.UpdatedAt = currTime
@@ -1703,28 +1703,28 @@ func (o *BattleQueue) Update(exec boil.Executor, columns boil.Columns) (int64, e
 		return 0, err
 	}
 	key := makeCacheKey(columns, nil)
-	battleQueueUpdateCacheMut.RLock()
-	cache, cached := battleQueueUpdateCache[key]
-	battleQueueUpdateCacheMut.RUnlock()
+	battleQueueOldUpdateCacheMut.RLock()
+	cache, cached := battleQueueOldUpdateCache[key]
+	battleQueueOldUpdateCacheMut.RUnlock()
 
 	if !cached {
 		wl := columns.UpdateColumnSet(
-			battleQueueAllColumns,
-			battleQueuePrimaryKeyColumns,
+			battleQueueOldAllColumns,
+			battleQueueOldPrimaryKeyColumns,
 		)
 
 		if !columns.IsWhitelist() {
 			wl = strmangle.SetComplement(wl, []string{"created_at"})
 		}
 		if len(wl) == 0 {
-			return 0, errors.New("boiler: unable to update battle_queue, could not build whitelist")
+			return 0, errors.New("boiler: unable to update battle_queue_old, could not build whitelist")
 		}
 
-		cache.query = fmt.Sprintf("UPDATE \"battle_queue\" SET %s WHERE %s",
+		cache.query = fmt.Sprintf("UPDATE \"battle_queue_old\" SET %s WHERE %s",
 			strmangle.SetParamNames("\"", "\"", 1, wl),
-			strmangle.WhereClause("\"", "\"", len(wl)+1, battleQueuePrimaryKeyColumns),
+			strmangle.WhereClause("\"", "\"", len(wl)+1, battleQueueOldPrimaryKeyColumns),
 		)
-		cache.valueMapping, err = queries.BindMapping(battleQueueType, battleQueueMapping, append(wl, battleQueuePrimaryKeyColumns...))
+		cache.valueMapping, err = queries.BindMapping(battleQueueOldType, battleQueueOldMapping, append(wl, battleQueueOldPrimaryKeyColumns...))
 		if err != nil {
 			return 0, err
 		}
@@ -1739,42 +1739,42 @@ func (o *BattleQueue) Update(exec boil.Executor, columns boil.Columns) (int64, e
 	var result sql.Result
 	result, err = exec.Exec(cache.query, values...)
 	if err != nil {
-		return 0, errors.Wrap(err, "boiler: unable to update battle_queue row")
+		return 0, errors.Wrap(err, "boiler: unable to update battle_queue_old row")
 	}
 
 	rowsAff, err := result.RowsAffected()
 	if err != nil {
-		return 0, errors.Wrap(err, "boiler: failed to get rows affected by update for battle_queue")
+		return 0, errors.Wrap(err, "boiler: failed to get rows affected by update for battle_queue_old")
 	}
 
 	if !cached {
-		battleQueueUpdateCacheMut.Lock()
-		battleQueueUpdateCache[key] = cache
-		battleQueueUpdateCacheMut.Unlock()
+		battleQueueOldUpdateCacheMut.Lock()
+		battleQueueOldUpdateCache[key] = cache
+		battleQueueOldUpdateCacheMut.Unlock()
 	}
 
 	return rowsAff, o.doAfterUpdateHooks(exec)
 }
 
 // UpdateAll updates all rows with the specified column values.
-func (q battleQueueQuery) UpdateAll(exec boil.Executor, cols M) (int64, error) {
+func (q battleQueueOldQuery) UpdateAll(exec boil.Executor, cols M) (int64, error) {
 	queries.SetUpdate(q.Query, cols)
 
 	result, err := q.Query.Exec(exec)
 	if err != nil {
-		return 0, errors.Wrap(err, "boiler: unable to update all for battle_queue")
+		return 0, errors.Wrap(err, "boiler: unable to update all for battle_queue_old")
 	}
 
 	rowsAff, err := result.RowsAffected()
 	if err != nil {
-		return 0, errors.Wrap(err, "boiler: unable to retrieve rows affected for battle_queue")
+		return 0, errors.Wrap(err, "boiler: unable to retrieve rows affected for battle_queue_old")
 	}
 
 	return rowsAff, nil
 }
 
 // UpdateAll updates all rows with the specified column values, using an executor.
-func (o BattleQueueSlice) UpdateAll(exec boil.Executor, cols M) (int64, error) {
+func (o BattleQueueOldSlice) UpdateAll(exec boil.Executor, cols M) (int64, error) {
 	ln := int64(len(o))
 	if ln == 0 {
 		return 0, nil
@@ -1796,13 +1796,13 @@ func (o BattleQueueSlice) UpdateAll(exec boil.Executor, cols M) (int64, error) {
 
 	// Append all of the primary key values for each column
 	for _, obj := range o {
-		pkeyArgs := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(obj)), battleQueuePrimaryKeyMapping)
+		pkeyArgs := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(obj)), battleQueueOldPrimaryKeyMapping)
 		args = append(args, pkeyArgs...)
 	}
 
-	sql := fmt.Sprintf("UPDATE \"battle_queue\" SET %s WHERE %s",
+	sql := fmt.Sprintf("UPDATE \"battle_queue_old\" SET %s WHERE %s",
 		strmangle.SetParamNames("\"", "\"", 1, colNames),
-		strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), len(colNames)+1, battleQueuePrimaryKeyColumns, len(o)))
+		strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), len(colNames)+1, battleQueueOldPrimaryKeyColumns, len(o)))
 
 	if boil.DebugMode {
 		fmt.Fprintln(boil.DebugWriter, sql)
@@ -1810,21 +1810,21 @@ func (o BattleQueueSlice) UpdateAll(exec boil.Executor, cols M) (int64, error) {
 	}
 	result, err := exec.Exec(sql, args...)
 	if err != nil {
-		return 0, errors.Wrap(err, "boiler: unable to update all in battleQueue slice")
+		return 0, errors.Wrap(err, "boiler: unable to update all in battleQueueOld slice")
 	}
 
 	rowsAff, err := result.RowsAffected()
 	if err != nil {
-		return 0, errors.Wrap(err, "boiler: unable to retrieve rows affected all in update all battleQueue")
+		return 0, errors.Wrap(err, "boiler: unable to retrieve rows affected all in update all battleQueueOld")
 	}
 	return rowsAff, nil
 }
 
 // Upsert attempts an insert using an executor, and does an update or ignore on conflict.
 // See boil.Columns documentation for how to properly use updateColumns and insertColumns.
-func (o *BattleQueue) Upsert(exec boil.Executor, updateOnConflict bool, conflictColumns []string, updateColumns, insertColumns boil.Columns) error {
+func (o *BattleQueueOld) Upsert(exec boil.Executor, updateOnConflict bool, conflictColumns []string, updateColumns, insertColumns boil.Columns) error {
 	if o == nil {
-		return errors.New("boiler: no battle_queue provided for upsert")
+		return errors.New("boiler: no battle_queue_old provided for upsert")
 	}
 	currTime := time.Now().In(boil.GetLocation())
 
@@ -1834,7 +1834,7 @@ func (o *BattleQueue) Upsert(exec boil.Executor, updateOnConflict bool, conflict
 		return err
 	}
 
-	nzDefaults := queries.NonZeroDefaultSet(battleQueueColumnsWithDefault, o)
+	nzDefaults := queries.NonZeroDefaultSet(battleQueueOldColumnsWithDefault, o)
 
 	// Build cache key in-line uglily - mysql vs psql problems
 	buf := strmangle.GetBuffer()
@@ -1864,42 +1864,42 @@ func (o *BattleQueue) Upsert(exec boil.Executor, updateOnConflict bool, conflict
 	key := buf.String()
 	strmangle.PutBuffer(buf)
 
-	battleQueueUpsertCacheMut.RLock()
-	cache, cached := battleQueueUpsertCache[key]
-	battleQueueUpsertCacheMut.RUnlock()
+	battleQueueOldUpsertCacheMut.RLock()
+	cache, cached := battleQueueOldUpsertCache[key]
+	battleQueueOldUpsertCacheMut.RUnlock()
 
 	var err error
 
 	if !cached {
 		insert, ret := insertColumns.InsertColumnSet(
-			battleQueueAllColumns,
-			battleQueueColumnsWithDefault,
-			battleQueueColumnsWithoutDefault,
+			battleQueueOldAllColumns,
+			battleQueueOldColumnsWithDefault,
+			battleQueueOldColumnsWithoutDefault,
 			nzDefaults,
 		)
 
 		update := updateColumns.UpdateColumnSet(
-			battleQueueAllColumns,
-			battleQueuePrimaryKeyColumns,
+			battleQueueOldAllColumns,
+			battleQueueOldPrimaryKeyColumns,
 		)
 
 		if updateOnConflict && len(update) == 0 {
-			return errors.New("boiler: unable to upsert battle_queue, could not build update column list")
+			return errors.New("boiler: unable to upsert battle_queue_old, could not build update column list")
 		}
 
 		conflict := conflictColumns
 		if len(conflict) == 0 {
-			conflict = make([]string, len(battleQueuePrimaryKeyColumns))
-			copy(conflict, battleQueuePrimaryKeyColumns)
+			conflict = make([]string, len(battleQueueOldPrimaryKeyColumns))
+			copy(conflict, battleQueueOldPrimaryKeyColumns)
 		}
-		cache.query = buildUpsertQueryPostgres(dialect, "\"battle_queue\"", updateOnConflict, ret, update, conflict, insert)
+		cache.query = buildUpsertQueryPostgres(dialect, "\"battle_queue_old\"", updateOnConflict, ret, update, conflict, insert)
 
-		cache.valueMapping, err = queries.BindMapping(battleQueueType, battleQueueMapping, insert)
+		cache.valueMapping, err = queries.BindMapping(battleQueueOldType, battleQueueOldMapping, insert)
 		if err != nil {
 			return err
 		}
 		if len(ret) != 0 {
-			cache.retMapping, err = queries.BindMapping(battleQueueType, battleQueueMapping, ret)
+			cache.retMapping, err = queries.BindMapping(battleQueueOldType, battleQueueOldMapping, ret)
 			if err != nil {
 				return err
 			}
@@ -1926,31 +1926,31 @@ func (o *BattleQueue) Upsert(exec boil.Executor, updateOnConflict bool, conflict
 		_, err = exec.Exec(cache.query, vals...)
 	}
 	if err != nil {
-		return errors.Wrap(err, "boiler: unable to upsert battle_queue")
+		return errors.Wrap(err, "boiler: unable to upsert battle_queue_old")
 	}
 
 	if !cached {
-		battleQueueUpsertCacheMut.Lock()
-		battleQueueUpsertCache[key] = cache
-		battleQueueUpsertCacheMut.Unlock()
+		battleQueueOldUpsertCacheMut.Lock()
+		battleQueueOldUpsertCache[key] = cache
+		battleQueueOldUpsertCacheMut.Unlock()
 	}
 
 	return o.doAfterUpsertHooks(exec)
 }
 
-// Delete deletes a single BattleQueue record with an executor.
+// Delete deletes a single BattleQueueOld record with an executor.
 // Delete will match against the primary key column to find the record to delete.
-func (o *BattleQueue) Delete(exec boil.Executor) (int64, error) {
+func (o *BattleQueueOld) Delete(exec boil.Executor) (int64, error) {
 	if o == nil {
-		return 0, errors.New("boiler: no BattleQueue provided for delete")
+		return 0, errors.New("boiler: no BattleQueueOld provided for delete")
 	}
 
 	if err := o.doBeforeDeleteHooks(exec); err != nil {
 		return 0, err
 	}
 
-	args := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(o)), battleQueuePrimaryKeyMapping)
-	sql := "DELETE FROM \"battle_queue\" WHERE \"mech_id\"=$1"
+	args := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(o)), battleQueueOldPrimaryKeyMapping)
+	sql := "DELETE FROM \"battle_queue_old\" WHERE \"mech_id\"=$1"
 
 	if boil.DebugMode {
 		fmt.Fprintln(boil.DebugWriter, sql)
@@ -1958,12 +1958,12 @@ func (o *BattleQueue) Delete(exec boil.Executor) (int64, error) {
 	}
 	result, err := exec.Exec(sql, args...)
 	if err != nil {
-		return 0, errors.Wrap(err, "boiler: unable to delete from battle_queue")
+		return 0, errors.Wrap(err, "boiler: unable to delete from battle_queue_old")
 	}
 
 	rowsAff, err := result.RowsAffected()
 	if err != nil {
-		return 0, errors.Wrap(err, "boiler: failed to get rows affected by delete for battle_queue")
+		return 0, errors.Wrap(err, "boiler: failed to get rows affected by delete for battle_queue_old")
 	}
 
 	if err := o.doAfterDeleteHooks(exec); err != nil {
@@ -1974,33 +1974,33 @@ func (o *BattleQueue) Delete(exec boil.Executor) (int64, error) {
 }
 
 // DeleteAll deletes all matching rows.
-func (q battleQueueQuery) DeleteAll(exec boil.Executor) (int64, error) {
+func (q battleQueueOldQuery) DeleteAll(exec boil.Executor) (int64, error) {
 	if q.Query == nil {
-		return 0, errors.New("boiler: no battleQueueQuery provided for delete all")
+		return 0, errors.New("boiler: no battleQueueOldQuery provided for delete all")
 	}
 
 	queries.SetDelete(q.Query)
 
 	result, err := q.Query.Exec(exec)
 	if err != nil {
-		return 0, errors.Wrap(err, "boiler: unable to delete all from battle_queue")
+		return 0, errors.Wrap(err, "boiler: unable to delete all from battle_queue_old")
 	}
 
 	rowsAff, err := result.RowsAffected()
 	if err != nil {
-		return 0, errors.Wrap(err, "boiler: failed to get rows affected by deleteall for battle_queue")
+		return 0, errors.Wrap(err, "boiler: failed to get rows affected by deleteall for battle_queue_old")
 	}
 
 	return rowsAff, nil
 }
 
 // DeleteAll deletes all rows in the slice, using an executor.
-func (o BattleQueueSlice) DeleteAll(exec boil.Executor) (int64, error) {
+func (o BattleQueueOldSlice) DeleteAll(exec boil.Executor) (int64, error) {
 	if len(o) == 0 {
 		return 0, nil
 	}
 
-	if len(battleQueueBeforeDeleteHooks) != 0 {
+	if len(battleQueueOldBeforeDeleteHooks) != 0 {
 		for _, obj := range o {
 			if err := obj.doBeforeDeleteHooks(exec); err != nil {
 				return 0, err
@@ -2010,12 +2010,12 @@ func (o BattleQueueSlice) DeleteAll(exec boil.Executor) (int64, error) {
 
 	var args []interface{}
 	for _, obj := range o {
-		pkeyArgs := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(obj)), battleQueuePrimaryKeyMapping)
+		pkeyArgs := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(obj)), battleQueueOldPrimaryKeyMapping)
 		args = append(args, pkeyArgs...)
 	}
 
-	sql := "DELETE FROM \"battle_queue\" WHERE " +
-		strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), 1, battleQueuePrimaryKeyColumns, len(o))
+	sql := "DELETE FROM \"battle_queue_old\" WHERE " +
+		strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), 1, battleQueueOldPrimaryKeyColumns, len(o))
 
 	if boil.DebugMode {
 		fmt.Fprintln(boil.DebugWriter, sql)
@@ -2023,15 +2023,15 @@ func (o BattleQueueSlice) DeleteAll(exec boil.Executor) (int64, error) {
 	}
 	result, err := exec.Exec(sql, args...)
 	if err != nil {
-		return 0, errors.Wrap(err, "boiler: unable to delete all from battleQueue slice")
+		return 0, errors.Wrap(err, "boiler: unable to delete all from battleQueueOld slice")
 	}
 
 	rowsAff, err := result.RowsAffected()
 	if err != nil {
-		return 0, errors.Wrap(err, "boiler: failed to get rows affected by deleteall for battle_queue")
+		return 0, errors.Wrap(err, "boiler: failed to get rows affected by deleteall for battle_queue_old")
 	}
 
-	if len(battleQueueAfterDeleteHooks) != 0 {
+	if len(battleQueueOldAfterDeleteHooks) != 0 {
 		for _, obj := range o {
 			if err := obj.doAfterDeleteHooks(exec); err != nil {
 				return 0, err
@@ -2044,8 +2044,8 @@ func (o BattleQueueSlice) DeleteAll(exec boil.Executor) (int64, error) {
 
 // Reload refetches the object from the database
 // using the primary keys with an executor.
-func (o *BattleQueue) Reload(exec boil.Executor) error {
-	ret, err := FindBattleQueue(exec, o.MechID)
+func (o *BattleQueueOld) Reload(exec boil.Executor) error {
+	ret, err := FindBattleQueueOld(exec, o.MechID)
 	if err != nil {
 		return err
 	}
@@ -2056,26 +2056,26 @@ func (o *BattleQueue) Reload(exec boil.Executor) error {
 
 // ReloadAll refetches every row with matching primary key column values
 // and overwrites the original object slice with the newly updated slice.
-func (o *BattleQueueSlice) ReloadAll(exec boil.Executor) error {
+func (o *BattleQueueOldSlice) ReloadAll(exec boil.Executor) error {
 	if o == nil || len(*o) == 0 {
 		return nil
 	}
 
-	slice := BattleQueueSlice{}
+	slice := BattleQueueOldSlice{}
 	var args []interface{}
 	for _, obj := range *o {
-		pkeyArgs := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(obj)), battleQueuePrimaryKeyMapping)
+		pkeyArgs := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(obj)), battleQueueOldPrimaryKeyMapping)
 		args = append(args, pkeyArgs...)
 	}
 
-	sql := "SELECT \"battle_queue\".* FROM \"battle_queue\" WHERE " +
-		strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), 1, battleQueuePrimaryKeyColumns, len(*o))
+	sql := "SELECT \"battle_queue_old\".* FROM \"battle_queue_old\" WHERE " +
+		strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), 1, battleQueueOldPrimaryKeyColumns, len(*o))
 
 	q := queries.Raw(sql, args...)
 
 	err := q.Bind(nil, exec, &slice)
 	if err != nil {
-		return errors.Wrap(err, "boiler: unable to reload all in BattleQueueSlice")
+		return errors.Wrap(err, "boiler: unable to reload all in BattleQueueOldSlice")
 	}
 
 	*o = slice
@@ -2083,10 +2083,10 @@ func (o *BattleQueueSlice) ReloadAll(exec boil.Executor) error {
 	return nil
 }
 
-// BattleQueueExists checks if the BattleQueue row exists.
-func BattleQueueExists(exec boil.Executor, mechID string) (bool, error) {
+// BattleQueueOldExists checks if the BattleQueueOld row exists.
+func BattleQueueOldExists(exec boil.Executor, mechID string) (bool, error) {
 	var exists bool
-	sql := "select exists(select 1 from \"battle_queue\" where \"mech_id\"=$1 limit 1)"
+	sql := "select exists(select 1 from \"battle_queue_old\" where \"mech_id\"=$1 limit 1)"
 
 	if boil.DebugMode {
 		fmt.Fprintln(boil.DebugWriter, sql)
@@ -2096,7 +2096,7 @@ func BattleQueueExists(exec boil.Executor, mechID string) (bool, error) {
 
 	err := row.Scan(&exists)
 	if err != nil {
-		return false, errors.Wrap(err, "boiler: unable to check if battle_queue exists")
+		return false, errors.Wrap(err, "boiler: unable to check if battle_queue_old exists")
 	}
 
 	return exists, nil

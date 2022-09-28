@@ -502,18 +502,18 @@ func (mp *MarketplaceController) SalesCreateHandler(ctx context.Context, user *b
 
 	// check if queue
 	if collectionItem.ItemType == boiler.ItemTypeMech {
-		position, err := db.MechQueuePosition(collectionItem.ItemID, user.FactionID.String)
+		blm, err := boiler.BattleLobbiesMechs(
+			boiler.BattleLobbiesMechWhere.MechID.EQ(collectionItem.ItemID),
+			boiler.BattleLobbiesMechWhere.EndedAt.IsNull(),
+			boiler.BattleLobbiesMechWhere.RefundTXID.IsNull(),
+		).One(gamedb.StdConn)
 		if err != nil && !errors.Is(err, sql.ErrNoRows) {
-			gamelog.L.Error().
-				Str("user_id", user.ID).
-				Str("item_id", req.Payload.ItemID.String()).
-				Str("item_type", req.Payload.ItemType).
-				Err(err).
-				Msg("unable to get queue pos")
-			return err
+			gamelog.L.Error().Err(err).Str("mech id", collectionItem.ItemID).Msg("Failed to check mech queue.")
+			return terror.Error(err, "Failed to check mech queue.")
 		}
-		if position != nil && position.QueuePosition >= 0 {
-			return fmt.Errorf("cannot sell war machine in battle queue")
+
+		if blm != nil {
+			return fmt.Errorf("cannot sell war machine which is already in battle lobby")
 		}
 	}
 
@@ -698,8 +698,10 @@ func (mp *MarketplaceController) SalesCreateHandler(ctx context.Context, user *b
 		gamelog.L.Error().Str("collection item id", ciUUID.String()).Err(err).Msg("Failed to get collection item from db")
 	}
 
+	go battle.BroadcastMechQueueStatus(user.ID, ci.ItemID)
+
 	if ci.ItemType == boiler.ItemTypeMech {
-		ws.PublishMessage(fmt.Sprintf("/faction/%s/queue/%s", factionID, ci.ItemID), battle.WSPlayerAssetMechQueueSubscribe, &server.MechArenaInfo{
+		ws.PublishMessage(fmt.Sprintf("/faction/%s/queue/%s", factionID, ci.ItemID), server.HubKeyPlayerAssetMechQueueSubscribe, &server.MechArenaInfo{
 			Status: server.MechArenaStatusMarket,
 		})
 	}
@@ -1075,6 +1077,8 @@ func (mp *MarketplaceController) SalesArchiveHandler(ctx context.Context, user *
 	}
 
 	if ci.ItemType == boiler.ItemTypeMech {
+		go battle.BroadcastMechQueueStatus(ci.OwnerID, ci.ItemID)
+
 		mai := &server.MechArenaInfo{
 			Status:    server.MechArenaStatusIdle,
 			CanDeploy: true,
@@ -1095,7 +1099,7 @@ func (mp *MarketplaceController) SalesArchiveHandler(ctx context.Context, user *
 			}
 		}
 
-		ws.PublishMessage(fmt.Sprintf("/faction/%s/queue/%s", fID, ci.ItemID), battle.WSPlayerAssetMechQueueSubscribe, mai)
+		ws.PublishMessage(fmt.Sprintf("/faction/%s/queue/%s", fID, ci.ItemID), server.HubKeyPlayerAssetMechQueueSubscribe, mai)
 	}
 
 	return nil
@@ -1496,8 +1500,10 @@ func (mp *MarketplaceController) SalesBuyHandler(ctx context.Context, user *boil
 			l.Error().Str("collection item id", saleItem.CollectionItemID).Err(err).Msg("failed to get collection item from db")
 		}
 
+		go battle.BroadcastMechQueueStatus(ci.OwnerID, ci.ItemID)
+
 		if ci != nil {
-			ws.PublishMessage(fmt.Sprintf("/faction/%s/queue/%s", saleItem.FactionID, ci.ItemID), battle.WSPlayerAssetMechQueueSubscribe, &server.MechArenaInfo{
+			ws.PublishMessage(fmt.Sprintf("/faction/%s/queue/%s", saleItem.FactionID, ci.ItemID), server.HubKeyPlayerAssetMechQueueSubscribe, &server.MechArenaInfo{
 				Status: server.MechArenaStatusSold,
 			})
 		}
