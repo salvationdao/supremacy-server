@@ -214,6 +214,7 @@ func getDefaultMechQueryMods() []qm.QueryMod {
 				_ci.owner_id,
 				_bpms.label,
 				_bpms.default_level,
+				_bpms.blueprint_weapon_skin_id,
 				json_build_object(
 					'image_url', _bpms.image_url,
 					'card_animation_url', _bpms.card_animation_url,
@@ -394,8 +395,7 @@ func GetBlueprintWeaponsIDsWithCompatibleSkinInheritanceFromMechID(conn boil.Exe
 	// inner join mech_skin ms on ms.id = m.chassis_skin_id
 	// inner join blueprint_mech_skin bms on bms.id = ms.blueprint_id
 	// inner join weapon_model_skin_compatibilities wmsc on wmsc.blueprint_weapon_skin_id  = bms.blueprint_weapon_skin_id
-	// inner join weapon_models wm on wm.id = wmsc.weapon_model_id
-	// inner join blueprint_weapons bw on bw.weapon_model_id = wm.id
+	// inner join blueprint_weapons bw on bw.id = wmsc.weapon_model_id
 	// where m.id = 'cda9cff8-4c03-45f8-b59c-2cefd68e1386';
 
 	var result []struct {
