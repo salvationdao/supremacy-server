@@ -5,8 +5,10 @@ import (
 	"github.com/ninja-software/terror/v2"
 	"github.com/ninja-syndicate/ws"
 	"github.com/shopspring/decimal"
+	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
+	"golang.org/x/exp/slices"
 	"server"
 	"server/db"
 	"server/db/boiler"
@@ -36,8 +38,17 @@ func BroadcastBattleLobbyUpdate(battleLobbyIDs ...string) {
 		return
 	}
 
-	if bls == nil {
-		return
+	// generate deleted lobbies
+	deletedLobbies := []*server.BattleLobby{}
+	for _, battleLobbyID := range battleLobbyIDs {
+		if slices.IndexFunc(bls, func(bl *boiler.BattleLobby) bool { return bl.ID == battleLobbyID }) == -1 {
+			deletedLobbies = append(deletedLobbies, &server.BattleLobby{
+				BattleLobby: &boiler.BattleLobby{
+					ID:        battleLobbyID,
+					DeletedAt: null.TimeFrom(time.Now()),
+				},
+			})
+		}
 	}
 
 	resp, err := server.BattleLobbiesFromBoiler(bls)
@@ -45,7 +56,7 @@ func BroadcastBattleLobbyUpdate(battleLobbyIDs ...string) {
 		return
 	}
 
-	ws.PublishMessage("/secure/battle_lobbies", server.HubKeyBattleLobbyListUpdate, resp)
+	ws.PublishMessage("/secure/battle_lobbies", server.HubKeyBattleLobbyListUpdate, append(resp, deletedLobbies...))
 }
 
 // SetDefaultPublicBattleLobbies ensure there are enough battle lobbies when server start
@@ -118,28 +129,6 @@ func (am *ArenaManager) DefaultPublicLobbiesCheck() error {
 	return nil
 }
 
-func BroadcastBattleBountiesUpdate(battleBountyIDs ...string) {
-	bbs, err := boiler.BattleBounties(
-		qm.Select(
-			boiler.BattleBountyColumns.ID,
-			boiler.BattleBountyColumns.BattleLobbyID,
-			boiler.BattleBountyColumns.TargetedMechID,
-			boiler.BattleBountyColumns.Amount,
-			boiler.BattleBountyColumns.OfferedByID,
-			boiler.BattleBountyColumns.PayoutTXID,
-			boiler.BattleBountyColumns.RefundTXID,
-		),
-		boiler.BattleBountyWhere.ID.IN(battleBountyIDs),
-		qm.Load(boiler.BattleBountyRels.OfferedBy),
-	).All(gamedb.StdConn)
-	if err != nil {
-		gamelog.L.Error().Err(err).Strs("battle bounty id list", battleBountyIDs).Msg("Failed to load battle bounties")
-		return
-	}
-
-	ws.PublishMessage("/secure/battle_bounties", server.HubKeyBattleBountyListUpdate, server.BattleBountiesFromBoiler(bbs))
-}
-
 func BroadcastMechQueueStatus(playerID string, mechIDs ...string) {
 	if len(mechIDs) == 0 {
 		return
@@ -174,4 +163,134 @@ func BroadcastPlayerQueueStatus(playerID string) {
 	}
 
 	ws.PublishMessage(fmt.Sprintf("/secure/user/%s/queue_status", playerID), server.HubKeyPlayerQueueStatus, resp)
+}
+
+func GenerateAIDrivenBattle() (*boiler.BattleLobby, error) {
+	l := gamelog.L.With().Str("func", "GenerateAIDrivenBattle").Logger()
+
+	now := time.Now()
+
+	tx, err := gamedb.StdConn.Begin()
+	if err != nil {
+		l.Error().Err(err).Msg("Failed to start db transaction.")
+		return nil, terror.Error(err, "Failed to start db transaction.")
+	}
+
+	defer tx.Rollback()
+
+	bl := &boiler.BattleLobby{
+		HostByID:              server.SupremacyBattleUserID,
+		EntryFee:              decimal.Zero, // free to join
+		FirstFactionCut:       decimal.NewFromFloat(0.75),
+		SecondFactionCut:      decimal.NewFromFloat(0.25),
+		ThirdFactionCut:       decimal.Zero,
+		EachFactionMechAmount: 3,
+		GeneratedBySystem:     true,
+		IsAiDrivenMatch:       true, // is AI driven match
+		ReadyAt:               null.TimeFrom(now),
+	}
+
+	err = bl.Insert(tx, boil.Infer())
+	if err != nil {
+		l.Error().Err(err).Msg("Failed to insert AI driven battle.")
+		return nil, terror.Error(err, "Failed to insert AI driven battle.")
+	}
+
+	// get default mechs
+	rows, err := boiler.NewQuery(
+		qm.Select(
+			boiler.MechTableColumns.ID,
+			boiler.CollectionItemTableColumns.OwnerID,
+			fmt.Sprintf(
+				"(SELECT %s FROM %s WHERE %s = %s)",
+				boiler.PlayerTableColumns.FactionID,
+				boiler.TableNames.Players,
+				boiler.PlayerTableColumns.ID,
+				boiler.CollectionItemTableColumns.OwnerID,
+			),
+		),
+
+		qm.From(fmt.Sprintf(
+			"(SELECT %s FROM %s WHERE %s = TRUE) %s",
+			boiler.MechTableColumns.ID,
+			boiler.TableNames.Mechs,
+			boiler.MechTableColumns.IsDefault,
+			boiler.TableNames.Mechs,
+		)),
+
+		qm.InnerJoin(fmt.Sprintf(
+			"%s ON %s = %s",
+			boiler.TableNames.CollectionItems,
+			boiler.CollectionItemTableColumns.ItemID,
+			boiler.MechTableColumns.ID,
+		)),
+	).Query(tx)
+	if err != nil {
+		l.Error().Err(err).Msg("Failed to load default mechs.")
+		return nil, terror.Error(err, "Failed to load default mechs.")
+	}
+
+	// control insert mech amount
+	rmCount := 0
+	bcCount := 0
+	zaiCount := 0
+
+	var blms []*boiler.BattleLobbiesMech
+	for rows.Next() {
+		mechID := ""
+		ownerID := ""
+		factionID := ""
+
+		err = rows.Scan(&mechID, &ownerID, &factionID)
+		if err != nil {
+			l.Error().Err(err).Msg("Failed to scan mech info.")
+			return nil, terror.Error(err, "Failed to scan mech info.")
+		}
+
+		switch factionID {
+		case server.RedMountainFactionID:
+			if rmCount == bl.EachFactionMechAmount {
+				continue
+			}
+			rmCount++
+		case server.BostonCyberneticsFactionID:
+			if bcCount == bl.EachFactionMechAmount {
+				continue
+			}
+			bcCount++
+		case server.ZaibatsuFactionID:
+			if zaiCount == bl.EachFactionMechAmount {
+				continue
+			}
+			zaiCount++
+		}
+
+		blms = append(blms, &boiler.BattleLobbiesMech{
+			BattleLobbyID: bl.ID,
+			MechID:        mechID,
+			OwnerID:       ownerID,
+			FactionID:     factionID,
+			LockedAt:      bl.ReadyAt,
+		})
+	}
+
+	if rmCount < bl.EachFactionMechAmount || bcCount < bl.EachFactionMechAmount || zaiCount < bl.EachFactionMechAmount {
+		l.Error().Err(err).Msg("Not enough mech to generate AI driven match.")
+		return nil, terror.Error(err, "Not enough mech to generate AI driven match.")
+	}
+
+	for _, blm := range blms {
+		err = blm.Insert(tx, boil.Infer())
+		if err != nil {
+			l.Error().Err(err).Msg("Failed to insert assign mech to battle lobby.")
+			return nil, terror.Error(err, "Failed to insert assign mech to battle lobby.")
+		}
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		return nil, terror.Error(err, "Failed to commit db transaction.")
+	}
+
+	return bl, nil
 }

@@ -40,6 +40,7 @@ type BattleLobby struct {
 	AssignedToBattleID    null.String     `boiler:"assigned_to_battle_id" boil:"assigned_to_battle_id" json:"assigned_to_battle_id,omitempty" toml:"assigned_to_battle_id" yaml:"assigned_to_battle_id,omitempty"`
 	EndedAt               null.Time       `boiler:"ended_at" boil:"ended_at" json:"ended_at,omitempty" toml:"ended_at" yaml:"ended_at,omitempty"`
 	AssignedToArenaID     null.String     `boiler:"assigned_to_arena_id" boil:"assigned_to_arena_id" json:"assigned_to_arena_id,omitempty" toml:"assigned_to_arena_id" yaml:"assigned_to_arena_id,omitempty"`
+	IsAiDrivenMatch       bool            `boiler:"is_ai_driven_match" boil:"is_ai_driven_match" json:"is_ai_driven_match" toml:"is_ai_driven_match" yaml:"is_ai_driven_match"`
 	CreatedAt             time.Time       `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
 	UpdatedAt             time.Time       `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
 	DeletedAt             null.Time       `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
@@ -65,6 +66,7 @@ var BattleLobbyColumns = struct {
 	AssignedToBattleID    string
 	EndedAt               string
 	AssignedToArenaID     string
+	IsAiDrivenMatch       string
 	CreatedAt             string
 	UpdatedAt             string
 	DeletedAt             string
@@ -85,6 +87,7 @@ var BattleLobbyColumns = struct {
 	AssignedToBattleID:    "assigned_to_battle_id",
 	EndedAt:               "ended_at",
 	AssignedToArenaID:     "assigned_to_arena_id",
+	IsAiDrivenMatch:       "is_ai_driven_match",
 	CreatedAt:             "created_at",
 	UpdatedAt:             "updated_at",
 	DeletedAt:             "deleted_at",
@@ -107,6 +110,7 @@ var BattleLobbyTableColumns = struct {
 	AssignedToBattleID    string
 	EndedAt               string
 	AssignedToArenaID     string
+	IsAiDrivenMatch       string
 	CreatedAt             string
 	UpdatedAt             string
 	DeletedAt             string
@@ -127,6 +131,7 @@ var BattleLobbyTableColumns = struct {
 	AssignedToBattleID:    "battle_lobbies.assigned_to_battle_id",
 	EndedAt:               "battle_lobbies.ended_at",
 	AssignedToArenaID:     "battle_lobbies.assigned_to_arena_id",
+	IsAiDrivenMatch:       "battle_lobbies.is_ai_driven_match",
 	CreatedAt:             "battle_lobbies.created_at",
 	UpdatedAt:             "battle_lobbies.updated_at",
 	DeletedAt:             "battle_lobbies.deleted_at",
@@ -151,6 +156,7 @@ var BattleLobbyWhere = struct {
 	AssignedToBattleID    whereHelpernull_String
 	EndedAt               whereHelpernull_Time
 	AssignedToArenaID     whereHelpernull_String
+	IsAiDrivenMatch       whereHelperbool
 	CreatedAt             whereHelpertime_Time
 	UpdatedAt             whereHelpertime_Time
 	DeletedAt             whereHelpernull_Time
@@ -171,6 +177,7 @@ var BattleLobbyWhere = struct {
 	AssignedToBattleID:    whereHelpernull_String{field: "\"battle_lobbies\".\"assigned_to_battle_id\""},
 	EndedAt:               whereHelpernull_Time{field: "\"battle_lobbies\".\"ended_at\""},
 	AssignedToArenaID:     whereHelpernull_String{field: "\"battle_lobbies\".\"assigned_to_arena_id\""},
+	IsAiDrivenMatch:       whereHelperbool{field: "\"battle_lobbies\".\"is_ai_driven_match\""},
 	CreatedAt:             whereHelpertime_Time{field: "\"battle_lobbies\".\"created_at\""},
 	UpdatedAt:             whereHelpertime_Time{field: "\"battle_lobbies\".\"updated_at\""},
 	DeletedAt:             whereHelpernull_Time{field: "\"battle_lobbies\".\"deleted_at\""},
@@ -182,14 +189,12 @@ var BattleLobbyRels = struct {
 	AssignedToBattle   string
 	GameMap            string
 	HostBy             string
-	BattleBounties     string
 	BattleLobbiesMechs string
 }{
 	AssignedToArena:    "AssignedToArena",
 	AssignedToBattle:   "AssignedToBattle",
 	GameMap:            "GameMap",
 	HostBy:             "HostBy",
-	BattleBounties:     "BattleBounties",
 	BattleLobbiesMechs: "BattleLobbiesMechs",
 }
 
@@ -199,7 +204,6 @@ type battleLobbyR struct {
 	AssignedToBattle   *Battle                `boiler:"AssignedToBattle" boil:"AssignedToBattle" json:"AssignedToBattle" toml:"AssignedToBattle" yaml:"AssignedToBattle"`
 	GameMap            *GameMap               `boiler:"GameMap" boil:"GameMap" json:"GameMap" toml:"GameMap" yaml:"GameMap"`
 	HostBy             *Player                `boiler:"HostBy" boil:"HostBy" json:"HostBy" toml:"HostBy" yaml:"HostBy"`
-	BattleBounties     BattleBountySlice      `boiler:"BattleBounties" boil:"BattleBounties" json:"BattleBounties" toml:"BattleBounties" yaml:"BattleBounties"`
 	BattleLobbiesMechs BattleLobbiesMechSlice `boiler:"BattleLobbiesMechs" boil:"BattleLobbiesMechs" json:"BattleLobbiesMechs" toml:"BattleLobbiesMechs" yaml:"BattleLobbiesMechs"`
 }
 
@@ -212,9 +216,9 @@ func (*battleLobbyR) NewStruct() *battleLobbyR {
 type battleLobbyL struct{}
 
 var (
-	battleLobbyAllColumns            = []string{"id", "host_by_id", "number", "entry_fee", "first_faction_cut", "second_faction_cut", "third_faction_cut", "each_faction_mech_amount", "game_map_id", "generated_by_system", "password", "will_not_start_until", "ready_at", "assigned_to_battle_id", "ended_at", "assigned_to_arena_id", "created_at", "updated_at", "deleted_at"}
+	battleLobbyAllColumns            = []string{"id", "host_by_id", "number", "entry_fee", "first_faction_cut", "second_faction_cut", "third_faction_cut", "each_faction_mech_amount", "game_map_id", "generated_by_system", "password", "will_not_start_until", "ready_at", "assigned_to_battle_id", "ended_at", "assigned_to_arena_id", "is_ai_driven_match", "created_at", "updated_at", "deleted_at"}
 	battleLobbyColumnsWithoutDefault = []string{"host_by_id"}
-	battleLobbyColumnsWithDefault    = []string{"id", "number", "entry_fee", "first_faction_cut", "second_faction_cut", "third_faction_cut", "each_faction_mech_amount", "game_map_id", "generated_by_system", "password", "will_not_start_until", "ready_at", "assigned_to_battle_id", "ended_at", "assigned_to_arena_id", "created_at", "updated_at", "deleted_at"}
+	battleLobbyColumnsWithDefault    = []string{"id", "number", "entry_fee", "first_faction_cut", "second_faction_cut", "third_faction_cut", "each_faction_mech_amount", "game_map_id", "generated_by_system", "password", "will_not_start_until", "ready_at", "assigned_to_battle_id", "ended_at", "assigned_to_arena_id", "is_ai_driven_match", "created_at", "updated_at", "deleted_at"}
 	battleLobbyPrimaryKeyColumns     = []string{"id"}
 	battleLobbyGeneratedColumns      = []string{}
 )
@@ -515,28 +519,6 @@ func (o *BattleLobby) HostBy(mods ...qm.QueryMod) playerQuery {
 
 	query := Players(queryMods...)
 	queries.SetFrom(query.Query, "\"players\"")
-
-	return query
-}
-
-// BattleBounties retrieves all the battle_bounty's BattleBounties with an executor.
-func (o *BattleLobby) BattleBounties(mods ...qm.QueryMod) battleBountyQuery {
-	var queryMods []qm.QueryMod
-	if len(mods) != 0 {
-		queryMods = append(queryMods, mods...)
-	}
-
-	queryMods = append(queryMods,
-		qm.Where("\"battle_bounties\".\"battle_lobby_id\"=?", o.ID),
-		qmhelper.WhereIsNull("\"battle_bounties\".\"deleted_at\""),
-	)
-
-	query := BattleBounties(queryMods...)
-	queries.SetFrom(query.Query, "\"battle_bounties\"")
-
-	if len(queries.GetSelect(query.Query)) == 0 {
-		queries.SetSelect(query.Query, []string{"\"battle_bounties\".*"})
-	}
 
 	return query
 }
@@ -993,105 +975,6 @@ func (battleLobbyL) LoadHostBy(e boil.Executor, singular bool, maybeBattleLobby 
 	return nil
 }
 
-// LoadBattleBounties allows an eager lookup of values, cached into the
-// loaded structs of the objects. This is for a 1-M or N-M relationship.
-func (battleLobbyL) LoadBattleBounties(e boil.Executor, singular bool, maybeBattleLobby interface{}, mods queries.Applicator) error {
-	var slice []*BattleLobby
-	var object *BattleLobby
-
-	if singular {
-		object = maybeBattleLobby.(*BattleLobby)
-	} else {
-		slice = *maybeBattleLobby.(*[]*BattleLobby)
-	}
-
-	args := make([]interface{}, 0, 1)
-	if singular {
-		if object.R == nil {
-			object.R = &battleLobbyR{}
-		}
-		args = append(args, object.ID)
-	} else {
-	Outer:
-		for _, obj := range slice {
-			if obj.R == nil {
-				obj.R = &battleLobbyR{}
-			}
-
-			for _, a := range args {
-				if a == obj.ID {
-					continue Outer
-				}
-			}
-
-			args = append(args, obj.ID)
-		}
-	}
-
-	if len(args) == 0 {
-		return nil
-	}
-
-	query := NewQuery(
-		qm.From(`battle_bounties`),
-		qm.WhereIn(`battle_bounties.battle_lobby_id in ?`, args...),
-		qmhelper.WhereIsNull(`battle_bounties.deleted_at`),
-	)
-	if mods != nil {
-		mods.Apply(query)
-	}
-
-	results, err := query.Query(e)
-	if err != nil {
-		return errors.Wrap(err, "failed to eager load battle_bounties")
-	}
-
-	var resultSlice []*BattleBounty
-	if err = queries.Bind(results, &resultSlice); err != nil {
-		return errors.Wrap(err, "failed to bind eager loaded slice battle_bounties")
-	}
-
-	if err = results.Close(); err != nil {
-		return errors.Wrap(err, "failed to close results in eager load on battle_bounties")
-	}
-	if err = results.Err(); err != nil {
-		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for battle_bounties")
-	}
-
-	if len(battleBountyAfterSelectHooks) != 0 {
-		for _, obj := range resultSlice {
-			if err := obj.doAfterSelectHooks(e); err != nil {
-				return err
-			}
-		}
-	}
-	if singular {
-		object.R.BattleBounties = resultSlice
-		for _, foreign := range resultSlice {
-			if foreign.R == nil {
-				foreign.R = &battleBountyR{}
-			}
-			foreign.R.BattleLobby = object
-		}
-		return nil
-	}
-
-	for _, foreign := range resultSlice {
-		for _, local := range slice {
-			if local.ID == foreign.BattleLobbyID {
-				local.R.BattleBounties = append(local.R.BattleBounties, foreign)
-				if foreign.R == nil {
-					foreign.R = &battleBountyR{}
-				}
-				foreign.R.BattleLobby = local
-				break
-			}
-		}
-	}
-
-	return nil
-}
-
 // LoadBattleLobbiesMechs allows an eager lookup of values, cached into the
 // loaded structs of the objects. This is for a 1-M or N-M relationship.
 func (battleLobbyL) LoadBattleLobbiesMechs(e boil.Executor, singular bool, maybeBattleLobby interface{}, mods queries.Applicator) error {
@@ -1471,58 +1354,6 @@ func (o *BattleLobby) SetHostBy(exec boil.Executor, insert bool, related *Player
 		related.R.HostByBattleLobbies = append(related.R.HostByBattleLobbies, o)
 	}
 
-	return nil
-}
-
-// AddBattleBounties adds the given related objects to the existing relationships
-// of the battle_lobby, optionally inserting them as new records.
-// Appends related to o.R.BattleBounties.
-// Sets related.R.BattleLobby appropriately.
-func (o *BattleLobby) AddBattleBounties(exec boil.Executor, insert bool, related ...*BattleBounty) error {
-	var err error
-	for _, rel := range related {
-		if insert {
-			rel.BattleLobbyID = o.ID
-			if err = rel.Insert(exec, boil.Infer()); err != nil {
-				return errors.Wrap(err, "failed to insert into foreign table")
-			}
-		} else {
-			updateQuery := fmt.Sprintf(
-				"UPDATE \"battle_bounties\" SET %s WHERE %s",
-				strmangle.SetParamNames("\"", "\"", 1, []string{"battle_lobby_id"}),
-				strmangle.WhereClause("\"", "\"", 2, battleBountyPrimaryKeyColumns),
-			)
-			values := []interface{}{o.ID, rel.ID}
-
-			if boil.DebugMode {
-				fmt.Fprintln(boil.DebugWriter, updateQuery)
-				fmt.Fprintln(boil.DebugWriter, values)
-			}
-			if _, err = exec.Exec(updateQuery, values...); err != nil {
-				return errors.Wrap(err, "failed to update foreign table")
-			}
-
-			rel.BattleLobbyID = o.ID
-		}
-	}
-
-	if o.R == nil {
-		o.R = &battleLobbyR{
-			BattleBounties: related,
-		}
-	} else {
-		o.R.BattleBounties = append(o.R.BattleBounties, related...)
-	}
-
-	for _, rel := range related {
-		if rel.R == nil {
-			rel.R = &battleBountyR{
-				BattleLobby: o,
-			}
-		} else {
-			rel.R.BattleLobby = o
-		}
-	}
 	return nil
 }
 

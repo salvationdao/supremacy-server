@@ -288,7 +288,6 @@ func NewAPI(
 				s.WS("/mech/{mech_id}/repair_case", server.HubKeyMechRepairCase, api.MechRepairCaseSubscribe)
 				s.WS("/mech/{mech_id}/active_repair_offer", server.HubKeyMechActiveRepairOffer, api.MechActiveRepairOfferSubscribe)
 				s.WS("/battle_lobbies", server.HubKeyBattleLobbyListUpdate, api.BattleLobbyListUpdate)
-				s.WS("/battle_bounties", server.HubKeyBattleBountyListUpdate, api.BattleBountyListUpdate)
 				s.WS("/battle_eta", server.HubKeyBattleETAUpdate, api.BattleETASubscribeHandler)
 
 				// user related

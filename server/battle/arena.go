@@ -105,11 +105,22 @@ func NewArenaManager(opts *Opts) (*ArenaManager, error) {
 		WriteTimeout: am.timeout,
 	}
 
+	// delete all the unfinished AI driven battles
+	_, err := boiler.BattleLobbies(
+		boiler.BattleLobbyWhere.EndedAt.IsNull(),
+		boiler.BattleLobbyWhere.IsAiDrivenMatch.EQ(true),
+	).UpdateAll(gamedb.StdConn, boiler.M{
+		boiler.BattleLobbyColumns.DeletedAt: null.TimeFrom(time.Now()),
+	})
+	if err != nil {
+		return nil, terror.Error(err, "Failed to delete unfinished AI battles.")
+	}
+
 	// start player rank updater
 	am.PlayerRankUpdater()
 
 	// check default battle lobbies
-	err := am.SetDefaultPublicBattleLobbies()
+	err = am.SetDefaultPublicBattleLobbies()
 	if err != nil {
 		return nil, err
 	}
@@ -246,6 +257,7 @@ func (am *ArenaManager) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// broadcast a new arena list to frontend
 	ws.PublishMessage("/public/arena_list", server.HubKeyBattleArenaListSubscribe, am.AvailableBattleArenas())
 
+	// handle arena close
 	defer func() {
 		am.Lock()
 		defer am.Unlock()
@@ -313,6 +325,13 @@ func (am *ArenaManager) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				if err != nil {
 					gamelog.L.Error().Str("battle_id", btl.ID).Str("replay_id", btl.replaySession.ReplaySession.ID).Err(err).Msg("Failed to update replay session")
 				}
+			}
+		}
+
+		// kick idle arenas
+		for _, a := range am.arenas {
+			if a.connected.Load() && a.Stage.Load() == ArenaStageIdle {
+				go a.BeginBattle()
 			}
 		}
 	}()
@@ -1571,13 +1590,12 @@ func (arena *Arena) GameClientJsonDataParser() {
 }
 
 // assignBattleLobby assign the next
+// skipLobbyCheck ONLY happen on the battle end
 func (arena *Arena) assignBattleLobby() {
-	arena.Manager.Lock()
-	defer arena.Manager.Unlock()
-
 	battleLobbyID := arena.currentLobbyID.Load()
+
+	//  check current lobby is valid
 	if battleLobbyID != "" {
-		// check battle lobby is valid
 		bl, err := boiler.BattleLobbies(
 			boiler.BattleLobbyWhere.ID.EQ(battleLobbyID),
 			boiler.BattleLobbyWhere.ReadyAt.IsNotNull(),
@@ -1718,7 +1736,11 @@ func (arena *Arena) assignBattleLobby() {
 	// if no available lobby
 	if bl == nil {
 		gamelog.L.Debug().Str("battle arena id", arena.ID).Msg("no lobby is available")
-		return
+		bl, err = GenerateAIDrivenBattle()
+		if err != nil {
+			gamelog.L.Error().Err(err).Msg("Failed to generate AI driven match.")
+			return
+		}
 	}
 
 	// assign battle lobby
@@ -1746,7 +1768,9 @@ func (arena *Arena) BeginBattle() {
 		gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("Failed to clean up unfinished mech move command")
 	}
 
+	arena.Manager.Lock()
 	arena.assignBattleLobby()
+	arena.Manager.Unlock()
 
 	// return, if the stage of the arena is still idle
 	if arena.Stage.Load() == ArenaStageIdle || arena.currentLobbyID.Load() == "" {
@@ -1825,7 +1849,13 @@ func (arena *Arena) BeginBattle() {
 
 	// insert battle lobby
 	battleLobby.AssignedToBattleID = null.StringFrom(battle.ID)
-	_, err = battleLobby.Update(gamedb.StdConn, boil.Whitelist(boiler.BattleLobbyColumns.AssignedToBattleID))
+	battleLobby.AssignedToArenaID = null.StringFrom(arena.ID)
+	_, err = battleLobby.Update(gamedb.StdConn,
+		boil.Whitelist(
+			boiler.BattleLobbyColumns.AssignedToBattleID,
+			boiler.BattleLobbyColumns.AssignedToArenaID,
+		),
+	)
 	if err != nil {
 		gamelog.L.Error().Err(err).Interface("battle lobby", battleLobby).Msg("unable to update battle lobby")
 		arena.Stage.Store(ArenaStageIdle)
