@@ -57,7 +57,7 @@ if not current_version.is_prerelease:
     )
 
 
-if current_branch == 'staging':
+if current_branch == 'develop':
     if current_version.is_prerelease:
         next_version = "v{baseVer}-rc.{rc:02d}".format(
             baseVer=fixedString,
@@ -68,7 +68,7 @@ if current_branch == 'staging':
 
 else:
     print(
-        "invalid branch, should be staging: current is " + current_branch)
+        "invalid branch, should be develop: current is " + current_branch)
     exit(1)
 
 logging.debug("%s -> %s", current_version, next_version)
