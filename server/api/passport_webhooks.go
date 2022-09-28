@@ -91,7 +91,12 @@ func (pc *PassportWebhookController) UserUpdated(w http.ResponseWriter, r *http.
 	// broadcast syndicate id
 	req.User.SyndicateID = player.SyndicateID
 
-	ws.PublishMessage(fmt.Sprintf("/secure/user/%s", player.ID), server.HubKeyUserSubscribe, req.User)
+	err = player.L.LoadRole(gamedb.StdConn, true, player, nil)
+	if err != nil {
+		return http.StatusInternalServerError, terror.Error(err, "Unable to convert faction, contact support or try again.")
+	}
+
+	ws.PublishMessage(fmt.Sprintf("/secure/user/%s", player.ID), server.HubKeyUserSubscribe, server.PlayerFromBoiler(player))
 
 	// update active player list
 	if fap, ok := pc.API.FactionActivePlayers[player.FactionID.String]; ok {

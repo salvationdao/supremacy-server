@@ -84,6 +84,8 @@ func NewPlayerController(api *API) *PlayerController {
 
 	api.SecureUserCommand(HubKeyGenOneTimeToken, pc.GenOneTimeToken)
 
+	api.SecureUserFactionCommand(HubKeyPlayerSearch, pc.PlayerSearch)
+
 	return pc
 }
 
@@ -92,6 +94,7 @@ type PlayerQueueStatus struct {
 	QueueLimit  int64 `json:"queue_limit"`
 }
 
+const PlayerRoleID = "8dd55355-fc22-4d1d-a825-b973bb075259"
 const HubKeyPlayerQueueStatus = "PLAYER:QUEUE:STATUS"
 
 func (pc *PlayerController) PlayerQueueStatusHandler(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
@@ -215,7 +218,12 @@ func (pc *PlayerController) PlayerFactionEnlistHandler(ctx context.Context, user
 		return terror.Error(err, "Failed to commit db transaction")
 	}
 
-	ws.PublishMessage(fmt.Sprintf("/secure/user/%s", user.ID), server.HubKeyUserSubscribe, user)
+	err = user.L.LoadRole(gamedb.StdConn, true, user, nil)
+	if err != nil {
+		return terror.Error(err, "Failed to load role")
+	}
+
+	ws.PublishMessage(fmt.Sprintf("/secure/user/%s", user.ID), server.HubKeyUserSubscribe, server.PlayerFromBoiler(user))
 
 	reply(true)
 
@@ -500,6 +508,50 @@ func (pc *PlayerController) FactionPlayerSearch(ctx context.Context, user *boile
 			"%"+strings.ToLower(search)+"%",
 		),
 		qm.Limit(5),
+	).All(gamedb.StdConn)
+	if err != nil {
+		return terror.Error(err, "Failed to search players from db")
+	}
+
+	reply(ps)
+	return nil
+}
+
+const HubKeyPlayerSearch = "PLAYER:SEARCH"
+
+// PlayerSearch return up to 10 players base on the given text
+func (pc *PlayerController) PlayerSearch(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
+	req := &PlayerSearchRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return terror.Error(err, "Invalid request received")
+	}
+
+	if user.RoleID == "8dd55355-fc22-4d1d-a825-b973bb075259" || user.RoleID == "" {
+		return terror.Error(err, "User is not an admin")
+	}
+
+	search := strings.TrimSpace(req.Payload.Search)
+	if search == "" {
+		return terror.Error(terror.ErrInvalidInput, "search key should not be empty")
+	}
+
+	ps, err := boiler.Players(
+		qm.Select(
+			boiler.PlayerColumns.ID,
+			boiler.PlayerColumns.Username,
+			boiler.PlayerColumns.Gid,
+		),
+		boiler.PlayerWhere.IsAi.EQ(false),
+		boiler.PlayerWhere.ID.NEQ(user.ID),
+		qm.Where(
+			fmt.Sprintf("LOWER(%s||'#'||%s::TEXT) LIKE ?",
+				qm.Rels(boiler.TableNames.Players, boiler.PlayerColumns.Username),
+				qm.Rels(boiler.TableNames.Players, boiler.PlayerColumns.Gid),
+			),
+			"%"+strings.ToLower(search)+"%",
+		),
+		qm.Limit(10),
 	).All(gamedb.StdConn)
 	if err != nil {
 		return terror.Error(err, "Failed to search players from db")

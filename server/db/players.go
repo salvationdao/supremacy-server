@@ -341,7 +341,10 @@ func PlayerIPUpsert(playerID string, ip string) error {
 func GetPlayer(playerID string) (*server.Player, error) {
 	l := gamelog.L.With().Str("dbFunc", "GetPlayer").Str("playerID", playerID).Logger()
 
-	player, err := boiler.FindPlayer(gamedb.StdConn, playerID)
+	player, err := boiler.Players(
+		boiler.PlayerWhere.ID.EQ(playerID),
+		qm.Load(boiler.PlayerRels.Role),
+	).One(gamedb.StdConn)
 	if err != nil {
 		l.Error().Err(err).Msg("unable to find player")
 		return nil, err
