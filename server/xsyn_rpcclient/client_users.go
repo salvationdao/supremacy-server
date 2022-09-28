@@ -1,6 +1,7 @@
 package xsyn_rpcclient
 
 import (
+	"database/sql"
 	"server"
 	"server/gamelog"
 	"strings"
@@ -78,8 +79,8 @@ func (pp *XsynXrpcClient) TokenLogin(tokenBase64 string) (*UserResp, error) {
 	resp := &UserResp{}
 	err := pp.XrpcClient.Call("S.TokenLogin", TokenReq{pp.ApiKey, tokenBase64}, resp)
 
-	if err != nil && !strings.Contains(err.Error(), "sql: no rows in result set") {
-		gamelog.L.Err(err).Str("method", "TokenLogin").Msg("rpc error")
+	if err != nil && !strings.Contains(err.Error(), sql.ErrNoRows.Error()) {
+		gamelog.L.Error().Err(err).Str("method", "TokenLogin").Msg("rpc error")
 		return nil, terror.Error(err, "Failed to get user from passport server")
 	}
 	return resp, nil
