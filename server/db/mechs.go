@@ -1613,8 +1613,8 @@ func OwnedMechsBrief(playerID string, mechIDs ...string) ([]*MechBrief, error) {
 			fmt.Sprintf("_blm.%s", boiler.BattleLobbiesMechColumns.LockedAt),
 			fmt.Sprintf("_blm.%s", boiler.BattleLobbiesMechColumns.AssignedToBattleID),
 			fmt.Sprintf("_blm.%s", boiler.BattleLobbyColumns.Number),
-			fmt.Sprintf("_pc.%s", boiler.PowerCoreColumns.Capacity),
-			fmt.Sprintf("_pc.%s", boiler.PowerCoreColumns.RechargeRate),
+			fmt.Sprintf("_pc.%s", boiler.BlueprintPowerCoreColumns.Capacity),
+			fmt.Sprintf("_pc.%s", boiler.BlueprintPowerCoreColumns.RechargeRate),
 			fmt.Sprintf(
 				"COALESCE((SELECT _rc.%s - _rc.%s FROM %s _rc WHERE _rc.%s = _ci.%s AND _rc.%s ISNULL AND _rc.%s ISNULL LIMIT 1), 0) AS damaged_blocks",
 				boiler.RepairCaseColumns.BlocksRequiredRepair,
@@ -1754,11 +1754,15 @@ func OwnedMechsBrief(playerID string, mechIDs ...string) ([]*MechBrief, error) {
 		qm.LeftOuterJoin(fmt.Sprintf(`(
 					SELECT %s,%s, %s
 					FROM %s
+					INNER JOIN %s ON %s = %s
 					) _pc ON _pc.%s = _m.%s`,
-			boiler.PowerCoreColumns.ID,
-			boiler.PowerCoreColumns.Capacity,
-			boiler.PowerCoreColumns.RechargeRate,
+			boiler.PowerCoreTableColumns.ID,
+			boiler.BlueprintPowerCoreTableColumns.Capacity,
+			boiler.BlueprintPowerCoreTableColumns.RechargeRate,
 			boiler.TableNames.PowerCores,
+			boiler.TableNames.BlueprintPowerCores,
+			boiler.BlueprintPowerCoreTableColumns.ID,
+			boiler.PowerCoreTableColumns.BlueprintID,
 			boiler.PowerCoreColumns.ID,
 			boiler.MechColumns.PowerCoreID,
 		)),
