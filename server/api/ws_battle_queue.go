@@ -312,7 +312,7 @@ func (api *API) BattleLobbyJoin(ctx context.Context, user *boiler.Player, factio
 		}
 
 		if len(availableMechIDs) == 0 {
-			return terror.Error(err, "All the mechs are already in queue.")
+			return terror.Error(fmt.Errorf("mechs ara already in the queue"), "All the mechs are already in queue.")
 		}
 
 		// check whether the lobby is still available
