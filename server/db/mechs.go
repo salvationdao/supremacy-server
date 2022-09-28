@@ -297,7 +297,8 @@ func getDefaultMechQueryMods() []qm.QueryMod {
 										_wmsc.avatar_url as avatar_url,
 										_wmsc.card_animation_url as card_animation_url,
 										_wmsc.animation_url as animation_url,
-										_mw.slot_number AS slot_number
+										_mw.slot_number as slot_number,
+										_mw.is_skin_inherited as inherit_skin
 								FROM weapons _w
 								INNER JOIN collection_items _ci on _ci.item_id = _w.id
 								INNER JOIN blueprint_weapons _bpw on _bpw.id = _w.blueprint_id
