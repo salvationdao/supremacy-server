@@ -117,7 +117,7 @@ func (f *FiatController) processStorefrontSupPrices() {
 		pl = pl.With().Str("fiat_price", convertedPrice.String()).Logger()
 
 		convertedPrice = convertedPrice.Div(supToUSDRate).
-			Mul(fiatToSupConversionCut).
+			Mul(decimal.New(1, 0).Sub(fiatToSupConversionCut)).
 			Mul(decimal.New(1, 18))
 		pl = pl.With().Str("converted_sup_price", convertedPrice.String()).Logger()
 
