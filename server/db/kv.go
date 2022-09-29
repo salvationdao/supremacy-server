@@ -77,6 +77,9 @@ const KeyCanRecordReplayStatus KVKey = "can_record_replay"
 const KeyAutoRepairSlotCount KVKey = "auto_repair_slot_count"
 const KeyAutoRepairDurationSeconds KVKey = "auto_repair_duration_seconds"
 
+const KeyAverageMechMoveCommandsPerThirtySeconds KVKey = "average_mech_move_commands_per_thirty_seconds"
+const KeyMinimumMechMoveCommandsPerThirtySeconds KVKey = "minimum_mech_move_commands_per_thirty_seconds"
+
 func get(key KVKey) string {
 	kv, err := boiler.KVS(boiler.KVWhere.Key.EQ(string(key))).One(gamedb.StdConn)
 	if err != nil {
