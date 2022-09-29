@@ -3,8 +3,6 @@ package api
 import (
 	"database/sql"
 	"fmt"
-	"github.com/ninja-software/terror/v2"
-	"github.com/volatiletech/null/v8"
 	"net/http"
 	"os"
 	"server"
@@ -14,6 +12,9 @@ import (
 	"server/helpers"
 	"strconv"
 	"time"
+
+	"github.com/ninja-software/terror/v2"
+	"github.com/volatiletech/null/v8"
 
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/friendsofgo/errors"
@@ -393,7 +394,7 @@ func getMechMechOwnerDetails(factionShortcode FactionShortcode, battleID string)
 
 	battleMechs, err := boiler.BattleMechs(
 		boiler.BattleMechWhere.BattleID.EQ(battleID),
-		boiler.BattleMechWhere.MechID.EQ(factionID),
+		boiler.BattleMechWhere.FactionID.EQ(factionID),
 		qm.Load(boiler.BattleMechRels.Owner),
 	).All(gamedb.StdConn)
 	if err != nil {
