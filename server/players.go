@@ -27,6 +27,7 @@ type Player struct {
 	Rank             string          `json:"rank"`
 	SentMessageCount int             `json:"sent_message_count"`
 	SyndicateID      null.String     `json:"syndicate_id"`
+	AcceptsMarketing null.Bool       `json:"accepts_marketing"`
 
 	Stat      *boiler.PlayerStat `json:"stat"`
 	Syndicate *boiler.Syndicate  `json:"syndicate"`
@@ -75,6 +76,7 @@ func PlayerFromBoiler(player *boiler.Player, features ...boiler.FeatureSlice) *P
 		SentMessageCount: player.SentMessageCount,
 		SyndicateID:      player.SyndicateID,
 		Features:         serverFeatures,
+		AcceptsMarketing: player.AcceptsMarketing,
 	}
 
 	if player.R != nil {
