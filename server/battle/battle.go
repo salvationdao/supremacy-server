@@ -966,7 +966,7 @@ func (btl *Battle) RewardBattleMechOwners(winningFactionOrder []string) {
 }
 
 func (btl *Battle) AFKChecker() []string {
-	averageMoveCommandsPerThirtySeconds := db.GetDecimalWithDefault(db.KeyAverageMechMoveCommandsPerThirtySeconds, decimal.NewFromFloat(3.5))
+	averageMoveCommandsPerThirtySeconds := db.GetDecimalWithDefault(db.KeyAverageMechMoveCommandsPerThirtySeconds, decimal.NewFromFloat(2.5))
 	minimumMoveCommandsPerThirtySeconds := db.GetIntWithDefault(db.KeyMinimumMechMoveCommandsPerThirtySeconds, 1)
 
 	// get kill record
