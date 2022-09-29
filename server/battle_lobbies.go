@@ -286,24 +286,30 @@ func BattleLobbiesFromBoiler(bls []*boiler.BattleLobby) ([]*BattleLobby, error) 
 
 			qm.LeftOuterJoin(fmt.Sprintf(
 				`(SELECT 
-							%[1]s AS weapon_id, %[2]s.*, %[3]s.*
+							%[1]s AS weapon_id, 
+							%[2]s.*, 
+							%[3]s.*,
+							%[13]s.*
 					FROM %[4]s
 					INNER JOIN %[5]s ON %[6]s = %[7]s
 					INNER JOIN %[8]s ON %[1]s = %[9]s
 					INNER JOIN %[3]s ON %[10]s = %[11]s
+					INNER JOIN %[13]s ON %[14]s = %[6]s
 				) %[4]s ON %[4]s.weapon_id = %[12]s`,
-				boiler.WeaponTableColumns.ID,              // 1
-				boiler.TableNames.BlueprintWeapons,        // 2
-				boiler.TableNames.BlueprintWeaponSkin,     // 3
-				boiler.TableNames.Weapons,                 // 4
-				boiler.TableNames.BlueprintWeapons,        // 5
-				boiler.WeaponTableColumns.BlueprintID,     // 6
-				boiler.BlueprintWeaponTableColumns.ID,     // 7
-				boiler.TableNames.WeaponSkin,              // 8
-				boiler.WeaponSkinTableColumns.EquippedOn,  // 9
-				boiler.BlueprintWeaponSkinTableColumns.ID, // 10
-				boiler.WeaponSkinTableColumns.BlueprintID, // 11
-				boiler.MechWeaponTableColumns.WeaponID,    // 12
+				boiler.WeaponTableColumns.ID,                                  // 1
+				boiler.TableNames.BlueprintWeapons,                            // 2
+				boiler.TableNames.BlueprintWeaponSkin,                         // 3
+				boiler.TableNames.Weapons,                                     // 4
+				boiler.TableNames.BlueprintWeapons,                            // 5
+				boiler.WeaponTableColumns.BlueprintID,                         // 6
+				boiler.BlueprintWeaponTableColumns.ID,                         // 7
+				boiler.TableNames.WeaponSkin,                                  // 8
+				boiler.WeaponSkinTableColumns.EquippedOn,                      // 9
+				boiler.BlueprintWeaponSkinTableColumns.ID,                     // 10
+				boiler.WeaponSkinTableColumns.BlueprintID,                     // 11
+				boiler.MechWeaponTableColumns.WeaponID,                        // 12
+				boiler.TableNames.WeaponModelSkinCompatibilities,              // 13
+				boiler.WeaponModelSkinCompatibilityTableColumns.WeaponModelID, // 14
 			)),
 
 			qm.OrderBy(boiler.MechWeaponTableColumns.SlotNumber),
@@ -316,9 +322,9 @@ func BattleLobbiesFromBoiler(bls []*boiler.BattleLobby) ([]*BattleLobby, error) 
 		}
 
 		for rows.Next() {
-			var weaponSlot *WeaponSlot
+			weaponSlot := &WeaponSlot{}
 			var weapon *Weapon
-			err = rows.Scan(&weaponSlot.MechID, &weaponSlot.WeaponID, weaponSlot.SlotNumber, weaponSlot.AllowMelee, weaponSlot.IsSkinInherited, &weapon)
+			err = rows.Scan(&weaponSlot.MechID, &weaponSlot.WeaponID, &weaponSlot.SlotNumber, &weaponSlot.AllowMelee, &weaponSlot.IsSkinInherited, &weapon)
 			if err != nil {
 				gamelog.L.Error().Err(err).Msg("Failed to scan mech weapon slots.")
 				return nil, terror.Error(err, "Failed to scan mech weapon slots.")
