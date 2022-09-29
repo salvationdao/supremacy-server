@@ -1280,7 +1280,8 @@ type GameSettingsResponse struct {
 	BattleIdentifier   int                `json:"battle_identifier"`
 	AbilityDetails     []*AbilityDetail   `json:"ability_details"`
 
-	ServerTime time.Time `json:"server_time"` // time for frontend to adjust the different
+	ServerTime      time.Time `json:"server_time"` // time for frontend to adjust the different
+	IsAIDrivenMatch bool      `json:"is_ai_driven_match"`
 }
 
 func GameSettingsPayload(btl *Battle) *GameSettingsResponse {
@@ -1419,6 +1420,7 @@ func GameSettingsPayload(btl *Battle) *GameSettingsResponse {
 		WarMachineLocation: lt,
 		AbilityDetails:     btl.abilityDetails,
 		ServerTime:         time.Now(),
+		IsAIDrivenMatch:    btl.lobby.IsAiDrivenMatch,
 	}
 }
 

@@ -468,7 +468,7 @@ func main() {
 						stop := make(chan os.Signal)
 						signal.Notify(stop, os.Interrupt)
 						<-stop
-						err := replay.StopAllActiveRecording()
+						err = replay.StopAllActiveRecording()
 						if err != nil {
 							gamelog.L.Error().Err(err).Msg("Failed to stop all active recordings")
 						}
