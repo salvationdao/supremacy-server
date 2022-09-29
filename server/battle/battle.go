@@ -805,6 +805,7 @@ type MechReward struct {
 	OwnerID           string          `json:"owner_id"`
 	RewardedSups      decimal.Decimal `json:"rewarded_sups"`
 	RewardedSupsBonus decimal.Decimal `json:"rewarded_sups_bonus"`
+	IsAFK             bool            `json:"is_afk"`
 }
 
 // RewardBattleMechOwners give reward to war machine owner
@@ -856,13 +857,40 @@ func (btl *Battle) RewardBattleMechOwners(winningFactionOrder []string) {
 		}
 	}
 
+	// reward sups process
 	firstRankSupsRewardRatio := db.GetDecimalWithDefault(db.KeyFirstRankFactionRewardRatio, decimal.NewFromFloat(0.75))
 	secondRankSupsRewardRatio := db.GetDecimalWithDefault(db.KeySecondRankFactionRewardRatio, decimal.NewFromFloat(0.25))
 	thirdRankSupsRewardRatio := db.GetDecimalWithDefault(db.KeyThirdRankFactionRewardRatio, decimal.NewFromFloat(0))
-	bonusSups := db.GetDecimalWithDefault(db.KeyBattleSupsRewardBonus, decimal.New(330, 18))
-
-	// reward sups
 	taxRatio := db.GetDecimalWithDefault(db.KeyBattleRewardTaxRatio, decimal.NewFromFloat(0.025))
+
+	bonusSups := decimal.Zero
+	// check challenge fund balance
+	rewardedMechs, err := boiler.BattleMechs(
+		boiler.BattleMechWhere.BattleID.EQ(btl.ID),
+		qm.Where(fmt.Sprintf(
+			"EXISTS (SELECT 1 FROM %s WHERE %s = %s AND %s = %s AND %s ISNULL )",
+			boiler.TableNames.MechMoveCommandLogs,
+			boiler.MechMoveCommandLogTableColumns.BattleID,
+			boiler.BattleMechTableColumns.BattleID,
+			boiler.MechMoveCommandLogTableColumns.MechID,
+			boiler.BattleMechTableColumns.MechID,
+			boiler.MechMoveCommandLogTableColumns.DeletedAt,
+		)),
+	).All(gamedb.StdConn)
+	if err != nil {
+		gamelog.L.Error().Err(err).Msg("Failed to load battle active mechs.")
+	}
+	if rewardedMechs != nil {
+		// load challenge fund
+		challengeFund := btl.arena.RPCClient.UserBalanceGet(uuid.FromStringOrNil(server.SupremacyChallengeFundUserID))
+		bonus := db.GetDecimalWithDefault(db.KeyBattleSupsRewardBonus, decimal.New(45, 18))
+
+		// set bonus sups, if challenge fund has enough sups to distribute
+		if challengeFund.GreaterThanOrEqual(bonus.Mul(decimal.NewFromInt(int64(len(rewardedMechs))))) {
+			bonusSups = bonus
+		}
+	}
+
 	for i, factionID := range winningFactionOrder {
 		switch i {
 		case 0: // winning faction
@@ -881,6 +909,7 @@ func (btl *Battle) RewardBattleMechOwners(winningFactionOrder []string) {
 						taxRatio,
 						bq.R.Fee,
 						bonusSups,
+						slices.IndexFunc(rewardedMechs, func(rm *boiler.BattleMech) bool { return rm.MechID == bq.MechID }) == -1, // is AFK
 						false,
 					)
 				}
@@ -901,7 +930,8 @@ func (btl *Battle) RewardBattleMechOwners(winningFactionOrder []string) {
 						totalSups.Mul(secondRankSupsRewardRatio).Div(playerPerFaction[bq.FactionID]),
 						taxRatio,
 						bq.R.Fee,
-						decimal.Zero, // bonus sups
+						bonusSups, // bonus sups
+						slices.IndexFunc(rewardedMechs, func(rm *boiler.BattleMech) bool { return rm.MechID == bq.MechID }) == -1, // is AFK
 						false,
 					)
 				}
@@ -924,7 +954,8 @@ func (btl *Battle) RewardBattleMechOwners(winningFactionOrder []string) {
 						totalSups.Mul(thirdRankSupsRewardRatio).Div(playerPerFaction[bq.FactionID]),
 						taxRatio,
 						bq.R.Fee,
-						decimal.Zero, // bonus sups
+						bonusSups, // bonus sups
+						slices.IndexFunc(rewardedMechs, func(rm *boiler.BattleMech) bool { return rm.MechID == bq.MechID }) == -1, // is AFK
 						true,
 					)
 				}
@@ -941,6 +972,7 @@ func (btl *Battle) RewardMechOwner(
 	taxRatio decimal.Decimal,
 	battleQueueFee *boiler.BattleQueueFee,
 	bonusSups decimal.Decimal,
+	isAFK bool,
 	rewardAbility bool,
 ) {
 	// trigger challenge fund update
@@ -958,7 +990,7 @@ func (btl *Battle) RewardMechOwner(
 
 	updateCols := []string{}
 	// reward bonus
-	if !owner.IsAi && bonusSups.GreaterThan(decimal.Zero) {
+	if !isAFK && !owner.IsAi && bonusSups.GreaterThan(decimal.Zero) {
 		// transfer bonus reward
 		rewardBonusTXID, err := btl.arena.RPCClient.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
 			FromUserID:           uuid.FromStringOrNil(server.SupremacyChallengeFundUserID),
@@ -1091,6 +1123,7 @@ func (btl *Battle) RewardMechOwner(
 			RewardedSups:      pw.RewardedSups,
 			RewardedSupsBonus: pw.RewardedSupsBonus,
 			OwnerID:           owner.ID,
+			IsAFK:             !owner.IsAi && isAFK, // if the owner is not AI, and the mech has no move command issued during the battle
 		})
 	}
 
