@@ -2,7 +2,7 @@ name: Staging Deployment
 
 on:
   push:
-    branches: [staging]
+    branches: [develop]
 
 env:
   GO_VERSION: 1.18.2
