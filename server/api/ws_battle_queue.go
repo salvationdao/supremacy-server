@@ -918,7 +918,33 @@ func (api *API) BattleLobbyListUpdate(ctx context.Context, key string, payload [
 		return err
 	}
 
+
 	reply(resp)
 
+	return nil
+}
+
+
+func (api *API)  NextBattleDetails(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
+	battleLobbyIDs := api.ArenaManager.GetCurrentBattleLobbyIDs()
+	bl, err := db.GetNextBattleLobby(battleLobbyIDs)
+	if err != nil {
+		return err
+	}
+
+	if bl == nil {
+		return nil
+	}
+
+	resp, err := server.BattleLobbiesFromBoiler([]*boiler.BattleLobby{bl})
+	if err != nil {
+		return err
+	}
+
+	if len(resp) != 1 {
+		return fmt.Errorf("unable to retrieve upcoming lobby details")
+	}
+
+	ws.PublishMessage("/public/upcoming_battle", server.HubKeyNextBattleDetails, resp[0])
 	return nil
 }

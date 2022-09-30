@@ -195,6 +195,21 @@ func (am *ArenaManager) AvailableBattleArenas() []*ArenaBrief {
 	return resp
 }
 
+func (am *ArenaManager) GetCurrentBattleLobbyIDs() []string {
+	var battleLobbyIDs []string
+	for _, a := range am.arenas {
+		lobbyID := a.currentLobbyID.Load()
+		if lobbyID == "" || a.Stage.Load() == ArenaStageHijacked || !a.connected.Load() {
+			continue
+		}
+
+		battleLobbyIDs = append(battleLobbyIDs, lobbyID)
+	}
+
+	return battleLobbyIDs
+}
+
+
 func (am *ArenaManager) Serve() {
 	l, err := net.Listen("tcp", am.Addr)
 	if err != nil {
@@ -1589,9 +1604,11 @@ func (arena *Arena) GameClientJsonDataParser() {
 	}
 }
 
+
 // assignBattleLobby assign the next
 // skipLobbyCheck ONLY happen on the battle end
 func (arena *Arena) assignBattleLobby() {
+	L := gamelog.L.With().Str("func", "assignBattleLobby").Str("arena id", arena.ID).Logger()
 	battleLobbyID := arena.currentLobbyID.Load()
 
 	//  check current lobby is valid
@@ -1602,7 +1619,7 @@ func (arena *Arena) assignBattleLobby() {
 			boiler.BattleLobbyWhere.EndedAt.IsNull(),
 		).One(gamedb.StdConn)
 		if err != nil && !errors.Is(err, sql.ErrNoRows) {
-			gamelog.L.Error().Err(err).Msg("Failed to load battle lobby")
+			L.Error().Err(err).Msg("Failed to load battle lobby")
 		}
 
 		// if assigned lobby is valid
@@ -1616,129 +1633,24 @@ func (arena *Arena) assignBattleLobby() {
 	arena.currentLobbyID.Store("")
 
 	// collect active battle lobbies' id
-	var battleLobbyIDs []string
-	for _, a := range arena.Manager.arenas {
-		lobbyID := a.currentLobbyID.Load()
-		if lobbyID == "" || a.Stage.Load() == ArenaStageHijacked || !a.connected.Load() {
-			continue
-		}
+	battleLobbyIDs := arena.Manager.GetCurrentBattleLobbyIDs()
 
-		battleLobbyIDs = append(battleLobbyIDs, lobbyID)
+	L = L.With().Strs("battleLobbyIDs", battleLobbyIDs).Logger()
+
+	// get the next valid battle lobby
+	bl, err := db.GetNextBattleLobby(battleLobbyIDs)
+	if err != nil {
+		L.Error().Err(err).Msg("failed to get .")
 	}
 
-	var excludingPlayerIDs []string
-
-	// load excluding players id, if there are active battle
-	if battleLobbyIDs != nil && len(battleLobbyIDs) > 0 {
-		battleLobbyQuery := ""
-		if battleLobbyIDs != nil && len(battleLobbyIDs) > 0 {
-			battleLobbyQuery += fmt.Sprintf("AND %s IN(", boiler.BattleLobbyColumns.ID)
-			for i, id := range battleLobbyIDs {
-				battleLobbyQuery += "'" + id + "'"
-
-				if i < len(battleLobbyIDs)-1 {
-					battleLobbyQuery += ","
-					continue
-				}
-
-				battleLobbyQuery += ")"
-			}
-		}
-
-		rows, err := boiler.NewQuery(
-			qm.Select(fmt.Sprintf(
-				"DISTINCT(_blm.%s)",
-				boiler.BattleLobbiesMechColumns.OwnerID,
-			)),
-			qm.From(fmt.Sprintf(
-				"(SELECT %s FROM %s WHERE %s NOTNULL AND %s ISNULL AND %s ISNULL %s) _bl",
-				boiler.BattleLobbyColumns.ID,
-				boiler.TableNames.BattleLobbies,
-				boiler.BattleLobbyColumns.ReadyAt,
-				boiler.BattleLobbyColumns.EndedAt,
-				boiler.BattleLobbyColumns.DeletedAt,
-				battleLobbyQuery,
-			)),
-			qm.InnerJoin(fmt.Sprintf(
-				"(SELECT %s, %s FROM %s WHERE %s ISNULL AND %s ISNULL) _blm ON _blm.%s = _bl.%s",
-				boiler.BattleLobbiesMechColumns.BattleLobbyID,
-				boiler.BattleLobbiesMechColumns.OwnerID,
-				boiler.TableNames.BattleLobbiesMechs,
-				boiler.BattleLobbiesMechColumns.RefundTXID,
-				boiler.BattleLobbiesMechColumns.DeletedAt,
-				boiler.BattleLobbiesMechColumns.BattleLobbyID,
-				boiler.BattleLobbyColumns.ID,
-			)),
-		).Query(gamedb.StdConn)
-		if err != nil && !errors.Is(err, sql.ErrNoRows) {
-			gamelog.L.Error().Err(err).Msg("Failed to load battle lobby")
-			return
-		}
-
-		for rows.Next() {
-			playerID := ""
-			err = rows.Scan(&playerID)
-			if err != nil {
-				gamelog.L.Error().Err(err).Msg("Failed to scan existing player id")
-				return
-			}
-
-			excludingPlayerIDs = append(excludingPlayerIDs, playerID)
-		}
-	}
-
-	// build excluding player query
-	excludingPlayerQuery := ""
-	if excludingPlayerIDs != nil && len(excludingPlayerIDs) > 0 {
-		excludingPlayerQuery += fmt.Sprintf("AND %s NOT IN(", boiler.BattleLobbiesMechTableColumns.OwnerID)
-		for i, id := range excludingPlayerIDs {
-			excludingPlayerQuery += "'" + id + "'"
-
-			if i < len(excludingPlayerIDs)-1 {
-				excludingPlayerQuery += ","
-				continue
-			}
-
-			excludingPlayerQuery += ")"
-		}
-	}
-
-	// get next lobby
-	bl, err := boiler.BattleLobbies(
-		qm.Where(fmt.Sprintf(
-			"(SELECT COUNT(%s) FROM %s WHERE %s = %s AND %s NOTNULL AND %s ISNULL AND %s ISNULL AND %s ISNULL %s) = 9",
-			boiler.BattleLobbiesMechTableColumns.ID,
-			boiler.TableNames.BattleLobbiesMechs,
-			boiler.BattleLobbiesMechTableColumns.BattleLobbyID,
-			boiler.BattleLobbyTableColumns.ID,
-			boiler.BattleLobbiesMechTableColumns.LockedAt,
-			boiler.BattleLobbiesMechTableColumns.EndedAt,
-			boiler.BattleLobbiesMechTableColumns.RefundTXID,
-			boiler.BattleLobbiesMechTableColumns.DeletedAt,
-			excludingPlayerQuery,
-		)),
-		boiler.BattleLobbyWhere.ReadyAt.IsNotNull(),
-		qm.Where(fmt.Sprintf(
-			"(%[1]s ISNULL OR %[1]s <= NOW())",
-			boiler.BattleLobbyTableColumns.WillNotStartUntil,
-		)),
-		qm.OrderBy(fmt.Sprintf(
-			"%s NULLS LAST, %s",
-			boiler.BattleLobbyTableColumns.WillNotStartUntil,
-			boiler.BattleLobbyTableColumns.ReadyAt,
-		)),
-	).One(gamedb.StdConn)
-	if err != nil && !errors.Is(err, sql.ErrNoRows) {
-		gamelog.L.Error().Err(err).Msg("Failed to load battle lobby")
-		return
-	}
+	L = L.With().Interface("bl", bl).Logger()
 
 	// if no available lobby
 	if bl == nil {
-		gamelog.L.Debug().Str("battle arena id", arena.ID).Msg("no lobby is available")
+		L.Debug().Str("battle arena id", arena.ID).Msg("no lobby is available")
 		bl, err = GenerateAIDrivenBattle()
 		if err != nil {
-			gamelog.L.Error().Err(err).Msg("Failed to generate AI driven match.")
+			L.Error().Err(err).Msg("Failed to generate AI driven match.")
 			return
 		}
 	}
@@ -1746,6 +1658,30 @@ func (arena *Arena) assignBattleLobby() {
 	// assign battle lobby
 	arena.currentLobbyID.Store(bl.ID)
 	arena.Stage.Store(ArenaStageProcessing)
+
+	//broadcast next lobby
+	go func(){
+		battleLobbyIDs := arena.Manager.GetCurrentBattleLobbyIDs()
+		bl, err := db.GetNextBattleLobby(battleLobbyIDs)
+		if err != nil {
+			return
+		}
+
+		if bl == nil {
+			return 
+		}
+
+		resp, err := server.BattleLobbiesFromBoiler([]*boiler.BattleLobby{bl})
+		if err != nil {
+			return
+		}
+
+		if len(resp) != 1 {
+			return
+		}
+
+		ws.PublishMessage("/public/upcoming_battle", server.HubKeyNextBattleDetails, resp[0])
+	}()
 }
 
 func (arena *Arena) BeginBattle() {
