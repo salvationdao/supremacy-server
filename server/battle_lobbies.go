@@ -31,6 +31,16 @@ type BattleLobbiesMech struct {
 
 	IsDestroyed bool           `json:"is_destroyed"`
 	Owner       *boiler.Player `json:"owner"`
+	WeaponSlots []*WeaponSlot  `json:"weapon_slots"`
+}
+
+type WeaponSlot struct {
+	MechID          string  `json:"mech_id"`
+	WeaponID        string  `json:"weapon_id"`
+	SlotNumber      int     `json:"slot_number"`
+	AllowMelee      bool    `json:"allow_melee"`
+	IsSkinInherited bool    `json:"is_skin_inherited"`
+	Weapon          *Weapon `json:"weapon"`
 }
 
 func BattleLobbiesFromBoiler(bls []*boiler.BattleLobby) ([]*BattleLobby, error) {
@@ -205,6 +215,8 @@ func BattleLobbiesFromBoiler(bls []*boiler.BattleLobby) ([]*BattleLobby, error) 
 		return nil, terror.Error(err, "Failed to load battle mechs")
 	}
 
+	impactedMechIDs := []string{}
+	blms := []*BattleLobbiesMech{}
 	for rows.Next() {
 		blm := &BattleLobbiesMech{
 			Owner: &boiler.Player{},
@@ -227,17 +239,117 @@ func BattleLobbiesFromBoiler(bls []*boiler.BattleLobby) ([]*BattleLobby, error) 
 			return nil, terror.Error(err, "Failed to scan battle lobby mech")
 		}
 
-		// append mech to battle lobby
-		for _, bl := range resp {
+		if slices.Index(impactedMechIDs, blm.MechID) == -1 {
+			impactedMechIDs = append(impactedMechIDs, blm.MechID)
+		}
+
+		// set is destroyed flag
+		blm.IsDestroyed = slices.Index(destroyedMechIDs, blm.MechID) != -1
+
+		blms = append(blms, blm)
+	}
+
+	// fill up mech weapon slots
+	if len(impactedMechIDs) > 0 {
+		impactedMechWhereInClause := fmt.Sprintf("WHERE %s IN (", boiler.MechWeaponTableColumns.ChassisID)
+		for i, mechID := range impactedMechIDs {
+			impactedMechWhereInClause += "'" + mechID + "'"
+
+			if i < len(impactedMechIDs)-1 {
+				impactedMechWhereInClause += ","
+				continue
+			}
+
+			impactedMechWhereInClause += ")"
+		}
+
+		queries = []qm.QueryMod{
+			qm.Select(
+				boiler.MechWeaponTableColumns.ChassisID,
+				boiler.MechWeaponTableColumns.WeaponID,
+				boiler.MechWeaponTableColumns.SlotNumber,
+				boiler.MechWeaponTableColumns.AllowMelee,
+				boiler.MechWeaponTableColumns.IsSkinInherited,
+				fmt.Sprintf("TO_JSON(%s)", boiler.TableNames.Weapons),
+			),
+			qm.From(fmt.Sprintf(
+				"(SELECT %s, %s, %s, %s, %s FROM %s %s) %s",
+				boiler.MechWeaponTableColumns.ChassisID,
+				boiler.MechWeaponTableColumns.WeaponID,
+				boiler.MechWeaponTableColumns.SlotNumber,
+				boiler.MechWeaponTableColumns.AllowMelee,
+				boiler.MechWeaponTableColumns.IsSkinInherited,
+				boiler.TableNames.MechWeapons,
+				impactedMechWhereInClause,
+				boiler.TableNames.MechWeapons,
+			)),
+
+			qm.LeftOuterJoin(fmt.Sprintf(
+				`(SELECT 
+							%[1]s AS weapon_id, 
+							%[2]s.*, 
+							%[3]s.*,
+							%[13]s.*
+					FROM %[4]s
+					INNER JOIN %[5]s ON %[6]s = %[7]s
+					INNER JOIN %[8]s ON %[1]s = %[9]s
+					INNER JOIN %[3]s ON %[10]s = %[11]s
+					INNER JOIN %[13]s ON %[14]s = %[6]s
+				) %[4]s ON %[4]s.weapon_id = %[12]s`,
+				boiler.WeaponTableColumns.ID,                                  // 1
+				boiler.TableNames.BlueprintWeapons,                            // 2
+				boiler.TableNames.BlueprintWeaponSkin,                         // 3
+				boiler.TableNames.Weapons,                                     // 4
+				boiler.TableNames.BlueprintWeapons,                            // 5
+				boiler.WeaponTableColumns.BlueprintID,                         // 6
+				boiler.BlueprintWeaponTableColumns.ID,                         // 7
+				boiler.TableNames.WeaponSkin,                                  // 8
+				boiler.WeaponSkinTableColumns.EquippedOn,                      // 9
+				boiler.BlueprintWeaponSkinTableColumns.ID,                     // 10
+				boiler.WeaponSkinTableColumns.BlueprintID,                     // 11
+				boiler.MechWeaponTableColumns.WeaponID,                        // 12
+				boiler.TableNames.WeaponModelSkinCompatibilities,              // 13
+				boiler.WeaponModelSkinCompatibilityTableColumns.WeaponModelID, // 14
+			)),
+
+			qm.OrderBy(boiler.MechWeaponTableColumns.SlotNumber),
+		}
+
+		rows, err = boiler.NewQuery(queries...).Query(gamedb.StdConn)
+		if err != nil {
+			gamelog.L.Error().Err(err).Msg("Failed to load mech weapon slots")
+			return nil, terror.Error(err, "Failed to load mech weapon slots.")
+		}
+
+		for rows.Next() {
+			weaponSlot := &WeaponSlot{}
+			var weapon *Weapon
+			err = rows.Scan(&weaponSlot.MechID, &weaponSlot.WeaponID, &weaponSlot.SlotNumber, &weaponSlot.AllowMelee, &weaponSlot.IsSkinInherited, &weapon)
+			if err != nil {
+				gamelog.L.Error().Err(err).Msg("Failed to scan mech weapon slots.")
+				return nil, terror.Error(err, "Failed to scan mech weapon slots.")
+			}
+
+			weaponSlot.Weapon = weapon
+
+			for _, blm := range blms {
+				if weaponSlot.MechID != blm.MechID {
+					continue
+				}
+
+				blm.WeaponSlots = append(blm.WeaponSlots, weaponSlot)
+			}
+		}
+	}
+
+	// fill mech in to lobby
+	for _, bl := range resp {
+		for _, blm := range blms {
 			if bl.ID != blm.BattleLobbyID {
 				continue
 			}
 
-			// set is destroyed flag
-			blm.IsDestroyed = slices.Index(destroyedMechIDs, blm.MechID) != -1
-
 			bl.BattleLobbiesMechs = append(bl.BattleLobbiesMechs, blm)
-			break
 		}
 	}
 

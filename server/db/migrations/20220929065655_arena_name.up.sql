@@ -1,0 +1,2 @@
+ALTER TABLE battle_lobbies
+    ADD COLUMN IF NOT EXISTS name TEXT NOT NULL DEFAULT '';
