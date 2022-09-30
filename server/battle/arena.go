@@ -61,6 +61,7 @@ type ArenaManager struct {
 	SystemMessagingManager   *system_messages.SystemMessagingManager
 	RepairFuncMx             deadlock.Mutex
 	BattleQueueFuncMx        deadlock.Mutex
+	MechStakeMx              deadlock.Mutex // IMPORTANT: never lock MechStakeMx before BattleQueueFuncMx
 	QuestManager             *quest.System
 
 	arenas           map[string]*Arena
@@ -383,7 +384,7 @@ func (am *ArenaManager) NewArena(battleArena *boiler.BattleArena, wsConn *websoc
 	arena := &Arena{
 		BattleArena:            battleArena,
 		currentLobbyID:         atomic.NewString(""),
-		Name:                   helpers.GenerateStupidArenaName(),
+		Name:                   helpers.GenerateAdjectiveName(),
 		Stage:                  atomic.NewString(ArenaStageIdle),
 		socket:                 wsConn,
 		connected:              atomic.NewBool(true),

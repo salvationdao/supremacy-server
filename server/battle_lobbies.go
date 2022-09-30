@@ -36,12 +36,12 @@ type BattleLobbiesMech struct {
 }
 
 type WeaponSlot struct {
-	MechID          string  `json:"mech_id"`
-	WeaponID        string  `json:"weapon_id"`
-	SlotNumber      int     `json:"slot_number"`
-	AllowMelee      bool    `json:"allow_melee"`
-	IsSkinInherited bool    `json:"is_skin_inherited"`
-	Weapon          *Weapon `json:"weapon"`
+	MechID          string      `json:"mech_id"`
+	WeaponID        null.String `json:"weapon_id"`
+	SlotNumber      int         `json:"slot_number"`
+	AllowMelee      bool        `json:"allow_melee"`
+	IsSkinInherited bool        `json:"is_skin_inherited"`
+	Weapon          *Weapon     `json:"weapon"`
 }
 
 func BattleLobbiesFromBoiler(bls []*boiler.BattleLobby) ([]*BattleLobby, error) {

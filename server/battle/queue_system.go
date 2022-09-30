@@ -14,6 +14,7 @@ import (
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
+	"server/helpers"
 	"time"
 )
 
@@ -143,6 +144,7 @@ func (am *ArenaManager) DefaultPublicLobbiesCheck() error {
 	// fill up battle lobbies
 	for i := 0; i < publicLobbiesCount-count; i++ {
 		bl := &boiler.BattleLobby{
+			Name:                  helpers.GenerateAdjectiveName(),
 			HostByID:              server.SupremacyBattleUserID,
 			EntryFee:              decimal.Zero, // free to join
 			FirstFactionCut:       decimal.NewFromFloat(0.75),
