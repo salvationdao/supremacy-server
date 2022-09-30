@@ -27,6 +27,7 @@ type Player struct {
 	Rank             string          `json:"rank"`
 	SentMessageCount int             `json:"sent_message_count"`
 	SyndicateID      null.String     `json:"syndicate_id"`
+	AcceptsMarketing null.Bool       `json:"accepts_marketing"`
 
 	Stat      *boiler.PlayerStat `json:"stat"`
 	Syndicate *boiler.Syndicate  `json:"syndicate"`
@@ -76,6 +77,7 @@ func PlayerFromBoiler(player *boiler.Player, features ...boiler.FeatureSlice) *P
 		SentMessageCount: player.SentMessageCount,
 		SyndicateID:      player.SyndicateID,
 		Features:         serverFeatures,
+		AcceptsMarketing: player.AcceptsMarketing,
 	}
 
 	if player.R != nil {
@@ -128,4 +130,9 @@ type QuestStat struct {
 	Description   string    `db:"description" json:"description"`
 	RequestAmount int       `db:"request_amount" json:"request_amount"`
 	Obtained      bool      `db:"obtained" json:"obtained"`
+}
+
+type PlayerQueueStatus struct {
+	TotalQueued int `json:"total_queued"`
+	QueueLimit  int `json:"queue_limit"`
 }

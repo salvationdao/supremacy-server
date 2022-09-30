@@ -78,12 +78,6 @@ const (
 	AbilityTriggerTypePLAYER_ABILITY = "PLAYER_ABILITY"
 )
 
-// Enum values for ArenaTypeEnum
-const (
-	ArenaTypeEnumSTORY      = "STORY"
-	ArenaTypeEnumEXPEDITION = "EXPEDITION"
-)
-
 // Enum values for BattleEvent
 const (
 	BattleEventKilled           = "killed"

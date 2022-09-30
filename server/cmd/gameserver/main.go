@@ -712,7 +712,7 @@ func UpdateKeycard(api *api.API, pp *xsyn_rpcclient.XsynXrpcClient, filePath str
 				factionID = uuid.Must(uuid.FromString(resp.FactionID.String))
 			}
 
-			err = api.UpsertPlayer(resp.UserID, null.StringFrom(resp.Username), resp.PublicAddress, null.StringFrom(factionID.String()), nil)
+			err = api.UpsertPlayer(resp.UserID, null.StringFrom(resp.Username), resp.PublicAddress, null.StringFrom(factionID.String()), nil, null.Bool{})
 			if err != nil {
 				gamelog.L.Error().Err(err).Str("public_address", keycardAssets.PublicAddress).Str("factionID", factionID.String()).Str("resp.Username", resp.Username).Str("resp.UserID", resp.UserID).Msg("failed to register player")
 			}

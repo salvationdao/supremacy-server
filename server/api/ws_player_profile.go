@@ -175,7 +175,7 @@ type LayersResponse struct {
 	Total  int64    `json:"total"`
 }
 
-func (pac *PlayerController) PlayerProfileAvatarLayersListHandler(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
+func (pc *PlayerController) PlayerProfileAvatarLayersListHandler(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
 	req := &PlayerProfileAvatarLayersRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
@@ -229,7 +229,7 @@ type PlayerProfileCustomAvatarRequest struct {
 
 const HubKeyPlayerProfileCustomAvatarCreate = "PLAYER:PROFILE:CUSTOM_AVATAR:CREATE"
 
-func (pac *PlayerController) PlayerProfileCustomAvatarCreate(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
+func (pc *PlayerController) PlayerProfileCustomAvatarCreate(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
 	req := &PlayerProfileCustomAvatarRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
@@ -257,7 +257,7 @@ func (pac *PlayerController) PlayerProfileCustomAvatarCreate(ctx context.Context
 
 const HubKeyPlayerProfileCustomAvatarUpdate = "PLAYER:PROFILE:CUSTOM_AVATAR:UPDATE"
 
-func (pac *PlayerController) PlayerProfileCustomAvatarUpdate(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
+func (pc *PlayerController) PlayerProfileCustomAvatarUpdate(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
 	req := &PlayerProfileCustomAvatarRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
@@ -289,7 +289,7 @@ type PlayerCustomAvatarDeleteRequest struct {
 	} `json:"payload,omitempty"`
 }
 
-func (pac *PlayerController) PlayerProfileCustomAvatarDelete(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
+func (pc *PlayerController) PlayerProfileCustomAvatarDelete(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
 	req := &PlayerCustomAvatarDeleteRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
