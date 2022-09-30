@@ -462,10 +462,10 @@ func (btl *Battle) handleBattleEnd(payload *BattleEndPayload) {
 
 	newLobbyID := btl.arena.currentLobbyID.Load()
 
-	// broadcast lobby changes
-	go BroadcastBattleLobbyUpdate(oldLobbyID, newLobbyID)
-
 	btl.arena.Manager.Unlock()
+
+	// broadcast lobby changes
+	btl.arena.Manager.BattleLobbyDebounceBroadcastChan <- []string{oldLobbyID, newLobbyID}
 
 	// start the
 

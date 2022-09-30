@@ -31,6 +31,7 @@ type BattleLobbiesMech struct {
 
 	IsDestroyed bool           `json:"is_destroyed"`
 	Owner       *boiler.Player `json:"owner"`
+	FactionID   null.String    `json:"faction_id"`
 	WeaponSlots []*WeaponSlot  `json:"weapon_slots"`
 }
 
@@ -354,4 +355,49 @@ func BattleLobbiesFromBoiler(bls []*boiler.BattleLobby) ([]*BattleLobby, error) 
 	}
 
 	return resp, nil
+}
+
+// BattleLobbiesFactionFilter omit the mech owner and weapon slots of other faction mechs
+func BattleLobbiesFactionFilter(bls []*BattleLobby, keepDataForFactionID string) []*BattleLobby {
+	// generate a new struct
+	battleLobbies := []*BattleLobby{}
+
+	for _, bl := range bls {
+
+		// copy lobby data
+		battleLobby := &BattleLobby{
+			BattleLobby:        bl.BattleLobby,
+			HostBy:             bl.HostBy,
+			GameMap:            bl.GameMap,
+			BattleLobbiesMechs: []*BattleLobbiesMech{},
+			IsPrivate:          bl.IsPrivate,
+		}
+
+		for _, blm := range bl.BattleLobbiesMechs {
+			battleLobbyMech := &BattleLobbiesMech{
+				MechID:        blm.MechID,
+				BattleLobbyID: blm.BattleLobbyID,
+				AvatarURL:     blm.AvatarURL,
+				Name:          blm.Name,
+				Label:         blm.Label,
+				Tier:          blm.Tier,
+				IsDestroyed:   blm.IsDestroyed,
+				FactionID:     blm.Owner.FactionID,
+			}
+
+			if blm.Owner != nil && blm.Owner.FactionID.String == keepDataForFactionID {
+				// copy owner detail
+				battleLobbyMech.Owner = blm.Owner
+
+				// copy weapon slots
+				battleLobbyMech.WeaponSlots = blm.WeaponSlots
+			}
+
+			battleLobby.BattleLobbiesMechs = append(battleLobby.BattleLobbiesMechs, battleLobbyMech)
+		}
+
+		battleLobbies = append(battleLobbies, battleLobby)
+	}
+
+	return battleLobbies
 }

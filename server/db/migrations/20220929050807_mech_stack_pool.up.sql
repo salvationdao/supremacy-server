@@ -7,6 +7,7 @@ CREATE TABLE IF NOT EXISTS staked_mechs
 );
 
 -- store the record of the staked mechs joining in a battle
+-- this will only log, when on battle end
 CREATE TABLE stacked_mech_battle_logs
 (
     id             UUID PRIMARY KEY     DEFAULT gen_random_uuid(),
@@ -21,3 +22,6 @@ CREATE TABLE stacked_mech_battle_logs
 
 CREATE INDEX IF NOT EXISTS idx_staked_mech_battle_log_created_at_desc ON stacked_mech_battle_logs(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_staked_mech_battle_log_mech_search ON stacked_mech_battle_logs(staked_mech_id);
+
+ALTER TABLE battle_lobbies
+    ADD COLUMN IF NOT EXISTS name TEXT NOT NULL DEFAULT '';

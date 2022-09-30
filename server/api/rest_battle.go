@@ -10,7 +10,6 @@ import (
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 	"net/http"
 	"server"
-	"server/battle"
 	"server/db"
 	"server/db/boiler"
 	"server/gamedb"
@@ -213,7 +212,7 @@ func (api *API) FillUpIncompleteLobbies(w http.ResponseWriter, r *http.Request) 
 		}
 
 		if impactedLobbyIDs != nil {
-			go battle.BroadcastBattleLobbyUpdate(impactedLobbyIDs...)
+			api.ArenaManager.BattleLobbyDebounceBroadcastChan <- impactedLobbyIDs
 		}
 		return nil
 	})

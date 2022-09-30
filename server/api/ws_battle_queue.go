@@ -230,7 +230,7 @@ func (api *API) BattleLobbyCreate(ctx context.Context, user *boiler.Player, fact
 		}
 
 		// broadcast lobby
-		go battle.BroadcastBattleLobbyUpdate(bl.ID)
+		api.ArenaManager.BattleLobbyDebounceBroadcastChan <- []string{bl.ID}
 
 		go battle.BroadcastMechQueueStatus(user.ID, deployedMechIDs...)
 
@@ -545,7 +545,7 @@ func (api *API) BattleLobbyJoin(ctx context.Context, user *boiler.Player, factio
 		}(bl, deployedMechIDs, battleLobbyMechs)
 
 		// broadcast battle lobby
-		go battle.BroadcastBattleLobbyUpdate(affectedLobbyIDs...)
+		api.ArenaManager.BattleLobbyDebounceBroadcastChan <- affectedLobbyIDs
 
 		// broadcast player queue status
 		go battle.BroadcastPlayerQueueStatus(user.ID)
@@ -818,7 +818,7 @@ func (api *API) BattleLobbyLeave(ctx context.Context, user *boiler.Player, facti
 			}
 		}
 
-		go battle.BroadcastBattleLobbyUpdate(lobbyIDs...)
+		api.ArenaManager.BattleLobbyDebounceBroadcastChan <- lobbyIDs
 
 		// restart repair case
 		go func() {
@@ -901,7 +901,7 @@ func (api *API) BattleETASubscribeHandler(ctx context.Context, key string, paylo
 	return nil
 }
 
-func (api *API) BattleLobbyListUpdate(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
+func (api *API) BattleLobbyListUpdate(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
 	// return all the unfinished lobbies
 	bls, err := boiler.BattleLobbies(
 		boiler.BattleLobbyWhere.EndedAt.IsNull(),
@@ -918,7 +918,7 @@ func (api *API) BattleLobbyListUpdate(ctx context.Context, key string, payload [
 		return err
 	}
 
-	reply(resp)
+	reply(server.BattleLobbiesFactionFilter(resp, factionID))
 
 	return nil
 }

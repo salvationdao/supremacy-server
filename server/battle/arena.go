@@ -66,8 +66,9 @@ type ArenaManager struct {
 	arenas           map[string]*Arena
 	deadlock.RWMutex // lock for arena
 
-	ChallengeFundUpdateChan chan bool
-	LobbyFuncMx             *deadlock.Mutex
+	ChallengeFundUpdateChan          chan bool
+	BattleLobbyDebounceBroadcastChan chan []string
+	LobbyFuncMx                      *deadlock.Mutex
 }
 
 type Opts struct {
@@ -95,8 +96,9 @@ func NewArenaManager(opts *Opts) (*ArenaManager, error) {
 		QuestManager:             opts.QuestManager,
 		arenas:                   make(map[string]*Arena),
 
-		ChallengeFundUpdateChan: make(chan bool),
-		LobbyFuncMx:             &deadlock.Mutex{},
+		ChallengeFundUpdateChan:          make(chan bool),
+		BattleLobbyDebounceBroadcastChan: make(chan []string, 10),
+		LobbyFuncMx:                      &deadlock.Mutex{},
 	}
 
 	am.server = &http.Server{
@@ -127,6 +129,9 @@ func NewArenaManager(opts *Opts) (*ArenaManager, error) {
 
 	// start repair offer cleaner
 	go am.RepairOfferCleaner()
+
+	// start debounce lobby update sender
+	go am.debounceSendBattleLobbiesUpdate()
 
 	return am, nil
 }
@@ -1886,7 +1891,7 @@ func (arena *Arena) BeginBattle() {
 	}
 
 	// broadcast battle lobby change
-	go BroadcastBattleLobbyUpdate(battleLobby.ID)
+	arena.Manager.BattleLobbyDebounceBroadcastChan <- []string{battleLobby.ID}
 
 	btl := &Battle{
 		arena:   arena,
