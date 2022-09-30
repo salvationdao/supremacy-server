@@ -61,7 +61,6 @@ type Battle struct {
 	factions               map[uuid.UUID]*boiler.Faction
 	rpcClient              *xsyn_rpcclient.XrpcClient
 	battleMechData         []*db.BattleMechData
-	startedAt              time.Time
 	replaySession          *RecordingSession
 
 	_playerAbilityManager *PlayerAbilityManager
@@ -81,6 +80,9 @@ type Battle struct {
 	// for reword calculation
 	playerBattleCompleteMessage []*PlayerBattleCompleteMessage
 	mechRewards                 []*MechReward
+
+	// for afk checker
+	introEndedAt time.Time
 }
 
 type MechBattleBrief struct {
@@ -891,6 +893,8 @@ func (btl *Battle) RewardBattleMechOwners(winningFactionOrder []string) {
 		}
 	}
 
+	afkMechIDs := btl.AFKChecker()
+
 	for i, factionID := range winningFactionOrder {
 		switch i {
 		case 0: // winning faction
@@ -909,7 +913,7 @@ func (btl *Battle) RewardBattleMechOwners(winningFactionOrder []string) {
 						taxRatio,
 						bq.R.Fee,
 						bonusSups,
-						slices.IndexFunc(rewardedMechs, func(rm *boiler.BattleMech) bool { return rm.MechID == bq.MechID }) == -1, // is AFK
+						slices.Index(afkMechIDs, bq.MechID) != -1, // if mech is in the afk mech list
 						false,
 					)
 				}
@@ -931,7 +935,7 @@ func (btl *Battle) RewardBattleMechOwners(winningFactionOrder []string) {
 						taxRatio,
 						bq.R.Fee,
 						bonusSups, // bonus sups
-						slices.IndexFunc(rewardedMechs, func(rm *boiler.BattleMech) bool { return rm.MechID == bq.MechID }) == -1, // is AFK
+						slices.Index(afkMechIDs, bq.MechID) != -1, // if mech is in the afk mech list
 						false,
 					)
 				}
@@ -955,13 +959,88 @@ func (btl *Battle) RewardBattleMechOwners(winningFactionOrder []string) {
 						taxRatio,
 						bq.R.Fee,
 						bonusSups, // bonus sups
-						slices.IndexFunc(rewardedMechs, func(rm *boiler.BattleMech) bool { return rm.MechID == bq.MechID }) == -1, // is AFK
+						slices.Index(afkMechIDs, bq.MechID) != -1, // if mech is in the afk mech list
 						true,
 					)
 				}
 			}
 		}
 	}
+}
+
+func (btl *Battle) AFKChecker() []string {
+	averageMoveCommandsPerThirtySeconds := db.GetDecimalWithDefault(db.KeyAverageMechMoveCommandsPerThirtySeconds, decimal.NewFromFloat(2.5))
+	atLeastOneMechMoveCommandsInXSeconds := db.GetDecimalWithDefault(db.KeyAtLeastOneMechMoveCommandsInXSeconds, decimal.NewFromInt(45))
+
+	// get kill record
+	bhs, err := boiler.BattleHistories(
+		boiler.BattleHistoryWhere.BattleID.EQ(btl.ID),
+		boiler.BattleHistoryWhere.EventType.EQ(boiler.BattleEventKilled),
+	).All(gamedb.StdConn)
+	if err != nil {
+		gamelog.L.Error().Err(err).Msg("Failed to load battle histories.")
+		return []string{}
+	}
+
+	// get mech command
+	mcs, err := boiler.MechMoveCommandLogs(
+		boiler.MechMoveCommandLogWhere.BattleID.EQ(btl.ID),
+		qm.OrderBy(boiler.MechMoveCommandLogColumns.CreatedAt),
+	).All(gamedb.StdConn)
+	if err != nil {
+		gamelog.L.Error().Err(err).Msg("Failed to load mech move command.")
+		return []string{}
+	}
+
+	afkMechIDs := []string{}
+	for _, mechID := range btl.warMachineIDs {
+
+		// mech starting and ending time
+		startedTime := btl.introEndedAt
+		endedTime := time.Now()
+
+		// set the end time to mech destroyed time, if the mech does not survive
+		index := slices.IndexFunc(bhs, func(bh *boiler.BattleHistory) bool { return bh.WarMachineOneID == mechID.String() })
+		if index != -1 {
+			endedTime = bhs[index].CreatedAt
+		}
+
+		durationSeconds := decimal.NewFromFloat(endedTime.Sub(startedTime).Seconds())
+
+		averageBase := durationSeconds.Div(decimal.NewFromInt(30)) // total minutes
+
+		// get all the mech related move commands
+		moveCommandTime := []time.Time{}
+		for _, mc := range mcs {
+			if mc.MechID != mechID.String() {
+				continue
+			}
+			moveCommandTime = append(moveCommandTime, mc.CreatedAt)
+		}
+
+		// check average
+		if decimal.NewFromInt(int64(len(moveCommandTime))).Div(averageBase).LessThan(averageMoveCommandsPerThirtySeconds) {
+			afkMechIDs = append(afkMechIDs, mechID.String())
+			continue
+		}
+
+		// check points
+		checkPointCount := durationSeconds.Div(atLeastOneMechMoveCommandsInXSeconds)
+
+		// check minimum commands, (skip the last check point)
+		for i := int64(0); i < checkPointCount.IntPart()-1; i++ {
+			sectionStartTime := startedTime.Add(time.Duration(atLeastOneMechMoveCommandsInXSeconds.Mul(decimal.NewFromInt(i)).IntPart()) * time.Second)
+			sectionEndTime := startedTime.Add(time.Duration(atLeastOneMechMoveCommandsInXSeconds.Mul(decimal.NewFromInt(i+1)).IntPart()) * time.Second)
+
+			// if no move command triggered in the timeframe
+			if slices.IndexFunc(moveCommandTime, func(t time.Time) bool { return t.After(sectionStartTime) && t.Before(sectionEndTime) }) == -1 {
+				afkMechIDs = append(afkMechIDs, mechID.String())
+				break
+			}
+		}
+	}
+
+	return afkMechIDs
 }
 
 func (btl *Battle) RewardMechOwner(
