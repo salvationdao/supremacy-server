@@ -1561,6 +1561,10 @@ func (arena *Arena) GameClientJsonDataParser() {
 			if btl.replaySession.ReplaySession != nil {
 				btl.replaySession.ReplaySession.IntroEndedAt = null.TimeFrom(time.Now())
 			}
+
+			// record into finished time for tracking AFK
+			btl.introEndedAt = time.Now()
+
 			btl.start()
 		case "BATTLE:WAR_MACHINE_DESTROYED":
 			// do not process, if battle already ended
