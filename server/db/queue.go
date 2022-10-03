@@ -12,7 +12,6 @@ import (
 	"time"
 
 	"github.com/shopspring/decimal"
-	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 
 	"github.com/friendsofgo/errors"
@@ -49,7 +48,6 @@ func GetCollectionItemStatus(collectionItem boiler.CollectionItem) (*server.Mech
 		boiler.BattleLobbiesMechWhere.MechID.EQ(mechID),
 		boiler.BattleLobbiesMechWhere.EndedAt.IsNull(),
 		boiler.BattleLobbiesMechWhere.RefundTXID.IsNull(),
-		qm.Load(boiler.BattleLobbiesMechRels.BattleLobby),
 	).One(gamedb.StdConn)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		l.Error().Err(err).Msg("Failed to load the battle lobby of the mech.")
@@ -59,33 +57,14 @@ func GetCollectionItemStatus(collectionItem boiler.CollectionItem) (*server.Mech
 	// if in battle lobby
 	if battleLobbyMech != nil {
 		mai := &server.MechArenaInfo{
-			Status:    server.MechArenaStatusQueue,
-			CanDeploy: false,
-		}
-
-		if battleLobbyMech.R != nil && battleLobbyMech.R.BattleLobby != nil {
-			mai.BattleLobbyNumber = null.IntFrom(battleLobbyMech.R.BattleLobby.Number)
+			Status:              server.MechArenaStatusQueue,
+			CanDeploy:           false,
+			BattleLobbyIsLocked: battleLobbyMech.LockedAt.Valid,
 		}
 
 		// if in battle
 		if battleLobbyMech.AssignedToBattleID.Valid {
 			mai.Status = server.MechArenaStatusBattle
-
-			// if battle lobby is ready but haven't started
-		} else if battleLobbyMech.LockedAt.Valid {
-			// load battle lobby position
-			battleLobbies, err := boiler.BattleLobbies(
-				boiler.BattleLobbyWhere.ReadyAt.LTE(battleLobbyMech.LockedAt),
-				boiler.BattleLobbyWhere.AssignedToBattleID.IsNull(),
-				boiler.BattleLobbyWhere.EndedAt.IsNull(),
-			).All(gamedb.StdConn)
-			if err != nil {
-				return nil, terror.Error(err, "Failed to load battle lobby position")
-			}
-
-			if battleLobbies != nil {
-				mai.BattleLobbyQueuePosition = null.IntFrom(len(battleLobbies))
-			}
 		}
 
 		return mai, nil

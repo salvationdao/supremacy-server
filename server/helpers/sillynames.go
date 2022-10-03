@@ -38,7 +38,7 @@ func GenerateStupidName() string {
 	return noun1 + adjective + " " + noun2
 }
 
-func GenerateStupidArenaName() string {
+func GenerateAdjectiveName() string {
 	rand.Seed(time.Now().UnixNano())
 	noun1 := uppercaseFirstLetter(randomNoun())
 	adjective := lowercaseFirstLetter(randomAdjective())

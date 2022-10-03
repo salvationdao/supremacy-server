@@ -44,6 +44,7 @@ type BattleLobby struct {
 	CreatedAt             time.Time       `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
 	UpdatedAt             time.Time       `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
 	DeletedAt             null.Time       `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
+	Name                  string          `boiler:"name" boil:"name" json:"name" toml:"name" yaml:"name"`
 
 	R *battleLobbyR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L battleLobbyL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -70,6 +71,7 @@ var BattleLobbyColumns = struct {
 	CreatedAt             string
 	UpdatedAt             string
 	DeletedAt             string
+	Name                  string
 }{
 	ID:                    "id",
 	HostByID:              "host_by_id",
@@ -91,6 +93,7 @@ var BattleLobbyColumns = struct {
 	CreatedAt:             "created_at",
 	UpdatedAt:             "updated_at",
 	DeletedAt:             "deleted_at",
+	Name:                  "name",
 }
 
 var BattleLobbyTableColumns = struct {
@@ -114,6 +117,7 @@ var BattleLobbyTableColumns = struct {
 	CreatedAt             string
 	UpdatedAt             string
 	DeletedAt             string
+	Name                  string
 }{
 	ID:                    "battle_lobbies.id",
 	HostByID:              "battle_lobbies.host_by_id",
@@ -135,6 +139,7 @@ var BattleLobbyTableColumns = struct {
 	CreatedAt:             "battle_lobbies.created_at",
 	UpdatedAt:             "battle_lobbies.updated_at",
 	DeletedAt:             "battle_lobbies.deleted_at",
+	Name:                  "battle_lobbies.name",
 }
 
 // Generated where
@@ -160,6 +165,7 @@ var BattleLobbyWhere = struct {
 	CreatedAt             whereHelpertime_Time
 	UpdatedAt             whereHelpertime_Time
 	DeletedAt             whereHelpernull_Time
+	Name                  whereHelperstring
 }{
 	ID:                    whereHelperstring{field: "\"battle_lobbies\".\"id\""},
 	HostByID:              whereHelperstring{field: "\"battle_lobbies\".\"host_by_id\""},
@@ -181,6 +187,7 @@ var BattleLobbyWhere = struct {
 	CreatedAt:             whereHelpertime_Time{field: "\"battle_lobbies\".\"created_at\""},
 	UpdatedAt:             whereHelpertime_Time{field: "\"battle_lobbies\".\"updated_at\""},
 	DeletedAt:             whereHelpernull_Time{field: "\"battle_lobbies\".\"deleted_at\""},
+	Name:                  whereHelperstring{field: "\"battle_lobbies\".\"name\""},
 }
 
 // BattleLobbyRels is where relationship names are stored.
@@ -216,9 +223,9 @@ func (*battleLobbyR) NewStruct() *battleLobbyR {
 type battleLobbyL struct{}
 
 var (
-	battleLobbyAllColumns            = []string{"id", "host_by_id", "number", "entry_fee", "first_faction_cut", "second_faction_cut", "third_faction_cut", "each_faction_mech_amount", "game_map_id", "generated_by_system", "password", "will_not_start_until", "ready_at", "assigned_to_battle_id", "ended_at", "assigned_to_arena_id", "is_ai_driven_match", "created_at", "updated_at", "deleted_at"}
+	battleLobbyAllColumns            = []string{"id", "host_by_id", "number", "entry_fee", "first_faction_cut", "second_faction_cut", "third_faction_cut", "each_faction_mech_amount", "game_map_id", "generated_by_system", "password", "will_not_start_until", "ready_at", "assigned_to_battle_id", "ended_at", "assigned_to_arena_id", "is_ai_driven_match", "created_at", "updated_at", "deleted_at", "name"}
 	battleLobbyColumnsWithoutDefault = []string{"host_by_id"}
-	battleLobbyColumnsWithDefault    = []string{"id", "number", "entry_fee", "first_faction_cut", "second_faction_cut", "third_faction_cut", "each_faction_mech_amount", "game_map_id", "generated_by_system", "password", "will_not_start_until", "ready_at", "assigned_to_battle_id", "ended_at", "assigned_to_arena_id", "is_ai_driven_match", "created_at", "updated_at", "deleted_at"}
+	battleLobbyColumnsWithDefault    = []string{"id", "number", "entry_fee", "first_faction_cut", "second_faction_cut", "third_faction_cut", "each_faction_mech_amount", "game_map_id", "generated_by_system", "password", "will_not_start_until", "ready_at", "assigned_to_battle_id", "ended_at", "assigned_to_arena_id", "is_ai_driven_match", "created_at", "updated_at", "deleted_at", "name"}
 	battleLobbyPrimaryKeyColumns     = []string{"id"}
 	battleLobbyGeneratedColumns      = []string{}
 )
