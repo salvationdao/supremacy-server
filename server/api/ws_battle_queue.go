@@ -512,38 +512,12 @@ func (api *API) BattleLobbyJoin(ctx context.Context, user *boiler.Player, factio
 				BattleLobbyIsLocked: battleLobby.ReadyAt.Valid,
 			}
 
-			// only broadcast queue status change for deployed mechs, if battle lobby is not ready
-			if !battleLobby.ReadyAt.Valid {
-				for _, mechID := range currentDeployedMechIDs {
-					// update mech queue status
-					ws.PublishMessage(fmt.Sprintf("/faction/%s/queue/%s", factionID, mechID), server.HubKeyPlayerAssetMechQueueSubscribe, mai)
-				}
-
-				return
-			}
-
-			// otherwise, get battle lobby queue position
-			battleLobbies, err := boiler.BattleLobbies(
-				boiler.BattleLobbyWhere.ReadyAt.LTE(bl.ReadyAt),
-				boiler.BattleLobbyWhere.AssignedToBattleID.IsNull(),
-				boiler.BattleLobbyWhere.EndedAt.IsNull(),
-			).All(gamedb.StdConn)
-			if err != nil {
-				gamelog.L.Error().Err(err).Msg("Failed to load battle lobby queue position")
-				return
-			}
-
-			// in case, race condition
-			if battleLobbies == nil {
-				return
-			}
-
-			// set battle lobby queue position
-			mai.BattleLobbyQueuePosition = null.IntFrom(len(battleLobbies))
-			// broadcast status change for all the lobby mechs
+			// update mech queue status
 			for _, blm := range allLobbyMechs {
-				// update mech queue status
-				ws.PublishMessage(fmt.Sprintf("/faction/%s/queue/%s", blm.FactionID, blm.MechID), server.HubKeyPlayerAssetMechQueueSubscribe, mai)
+				ws.PublishMessage(fmt.Sprintf("/faction/%s/queue/%s", factionID, blm.MechID), server.HubKeyPlayerAssetMechQueueSubscribe, mai)
+			}
+			for _, mechID := range currentDeployedMechIDs {
+				ws.PublishMessage(fmt.Sprintf("/faction/%s/queue/%s", factionID, mechID), server.HubKeyPlayerAssetMechQueueSubscribe, mai)
 			}
 
 		}(bl, deployedMechIDs, battleLobbyMechs)
