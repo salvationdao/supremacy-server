@@ -308,12 +308,9 @@ func NewAbilitiesSystem(battle *Battle) *AbilitiesSystem {
 	}
 	as.isClosed.Store(false)
 
-	btl, ok := as.battle()
-	if ok {
-		for factionID := range btl.factions {
-			as.BattleAbilityPool.LocationDeciders.m[factionID.String()] = []string{}
-		}
-	}
+	as.BattleAbilityPool.LocationDeciders.m[server.RedMountainFactionID] = []string{}
+	as.BattleAbilityPool.LocationDeciders.m[server.BostonCyberneticsFactionID] = []string{}
+	as.BattleAbilityPool.LocationDeciders.m[server.ZaibatsuFactionID] = []string{}
 
 	// init battle ability
 	_, err := as.SetNewBattleAbility(true)

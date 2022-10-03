@@ -189,7 +189,7 @@ var MechRels = struct {
 	IntroAnimation               string
 	OutroAnimation               string
 	PowerCore                    string
-	BattleQueue                  string
+	BattleQueueOld               string
 	MechStat                     string
 	ChassisMechsOld              string
 	OnMechBattleAbilityTriggers  string
@@ -198,9 +198,10 @@ var MechRels = struct {
 	WarMachineTwoBattleHistories string
 	BattleKills                  string
 	KilledBattleKills            string
+	BattleLobbiesMechs           string
 	BattleMechs                  string
 	KilledByBattleMechs          string
-	BattleQueueFees              string
+	BattleQueueFeesOlds          string
 	BattleQueueNotifications     string
 	BattleWins                   string
 	MechAbilityTriggerLogsOlds   string
@@ -220,7 +221,7 @@ var MechRels = struct {
 	IntroAnimation:               "IntroAnimation",
 	OutroAnimation:               "OutroAnimation",
 	PowerCore:                    "PowerCore",
-	BattleQueue:                  "BattleQueue",
+	BattleQueueOld:               "BattleQueueOld",
 	MechStat:                     "MechStat",
 	ChassisMechsOld:              "ChassisMechsOld",
 	OnMechBattleAbilityTriggers:  "OnMechBattleAbilityTriggers",
@@ -229,9 +230,10 @@ var MechRels = struct {
 	WarMachineTwoBattleHistories: "WarMachineTwoBattleHistories",
 	BattleKills:                  "BattleKills",
 	KilledBattleKills:            "KilledBattleKills",
+	BattleLobbiesMechs:           "BattleLobbiesMechs",
 	BattleMechs:                  "BattleMechs",
 	KilledByBattleMechs:          "KilledByBattleMechs",
-	BattleQueueFees:              "BattleQueueFees",
+	BattleQueueFeesOlds:          "BattleQueueFeesOlds",
 	BattleQueueNotifications:     "BattleQueueNotifications",
 	BattleWins:                   "BattleWins",
 	MechAbilityTriggerLogsOlds:   "MechAbilityTriggerLogsOlds",
@@ -254,7 +256,7 @@ type mechR struct {
 	IntroAnimation               *MechAnimation                 `boiler:"IntroAnimation" boil:"IntroAnimation" json:"IntroAnimation" toml:"IntroAnimation" yaml:"IntroAnimation"`
 	OutroAnimation               *MechAnimation                 `boiler:"OutroAnimation" boil:"OutroAnimation" json:"OutroAnimation" toml:"OutroAnimation" yaml:"OutroAnimation"`
 	PowerCore                    *PowerCore                     `boiler:"PowerCore" boil:"PowerCore" json:"PowerCore" toml:"PowerCore" yaml:"PowerCore"`
-	BattleQueue                  *BattleQueue                   `boiler:"BattleQueue" boil:"BattleQueue" json:"BattleQueue" toml:"BattleQueue" yaml:"BattleQueue"`
+	BattleQueueOld               *BattleQueueOld                `boiler:"BattleQueueOld" boil:"BattleQueueOld" json:"BattleQueueOld" toml:"BattleQueueOld" yaml:"BattleQueueOld"`
 	MechStat                     *MechStat                      `boiler:"MechStat" boil:"MechStat" json:"MechStat" toml:"MechStat" yaml:"MechStat"`
 	ChassisMechsOld              *MechsOld                      `boiler:"ChassisMechsOld" boil:"ChassisMechsOld" json:"ChassisMechsOld" toml:"ChassisMechsOld" yaml:"ChassisMechsOld"`
 	OnMechBattleAbilityTriggers  BattleAbilityTriggerSlice      `boiler:"OnMechBattleAbilityTriggers" boil:"OnMechBattleAbilityTriggers" json:"OnMechBattleAbilityTriggers" toml:"OnMechBattleAbilityTriggers" yaml:"OnMechBattleAbilityTriggers"`
@@ -263,9 +265,10 @@ type mechR struct {
 	WarMachineTwoBattleHistories BattleHistorySlice             `boiler:"WarMachineTwoBattleHistories" boil:"WarMachineTwoBattleHistories" json:"WarMachineTwoBattleHistories" toml:"WarMachineTwoBattleHistories" yaml:"WarMachineTwoBattleHistories"`
 	BattleKills                  BattleKillSlice                `boiler:"BattleKills" boil:"BattleKills" json:"BattleKills" toml:"BattleKills" yaml:"BattleKills"`
 	KilledBattleKills            BattleKillSlice                `boiler:"KilledBattleKills" boil:"KilledBattleKills" json:"KilledBattleKills" toml:"KilledBattleKills" yaml:"KilledBattleKills"`
+	BattleLobbiesMechs           BattleLobbiesMechSlice         `boiler:"BattleLobbiesMechs" boil:"BattleLobbiesMechs" json:"BattleLobbiesMechs" toml:"BattleLobbiesMechs" yaml:"BattleLobbiesMechs"`
 	BattleMechs                  BattleMechSlice                `boiler:"BattleMechs" boil:"BattleMechs" json:"BattleMechs" toml:"BattleMechs" yaml:"BattleMechs"`
 	KilledByBattleMechs          BattleMechSlice                `boiler:"KilledByBattleMechs" boil:"KilledByBattleMechs" json:"KilledByBattleMechs" toml:"KilledByBattleMechs" yaml:"KilledByBattleMechs"`
-	BattleQueueFees              BattleQueueFeeSlice            `boiler:"BattleQueueFees" boil:"BattleQueueFees" json:"BattleQueueFees" toml:"BattleQueueFees" yaml:"BattleQueueFees"`
+	BattleQueueFeesOlds          BattleQueueFeesOldSlice        `boiler:"BattleQueueFeesOlds" boil:"BattleQueueFeesOlds" json:"BattleQueueFeesOlds" toml:"BattleQueueFeesOlds" yaml:"BattleQueueFeesOlds"`
 	BattleQueueNotifications     BattleQueueNotificationSlice   `boiler:"BattleQueueNotifications" boil:"BattleQueueNotifications" json:"BattleQueueNotifications" toml:"BattleQueueNotifications" yaml:"BattleQueueNotifications"`
 	BattleWins                   BattleWinSlice                 `boiler:"BattleWins" boil:"BattleWins" json:"BattleWins" toml:"BattleWins" yaml:"BattleWins"`
 	MechAbilityTriggerLogsOlds   MechAbilityTriggerLogsOldSlice `boiler:"MechAbilityTriggerLogsOlds" boil:"MechAbilityTriggerLogsOlds" json:"MechAbilityTriggerLogsOlds" toml:"MechAbilityTriggerLogsOlds" yaml:"MechAbilityTriggerLogsOlds"`
@@ -609,16 +612,16 @@ func (o *Mech) PowerCore(mods ...qm.QueryMod) powerCoreQuery {
 	return query
 }
 
-// BattleQueue pointed to by the foreign key.
-func (o *Mech) BattleQueue(mods ...qm.QueryMod) battleQueueQuery {
+// BattleQueueOld pointed to by the foreign key.
+func (o *Mech) BattleQueueOld(mods ...qm.QueryMod) battleQueueOldQuery {
 	queryMods := []qm.QueryMod{
 		qm.Where("\"mech_id\" = ?", o.ID),
 	}
 
 	queryMods = append(queryMods, mods...)
 
-	query := BattleQueues(queryMods...)
-	queries.SetFrom(query.Query, "\"battle_queue\"")
+	query := BattleQueueOlds(queryMods...)
+	queries.SetFrom(query.Query, "\"battle_queue_old\"")
 
 	return query
 }
@@ -779,6 +782,28 @@ func (o *Mech) KilledBattleKills(mods ...qm.QueryMod) battleKillQuery {
 	return query
 }
 
+// BattleLobbiesMechs retrieves all the battle_lobbies_mech's BattleLobbiesMechs with an executor.
+func (o *Mech) BattleLobbiesMechs(mods ...qm.QueryMod) battleLobbiesMechQuery {
+	var queryMods []qm.QueryMod
+	if len(mods) != 0 {
+		queryMods = append(queryMods, mods...)
+	}
+
+	queryMods = append(queryMods,
+		qm.Where("\"battle_lobbies_mechs\".\"mech_id\"=?", o.ID),
+		qmhelper.WhereIsNull("\"battle_lobbies_mechs\".\"deleted_at\""),
+	)
+
+	query := BattleLobbiesMechs(queryMods...)
+	queries.SetFrom(query.Query, "\"battle_lobbies_mechs\"")
+
+	if len(queries.GetSelect(query.Query)) == 0 {
+		queries.SetSelect(query.Query, []string{"\"battle_lobbies_mechs\".*"})
+	}
+
+	return query
+}
+
 // BattleMechs retrieves all the battle_mech's BattleMechs with an executor.
 func (o *Mech) BattleMechs(mods ...qm.QueryMod) battleMechQuery {
 	var queryMods []qm.QueryMod
@@ -821,23 +846,23 @@ func (o *Mech) KilledByBattleMechs(mods ...qm.QueryMod) battleMechQuery {
 	return query
 }
 
-// BattleQueueFees retrieves all the battle_queue_fee's BattleQueueFees with an executor.
-func (o *Mech) BattleQueueFees(mods ...qm.QueryMod) battleQueueFeeQuery {
+// BattleQueueFeesOlds retrieves all the battle_queue_fees_old's BattleQueueFeesOlds with an executor.
+func (o *Mech) BattleQueueFeesOlds(mods ...qm.QueryMod) battleQueueFeesOldQuery {
 	var queryMods []qm.QueryMod
 	if len(mods) != 0 {
 		queryMods = append(queryMods, mods...)
 	}
 
 	queryMods = append(queryMods,
-		qm.Where("\"battle_queue_fees\".\"mech_id\"=?", o.ID),
-		qmhelper.WhereIsNull("\"battle_queue_fees\".\"deleted_at\""),
+		qm.Where("\"battle_queue_fees_old\".\"mech_id\"=?", o.ID),
+		qmhelper.WhereIsNull("\"battle_queue_fees_old\".\"deleted_at\""),
 	)
 
-	query := BattleQueueFees(queryMods...)
-	queries.SetFrom(query.Query, "\"battle_queue_fees\"")
+	query := BattleQueueFeesOlds(queryMods...)
+	queries.SetFrom(query.Query, "\"battle_queue_fees_old\"")
 
 	if len(queries.GetSelect(query.Query)) == 0 {
-		queries.SetSelect(query.Query, []string{"\"battle_queue_fees\".*"})
+		queries.SetSelect(query.Query, []string{"\"battle_queue_fees_old\".*"})
 	}
 
 	return query
@@ -1656,9 +1681,9 @@ func (mechL) LoadPowerCore(e boil.Executor, singular bool, maybeMech interface{}
 	return nil
 }
 
-// LoadBattleQueue allows an eager lookup of values, cached into the
+// LoadBattleQueueOld allows an eager lookup of values, cached into the
 // loaded structs of the objects. This is for a 1-1 relationship.
-func (mechL) LoadBattleQueue(e boil.Executor, singular bool, maybeMech interface{}, mods queries.Applicator) error {
+func (mechL) LoadBattleQueueOld(e boil.Executor, singular bool, maybeMech interface{}, mods queries.Applicator) error {
 	var slice []*Mech
 	var object *Mech
 
@@ -1696,8 +1721,8 @@ func (mechL) LoadBattleQueue(e boil.Executor, singular bool, maybeMech interface
 	}
 
 	query := NewQuery(
-		qm.From(`battle_queue`),
-		qm.WhereIn(`battle_queue.mech_id in ?`, args...),
+		qm.From(`battle_queue_old`),
+		qm.WhereIn(`battle_queue_old.mech_id in ?`, args...),
 	)
 	if mods != nil {
 		mods.Apply(query)
@@ -1705,19 +1730,19 @@ func (mechL) LoadBattleQueue(e boil.Executor, singular bool, maybeMech interface
 
 	results, err := query.Query(e)
 	if err != nil {
-		return errors.Wrap(err, "failed to eager load BattleQueue")
+		return errors.Wrap(err, "failed to eager load BattleQueueOld")
 	}
 
-	var resultSlice []*BattleQueue
+	var resultSlice []*BattleQueueOld
 	if err = queries.Bind(results, &resultSlice); err != nil {
-		return errors.Wrap(err, "failed to bind eager loaded slice BattleQueue")
+		return errors.Wrap(err, "failed to bind eager loaded slice BattleQueueOld")
 	}
 
 	if err = results.Close(); err != nil {
-		return errors.Wrap(err, "failed to close results of eager load for battle_queue")
+		return errors.Wrap(err, "failed to close results of eager load for battle_queue_old")
 	}
 	if err = results.Err(); err != nil {
-		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for battle_queue")
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for battle_queue_old")
 	}
 
 	if len(mechAfterSelectHooks) != 0 {
@@ -1734,9 +1759,9 @@ func (mechL) LoadBattleQueue(e boil.Executor, singular bool, maybeMech interface
 
 	if singular {
 		foreign := resultSlice[0]
-		object.R.BattleQueue = foreign
+		object.R.BattleQueueOld = foreign
 		if foreign.R == nil {
-			foreign.R = &battleQueueR{}
+			foreign.R = &battleQueueOldR{}
 		}
 		foreign.R.Mech = object
 	}
@@ -1744,9 +1769,9 @@ func (mechL) LoadBattleQueue(e boil.Executor, singular bool, maybeMech interface
 	for _, local := range slice {
 		for _, foreign := range resultSlice {
 			if local.ID == foreign.MechID {
-				local.R.BattleQueue = foreign
+				local.R.BattleQueueOld = foreign
 				if foreign.R == nil {
-					foreign.R = &battleQueueR{}
+					foreign.R = &battleQueueOldR{}
 				}
 				foreign.R.Mech = local
 				break
@@ -2549,6 +2574,105 @@ func (mechL) LoadKilledBattleKills(e boil.Executor, singular bool, maybeMech int
 	return nil
 }
 
+// LoadBattleLobbiesMechs allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for a 1-M or N-M relationship.
+func (mechL) LoadBattleLobbiesMechs(e boil.Executor, singular bool, maybeMech interface{}, mods queries.Applicator) error {
+	var slice []*Mech
+	var object *Mech
+
+	if singular {
+		object = maybeMech.(*Mech)
+	} else {
+		slice = *maybeMech.(*[]*Mech)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &mechR{}
+		}
+		args = append(args, object.ID)
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &mechR{}
+			}
+
+			for _, a := range args {
+				if a == obj.ID {
+					continue Outer
+				}
+			}
+
+			args = append(args, obj.ID)
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`battle_lobbies_mechs`),
+		qm.WhereIn(`battle_lobbies_mechs.mech_id in ?`, args...),
+		qmhelper.WhereIsNull(`battle_lobbies_mechs.deleted_at`),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load battle_lobbies_mechs")
+	}
+
+	var resultSlice []*BattleLobbiesMech
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice battle_lobbies_mechs")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results in eager load on battle_lobbies_mechs")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for battle_lobbies_mechs")
+	}
+
+	if len(battleLobbiesMechAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+	if singular {
+		object.R.BattleLobbiesMechs = resultSlice
+		for _, foreign := range resultSlice {
+			if foreign.R == nil {
+				foreign.R = &battleLobbiesMechR{}
+			}
+			foreign.R.Mech = object
+		}
+		return nil
+	}
+
+	for _, foreign := range resultSlice {
+		for _, local := range slice {
+			if local.ID == foreign.MechID {
+				local.R.BattleLobbiesMechs = append(local.R.BattleLobbiesMechs, foreign)
+				if foreign.R == nil {
+					foreign.R = &battleLobbiesMechR{}
+				}
+				foreign.R.Mech = local
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
 // LoadBattleMechs allows an eager lookup of values, cached into the
 // loaded structs of the objects. This is for a 1-M or N-M relationship.
 func (mechL) LoadBattleMechs(e boil.Executor, singular bool, maybeMech interface{}, mods queries.Applicator) error {
@@ -2745,9 +2869,9 @@ func (mechL) LoadKilledByBattleMechs(e boil.Executor, singular bool, maybeMech i
 	return nil
 }
 
-// LoadBattleQueueFees allows an eager lookup of values, cached into the
+// LoadBattleQueueFeesOlds allows an eager lookup of values, cached into the
 // loaded structs of the objects. This is for a 1-M or N-M relationship.
-func (mechL) LoadBattleQueueFees(e boil.Executor, singular bool, maybeMech interface{}, mods queries.Applicator) error {
+func (mechL) LoadBattleQueueFeesOlds(e boil.Executor, singular bool, maybeMech interface{}, mods queries.Applicator) error {
 	var slice []*Mech
 	var object *Mech
 
@@ -2785,9 +2909,9 @@ func (mechL) LoadBattleQueueFees(e boil.Executor, singular bool, maybeMech inter
 	}
 
 	query := NewQuery(
-		qm.From(`battle_queue_fees`),
-		qm.WhereIn(`battle_queue_fees.mech_id in ?`, args...),
-		qmhelper.WhereIsNull(`battle_queue_fees.deleted_at`),
+		qm.From(`battle_queue_fees_old`),
+		qm.WhereIn(`battle_queue_fees_old.mech_id in ?`, args...),
+		qmhelper.WhereIsNull(`battle_queue_fees_old.deleted_at`),
 	)
 	if mods != nil {
 		mods.Apply(query)
@@ -2795,22 +2919,22 @@ func (mechL) LoadBattleQueueFees(e boil.Executor, singular bool, maybeMech inter
 
 	results, err := query.Query(e)
 	if err != nil {
-		return errors.Wrap(err, "failed to eager load battle_queue_fees")
+		return errors.Wrap(err, "failed to eager load battle_queue_fees_old")
 	}
 
-	var resultSlice []*BattleQueueFee
+	var resultSlice []*BattleQueueFeesOld
 	if err = queries.Bind(results, &resultSlice); err != nil {
-		return errors.Wrap(err, "failed to bind eager loaded slice battle_queue_fees")
+		return errors.Wrap(err, "failed to bind eager loaded slice battle_queue_fees_old")
 	}
 
 	if err = results.Close(); err != nil {
-		return errors.Wrap(err, "failed to close results in eager load on battle_queue_fees")
+		return errors.Wrap(err, "failed to close results in eager load on battle_queue_fees_old")
 	}
 	if err = results.Err(); err != nil {
-		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for battle_queue_fees")
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for battle_queue_fees_old")
 	}
 
-	if len(battleQueueFeeAfterSelectHooks) != 0 {
+	if len(battleQueueFeesOldAfterSelectHooks) != 0 {
 		for _, obj := range resultSlice {
 			if err := obj.doAfterSelectHooks(e); err != nil {
 				return err
@@ -2818,10 +2942,10 @@ func (mechL) LoadBattleQueueFees(e boil.Executor, singular bool, maybeMech inter
 		}
 	}
 	if singular {
-		object.R.BattleQueueFees = resultSlice
+		object.R.BattleQueueFeesOlds = resultSlice
 		for _, foreign := range resultSlice {
 			if foreign.R == nil {
-				foreign.R = &battleQueueFeeR{}
+				foreign.R = &battleQueueFeesOldR{}
 			}
 			foreign.R.Mech = object
 		}
@@ -2831,9 +2955,9 @@ func (mechL) LoadBattleQueueFees(e boil.Executor, singular bool, maybeMech inter
 	for _, foreign := range resultSlice {
 		for _, local := range slice {
 			if local.ID == foreign.MechID {
-				local.R.BattleQueueFees = append(local.R.BattleQueueFees, foreign)
+				local.R.BattleQueueFeesOlds = append(local.R.BattleQueueFeesOlds, foreign)
 				if foreign.R == nil {
-					foreign.R = &battleQueueFeeR{}
+					foreign.R = &battleQueueFeesOldR{}
 				}
 				foreign.R.Mech = local
 				break
@@ -4455,10 +4579,10 @@ func (o *Mech) RemovePowerCore(exec boil.Executor, related *PowerCore) error {
 	return nil
 }
 
-// SetBattleQueue of the mech to the related item.
-// Sets o.R.BattleQueue to related.
+// SetBattleQueueOld of the mech to the related item.
+// Sets o.R.BattleQueueOld to related.
 // Adds o to related.R.Mech.
-func (o *Mech) SetBattleQueue(exec boil.Executor, insert bool, related *BattleQueue) error {
+func (o *Mech) SetBattleQueueOld(exec boil.Executor, insert bool, related *BattleQueueOld) error {
 	var err error
 
 	if insert {
@@ -4469,9 +4593,9 @@ func (o *Mech) SetBattleQueue(exec boil.Executor, insert bool, related *BattleQu
 		}
 	} else {
 		updateQuery := fmt.Sprintf(
-			"UPDATE \"battle_queue\" SET %s WHERE %s",
+			"UPDATE \"battle_queue_old\" SET %s WHERE %s",
 			strmangle.SetParamNames("\"", "\"", 1, []string{"mech_id"}),
-			strmangle.WhereClause("\"", "\"", 2, battleQueuePrimaryKeyColumns),
+			strmangle.WhereClause("\"", "\"", 2, battleQueueOldPrimaryKeyColumns),
 		)
 		values := []interface{}{o.ID, related.MechID}
 
@@ -4489,14 +4613,14 @@ func (o *Mech) SetBattleQueue(exec boil.Executor, insert bool, related *BattleQu
 
 	if o.R == nil {
 		o.R = &mechR{
-			BattleQueue: related,
+			BattleQueueOld: related,
 		}
 	} else {
-		o.R.BattleQueue = related
+		o.R.BattleQueueOld = related
 	}
 
 	if related.R == nil {
-		related.R = &battleQueueR{
+		related.R = &battleQueueOldR{
 			Mech: o,
 		}
 	} else {
@@ -5063,6 +5187,58 @@ func (o *Mech) AddKilledBattleKills(exec boil.Executor, insert bool, related ...
 	return nil
 }
 
+// AddBattleLobbiesMechs adds the given related objects to the existing relationships
+// of the mech, optionally inserting them as new records.
+// Appends related to o.R.BattleLobbiesMechs.
+// Sets related.R.Mech appropriately.
+func (o *Mech) AddBattleLobbiesMechs(exec boil.Executor, insert bool, related ...*BattleLobbiesMech) error {
+	var err error
+	for _, rel := range related {
+		if insert {
+			rel.MechID = o.ID
+			if err = rel.Insert(exec, boil.Infer()); err != nil {
+				return errors.Wrap(err, "failed to insert into foreign table")
+			}
+		} else {
+			updateQuery := fmt.Sprintf(
+				"UPDATE \"battle_lobbies_mechs\" SET %s WHERE %s",
+				strmangle.SetParamNames("\"", "\"", 1, []string{"mech_id"}),
+				strmangle.WhereClause("\"", "\"", 2, battleLobbiesMechPrimaryKeyColumns),
+			)
+			values := []interface{}{o.ID, rel.ID}
+
+			if boil.DebugMode {
+				fmt.Fprintln(boil.DebugWriter, updateQuery)
+				fmt.Fprintln(boil.DebugWriter, values)
+			}
+			if _, err = exec.Exec(updateQuery, values...); err != nil {
+				return errors.Wrap(err, "failed to update foreign table")
+			}
+
+			rel.MechID = o.ID
+		}
+	}
+
+	if o.R == nil {
+		o.R = &mechR{
+			BattleLobbiesMechs: related,
+		}
+	} else {
+		o.R.BattleLobbiesMechs = append(o.R.BattleLobbiesMechs, related...)
+	}
+
+	for _, rel := range related {
+		if rel.R == nil {
+			rel.R = &battleLobbiesMechR{
+				Mech: o,
+			}
+		} else {
+			rel.R.Mech = o
+		}
+	}
+	return nil
+}
+
 // AddBattleMechs adds the given related objects to the existing relationships
 // of the mech, optionally inserting them as new records.
 // Appends related to o.R.BattleMechs.
@@ -5240,11 +5416,11 @@ func (o *Mech) RemoveKilledByBattleMechs(exec boil.Executor, related ...*BattleM
 	return nil
 }
 
-// AddBattleQueueFees adds the given related objects to the existing relationships
+// AddBattleQueueFeesOlds adds the given related objects to the existing relationships
 // of the mech, optionally inserting them as new records.
-// Appends related to o.R.BattleQueueFees.
+// Appends related to o.R.BattleQueueFeesOlds.
 // Sets related.R.Mech appropriately.
-func (o *Mech) AddBattleQueueFees(exec boil.Executor, insert bool, related ...*BattleQueueFee) error {
+func (o *Mech) AddBattleQueueFeesOlds(exec boil.Executor, insert bool, related ...*BattleQueueFeesOld) error {
 	var err error
 	for _, rel := range related {
 		if insert {
@@ -5254,9 +5430,9 @@ func (o *Mech) AddBattleQueueFees(exec boil.Executor, insert bool, related ...*B
 			}
 		} else {
 			updateQuery := fmt.Sprintf(
-				"UPDATE \"battle_queue_fees\" SET %s WHERE %s",
+				"UPDATE \"battle_queue_fees_old\" SET %s WHERE %s",
 				strmangle.SetParamNames("\"", "\"", 1, []string{"mech_id"}),
-				strmangle.WhereClause("\"", "\"", 2, battleQueueFeePrimaryKeyColumns),
+				strmangle.WhereClause("\"", "\"", 2, battleQueueFeesOldPrimaryKeyColumns),
 			)
 			values := []interface{}{o.ID, rel.ID}
 
@@ -5274,15 +5450,15 @@ func (o *Mech) AddBattleQueueFees(exec boil.Executor, insert bool, related ...*B
 
 	if o.R == nil {
 		o.R = &mechR{
-			BattleQueueFees: related,
+			BattleQueueFeesOlds: related,
 		}
 	} else {
-		o.R.BattleQueueFees = append(o.R.BattleQueueFees, related...)
+		o.R.BattleQueueFeesOlds = append(o.R.BattleQueueFeesOlds, related...)
 	}
 
 	for _, rel := range related {
 		if rel.R == nil {
-			rel.R = &battleQueueFeeR{
+			rel.R = &battleQueueFeesOldR{
 				Mech: o,
 			}
 		} else {

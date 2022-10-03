@@ -22,10 +22,8 @@ import (
 	"github.com/go-chi/chi/v5"
 
 	"github.com/gofrs/uuid"
-	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/ninja-software/terror/v2"
 	"github.com/ninja-syndicate/ws"
-	"github.com/rs/zerolog"
 	"github.com/shopspring/decimal"
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
@@ -34,9 +32,7 @@ import (
 )
 
 type PlayerController struct {
-	Conn *pgxpool.Pool
-	Log  *zerolog.Logger
-	API  *API
+	API *API
 }
 
 func NewPlayerController(api *API) *PlayerController {
@@ -46,6 +42,8 @@ func NewPlayerController(api *API) *PlayerController {
 
 	api.SecureUserCommand(HubKeyPlayerUpdateSettings, pc.PlayerUpdateSettingsHandler)
 	api.SecureUserCommand(HubKeyPlayerGetSettings, pc.PlayerGetSettingsHandler)
+
+	api.SecureUserCommand(server.HubKeyPlayerMarketingPreferencesUpdate, pc.PlayerMarketingPreferencesUpdateHandler)
 
 	api.SecureUserCommand(HubKeyPlayerPreferencesGet, pc.PlayerPreferencesGetHandler)
 
@@ -66,8 +64,6 @@ func NewPlayerController(api *API) *PlayerController {
 
 	api.SecureUserCommand(HubKeyGameUserOnline, pc.UserOnline)
 
-	api.SecureUserCommand(HubKeyPlayerQueueStatus, pc.PlayerQueueStatusHandler)
-
 	// user profile commands
 	api.Command(HubKeyPlayerProfileGet, pc.PlayerProfileGetHandler)
 	api.SecureUserCommand(HubKeyPlayerUpdateUsername, pc.PlayerUpdateUsernameHandler)
@@ -87,30 +83,70 @@ func NewPlayerController(api *API) *PlayerController {
 	return pc
 }
 
-type PlayerQueueStatus struct {
-	TotalQueued int64 `json:"total_queued"`
-	QueueLimit  int64 `json:"queue_limit"`
-}
-
-const HubKeyPlayerQueueStatus = "PLAYER:QUEUE:STATUS"
-
 func (pc *PlayerController) PlayerQueueStatusHandler(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
-	queued, err := db.GetPlayerQueueCount(user.ID)
-	if err != nil {
-		return terror.Error(err, "Failed to get player queue status.")
+	resp := &server.PlayerQueueStatus{
+		TotalQueued: 0,
+		QueueLimit:  db.GetIntWithDefault(db.KeyPlayerQueueLimit, 10),
 	}
 
-	reply(&PlayerQueueStatus{
-		TotalQueued: queued,
-		QueueLimit:  int64(db.GetIntWithDefault(db.KeyPlayerQueueLimit, 10)),
-	})
+	blms, err := boiler.BattleLobbiesMechs(
+		boiler.BattleLobbiesMechWhere.OwnerID.EQ(user.ID),
+		boiler.BattleLobbiesMechWhere.RefundTXID.IsNull(),
+		boiler.BattleLobbiesMechWhere.EndedAt.IsNull(),
+	).All(gamedb.StdConn)
+	if err != nil {
+		gamelog.L.Error().Str("player id", user.ID).Err(err).Msg("Failed to load player battle queue mechs")
+		return terror.Error(err, "Failed to load player battle queue mechs")
+	}
+
+	if blms != nil {
+		resp.TotalQueued = len(blms)
+	}
+
+	reply(resp)
 	return nil
 }
 
-type UserUpdatedRequest struct {
+// PlayerMarketingPreferencesUpdateRequest updates a player's marketing preferences
+type PlayerMarketingPreferencesUpdateRequest struct {
 	Payload struct {
-		ID string `json:"id"`
+		AcceptsMarketing bool `json:"accepts_marketing"`
 	} `json:"payload"`
+}
+
+func (pc *PlayerController) PlayerMarketingPreferencesUpdateHandler(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
+	req := &PlayerMarketingPreferencesUpdateRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return terror.Error(err, "Invalid request received.")
+	}
+
+	tx, err := gamedb.StdConn.Begin()
+	if err != nil {
+		return terror.Error(err, "Failed to update player's marketing preferences.")
+	}
+	defer tx.Rollback()
+
+	user.AcceptsMarketing = null.BoolFrom(req.Payload.AcceptsMarketing)
+	_, err = user.Update(tx, boil.Whitelist(boiler.PlayerColumns.AcceptsMarketing))
+	if err != nil {
+		return terror.Error(err, "Failed to update player's marketing preferences.")
+	}
+
+	err = pc.API.Passport.UserMarketingUpdate(user.ID, user.AcceptsMarketing.Bool)
+	if err != nil {
+		return terror.Error(err, "Failed to update player's marketing preferences.")
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		return terror.Error(err, "Failed to update player's marketing preferences.")
+	}
+
+	ws.PublishMessage(fmt.Sprintf("/secure/user/%s", user.ID), server.HubKeyUserSubscribe, user)
+
+	reply(true)
+	return nil
 }
 
 // FactionEnlistRequest enlist a faction
