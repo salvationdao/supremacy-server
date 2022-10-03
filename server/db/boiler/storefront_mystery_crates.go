@@ -13,7 +13,6 @@ import (
 	"time"
 
 	"github.com/friendsofgo/errors"
-	"github.com/shopspring/decimal"
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries"
@@ -24,25 +23,24 @@ import (
 
 // StorefrontMysteryCrate is an object representing the database table.
 type StorefrontMysteryCrate struct {
-	ID               string          `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
-	MysteryCrateType string          `boiler:"mystery_crate_type" boil:"mystery_crate_type" json:"mystery_crate_type" toml:"mystery_crate_type" yaml:"mystery_crate_type"`
-	Price            decimal.Decimal `boiler:"price" boil:"price" json:"price" toml:"price" yaml:"price"`
-	Amount           int             `boiler:"amount" boil:"amount" json:"amount" toml:"amount" yaml:"amount"`
-	AmountSold       int             `boiler:"amount_sold" boil:"amount_sold" json:"amount_sold" toml:"amount_sold" yaml:"amount_sold"`
-	FactionID        string          `boiler:"faction_id" boil:"faction_id" json:"faction_id" toml:"faction_id" yaml:"faction_id"`
-	DeletedAt        null.Time       `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
-	UpdatedAt        time.Time       `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
-	CreatedAt        time.Time       `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
-	Label            string          `boiler:"label" boil:"label" json:"label" toml:"label" yaml:"label"`
-	Description      string          `boiler:"description" boil:"description" json:"description" toml:"description" yaml:"description"`
-	ImageURL         null.String     `boiler:"image_url" boil:"image_url" json:"image_url,omitempty" toml:"image_url" yaml:"image_url,omitempty"`
-	CardAnimationURL null.String     `boiler:"card_animation_url" boil:"card_animation_url" json:"card_animation_url,omitempty" toml:"card_animation_url" yaml:"card_animation_url,omitempty"`
-	AvatarURL        null.String     `boiler:"avatar_url" boil:"avatar_url" json:"avatar_url,omitempty" toml:"avatar_url" yaml:"avatar_url,omitempty"`
-	LargeImageURL    null.String     `boiler:"large_image_url" boil:"large_image_url" json:"large_image_url,omitempty" toml:"large_image_url" yaml:"large_image_url,omitempty"`
-	BackgroundColor  null.String     `boiler:"background_color" boil:"background_color" json:"background_color,omitempty" toml:"background_color" yaml:"background_color,omitempty"`
-	AnimationURL     null.String     `boiler:"animation_url" boil:"animation_url" json:"animation_url,omitempty" toml:"animation_url" yaml:"animation_url,omitempty"`
-	YoutubeURL       null.String     `boiler:"youtube_url" boil:"youtube_url" json:"youtube_url,omitempty" toml:"youtube_url" yaml:"youtube_url,omitempty"`
-	FiatProductID    string          `boiler:"fiat_product_id" boil:"fiat_product_id" json:"fiat_product_id" toml:"fiat_product_id" yaml:"fiat_product_id"`
+	ID               string      `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
+	MysteryCrateType string      `boiler:"mystery_crate_type" boil:"mystery_crate_type" json:"mystery_crate_type" toml:"mystery_crate_type" yaml:"mystery_crate_type"`
+	Amount           int         `boiler:"amount" boil:"amount" json:"amount" toml:"amount" yaml:"amount"`
+	AmountSold       int         `boiler:"amount_sold" boil:"amount_sold" json:"amount_sold" toml:"amount_sold" yaml:"amount_sold"`
+	FactionID        string      `boiler:"faction_id" boil:"faction_id" json:"faction_id" toml:"faction_id" yaml:"faction_id"`
+	DeletedAt        null.Time   `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
+	UpdatedAt        time.Time   `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
+	CreatedAt        time.Time   `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
+	Label            string      `boiler:"label" boil:"label" json:"label" toml:"label" yaml:"label"`
+	Description      string      `boiler:"description" boil:"description" json:"description" toml:"description" yaml:"description"`
+	ImageURL         null.String `boiler:"image_url" boil:"image_url" json:"image_url,omitempty" toml:"image_url" yaml:"image_url,omitempty"`
+	CardAnimationURL null.String `boiler:"card_animation_url" boil:"card_animation_url" json:"card_animation_url,omitempty" toml:"card_animation_url" yaml:"card_animation_url,omitempty"`
+	AvatarURL        null.String `boiler:"avatar_url" boil:"avatar_url" json:"avatar_url,omitempty" toml:"avatar_url" yaml:"avatar_url,omitempty"`
+	LargeImageURL    null.String `boiler:"large_image_url" boil:"large_image_url" json:"large_image_url,omitempty" toml:"large_image_url" yaml:"large_image_url,omitempty"`
+	BackgroundColor  null.String `boiler:"background_color" boil:"background_color" json:"background_color,omitempty" toml:"background_color" yaml:"background_color,omitempty"`
+	AnimationURL     null.String `boiler:"animation_url" boil:"animation_url" json:"animation_url,omitempty" toml:"animation_url" yaml:"animation_url,omitempty"`
+	YoutubeURL       null.String `boiler:"youtube_url" boil:"youtube_url" json:"youtube_url,omitempty" toml:"youtube_url" yaml:"youtube_url,omitempty"`
+	FiatProductID    string      `boiler:"fiat_product_id" boil:"fiat_product_id" json:"fiat_product_id" toml:"fiat_product_id" yaml:"fiat_product_id"`
 
 	R *storefrontMysteryCrateR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L storefrontMysteryCrateL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -51,7 +49,6 @@ type StorefrontMysteryCrate struct {
 var StorefrontMysteryCrateColumns = struct {
 	ID               string
 	MysteryCrateType string
-	Price            string
 	Amount           string
 	AmountSold       string
 	FactionID        string
@@ -71,7 +68,6 @@ var StorefrontMysteryCrateColumns = struct {
 }{
 	ID:               "id",
 	MysteryCrateType: "mystery_crate_type",
-	Price:            "price",
 	Amount:           "amount",
 	AmountSold:       "amount_sold",
 	FactionID:        "faction_id",
@@ -93,7 +89,6 @@ var StorefrontMysteryCrateColumns = struct {
 var StorefrontMysteryCrateTableColumns = struct {
 	ID               string
 	MysteryCrateType string
-	Price            string
 	Amount           string
 	AmountSold       string
 	FactionID        string
@@ -113,7 +108,6 @@ var StorefrontMysteryCrateTableColumns = struct {
 }{
 	ID:               "storefront_mystery_crates.id",
 	MysteryCrateType: "storefront_mystery_crates.mystery_crate_type",
-	Price:            "storefront_mystery_crates.price",
 	Amount:           "storefront_mystery_crates.amount",
 	AmountSold:       "storefront_mystery_crates.amount_sold",
 	FactionID:        "storefront_mystery_crates.faction_id",
@@ -137,7 +131,6 @@ var StorefrontMysteryCrateTableColumns = struct {
 var StorefrontMysteryCrateWhere = struct {
 	ID               whereHelperstring
 	MysteryCrateType whereHelperstring
-	Price            whereHelperdecimal_Decimal
 	Amount           whereHelperint
 	AmountSold       whereHelperint
 	FactionID        whereHelperstring
@@ -157,7 +150,6 @@ var StorefrontMysteryCrateWhere = struct {
 }{
 	ID:               whereHelperstring{field: "\"storefront_mystery_crates\".\"id\""},
 	MysteryCrateType: whereHelperstring{field: "\"storefront_mystery_crates\".\"mystery_crate_type\""},
-	Price:            whereHelperdecimal_Decimal{field: "\"storefront_mystery_crates\".\"price\""},
 	Amount:           whereHelperint{field: "\"storefront_mystery_crates\".\"amount\""},
 	AmountSold:       whereHelperint{field: "\"storefront_mystery_crates\".\"amount_sold\""},
 	FactionID:        whereHelperstring{field: "\"storefront_mystery_crates\".\"faction_id\""},
@@ -203,8 +195,8 @@ func (*storefrontMysteryCrateR) NewStruct() *storefrontMysteryCrateR {
 type storefrontMysteryCrateL struct{}
 
 var (
-	storefrontMysteryCrateAllColumns            = []string{"id", "mystery_crate_type", "price", "amount", "amount_sold", "faction_id", "deleted_at", "updated_at", "created_at", "label", "description", "image_url", "card_animation_url", "avatar_url", "large_image_url", "background_color", "animation_url", "youtube_url", "fiat_product_id"}
-	storefrontMysteryCrateColumnsWithoutDefault = []string{"mystery_crate_type", "price", "amount", "faction_id", "fiat_product_id"}
+	storefrontMysteryCrateAllColumns            = []string{"id", "mystery_crate_type", "amount", "amount_sold", "faction_id", "deleted_at", "updated_at", "created_at", "label", "description", "image_url", "card_animation_url", "avatar_url", "large_image_url", "background_color", "animation_url", "youtube_url", "fiat_product_id"}
+	storefrontMysteryCrateColumnsWithoutDefault = []string{"mystery_crate_type", "amount", "faction_id", "fiat_product_id"}
 	storefrontMysteryCrateColumnsWithDefault    = []string{"id", "amount_sold", "deleted_at", "updated_at", "created_at", "label", "description", "image_url", "card_animation_url", "avatar_url", "large_image_url", "background_color", "animation_url", "youtube_url"}
 	storefrontMysteryCratePrimaryKeyColumns     = []string{"id"}
 	storefrontMysteryCrateGeneratedColumns      = []string{}

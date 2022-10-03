@@ -122,11 +122,22 @@ func (sc *StoreController) PurchaseMysteryCrateHandler(ctx context.Context, user
 	if (storeCrate.AmountSold + req.Payload.Quantity) >= storeCrate.Amount {
 		return terror.Error(fmt.Errorf("player ID: %s, attempted to purchase sold out mystery crate", user.ID), "This mystery crate is sold out!")
 	}
+
 	//check user SUPS is more than crate.price
+	supPrice := decimal.Zero
+	for _, s := range storeCrate.R.FiatProduct.R.FiatProductPricings {
+		if s.CurrencyCode == server.FiatCurrencyCodeSUPS {
+			supPrice = s.Amount
+			break
+		}
+	}
+	if supPrice.LessThanOrEqual(decimal.Zero) {
+		return terror.Error(fmt.Errorf("unable to find correct pricing for crate"), "Failed to get crate for purchase, please try again or contact support.")
+	}
 
 	// -------------------------------------
 	supTransactionID, err := sc.API.Passport.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
-		Amount:               storeCrate.Price.Mul(decimal.NewFromInt(int64(req.Payload.Quantity))).String(),
+		Amount:               supPrice.Mul(decimal.NewFromInt(int64(req.Payload.Quantity))).String(),
 		FromUserID:           uuid.FromStringOrNil(user.ID),
 		ToUserID:             uuid.FromStringOrNil(server.SupremacyGameUserID),
 		TransactionReference: server.TransactionReference(fmt.Sprintf("player_mystery_crate_purchase|%s|%d", storeCrate.ID, time.Now().UnixNano())),
@@ -151,7 +162,7 @@ func (sc *StoreController) PurchaseMysteryCrateHandler(ctx context.Context, user
 
 		txItem := &boiler.StorePurchaseHistory{
 			PlayerID:    user.ID,
-			Amount:      storeCrate.Price.Mul(decimal.NewFromInt(int64(req.Payload.Quantity))),
+			Amount:      supPrice.Mul(decimal.NewFromInt(int64(req.Payload.Quantity))),
 			ItemType:    "mystery_crate",
 			ItemID:      storeCrate.ID,
 			Description: "refunding mystery crate due to failed transaction",
@@ -186,7 +197,7 @@ func (sc *StoreController) PurchaseMysteryCrateHandler(ctx context.Context, user
 
 		txItem := &boiler.StorePurchaseHistory{
 			PlayerID:    user.ID,
-			Amount:      storeCrate.Price,
+			Amount:      supPrice,
 			ItemType:    "mystery_crate",
 			ItemID:      assignedCrate.ID,
 			Description: "purchased mystery crate",
