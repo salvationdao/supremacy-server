@@ -185,26 +185,29 @@ var BattleLobbyWhere = struct {
 
 // BattleLobbyRels is where relationship names are stored.
 var BattleLobbyRels = struct {
-	AssignedToArena    string
-	AssignedToBattle   string
-	GameMap            string
-	HostBy             string
-	BattleLobbiesMechs string
+	AssignedToArena       string
+	AssignedToBattle      string
+	GameMap               string
+	HostBy                string
+	BattleLobbiesMechs    string
+	BattleLobbySupporters string
 }{
-	AssignedToArena:    "AssignedToArena",
-	AssignedToBattle:   "AssignedToBattle",
-	GameMap:            "GameMap",
-	HostBy:             "HostBy",
-	BattleLobbiesMechs: "BattleLobbiesMechs",
+	AssignedToArena:       "AssignedToArena",
+	AssignedToBattle:      "AssignedToBattle",
+	GameMap:               "GameMap",
+	HostBy:                "HostBy",
+	BattleLobbiesMechs:    "BattleLobbiesMechs",
+	BattleLobbySupporters: "BattleLobbySupporters",
 }
 
 // battleLobbyR is where relationships are stored.
 type battleLobbyR struct {
-	AssignedToArena    *BattleArena           `boiler:"AssignedToArena" boil:"AssignedToArena" json:"AssignedToArena" toml:"AssignedToArena" yaml:"AssignedToArena"`
-	AssignedToBattle   *Battle                `boiler:"AssignedToBattle" boil:"AssignedToBattle" json:"AssignedToBattle" toml:"AssignedToBattle" yaml:"AssignedToBattle"`
-	GameMap            *GameMap               `boiler:"GameMap" boil:"GameMap" json:"GameMap" toml:"GameMap" yaml:"GameMap"`
-	HostBy             *Player                `boiler:"HostBy" boil:"HostBy" json:"HostBy" toml:"HostBy" yaml:"HostBy"`
-	BattleLobbiesMechs BattleLobbiesMechSlice `boiler:"BattleLobbiesMechs" boil:"BattleLobbiesMechs" json:"BattleLobbiesMechs" toml:"BattleLobbiesMechs" yaml:"BattleLobbiesMechs"`
+	AssignedToArena       *BattleArena              `boiler:"AssignedToArena" boil:"AssignedToArena" json:"AssignedToArena" toml:"AssignedToArena" yaml:"AssignedToArena"`
+	AssignedToBattle      *Battle                   `boiler:"AssignedToBattle" boil:"AssignedToBattle" json:"AssignedToBattle" toml:"AssignedToBattle" yaml:"AssignedToBattle"`
+	GameMap               *GameMap                  `boiler:"GameMap" boil:"GameMap" json:"GameMap" toml:"GameMap" yaml:"GameMap"`
+	HostBy                *Player                   `boiler:"HostBy" boil:"HostBy" json:"HostBy" toml:"HostBy" yaml:"HostBy"`
+	BattleLobbiesMechs    BattleLobbiesMechSlice    `boiler:"BattleLobbiesMechs" boil:"BattleLobbiesMechs" json:"BattleLobbiesMechs" toml:"BattleLobbiesMechs" yaml:"BattleLobbiesMechs"`
+	BattleLobbySupporters BattleLobbySupporterSlice `boiler:"BattleLobbySupporters" boil:"BattleLobbySupporters" json:"BattleLobbySupporters" toml:"BattleLobbySupporters" yaml:"BattleLobbySupporters"`
 }
 
 // NewStruct creates a new relationship struct
@@ -540,6 +543,28 @@ func (o *BattleLobby) BattleLobbiesMechs(mods ...qm.QueryMod) battleLobbiesMechQ
 
 	if len(queries.GetSelect(query.Query)) == 0 {
 		queries.SetSelect(query.Query, []string{"\"battle_lobbies_mechs\".*"})
+	}
+
+	return query
+}
+
+// BattleLobbySupporters retrieves all the battle_lobby_supporter's BattleLobbySupporters with an executor.
+func (o *BattleLobby) BattleLobbySupporters(mods ...qm.QueryMod) battleLobbySupporterQuery {
+	var queryMods []qm.QueryMod
+	if len(mods) != 0 {
+		queryMods = append(queryMods, mods...)
+	}
+
+	queryMods = append(queryMods,
+		qm.Where("\"battle_lobby_supporters\".\"battle_lobby_id\"=?", o.ID),
+		qmhelper.WhereIsNull("\"battle_lobby_supporters\".\"deleted_at\""),
+	)
+
+	query := BattleLobbySupporters(queryMods...)
+	queries.SetFrom(query.Query, "\"battle_lobby_supporters\"")
+
+	if len(queries.GetSelect(query.Query)) == 0 {
+		queries.SetSelect(query.Query, []string{"\"battle_lobby_supporters\".*"})
 	}
 
 	return query
@@ -1074,6 +1099,105 @@ func (battleLobbyL) LoadBattleLobbiesMechs(e boil.Executor, singular bool, maybe
 	return nil
 }
 
+// LoadBattleLobbySupporters allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for a 1-M or N-M relationship.
+func (battleLobbyL) LoadBattleLobbySupporters(e boil.Executor, singular bool, maybeBattleLobby interface{}, mods queries.Applicator) error {
+	var slice []*BattleLobby
+	var object *BattleLobby
+
+	if singular {
+		object = maybeBattleLobby.(*BattleLobby)
+	} else {
+		slice = *maybeBattleLobby.(*[]*BattleLobby)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &battleLobbyR{}
+		}
+		args = append(args, object.ID)
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &battleLobbyR{}
+			}
+
+			for _, a := range args {
+				if a == obj.ID {
+					continue Outer
+				}
+			}
+
+			args = append(args, obj.ID)
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`battle_lobby_supporters`),
+		qm.WhereIn(`battle_lobby_supporters.battle_lobby_id in ?`, args...),
+		qmhelper.WhereIsNull(`battle_lobby_supporters.deleted_at`),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load battle_lobby_supporters")
+	}
+
+	var resultSlice []*BattleLobbySupporter
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice battle_lobby_supporters")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results in eager load on battle_lobby_supporters")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for battle_lobby_supporters")
+	}
+
+	if len(battleLobbySupporterAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+	if singular {
+		object.R.BattleLobbySupporters = resultSlice
+		for _, foreign := range resultSlice {
+			if foreign.R == nil {
+				foreign.R = &battleLobbySupporterR{}
+			}
+			foreign.R.BattleLobby = object
+		}
+		return nil
+	}
+
+	for _, foreign := range resultSlice {
+		for _, local := range slice {
+			if local.ID == foreign.BattleLobbyID {
+				local.R.BattleLobbySupporters = append(local.R.BattleLobbySupporters, foreign)
+				if foreign.R == nil {
+					foreign.R = &battleLobbySupporterR{}
+				}
+				foreign.R.BattleLobby = local
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
 // SetAssignedToArena of the battleLobby to the related item.
 // Sets o.R.AssignedToArena to related.
 // Adds o to related.R.AssignedToArenaBattleLobbies.
@@ -1400,6 +1524,58 @@ func (o *BattleLobby) AddBattleLobbiesMechs(exec boil.Executor, insert bool, rel
 	for _, rel := range related {
 		if rel.R == nil {
 			rel.R = &battleLobbiesMechR{
+				BattleLobby: o,
+			}
+		} else {
+			rel.R.BattleLobby = o
+		}
+	}
+	return nil
+}
+
+// AddBattleLobbySupporters adds the given related objects to the existing relationships
+// of the battle_lobby, optionally inserting them as new records.
+// Appends related to o.R.BattleLobbySupporters.
+// Sets related.R.BattleLobby appropriately.
+func (o *BattleLobby) AddBattleLobbySupporters(exec boil.Executor, insert bool, related ...*BattleLobbySupporter) error {
+	var err error
+	for _, rel := range related {
+		if insert {
+			rel.BattleLobbyID = o.ID
+			if err = rel.Insert(exec, boil.Infer()); err != nil {
+				return errors.Wrap(err, "failed to insert into foreign table")
+			}
+		} else {
+			updateQuery := fmt.Sprintf(
+				"UPDATE \"battle_lobby_supporters\" SET %s WHERE %s",
+				strmangle.SetParamNames("\"", "\"", 1, []string{"battle_lobby_id"}),
+				strmangle.WhereClause("\"", "\"", 2, battleLobbySupporterPrimaryKeyColumns),
+			)
+			values := []interface{}{o.ID, rel.ID}
+
+			if boil.DebugMode {
+				fmt.Fprintln(boil.DebugWriter, updateQuery)
+				fmt.Fprintln(boil.DebugWriter, values)
+			}
+			if _, err = exec.Exec(updateQuery, values...); err != nil {
+				return errors.Wrap(err, "failed to update foreign table")
+			}
+
+			rel.BattleLobbyID = o.ID
+		}
+	}
+
+	if o.R == nil {
+		o.R = &battleLobbyR{
+			BattleLobbySupporters: related,
+		}
+	} else {
+		o.R.BattleLobbySupporters = append(o.R.BattleLobbySupporters, related...)
+	}
+
+	for _, rel := range related {
+		if rel.R == nil {
+			rel.R = &battleLobbySupporterR{
 				BattleLobby: o,
 			}
 		} else {

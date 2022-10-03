@@ -28,6 +28,9 @@ func BattleQueueController(api *API) {
 	api.SecureUserFactionCommand(HubKeyBattleLobbyCreate, api.BattleLobbyCreate)
 	api.SecureUserFactionCommand(HubKeyBattleLobbyJoin, api.BattleLobbyJoin)
 	api.SecureUserFactionCommand(HubKeyBattleLobbyLeave, api.BattleLobbyLeave)
+
+	api.SecureUserFactionCommand(HubKeyBattleLobbySupporterJoin, api.BattleLobbySupporterJoin)
+	//api.SecureUserFactionCommand(HubKeyBattleLobbySupporterLeave, api.BattleLobbySupporterLeave)
 }
 
 type BattleLobbyCreateRequest struct {
@@ -946,5 +949,65 @@ func (api *API)  NextBattleDetails(ctx context.Context, key string, payload []by
 	}
 
 	ws.PublishMessage("/public/upcoming_battle", server.HubKeyNextBattleDetails, resp[0])
+	return nil
+}
+
+type BattleLobbySupporterJoinRequest struct {
+	Payload struct {
+		BattleLobbyID string `json:"battle_lobby_id"`
+	} `json:"payload"`
+}
+
+const HubKeyBattleLobbySupporterJoin = "BATTLE:LOBBY:JOIN"
+
+func (api *API) BattleLobbySupporterJoin(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
+	L := gamelog.L.With().Str("func", "").Str("user id", user.ID).Logger()
+	req := &BattleLobbySupporterJoinRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return terror.Error(err, "Invalid request received.")
+	}
+
+	L = L.With().Interface("payload", req.Payload).Logger()
+
+	// add support to battle lobby
+	err = api.ArenaManager.SendBattleQueueFunc(func() error {
+		// todo, figure out rules for when they are allowed to join as a supporter
+
+		// check lobby exists
+		bl, err := boiler.BattleLobbies(
+			boiler.BattleLobbyWhere.ID.EQ(req.Payload.BattleLobbyID),
+			qm.Load(boiler.BattleLobbyRels.BattleLobbySupporters),
+			).One(gamedb.StdConn)
+		if err != nil {
+			return err
+		}
+
+		if bl == nil {
+			return fmt.Errorf("lobby id: %s does not exist", req.Payload.BattleLobbyID)
+		}
+
+		if bl.R != nil && bl.R.BattleLobbySupporters != nil && len(bl.R.BattleLobbySupporters) >= 5 {
+			return fmt.Errorf("battle lobby supporters positions are full")
+		}
+
+		// add them as a supporter
+		bls := &boiler.BattleLobbySupporter{
+			SupporterID:   user.ID,
+			BattleLobbyID: bl.ID,
+		}
+		err = bls.Insert(gamedb.StdConn, boil.Infer())
+		if err != nil {
+			return err
+		}
+
+		return nil
+	})
+	if err != nil {
+		L.Error().Err(err).Msg("failed to insert new battle lobby supporter")
+		return err
+	}
+
+	reply(true)
 	return nil
 }
