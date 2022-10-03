@@ -1176,8 +1176,8 @@ func (api *API) BattleLobbySupporterJoin(ctx context.Context, user *boiler.Playe
 		// check lobby exists
 		bl, err := boiler.BattleLobbies(
 			boiler.BattleLobbyWhere.ID.EQ(req.Payload.BattleLobbyID),
-			qm.Load(boiler.BattleLobbyRels.BattleLobbySupporters,
-				boiler.BattleLobbySupporterWhere.FactionID.EQ(factionID),
+			qm.Load(boiler.BattleLobbyRels.BattleLobbySupporterOptIns,
+				boiler.BattleLobbySupporterOptInWhere.FactionID.EQ(factionID),
 				),
 			).One(gamedb.StdConn)
 		if err != nil {
@@ -1188,8 +1188,16 @@ func (api *API) BattleLobbySupporterJoin(ctx context.Context, user *boiler.Playe
 			return fmt.Errorf("lobby id: %s does not exist", req.Payload.BattleLobbyID)
 		}
 
+		if bl.R != nil && bl.R.BattleLobbySupporterOptIns != nil {
+			for _, supper := range bl.R.BattleLobbySupporterOptIns {
+				if supper.SupporterID == user.ID {
+					return fmt.Errorf("already registered as a supporter")
+				}
+			}
+		}
+
 		// add them as a supporter
-		bls := &boiler.BattleLobbySupporter{
+		bls := &boiler.BattleLobbySupporterOptIn{
 			SupporterID:   user.ID,
 			BattleLobbyID: bl.ID,
 			FactionID: factionID,
@@ -1205,6 +1213,31 @@ func (api *API) BattleLobbySupporterJoin(ctx context.Context, user *boiler.Playe
 		L.Error().Err(err).Msg("failed to insert new battle lobby supporter")
 		return err
 	}
+
+	// broadcast updated battle
+	go func() {
+		battleLobbyIDs := api.ArenaManager.GetCurrentBattleLobbyIDs()
+		bl, err := db.GetNextBattleLobby(battleLobbyIDs)
+		if err != nil {
+			return
+		}
+
+		if bl == nil {
+			return
+		}
+
+		resp, err := server.BattleLobbiesFromBoiler([]*boiler.BattleLobby{bl})
+		if err != nil {
+			return
+		}
+
+		if len(resp) != 1 {
+			return
+		}
+
+		ws.PublishMessage("/public/upcoming_battle", server.HubKeyNextBattleDetails, resp[0])
+	}()
+
 
 	reply(true)
 	return nil

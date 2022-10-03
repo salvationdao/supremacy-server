@@ -11,7 +11,7 @@ import (
 )
 
 // GetNextBattleLobby finds the next upcoming battle
-func GetNextBattleLobby(battleLobbyIDs []string) (*boiler.BattleLobby, error){
+func GetNextBattleLobby(battleLobbyIDs []string) (*boiler.BattleLobby, error) {
 	excludingPlayerIDs, err := playersInLobbies(battleLobbyIDs)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return nil, err
@@ -56,8 +56,8 @@ func GetNextBattleLobby(battleLobbyIDs []string) (*boiler.BattleLobby, error){
 			boiler.BattleLobbyTableColumns.WillNotStartUntil,
 			boiler.BattleLobbyTableColumns.ReadyAt,
 		)),
-		qm.Load(qm.Rels(boiler.BattleLobbyRels.BattleLobbySupporters, boiler.BattleLobbySupporterRels.Supporter)),
-		qm.Load(qm.Rels(boiler.BattleLobbyRels.BattleLobbySupporterOptIns, boiler.BattleLobbySupporterOptInRels.Supporter)),
+		qm.Load(qm.Rels(boiler.BattleLobbyRels.BattleLobbySupporters, boiler.BattleLobbySupporterRels.Supporter, boiler.PlayerRels.ProfileAvatar)),
+		qm.Load(qm.Rels(boiler.BattleLobbyRels.BattleLobbySupporterOptIns, boiler.BattleLobbySupporterOptInRels.Supporter, boiler.PlayerRels.ProfileAvatar)),
 	).One(gamedb.StdConn)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return nil, err

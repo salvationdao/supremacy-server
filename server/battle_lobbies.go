@@ -54,7 +54,7 @@ type BattleLobbySupporter struct {
 	ID             string `json:"id"`
 	Username       string `json:"username"`
 	FactionID      string `json:"faction_id"`
-	AvatarID       string `json:"avatar_id,omitempty"`
+	AvatarURL      string `json:"avatar_url,omitempty"`
 	CustomAvatarID string `json:"custom_avatar_id,omitempty"`
 }
 
@@ -75,6 +75,9 @@ func BattleLobbiesFromBoiler(bls []*boiler.BattleLobby) ([]*BattleLobby, error) 
 			OptedInRedMountSupporters: []*BattleLobbySupporter{},
 			OptedInZaiSupporters:      []*BattleLobbySupporter{},
 			OptedInBostonSupporters:   []*BattleLobbySupporter{},
+			SelectedRedMountSupporters: []*BattleLobbySupporter{},
+			SelectedZaiSupporters:      []*BattleLobbySupporter{},
+			SelectedBostonSupporters:   []*BattleLobbySupporter{},
 		}
 
 		// omit password
@@ -98,33 +101,45 @@ func BattleLobbiesFromBoiler(bls []*boiler.BattleLobby) ([]*BattleLobby, error) 
 			}
 		}
 
-		if bl.R != nil && bl.R.BattleLobbySupporters != nil && len(bl.R.BattleLobbySupporters) > 0 {
-			for _, sup := range bl.R.BattleLobbySupporters {
+		if bl.R != nil && bl.R.BattleLobbySupporterOptIns != nil && len(bl.R.BattleLobbySupporterOptIns) > 0 {
+			for _, sup := range bl.R.BattleLobbySupporterOptIns {
 				switch sup.FactionID {
 				case RedMountainFactionID:
-					sbl.OptedInRedMountSupporters = append(sbl.OptedInRedMountSupporters, &BattleLobbySupporter{
+					supper := &BattleLobbySupporter{
 						ID:             sup.ID,
 						Username:       sup.R.Supporter.Username.String,
 						FactionID:      sup.R.Supporter.FactionID.String,
-						AvatarID:       sup.R.Supporter.ProfileAvatarID.String,
 						CustomAvatarID: sup.R.Supporter.CustomAvatarID.String,
-					})
+					}
+					if sup.R.Supporter.R != nil && sup.R.Supporter.R.ProfileAvatar != nil {
+						supper.AvatarURL = sup.R.Supporter.R.ProfileAvatar.AvatarURL
+					}
+
+					sbl.OptedInRedMountSupporters = append(sbl.OptedInRedMountSupporters, supper)
 				case BostonCyberneticsFactionID:
-					sbl.OptedInBostonSupporters = append(sbl.OptedInBostonSupporters, &BattleLobbySupporter{
+					supper := &BattleLobbySupporter{
 						ID:             sup.ID,
 						Username:       sup.R.Supporter.Username.String,
 						FactionID:      sup.R.Supporter.FactionID.String,
-						AvatarID:       sup.R.Supporter.ProfileAvatarID.String,
 						CustomAvatarID: sup.R.Supporter.CustomAvatarID.String,
-					})
+					}
+					if sup.R.Supporter.R != nil && sup.R.Supporter.R.ProfileAvatar != nil {
+						supper.AvatarURL = sup.R.Supporter.R.ProfileAvatar.AvatarURL
+					}
+
+					sbl.OptedInBostonSupporters = append(sbl.OptedInBostonSupporters, supper)
 				case ZaibatsuFactionID:
-					sbl.OptedInZaiSupporters = append(sbl.OptedInZaiSupporters, &BattleLobbySupporter{
+					supper := &BattleLobbySupporter{
 						ID:             sup.ID,
 						Username:       sup.R.Supporter.Username.String,
 						FactionID:      sup.R.Supporter.FactionID.String,
-						AvatarID:       sup.R.Supporter.ProfileAvatarID.String,
 						CustomAvatarID: sup.R.Supporter.CustomAvatarID.String,
-					})
+					}
+					if sup.R.Supporter.R != nil && sup.R.Supporter.R.ProfileAvatar != nil {
+						supper.AvatarURL = sup.R.Supporter.R.ProfileAvatar.AvatarURL
+					}
+
+					sbl.OptedInZaiSupporters = append(sbl.OptedInZaiSupporters, supper)
 				}
 			}
 		}
