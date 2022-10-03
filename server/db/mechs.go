@@ -1549,6 +1549,8 @@ type MechBrief struct {
 	EquippedWeaponCount  int `json:"equipped_weapon_count" db:"equipped_weapon_count"`
 	EquippedUtilityCount int `json:"equipped_utility_count" db:"equipped_utility_count"`
 
+	IsStaked bool `json:"is_staked" db:"is_staked"`
+
 	Status    server.MechArenaStatus `json:"status"` // "QUEUE" | "BATTLE" | "MARKET" | "IDLE"
 	CanDeploy bool                   `json:"can_deploy"`
 }
@@ -1654,6 +1656,12 @@ func OwnedMechsBrief(playerID string, mechIDs ...string) ([]*MechBrief, error) {
 				boiler.UtilityColumns.ID,
 				boiler.TableNames.Utility,
 				boiler.UtilityColumns.EquippedOn,
+				boiler.MechColumns.ID,
+			),
+			fmt.Sprintf(
+				"COALESCE((SELECT true FROM %s WHERE %s = _m.%s), false) AS is_staked",
+				boiler.TableNames.StakedMechs,
+				boiler.StakedMechTableColumns.MechID,
 				boiler.MechColumns.ID,
 			),
 		),
@@ -1821,6 +1829,7 @@ func OwnedMechsBrief(playerID string, mechIDs ...string) ([]*MechBrief, error) {
 
 			&mb.EquippedWeaponCount,
 			&mb.EquippedUtilityCount,
+			&mb.IsStaked,
 		)
 		if err != nil {
 			gamelog.L.Error().Err(err).Msg("Failed to scan player battle spectated from db.")

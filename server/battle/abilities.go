@@ -328,7 +328,7 @@ func NewAbilitiesSystem(battle *Battle) *AbilitiesSystem {
 // SetNewBattleAbility set new battle ability and return the cooldown time
 func (as *AbilitiesSystem) SetNewBattleAbility(isFirst bool) (int, error) {
 	if !AbilitySystemIsAvailable(as) {
-		return 30, terror.Error(fmt.Errorf("ability system is closed"), "Ability system is closed.")
+		return 30, terror.Error(fmt.Errorf("ability system is closed"), "Ability system is not available.")
 	}
 
 	// offering id
