@@ -172,7 +172,12 @@ func (pc *PassportWebhookController) UserEnlistFaction(w http.ResponseWriter, r 
 		return http.StatusInternalServerError, terror.Error(err, "Unable to convert faction, contact support or try again.")
 	}
 
-	ws.PublishMessage(fmt.Sprintf("/secure/user/%s", player.ID), server.HubKeyUserSubscribe, user)
+	err = player.L.LoadRole(gamedb.StdConn, true, player, nil)
+	if err != nil {
+		return http.StatusInternalServerError, terror.Error(err, "Unable to convert faction, contact support or try again.")
+	}
+
+	ws.PublishMessage(fmt.Sprintf("/secure/user/%s", player.ID), server.HubKeyUserSubscribe, server.PlayerFromBoiler(player))
 
 	return helpers.EncodeJSON(w, struct {
 		IsSuccess bool `json:"is_success"`

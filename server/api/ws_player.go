@@ -153,7 +153,12 @@ func (pc *PlayerController) PlayerMarketingPreferencesUpdateHandler(ctx context.
 		return terror.Error(err, "Failed to update player's marketing preferences.")
 	}
 
-	ws.PublishMessage(fmt.Sprintf("/secure/user/%s", user.ID), server.HubKeyUserSubscribe, user)
+	err = user.L.LoadRole(gamedb.StdConn, true, user, nil)
+	if err != nil {
+		return terror.Error(err, "Failed to update player's marketing preferences.")
+	}
+
+	ws.PublishMessage(fmt.Sprintf("/secure/user/%s", user.ID), server.HubKeyUserSubscribe, server.PlayerFromBoiler(user))
 
 	reply(true)
 	return nil
@@ -1112,6 +1117,11 @@ func (pc *PlayerController) PlayersSubscribeHandler(ctx context.Context, user *b
 		gamelog.L.Error().Str("player id", user.ID).Err(err).Msg("Failed to get player feature")
 	}
 
+	err = user.L.LoadRole(gamedb.StdConn, true, user, nil)
+	if err != nil {
+		gamelog.L.Error().Str("player id", user.ID).Err(err).Msg("Failed to get player role")
+	}
+
 	reply(server.PlayerFromBoiler(user, features))
 
 	// broadcast player stat
@@ -1405,7 +1415,13 @@ func (pc *PlayerController) PlayerUpdateUsernameHandler(ctx context.Context, use
 		return terror.Error(err, errMsg)
 	}
 	reply(user.Username.String)
-	ws.PublishMessage(fmt.Sprintf("/secure/user/%s", user.ID), server.HubKeyUserSubscribe, user)
+
+	err = user.L.LoadRole(gamedb.StdConn, true, user, nil)
+	if err != nil {
+		return terror.Error(err, "Failed to update player's marketing preferences.")
+	}
+
+	ws.PublishMessage(fmt.Sprintf("/secure/user/%s", user.ID), server.HubKeyUserSubscribe, server.PlayerFromBoiler(user))
 
 	return nil
 }

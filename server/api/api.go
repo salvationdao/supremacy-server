@@ -199,6 +199,8 @@ func NewAPI(
 	fc := NewFiatController(api)
 	_ = NewReplayController(api)
 	BattleQueueController(api)
+	NewMarketplaceController(api)
+	NewModToolsController(api)
 
 	api.Routes.Use(middleware.RequestID)
 	api.Routes.Use(middleware.RealIP)

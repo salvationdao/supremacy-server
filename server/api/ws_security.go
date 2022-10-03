@@ -15,6 +15,10 @@ func (api *API) SecureUserCommand(key string, fn server.SecureCommandFunc) {
 	api.SecureUserCommander.Command(string(key), server.MustSecure(server.SecureUserTracer(fn, api.Config.Environment)))
 }
 
+func (api *API) SecureAdminCommand(key string, fn server.SecureCommandFunc) {
+	api.SecureUserCommander.Command(string(key), server.MustSecureAdmin(server.SecureUserTracer(fn, api.Config.Environment)))
+}
+
 func (api *API) SecureUserFactionCommand(key string, fn server.SecureFactionCommandFunc) {
 	api.SecureFactionCommander.Command(string(key), server.MustSecureFaction(server.SecureFactionTracer(fn, api.Config.Environment)))
 }
