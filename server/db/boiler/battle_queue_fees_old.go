@@ -22,8 +22,8 @@ import (
 	"github.com/volatiletech/strmangle"
 )
 
-// BattleQueueFee is an object representing the database table.
-type BattleQueueFee struct {
+// BattleQueueFeesOld is an object representing the database table.
+type BattleQueueFeesOld struct {
 	ID                string          `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
 	MechID            string          `boiler:"mech_id" boil:"mech_id" json:"mech_id" toml:"mech_id" yaml:"mech_id"`
 	PaidByID          string          `boiler:"paid_by_id" boil:"paid_by_id" json:"paid_by_id" toml:"paid_by_id" yaml:"paid_by_id"`
@@ -38,11 +38,11 @@ type BattleQueueFee struct {
 	BonusSupsTXID     null.String     `boiler:"bonus_sups_tx_id" boil:"bonus_sups_tx_id" json:"bonus_sups_tx_id,omitempty" toml:"bonus_sups_tx_id" yaml:"bonus_sups_tx_id,omitempty"`
 	RefundTXID        null.String     `boiler:"refund_tx_id" boil:"refund_tx_id" json:"refund_tx_id,omitempty" toml:"refund_tx_id" yaml:"refund_tx_id,omitempty"`
 
-	R *battleQueueFeeR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
-	L battleQueueFeeL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
+	R *battleQueueFeesOldR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
+	L battleQueueFeesOldL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 }
 
-var BattleQueueFeeColumns = struct {
+var BattleQueueFeesOldColumns = struct {
 	ID                string
 	MechID            string
 	PaidByID          string
@@ -72,7 +72,7 @@ var BattleQueueFeeColumns = struct {
 	RefundTXID:        "refund_tx_id",
 }
 
-var BattleQueueFeeTableColumns = struct {
+var BattleQueueFeesOldTableColumns = struct {
 	ID                string
 	MechID            string
 	PaidByID          string
@@ -87,24 +87,24 @@ var BattleQueueFeeTableColumns = struct {
 	BonusSupsTXID     string
 	RefundTXID        string
 }{
-	ID:                "battle_queue_fees.id",
-	MechID:            "battle_queue_fees.mech_id",
-	PaidByID:          "battle_queue_fees.paid_by_id",
-	Amount:            "battle_queue_fees.amount",
-	PaidTXID:          "battle_queue_fees.paid_tx_id",
-	PayoutTXID:        "battle_queue_fees.payout_tx_id",
-	TaxTXID:           "battle_queue_fees.tax_tx_id",
-	ChallengeFundTXID: "battle_queue_fees.challenge_fund_tx_id",
-	CreatedAt:         "battle_queue_fees.created_at",
-	UpdatedAt:         "battle_queue_fees.updated_at",
-	DeletedAt:         "battle_queue_fees.deleted_at",
-	BonusSupsTXID:     "battle_queue_fees.bonus_sups_tx_id",
-	RefundTXID:        "battle_queue_fees.refund_tx_id",
+	ID:                "battle_queue_fees_old.id",
+	MechID:            "battle_queue_fees_old.mech_id",
+	PaidByID:          "battle_queue_fees_old.paid_by_id",
+	Amount:            "battle_queue_fees_old.amount",
+	PaidTXID:          "battle_queue_fees_old.paid_tx_id",
+	PayoutTXID:        "battle_queue_fees_old.payout_tx_id",
+	TaxTXID:           "battle_queue_fees_old.tax_tx_id",
+	ChallengeFundTXID: "battle_queue_fees_old.challenge_fund_tx_id",
+	CreatedAt:         "battle_queue_fees_old.created_at",
+	UpdatedAt:         "battle_queue_fees_old.updated_at",
+	DeletedAt:         "battle_queue_fees_old.deleted_at",
+	BonusSupsTXID:     "battle_queue_fees_old.bonus_sups_tx_id",
+	RefundTXID:        "battle_queue_fees_old.refund_tx_id",
 }
 
 // Generated where
 
-var BattleQueueFeeWhere = struct {
+var BattleQueueFeesOldWhere = struct {
 	ID                whereHelperstring
 	MechID            whereHelperstring
 	PaidByID          whereHelperstring
@@ -119,78 +119,78 @@ var BattleQueueFeeWhere = struct {
 	BonusSupsTXID     whereHelpernull_String
 	RefundTXID        whereHelpernull_String
 }{
-	ID:                whereHelperstring{field: "\"battle_queue_fees\".\"id\""},
-	MechID:            whereHelperstring{field: "\"battle_queue_fees\".\"mech_id\""},
-	PaidByID:          whereHelperstring{field: "\"battle_queue_fees\".\"paid_by_id\""},
-	Amount:            whereHelperdecimal_Decimal{field: "\"battle_queue_fees\".\"amount\""},
-	PaidTXID:          whereHelpernull_String{field: "\"battle_queue_fees\".\"paid_tx_id\""},
-	PayoutTXID:        whereHelpernull_String{field: "\"battle_queue_fees\".\"payout_tx_id\""},
-	TaxTXID:           whereHelpernull_String{field: "\"battle_queue_fees\".\"tax_tx_id\""},
-	ChallengeFundTXID: whereHelpernull_String{field: "\"battle_queue_fees\".\"challenge_fund_tx_id\""},
-	CreatedAt:         whereHelpertime_Time{field: "\"battle_queue_fees\".\"created_at\""},
-	UpdatedAt:         whereHelpertime_Time{field: "\"battle_queue_fees\".\"updated_at\""},
-	DeletedAt:         whereHelpernull_Time{field: "\"battle_queue_fees\".\"deleted_at\""},
-	BonusSupsTXID:     whereHelpernull_String{field: "\"battle_queue_fees\".\"bonus_sups_tx_id\""},
-	RefundTXID:        whereHelpernull_String{field: "\"battle_queue_fees\".\"refund_tx_id\""},
+	ID:                whereHelperstring{field: "\"battle_queue_fees_old\".\"id\""},
+	MechID:            whereHelperstring{field: "\"battle_queue_fees_old\".\"mech_id\""},
+	PaidByID:          whereHelperstring{field: "\"battle_queue_fees_old\".\"paid_by_id\""},
+	Amount:            whereHelperdecimal_Decimal{field: "\"battle_queue_fees_old\".\"amount\""},
+	PaidTXID:          whereHelpernull_String{field: "\"battle_queue_fees_old\".\"paid_tx_id\""},
+	PayoutTXID:        whereHelpernull_String{field: "\"battle_queue_fees_old\".\"payout_tx_id\""},
+	TaxTXID:           whereHelpernull_String{field: "\"battle_queue_fees_old\".\"tax_tx_id\""},
+	ChallengeFundTXID: whereHelpernull_String{field: "\"battle_queue_fees_old\".\"challenge_fund_tx_id\""},
+	CreatedAt:         whereHelpertime_Time{field: "\"battle_queue_fees_old\".\"created_at\""},
+	UpdatedAt:         whereHelpertime_Time{field: "\"battle_queue_fees_old\".\"updated_at\""},
+	DeletedAt:         whereHelpernull_Time{field: "\"battle_queue_fees_old\".\"deleted_at\""},
+	BonusSupsTXID:     whereHelpernull_String{field: "\"battle_queue_fees_old\".\"bonus_sups_tx_id\""},
+	RefundTXID:        whereHelpernull_String{field: "\"battle_queue_fees_old\".\"refund_tx_id\""},
 }
 
-// BattleQueueFeeRels is where relationship names are stored.
-var BattleQueueFeeRels = struct {
-	Mech            string
-	PaidBy          string
-	FeeBattleQueues string
+// BattleQueueFeesOldRels is where relationship names are stored.
+var BattleQueueFeesOldRels = struct {
+	Mech               string
+	PaidBy             string
+	FeeBattleQueueOlds string
 }{
-	Mech:            "Mech",
-	PaidBy:          "PaidBy",
-	FeeBattleQueues: "FeeBattleQueues",
+	Mech:               "Mech",
+	PaidBy:             "PaidBy",
+	FeeBattleQueueOlds: "FeeBattleQueueOlds",
 }
 
-// battleQueueFeeR is where relationships are stored.
-type battleQueueFeeR struct {
-	Mech            *Mech            `boiler:"Mech" boil:"Mech" json:"Mech" toml:"Mech" yaml:"Mech"`
-	PaidBy          *Player          `boiler:"PaidBy" boil:"PaidBy" json:"PaidBy" toml:"PaidBy" yaml:"PaidBy"`
-	FeeBattleQueues BattleQueueSlice `boiler:"FeeBattleQueues" boil:"FeeBattleQueues" json:"FeeBattleQueues" toml:"FeeBattleQueues" yaml:"FeeBattleQueues"`
+// battleQueueFeesOldR is where relationships are stored.
+type battleQueueFeesOldR struct {
+	Mech               *Mech               `boiler:"Mech" boil:"Mech" json:"Mech" toml:"Mech" yaml:"Mech"`
+	PaidBy             *Player             `boiler:"PaidBy" boil:"PaidBy" json:"PaidBy" toml:"PaidBy" yaml:"PaidBy"`
+	FeeBattleQueueOlds BattleQueueOldSlice `boiler:"FeeBattleQueueOlds" boil:"FeeBattleQueueOlds" json:"FeeBattleQueueOlds" toml:"FeeBattleQueueOlds" yaml:"FeeBattleQueueOlds"`
 }
 
 // NewStruct creates a new relationship struct
-func (*battleQueueFeeR) NewStruct() *battleQueueFeeR {
-	return &battleQueueFeeR{}
+func (*battleQueueFeesOldR) NewStruct() *battleQueueFeesOldR {
+	return &battleQueueFeesOldR{}
 }
 
-// battleQueueFeeL is where Load methods for each relationship are stored.
-type battleQueueFeeL struct{}
+// battleQueueFeesOldL is where Load methods for each relationship are stored.
+type battleQueueFeesOldL struct{}
 
 var (
-	battleQueueFeeAllColumns            = []string{"id", "mech_id", "paid_by_id", "amount", "paid_tx_id", "payout_tx_id", "tax_tx_id", "challenge_fund_tx_id", "created_at", "updated_at", "deleted_at", "bonus_sups_tx_id", "refund_tx_id"}
-	battleQueueFeeColumnsWithoutDefault = []string{"mech_id", "paid_by_id", "amount"}
-	battleQueueFeeColumnsWithDefault    = []string{"id", "paid_tx_id", "payout_tx_id", "tax_tx_id", "challenge_fund_tx_id", "created_at", "updated_at", "deleted_at", "bonus_sups_tx_id", "refund_tx_id"}
-	battleQueueFeePrimaryKeyColumns     = []string{"id"}
-	battleQueueFeeGeneratedColumns      = []string{}
+	battleQueueFeesOldAllColumns            = []string{"id", "mech_id", "paid_by_id", "amount", "paid_tx_id", "payout_tx_id", "tax_tx_id", "challenge_fund_tx_id", "created_at", "updated_at", "deleted_at", "bonus_sups_tx_id", "refund_tx_id"}
+	battleQueueFeesOldColumnsWithoutDefault = []string{"mech_id", "paid_by_id", "amount"}
+	battleQueueFeesOldColumnsWithDefault    = []string{"id", "paid_tx_id", "payout_tx_id", "tax_tx_id", "challenge_fund_tx_id", "created_at", "updated_at", "deleted_at", "bonus_sups_tx_id", "refund_tx_id"}
+	battleQueueFeesOldPrimaryKeyColumns     = []string{"id"}
+	battleQueueFeesOldGeneratedColumns      = []string{}
 )
 
 type (
-	// BattleQueueFeeSlice is an alias for a slice of pointers to BattleQueueFee.
-	// This should almost always be used instead of []BattleQueueFee.
-	BattleQueueFeeSlice []*BattleQueueFee
-	// BattleQueueFeeHook is the signature for custom BattleQueueFee hook methods
-	BattleQueueFeeHook func(boil.Executor, *BattleQueueFee) error
+	// BattleQueueFeesOldSlice is an alias for a slice of pointers to BattleQueueFeesOld.
+	// This should almost always be used instead of []BattleQueueFeesOld.
+	BattleQueueFeesOldSlice []*BattleQueueFeesOld
+	// BattleQueueFeesOldHook is the signature for custom BattleQueueFeesOld hook methods
+	BattleQueueFeesOldHook func(boil.Executor, *BattleQueueFeesOld) error
 
-	battleQueueFeeQuery struct {
+	battleQueueFeesOldQuery struct {
 		*queries.Query
 	}
 )
 
 // Cache for insert, update and upsert
 var (
-	battleQueueFeeType                 = reflect.TypeOf(&BattleQueueFee{})
-	battleQueueFeeMapping              = queries.MakeStructMapping(battleQueueFeeType)
-	battleQueueFeePrimaryKeyMapping, _ = queries.BindMapping(battleQueueFeeType, battleQueueFeeMapping, battleQueueFeePrimaryKeyColumns)
-	battleQueueFeeInsertCacheMut       sync.RWMutex
-	battleQueueFeeInsertCache          = make(map[string]insertCache)
-	battleQueueFeeUpdateCacheMut       sync.RWMutex
-	battleQueueFeeUpdateCache          = make(map[string]updateCache)
-	battleQueueFeeUpsertCacheMut       sync.RWMutex
-	battleQueueFeeUpsertCache          = make(map[string]insertCache)
+	battleQueueFeesOldType                 = reflect.TypeOf(&BattleQueueFeesOld{})
+	battleQueueFeesOldMapping              = queries.MakeStructMapping(battleQueueFeesOldType)
+	battleQueueFeesOldPrimaryKeyMapping, _ = queries.BindMapping(battleQueueFeesOldType, battleQueueFeesOldMapping, battleQueueFeesOldPrimaryKeyColumns)
+	battleQueueFeesOldInsertCacheMut       sync.RWMutex
+	battleQueueFeesOldInsertCache          = make(map[string]insertCache)
+	battleQueueFeesOldUpdateCacheMut       sync.RWMutex
+	battleQueueFeesOldUpdateCache          = make(map[string]updateCache)
+	battleQueueFeesOldUpsertCacheMut       sync.RWMutex
+	battleQueueFeesOldUpsertCache          = make(map[string]insertCache)
 )
 
 var (
@@ -201,23 +201,23 @@ var (
 	_ = qmhelper.Where
 )
 
-var battleQueueFeeAfterSelectHooks []BattleQueueFeeHook
+var battleQueueFeesOldAfterSelectHooks []BattleQueueFeesOldHook
 
-var battleQueueFeeBeforeInsertHooks []BattleQueueFeeHook
-var battleQueueFeeAfterInsertHooks []BattleQueueFeeHook
+var battleQueueFeesOldBeforeInsertHooks []BattleQueueFeesOldHook
+var battleQueueFeesOldAfterInsertHooks []BattleQueueFeesOldHook
 
-var battleQueueFeeBeforeUpdateHooks []BattleQueueFeeHook
-var battleQueueFeeAfterUpdateHooks []BattleQueueFeeHook
+var battleQueueFeesOldBeforeUpdateHooks []BattleQueueFeesOldHook
+var battleQueueFeesOldAfterUpdateHooks []BattleQueueFeesOldHook
 
-var battleQueueFeeBeforeDeleteHooks []BattleQueueFeeHook
-var battleQueueFeeAfterDeleteHooks []BattleQueueFeeHook
+var battleQueueFeesOldBeforeDeleteHooks []BattleQueueFeesOldHook
+var battleQueueFeesOldAfterDeleteHooks []BattleQueueFeesOldHook
 
-var battleQueueFeeBeforeUpsertHooks []BattleQueueFeeHook
-var battleQueueFeeAfterUpsertHooks []BattleQueueFeeHook
+var battleQueueFeesOldBeforeUpsertHooks []BattleQueueFeesOldHook
+var battleQueueFeesOldAfterUpsertHooks []BattleQueueFeesOldHook
 
 // doAfterSelectHooks executes all "after Select" hooks.
-func (o *BattleQueueFee) doAfterSelectHooks(exec boil.Executor) (err error) {
-	for _, hook := range battleQueueFeeAfterSelectHooks {
+func (o *BattleQueueFeesOld) doAfterSelectHooks(exec boil.Executor) (err error) {
+	for _, hook := range battleQueueFeesOldAfterSelectHooks {
 		if err := hook(exec, o); err != nil {
 			return err
 		}
@@ -227,8 +227,8 @@ func (o *BattleQueueFee) doAfterSelectHooks(exec boil.Executor) (err error) {
 }
 
 // doBeforeInsertHooks executes all "before insert" hooks.
-func (o *BattleQueueFee) doBeforeInsertHooks(exec boil.Executor) (err error) {
-	for _, hook := range battleQueueFeeBeforeInsertHooks {
+func (o *BattleQueueFeesOld) doBeforeInsertHooks(exec boil.Executor) (err error) {
+	for _, hook := range battleQueueFeesOldBeforeInsertHooks {
 		if err := hook(exec, o); err != nil {
 			return err
 		}
@@ -238,8 +238,8 @@ func (o *BattleQueueFee) doBeforeInsertHooks(exec boil.Executor) (err error) {
 }
 
 // doAfterInsertHooks executes all "after Insert" hooks.
-func (o *BattleQueueFee) doAfterInsertHooks(exec boil.Executor) (err error) {
-	for _, hook := range battleQueueFeeAfterInsertHooks {
+func (o *BattleQueueFeesOld) doAfterInsertHooks(exec boil.Executor) (err error) {
+	for _, hook := range battleQueueFeesOldAfterInsertHooks {
 		if err := hook(exec, o); err != nil {
 			return err
 		}
@@ -249,8 +249,8 @@ func (o *BattleQueueFee) doAfterInsertHooks(exec boil.Executor) (err error) {
 }
 
 // doBeforeUpdateHooks executes all "before Update" hooks.
-func (o *BattleQueueFee) doBeforeUpdateHooks(exec boil.Executor) (err error) {
-	for _, hook := range battleQueueFeeBeforeUpdateHooks {
+func (o *BattleQueueFeesOld) doBeforeUpdateHooks(exec boil.Executor) (err error) {
+	for _, hook := range battleQueueFeesOldBeforeUpdateHooks {
 		if err := hook(exec, o); err != nil {
 			return err
 		}
@@ -260,8 +260,8 @@ func (o *BattleQueueFee) doBeforeUpdateHooks(exec boil.Executor) (err error) {
 }
 
 // doAfterUpdateHooks executes all "after Update" hooks.
-func (o *BattleQueueFee) doAfterUpdateHooks(exec boil.Executor) (err error) {
-	for _, hook := range battleQueueFeeAfterUpdateHooks {
+func (o *BattleQueueFeesOld) doAfterUpdateHooks(exec boil.Executor) (err error) {
+	for _, hook := range battleQueueFeesOldAfterUpdateHooks {
 		if err := hook(exec, o); err != nil {
 			return err
 		}
@@ -271,8 +271,8 @@ func (o *BattleQueueFee) doAfterUpdateHooks(exec boil.Executor) (err error) {
 }
 
 // doBeforeDeleteHooks executes all "before Delete" hooks.
-func (o *BattleQueueFee) doBeforeDeleteHooks(exec boil.Executor) (err error) {
-	for _, hook := range battleQueueFeeBeforeDeleteHooks {
+func (o *BattleQueueFeesOld) doBeforeDeleteHooks(exec boil.Executor) (err error) {
+	for _, hook := range battleQueueFeesOldBeforeDeleteHooks {
 		if err := hook(exec, o); err != nil {
 			return err
 		}
@@ -282,8 +282,8 @@ func (o *BattleQueueFee) doBeforeDeleteHooks(exec boil.Executor) (err error) {
 }
 
 // doAfterDeleteHooks executes all "after Delete" hooks.
-func (o *BattleQueueFee) doAfterDeleteHooks(exec boil.Executor) (err error) {
-	for _, hook := range battleQueueFeeAfterDeleteHooks {
+func (o *BattleQueueFeesOld) doAfterDeleteHooks(exec boil.Executor) (err error) {
+	for _, hook := range battleQueueFeesOldAfterDeleteHooks {
 		if err := hook(exec, o); err != nil {
 			return err
 		}
@@ -293,8 +293,8 @@ func (o *BattleQueueFee) doAfterDeleteHooks(exec boil.Executor) (err error) {
 }
 
 // doBeforeUpsertHooks executes all "before Upsert" hooks.
-func (o *BattleQueueFee) doBeforeUpsertHooks(exec boil.Executor) (err error) {
-	for _, hook := range battleQueueFeeBeforeUpsertHooks {
+func (o *BattleQueueFeesOld) doBeforeUpsertHooks(exec boil.Executor) (err error) {
+	for _, hook := range battleQueueFeesOldBeforeUpsertHooks {
 		if err := hook(exec, o); err != nil {
 			return err
 		}
@@ -304,8 +304,8 @@ func (o *BattleQueueFee) doBeforeUpsertHooks(exec boil.Executor) (err error) {
 }
 
 // doAfterUpsertHooks executes all "after Upsert" hooks.
-func (o *BattleQueueFee) doAfterUpsertHooks(exec boil.Executor) (err error) {
-	for _, hook := range battleQueueFeeAfterUpsertHooks {
+func (o *BattleQueueFeesOld) doAfterUpsertHooks(exec boil.Executor) (err error) {
+	for _, hook := range battleQueueFeesOldAfterUpsertHooks {
 		if err := hook(exec, o); err != nil {
 			return err
 		}
@@ -314,33 +314,33 @@ func (o *BattleQueueFee) doAfterUpsertHooks(exec boil.Executor) (err error) {
 	return nil
 }
 
-// AddBattleQueueFeeHook registers your hook function for all future operations.
-func AddBattleQueueFeeHook(hookPoint boil.HookPoint, battleQueueFeeHook BattleQueueFeeHook) {
+// AddBattleQueueFeesOldHook registers your hook function for all future operations.
+func AddBattleQueueFeesOldHook(hookPoint boil.HookPoint, battleQueueFeesOldHook BattleQueueFeesOldHook) {
 	switch hookPoint {
 	case boil.AfterSelectHook:
-		battleQueueFeeAfterSelectHooks = append(battleQueueFeeAfterSelectHooks, battleQueueFeeHook)
+		battleQueueFeesOldAfterSelectHooks = append(battleQueueFeesOldAfterSelectHooks, battleQueueFeesOldHook)
 	case boil.BeforeInsertHook:
-		battleQueueFeeBeforeInsertHooks = append(battleQueueFeeBeforeInsertHooks, battleQueueFeeHook)
+		battleQueueFeesOldBeforeInsertHooks = append(battleQueueFeesOldBeforeInsertHooks, battleQueueFeesOldHook)
 	case boil.AfterInsertHook:
-		battleQueueFeeAfterInsertHooks = append(battleQueueFeeAfterInsertHooks, battleQueueFeeHook)
+		battleQueueFeesOldAfterInsertHooks = append(battleQueueFeesOldAfterInsertHooks, battleQueueFeesOldHook)
 	case boil.BeforeUpdateHook:
-		battleQueueFeeBeforeUpdateHooks = append(battleQueueFeeBeforeUpdateHooks, battleQueueFeeHook)
+		battleQueueFeesOldBeforeUpdateHooks = append(battleQueueFeesOldBeforeUpdateHooks, battleQueueFeesOldHook)
 	case boil.AfterUpdateHook:
-		battleQueueFeeAfterUpdateHooks = append(battleQueueFeeAfterUpdateHooks, battleQueueFeeHook)
+		battleQueueFeesOldAfterUpdateHooks = append(battleQueueFeesOldAfterUpdateHooks, battleQueueFeesOldHook)
 	case boil.BeforeDeleteHook:
-		battleQueueFeeBeforeDeleteHooks = append(battleQueueFeeBeforeDeleteHooks, battleQueueFeeHook)
+		battleQueueFeesOldBeforeDeleteHooks = append(battleQueueFeesOldBeforeDeleteHooks, battleQueueFeesOldHook)
 	case boil.AfterDeleteHook:
-		battleQueueFeeAfterDeleteHooks = append(battleQueueFeeAfterDeleteHooks, battleQueueFeeHook)
+		battleQueueFeesOldAfterDeleteHooks = append(battleQueueFeesOldAfterDeleteHooks, battleQueueFeesOldHook)
 	case boil.BeforeUpsertHook:
-		battleQueueFeeBeforeUpsertHooks = append(battleQueueFeeBeforeUpsertHooks, battleQueueFeeHook)
+		battleQueueFeesOldBeforeUpsertHooks = append(battleQueueFeesOldBeforeUpsertHooks, battleQueueFeesOldHook)
 	case boil.AfterUpsertHook:
-		battleQueueFeeAfterUpsertHooks = append(battleQueueFeeAfterUpsertHooks, battleQueueFeeHook)
+		battleQueueFeesOldAfterUpsertHooks = append(battleQueueFeesOldAfterUpsertHooks, battleQueueFeesOldHook)
 	}
 }
 
-// One returns a single battleQueueFee record from the query.
-func (q battleQueueFeeQuery) One(exec boil.Executor) (*BattleQueueFee, error) {
-	o := &BattleQueueFee{}
+// One returns a single battleQueueFeesOld record from the query.
+func (q battleQueueFeesOldQuery) One(exec boil.Executor) (*BattleQueueFeesOld, error) {
+	o := &BattleQueueFeesOld{}
 
 	queries.SetLimit(q.Query, 1)
 
@@ -349,7 +349,7 @@ func (q battleQueueFeeQuery) One(exec boil.Executor) (*BattleQueueFee, error) {
 		if errors.Cause(err) == sql.ErrNoRows {
 			return nil, sql.ErrNoRows
 		}
-		return nil, errors.Wrap(err, "boiler: failed to execute a one query for battle_queue_fees")
+		return nil, errors.Wrap(err, "boiler: failed to execute a one query for battle_queue_fees_old")
 	}
 
 	if err := o.doAfterSelectHooks(exec); err != nil {
@@ -359,16 +359,16 @@ func (q battleQueueFeeQuery) One(exec boil.Executor) (*BattleQueueFee, error) {
 	return o, nil
 }
 
-// All returns all BattleQueueFee records from the query.
-func (q battleQueueFeeQuery) All(exec boil.Executor) (BattleQueueFeeSlice, error) {
-	var o []*BattleQueueFee
+// All returns all BattleQueueFeesOld records from the query.
+func (q battleQueueFeesOldQuery) All(exec boil.Executor) (BattleQueueFeesOldSlice, error) {
+	var o []*BattleQueueFeesOld
 
 	err := q.Bind(nil, exec, &o)
 	if err != nil {
-		return nil, errors.Wrap(err, "boiler: failed to assign all query results to BattleQueueFee slice")
+		return nil, errors.Wrap(err, "boiler: failed to assign all query results to BattleQueueFeesOld slice")
 	}
 
-	if len(battleQueueFeeAfterSelectHooks) != 0 {
+	if len(battleQueueFeesOldAfterSelectHooks) != 0 {
 		for _, obj := range o {
 			if err := obj.doAfterSelectHooks(exec); err != nil {
 				return o, err
@@ -379,8 +379,8 @@ func (q battleQueueFeeQuery) All(exec boil.Executor) (BattleQueueFeeSlice, error
 	return o, nil
 }
 
-// Count returns the count of all BattleQueueFee records in the query.
-func (q battleQueueFeeQuery) Count(exec boil.Executor) (int64, error) {
+// Count returns the count of all BattleQueueFeesOld records in the query.
+func (q battleQueueFeesOldQuery) Count(exec boil.Executor) (int64, error) {
 	var count int64
 
 	queries.SetSelect(q.Query, nil)
@@ -388,14 +388,14 @@ func (q battleQueueFeeQuery) Count(exec boil.Executor) (int64, error) {
 
 	err := q.Query.QueryRow(exec).Scan(&count)
 	if err != nil {
-		return 0, errors.Wrap(err, "boiler: failed to count battle_queue_fees rows")
+		return 0, errors.Wrap(err, "boiler: failed to count battle_queue_fees_old rows")
 	}
 
 	return count, nil
 }
 
 // Exists checks if the row exists in the table.
-func (q battleQueueFeeQuery) Exists(exec boil.Executor) (bool, error) {
+func (q battleQueueFeesOldQuery) Exists(exec boil.Executor) (bool, error) {
 	var count int64
 
 	queries.SetSelect(q.Query, nil)
@@ -404,14 +404,14 @@ func (q battleQueueFeeQuery) Exists(exec boil.Executor) (bool, error) {
 
 	err := q.Query.QueryRow(exec).Scan(&count)
 	if err != nil {
-		return false, errors.Wrap(err, "boiler: failed to check if battle_queue_fees exists")
+		return false, errors.Wrap(err, "boiler: failed to check if battle_queue_fees_old exists")
 	}
 
 	return count > 0, nil
 }
 
 // Mech pointed to by the foreign key.
-func (o *BattleQueueFee) Mech(mods ...qm.QueryMod) mechQuery {
+func (o *BattleQueueFeesOld) Mech(mods ...qm.QueryMod) mechQuery {
 	queryMods := []qm.QueryMod{
 		qm.Where("\"id\" = ?", o.MechID),
 		qmhelper.WhereIsNull("deleted_at"),
@@ -426,7 +426,7 @@ func (o *BattleQueueFee) Mech(mods ...qm.QueryMod) mechQuery {
 }
 
 // PaidBy pointed to by the foreign key.
-func (o *BattleQueueFee) PaidBy(mods ...qm.QueryMod) playerQuery {
+func (o *BattleQueueFeesOld) PaidBy(mods ...qm.QueryMod) playerQuery {
 	queryMods := []qm.QueryMod{
 		qm.Where("\"id\" = ?", o.PaidByID),
 		qmhelper.WhereIsNull("deleted_at"),
@@ -440,22 +440,22 @@ func (o *BattleQueueFee) PaidBy(mods ...qm.QueryMod) playerQuery {
 	return query
 }
 
-// FeeBattleQueues retrieves all the battle_queue's BattleQueues with an executor via fee_id column.
-func (o *BattleQueueFee) FeeBattleQueues(mods ...qm.QueryMod) battleQueueQuery {
+// FeeBattleQueueOlds retrieves all the battle_queue_old's BattleQueueOlds with an executor via fee_id column.
+func (o *BattleQueueFeesOld) FeeBattleQueueOlds(mods ...qm.QueryMod) battleQueueOldQuery {
 	var queryMods []qm.QueryMod
 	if len(mods) != 0 {
 		queryMods = append(queryMods, mods...)
 	}
 
 	queryMods = append(queryMods,
-		qm.Where("\"battle_queue\".\"fee_id\"=?", o.ID),
+		qm.Where("\"battle_queue_old\".\"fee_id\"=?", o.ID),
 	)
 
-	query := BattleQueues(queryMods...)
-	queries.SetFrom(query.Query, "\"battle_queue\"")
+	query := BattleQueueOlds(queryMods...)
+	queries.SetFrom(query.Query, "\"battle_queue_old\"")
 
 	if len(queries.GetSelect(query.Query)) == 0 {
-		queries.SetSelect(query.Query, []string{"\"battle_queue\".*"})
+		queries.SetSelect(query.Query, []string{"\"battle_queue_old\".*"})
 	}
 
 	return query
@@ -463,20 +463,20 @@ func (o *BattleQueueFee) FeeBattleQueues(mods ...qm.QueryMod) battleQueueQuery {
 
 // LoadMech allows an eager lookup of values, cached into the
 // loaded structs of the objects. This is for an N-1 relationship.
-func (battleQueueFeeL) LoadMech(e boil.Executor, singular bool, maybeBattleQueueFee interface{}, mods queries.Applicator) error {
-	var slice []*BattleQueueFee
-	var object *BattleQueueFee
+func (battleQueueFeesOldL) LoadMech(e boil.Executor, singular bool, maybeBattleQueueFeesOld interface{}, mods queries.Applicator) error {
+	var slice []*BattleQueueFeesOld
+	var object *BattleQueueFeesOld
 
 	if singular {
-		object = maybeBattleQueueFee.(*BattleQueueFee)
+		object = maybeBattleQueueFeesOld.(*BattleQueueFeesOld)
 	} else {
-		slice = *maybeBattleQueueFee.(*[]*BattleQueueFee)
+		slice = *maybeBattleQueueFeesOld.(*[]*BattleQueueFeesOld)
 	}
 
 	args := make([]interface{}, 0, 1)
 	if singular {
 		if object.R == nil {
-			object.R = &battleQueueFeeR{}
+			object.R = &battleQueueFeesOldR{}
 		}
 		args = append(args, object.MechID)
 
@@ -484,7 +484,7 @@ func (battleQueueFeeL) LoadMech(e boil.Executor, singular bool, maybeBattleQueue
 	Outer:
 		for _, obj := range slice {
 			if obj.R == nil {
-				obj.R = &battleQueueFeeR{}
+				obj.R = &battleQueueFeesOldR{}
 			}
 
 			for _, a := range args {
@@ -528,7 +528,7 @@ func (battleQueueFeeL) LoadMech(e boil.Executor, singular bool, maybeBattleQueue
 		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for mechs")
 	}
 
-	if len(battleQueueFeeAfterSelectHooks) != 0 {
+	if len(battleQueueFeesOldAfterSelectHooks) != 0 {
 		for _, obj := range resultSlice {
 			if err := obj.doAfterSelectHooks(e); err != nil {
 				return err
@@ -546,7 +546,7 @@ func (battleQueueFeeL) LoadMech(e boil.Executor, singular bool, maybeBattleQueue
 		if foreign.R == nil {
 			foreign.R = &mechR{}
 		}
-		foreign.R.BattleQueueFees = append(foreign.R.BattleQueueFees, object)
+		foreign.R.BattleQueueFeesOlds = append(foreign.R.BattleQueueFeesOlds, object)
 		return nil
 	}
 
@@ -557,7 +557,7 @@ func (battleQueueFeeL) LoadMech(e boil.Executor, singular bool, maybeBattleQueue
 				if foreign.R == nil {
 					foreign.R = &mechR{}
 				}
-				foreign.R.BattleQueueFees = append(foreign.R.BattleQueueFees, local)
+				foreign.R.BattleQueueFeesOlds = append(foreign.R.BattleQueueFeesOlds, local)
 				break
 			}
 		}
@@ -568,20 +568,20 @@ func (battleQueueFeeL) LoadMech(e boil.Executor, singular bool, maybeBattleQueue
 
 // LoadPaidBy allows an eager lookup of values, cached into the
 // loaded structs of the objects. This is for an N-1 relationship.
-func (battleQueueFeeL) LoadPaidBy(e boil.Executor, singular bool, maybeBattleQueueFee interface{}, mods queries.Applicator) error {
-	var slice []*BattleQueueFee
-	var object *BattleQueueFee
+func (battleQueueFeesOldL) LoadPaidBy(e boil.Executor, singular bool, maybeBattleQueueFeesOld interface{}, mods queries.Applicator) error {
+	var slice []*BattleQueueFeesOld
+	var object *BattleQueueFeesOld
 
 	if singular {
-		object = maybeBattleQueueFee.(*BattleQueueFee)
+		object = maybeBattleQueueFeesOld.(*BattleQueueFeesOld)
 	} else {
-		slice = *maybeBattleQueueFee.(*[]*BattleQueueFee)
+		slice = *maybeBattleQueueFeesOld.(*[]*BattleQueueFeesOld)
 	}
 
 	args := make([]interface{}, 0, 1)
 	if singular {
 		if object.R == nil {
-			object.R = &battleQueueFeeR{}
+			object.R = &battleQueueFeesOldR{}
 		}
 		args = append(args, object.PaidByID)
 
@@ -589,7 +589,7 @@ func (battleQueueFeeL) LoadPaidBy(e boil.Executor, singular bool, maybeBattleQue
 	Outer:
 		for _, obj := range slice {
 			if obj.R == nil {
-				obj.R = &battleQueueFeeR{}
+				obj.R = &battleQueueFeesOldR{}
 			}
 
 			for _, a := range args {
@@ -633,7 +633,7 @@ func (battleQueueFeeL) LoadPaidBy(e boil.Executor, singular bool, maybeBattleQue
 		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for players")
 	}
 
-	if len(battleQueueFeeAfterSelectHooks) != 0 {
+	if len(battleQueueFeesOldAfterSelectHooks) != 0 {
 		for _, obj := range resultSlice {
 			if err := obj.doAfterSelectHooks(e); err != nil {
 				return err
@@ -651,7 +651,7 @@ func (battleQueueFeeL) LoadPaidBy(e boil.Executor, singular bool, maybeBattleQue
 		if foreign.R == nil {
 			foreign.R = &playerR{}
 		}
-		foreign.R.PaidByBattleQueueFees = append(foreign.R.PaidByBattleQueueFees, object)
+		foreign.R.PaidByBattleQueueFeesOlds = append(foreign.R.PaidByBattleQueueFeesOlds, object)
 		return nil
 	}
 
@@ -662,7 +662,7 @@ func (battleQueueFeeL) LoadPaidBy(e boil.Executor, singular bool, maybeBattleQue
 				if foreign.R == nil {
 					foreign.R = &playerR{}
 				}
-				foreign.R.PaidByBattleQueueFees = append(foreign.R.PaidByBattleQueueFees, local)
+				foreign.R.PaidByBattleQueueFeesOlds = append(foreign.R.PaidByBattleQueueFeesOlds, local)
 				break
 			}
 		}
@@ -671,29 +671,29 @@ func (battleQueueFeeL) LoadPaidBy(e boil.Executor, singular bool, maybeBattleQue
 	return nil
 }
 
-// LoadFeeBattleQueues allows an eager lookup of values, cached into the
+// LoadFeeBattleQueueOlds allows an eager lookup of values, cached into the
 // loaded structs of the objects. This is for a 1-M or N-M relationship.
-func (battleQueueFeeL) LoadFeeBattleQueues(e boil.Executor, singular bool, maybeBattleQueueFee interface{}, mods queries.Applicator) error {
-	var slice []*BattleQueueFee
-	var object *BattleQueueFee
+func (battleQueueFeesOldL) LoadFeeBattleQueueOlds(e boil.Executor, singular bool, maybeBattleQueueFeesOld interface{}, mods queries.Applicator) error {
+	var slice []*BattleQueueFeesOld
+	var object *BattleQueueFeesOld
 
 	if singular {
-		object = maybeBattleQueueFee.(*BattleQueueFee)
+		object = maybeBattleQueueFeesOld.(*BattleQueueFeesOld)
 	} else {
-		slice = *maybeBattleQueueFee.(*[]*BattleQueueFee)
+		slice = *maybeBattleQueueFeesOld.(*[]*BattleQueueFeesOld)
 	}
 
 	args := make([]interface{}, 0, 1)
 	if singular {
 		if object.R == nil {
-			object.R = &battleQueueFeeR{}
+			object.R = &battleQueueFeesOldR{}
 		}
 		args = append(args, object.ID)
 	} else {
 	Outer:
 		for _, obj := range slice {
 			if obj.R == nil {
-				obj.R = &battleQueueFeeR{}
+				obj.R = &battleQueueFeesOldR{}
 			}
 
 			for _, a := range args {
@@ -711,8 +711,8 @@ func (battleQueueFeeL) LoadFeeBattleQueues(e boil.Executor, singular bool, maybe
 	}
 
 	query := NewQuery(
-		qm.From(`battle_queue`),
-		qm.WhereIn(`battle_queue.fee_id in ?`, args...),
+		qm.From(`battle_queue_old`),
+		qm.WhereIn(`battle_queue_old.fee_id in ?`, args...),
 	)
 	if mods != nil {
 		mods.Apply(query)
@@ -720,22 +720,22 @@ func (battleQueueFeeL) LoadFeeBattleQueues(e boil.Executor, singular bool, maybe
 
 	results, err := query.Query(e)
 	if err != nil {
-		return errors.Wrap(err, "failed to eager load battle_queue")
+		return errors.Wrap(err, "failed to eager load battle_queue_old")
 	}
 
-	var resultSlice []*BattleQueue
+	var resultSlice []*BattleQueueOld
 	if err = queries.Bind(results, &resultSlice); err != nil {
-		return errors.Wrap(err, "failed to bind eager loaded slice battle_queue")
+		return errors.Wrap(err, "failed to bind eager loaded slice battle_queue_old")
 	}
 
 	if err = results.Close(); err != nil {
-		return errors.Wrap(err, "failed to close results in eager load on battle_queue")
+		return errors.Wrap(err, "failed to close results in eager load on battle_queue_old")
 	}
 	if err = results.Err(); err != nil {
-		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for battle_queue")
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for battle_queue_old")
 	}
 
-	if len(battleQueueAfterSelectHooks) != 0 {
+	if len(battleQueueOldAfterSelectHooks) != 0 {
 		for _, obj := range resultSlice {
 			if err := obj.doAfterSelectHooks(e); err != nil {
 				return err
@@ -743,10 +743,10 @@ func (battleQueueFeeL) LoadFeeBattleQueues(e boil.Executor, singular bool, maybe
 		}
 	}
 	if singular {
-		object.R.FeeBattleQueues = resultSlice
+		object.R.FeeBattleQueueOlds = resultSlice
 		for _, foreign := range resultSlice {
 			if foreign.R == nil {
-				foreign.R = &battleQueueR{}
+				foreign.R = &battleQueueOldR{}
 			}
 			foreign.R.Fee = object
 		}
@@ -756,9 +756,9 @@ func (battleQueueFeeL) LoadFeeBattleQueues(e boil.Executor, singular bool, maybe
 	for _, foreign := range resultSlice {
 		for _, local := range slice {
 			if queries.Equal(local.ID, foreign.FeeID) {
-				local.R.FeeBattleQueues = append(local.R.FeeBattleQueues, foreign)
+				local.R.FeeBattleQueueOlds = append(local.R.FeeBattleQueueOlds, foreign)
 				if foreign.R == nil {
-					foreign.R = &battleQueueR{}
+					foreign.R = &battleQueueOldR{}
 				}
 				foreign.R.Fee = local
 				break
@@ -769,10 +769,10 @@ func (battleQueueFeeL) LoadFeeBattleQueues(e boil.Executor, singular bool, maybe
 	return nil
 }
 
-// SetMech of the battleQueueFee to the related item.
+// SetMech of the battleQueueFeesOld to the related item.
 // Sets o.R.Mech to related.
-// Adds o to related.R.BattleQueueFees.
-func (o *BattleQueueFee) SetMech(exec boil.Executor, insert bool, related *Mech) error {
+// Adds o to related.R.BattleQueueFeesOlds.
+func (o *BattleQueueFeesOld) SetMech(exec boil.Executor, insert bool, related *Mech) error {
 	var err error
 	if insert {
 		if err = related.Insert(exec, boil.Infer()); err != nil {
@@ -781,9 +781,9 @@ func (o *BattleQueueFee) SetMech(exec boil.Executor, insert bool, related *Mech)
 	}
 
 	updateQuery := fmt.Sprintf(
-		"UPDATE \"battle_queue_fees\" SET %s WHERE %s",
+		"UPDATE \"battle_queue_fees_old\" SET %s WHERE %s",
 		strmangle.SetParamNames("\"", "\"", 1, []string{"mech_id"}),
-		strmangle.WhereClause("\"", "\"", 2, battleQueueFeePrimaryKeyColumns),
+		strmangle.WhereClause("\"", "\"", 2, battleQueueFeesOldPrimaryKeyColumns),
 	)
 	values := []interface{}{related.ID, o.ID}
 
@@ -797,7 +797,7 @@ func (o *BattleQueueFee) SetMech(exec boil.Executor, insert bool, related *Mech)
 
 	o.MechID = related.ID
 	if o.R == nil {
-		o.R = &battleQueueFeeR{
+		o.R = &battleQueueFeesOldR{
 			Mech: related,
 		}
 	} else {
@@ -806,19 +806,19 @@ func (o *BattleQueueFee) SetMech(exec boil.Executor, insert bool, related *Mech)
 
 	if related.R == nil {
 		related.R = &mechR{
-			BattleQueueFees: BattleQueueFeeSlice{o},
+			BattleQueueFeesOlds: BattleQueueFeesOldSlice{o},
 		}
 	} else {
-		related.R.BattleQueueFees = append(related.R.BattleQueueFees, o)
+		related.R.BattleQueueFeesOlds = append(related.R.BattleQueueFeesOlds, o)
 	}
 
 	return nil
 }
 
-// SetPaidBy of the battleQueueFee to the related item.
+// SetPaidBy of the battleQueueFeesOld to the related item.
 // Sets o.R.PaidBy to related.
-// Adds o to related.R.PaidByBattleQueueFees.
-func (o *BattleQueueFee) SetPaidBy(exec boil.Executor, insert bool, related *Player) error {
+// Adds o to related.R.PaidByBattleQueueFeesOlds.
+func (o *BattleQueueFeesOld) SetPaidBy(exec boil.Executor, insert bool, related *Player) error {
 	var err error
 	if insert {
 		if err = related.Insert(exec, boil.Infer()); err != nil {
@@ -827,9 +827,9 @@ func (o *BattleQueueFee) SetPaidBy(exec boil.Executor, insert bool, related *Pla
 	}
 
 	updateQuery := fmt.Sprintf(
-		"UPDATE \"battle_queue_fees\" SET %s WHERE %s",
+		"UPDATE \"battle_queue_fees_old\" SET %s WHERE %s",
 		strmangle.SetParamNames("\"", "\"", 1, []string{"paid_by_id"}),
-		strmangle.WhereClause("\"", "\"", 2, battleQueueFeePrimaryKeyColumns),
+		strmangle.WhereClause("\"", "\"", 2, battleQueueFeesOldPrimaryKeyColumns),
 	)
 	values := []interface{}{related.ID, o.ID}
 
@@ -843,7 +843,7 @@ func (o *BattleQueueFee) SetPaidBy(exec boil.Executor, insert bool, related *Pla
 
 	o.PaidByID = related.ID
 	if o.R == nil {
-		o.R = &battleQueueFeeR{
+		o.R = &battleQueueFeesOldR{
 			PaidBy: related,
 		}
 	} else {
@@ -852,20 +852,20 @@ func (o *BattleQueueFee) SetPaidBy(exec boil.Executor, insert bool, related *Pla
 
 	if related.R == nil {
 		related.R = &playerR{
-			PaidByBattleQueueFees: BattleQueueFeeSlice{o},
+			PaidByBattleQueueFeesOlds: BattleQueueFeesOldSlice{o},
 		}
 	} else {
-		related.R.PaidByBattleQueueFees = append(related.R.PaidByBattleQueueFees, o)
+		related.R.PaidByBattleQueueFeesOlds = append(related.R.PaidByBattleQueueFeesOlds, o)
 	}
 
 	return nil
 }
 
-// AddFeeBattleQueues adds the given related objects to the existing relationships
-// of the battle_queue_fee, optionally inserting them as new records.
-// Appends related to o.R.FeeBattleQueues.
+// AddFeeBattleQueueOlds adds the given related objects to the existing relationships
+// of the battle_queue_fees_old, optionally inserting them as new records.
+// Appends related to o.R.FeeBattleQueueOlds.
 // Sets related.R.Fee appropriately.
-func (o *BattleQueueFee) AddFeeBattleQueues(exec boil.Executor, insert bool, related ...*BattleQueue) error {
+func (o *BattleQueueFeesOld) AddFeeBattleQueueOlds(exec boil.Executor, insert bool, related ...*BattleQueueOld) error {
 	var err error
 	for _, rel := range related {
 		if insert {
@@ -875,9 +875,9 @@ func (o *BattleQueueFee) AddFeeBattleQueues(exec boil.Executor, insert bool, rel
 			}
 		} else {
 			updateQuery := fmt.Sprintf(
-				"UPDATE \"battle_queue\" SET %s WHERE %s",
+				"UPDATE \"battle_queue_old\" SET %s WHERE %s",
 				strmangle.SetParamNames("\"", "\"", 1, []string{"fee_id"}),
-				strmangle.WhereClause("\"", "\"", 2, battleQueuePrimaryKeyColumns),
+				strmangle.WhereClause("\"", "\"", 2, battleQueueOldPrimaryKeyColumns),
 			)
 			values := []interface{}{o.ID, rel.MechID}
 
@@ -894,16 +894,16 @@ func (o *BattleQueueFee) AddFeeBattleQueues(exec boil.Executor, insert bool, rel
 	}
 
 	if o.R == nil {
-		o.R = &battleQueueFeeR{
-			FeeBattleQueues: related,
+		o.R = &battleQueueFeesOldR{
+			FeeBattleQueueOlds: related,
 		}
 	} else {
-		o.R.FeeBattleQueues = append(o.R.FeeBattleQueues, related...)
+		o.R.FeeBattleQueueOlds = append(o.R.FeeBattleQueueOlds, related...)
 	}
 
 	for _, rel := range related {
 		if rel.R == nil {
-			rel.R = &battleQueueR{
+			rel.R = &battleQueueOldR{
 				Fee: o,
 			}
 		} else {
@@ -913,14 +913,14 @@ func (o *BattleQueueFee) AddFeeBattleQueues(exec boil.Executor, insert bool, rel
 	return nil
 }
 
-// SetFeeBattleQueues removes all previously related items of the
-// battle_queue_fee replacing them completely with the passed
+// SetFeeBattleQueueOlds removes all previously related items of the
+// battle_queue_fees_old replacing them completely with the passed
 // in related items, optionally inserting them as new records.
-// Sets o.R.Fee's FeeBattleQueues accordingly.
-// Replaces o.R.FeeBattleQueues with related.
-// Sets related.R.Fee's FeeBattleQueues accordingly.
-func (o *BattleQueueFee) SetFeeBattleQueues(exec boil.Executor, insert bool, related ...*BattleQueue) error {
-	query := "update \"battle_queue\" set \"fee_id\" = null where \"fee_id\" = $1"
+// Sets o.R.Fee's FeeBattleQueueOlds accordingly.
+// Replaces o.R.FeeBattleQueueOlds with related.
+// Sets related.R.Fee's FeeBattleQueueOlds accordingly.
+func (o *BattleQueueFeesOld) SetFeeBattleQueueOlds(exec boil.Executor, insert bool, related ...*BattleQueueOld) error {
+	query := "update \"battle_queue_old\" set \"fee_id\" = null where \"fee_id\" = $1"
 	values := []interface{}{o.ID}
 	if boil.DebugMode {
 		fmt.Fprintln(boil.DebugWriter, query)
@@ -932,7 +932,7 @@ func (o *BattleQueueFee) SetFeeBattleQueues(exec boil.Executor, insert bool, rel
 	}
 
 	if o.R != nil {
-		for _, rel := range o.R.FeeBattleQueues {
+		for _, rel := range o.R.FeeBattleQueueOlds {
 			queries.SetScanner(&rel.FeeID, nil)
 			if rel.R == nil {
 				continue
@@ -941,15 +941,15 @@ func (o *BattleQueueFee) SetFeeBattleQueues(exec boil.Executor, insert bool, rel
 			rel.R.Fee = nil
 		}
 
-		o.R.FeeBattleQueues = nil
+		o.R.FeeBattleQueueOlds = nil
 	}
-	return o.AddFeeBattleQueues(exec, insert, related...)
+	return o.AddFeeBattleQueueOlds(exec, insert, related...)
 }
 
-// RemoveFeeBattleQueues relationships from objects passed in.
-// Removes related items from R.FeeBattleQueues (uses pointer comparison, removal does not keep order)
+// RemoveFeeBattleQueueOlds relationships from objects passed in.
+// Removes related items from R.FeeBattleQueueOlds (uses pointer comparison, removal does not keep order)
 // Sets related.R.Fee.
-func (o *BattleQueueFee) RemoveFeeBattleQueues(exec boil.Executor, related ...*BattleQueue) error {
+func (o *BattleQueueFeesOld) RemoveFeeBattleQueueOlds(exec boil.Executor, related ...*BattleQueueOld) error {
 	if len(related) == 0 {
 		return nil
 	}
@@ -969,16 +969,16 @@ func (o *BattleQueueFee) RemoveFeeBattleQueues(exec boil.Executor, related ...*B
 	}
 
 	for _, rel := range related {
-		for i, ri := range o.R.FeeBattleQueues {
+		for i, ri := range o.R.FeeBattleQueueOlds {
 			if rel != ri {
 				continue
 			}
 
-			ln := len(o.R.FeeBattleQueues)
+			ln := len(o.R.FeeBattleQueueOlds)
 			if ln > 1 && i < ln-1 {
-				o.R.FeeBattleQueues[i] = o.R.FeeBattleQueues[ln-1]
+				o.R.FeeBattleQueueOlds[i] = o.R.FeeBattleQueueOlds[ln-1]
 			}
-			o.R.FeeBattleQueues = o.R.FeeBattleQueues[:ln-1]
+			o.R.FeeBattleQueueOlds = o.R.FeeBattleQueueOlds[:ln-1]
 			break
 		}
 	}
@@ -986,47 +986,47 @@ func (o *BattleQueueFee) RemoveFeeBattleQueues(exec boil.Executor, related ...*B
 	return nil
 }
 
-// BattleQueueFees retrieves all the records using an executor.
-func BattleQueueFees(mods ...qm.QueryMod) battleQueueFeeQuery {
-	mods = append(mods, qm.From("\"battle_queue_fees\""), qmhelper.WhereIsNull("\"battle_queue_fees\".\"deleted_at\""))
-	return battleQueueFeeQuery{NewQuery(mods...)}
+// BattleQueueFeesOlds retrieves all the records using an executor.
+func BattleQueueFeesOlds(mods ...qm.QueryMod) battleQueueFeesOldQuery {
+	mods = append(mods, qm.From("\"battle_queue_fees_old\""), qmhelper.WhereIsNull("\"battle_queue_fees_old\".\"deleted_at\""))
+	return battleQueueFeesOldQuery{NewQuery(mods...)}
 }
 
-// FindBattleQueueFee retrieves a single record by ID with an executor.
+// FindBattleQueueFeesOld retrieves a single record by ID with an executor.
 // If selectCols is empty Find will return all columns.
-func FindBattleQueueFee(exec boil.Executor, iD string, selectCols ...string) (*BattleQueueFee, error) {
-	battleQueueFeeObj := &BattleQueueFee{}
+func FindBattleQueueFeesOld(exec boil.Executor, iD string, selectCols ...string) (*BattleQueueFeesOld, error) {
+	battleQueueFeesOldObj := &BattleQueueFeesOld{}
 
 	sel := "*"
 	if len(selectCols) > 0 {
 		sel = strings.Join(strmangle.IdentQuoteSlice(dialect.LQ, dialect.RQ, selectCols), ",")
 	}
 	query := fmt.Sprintf(
-		"select %s from \"battle_queue_fees\" where \"id\"=$1 and \"deleted_at\" is null", sel,
+		"select %s from \"battle_queue_fees_old\" where \"id\"=$1 and \"deleted_at\" is null", sel,
 	)
 
 	q := queries.Raw(query, iD)
 
-	err := q.Bind(nil, exec, battleQueueFeeObj)
+	err := q.Bind(nil, exec, battleQueueFeesOldObj)
 	if err != nil {
 		if errors.Cause(err) == sql.ErrNoRows {
 			return nil, sql.ErrNoRows
 		}
-		return nil, errors.Wrap(err, "boiler: unable to select from battle_queue_fees")
+		return nil, errors.Wrap(err, "boiler: unable to select from battle_queue_fees_old")
 	}
 
-	if err = battleQueueFeeObj.doAfterSelectHooks(exec); err != nil {
-		return battleQueueFeeObj, err
+	if err = battleQueueFeesOldObj.doAfterSelectHooks(exec); err != nil {
+		return battleQueueFeesOldObj, err
 	}
 
-	return battleQueueFeeObj, nil
+	return battleQueueFeesOldObj, nil
 }
 
 // Insert a single record using an executor.
 // See boil.Columns.InsertColumnSet documentation to understand column list inference for inserts.
-func (o *BattleQueueFee) Insert(exec boil.Executor, columns boil.Columns) error {
+func (o *BattleQueueFeesOld) Insert(exec boil.Executor, columns boil.Columns) error {
 	if o == nil {
-		return errors.New("boiler: no battle_queue_fees provided for insertion")
+		return errors.New("boiler: no battle_queue_fees_old provided for insertion")
 	}
 
 	var err error
@@ -1043,33 +1043,33 @@ func (o *BattleQueueFee) Insert(exec boil.Executor, columns boil.Columns) error 
 		return err
 	}
 
-	nzDefaults := queries.NonZeroDefaultSet(battleQueueFeeColumnsWithDefault, o)
+	nzDefaults := queries.NonZeroDefaultSet(battleQueueFeesOldColumnsWithDefault, o)
 
 	key := makeCacheKey(columns, nzDefaults)
-	battleQueueFeeInsertCacheMut.RLock()
-	cache, cached := battleQueueFeeInsertCache[key]
-	battleQueueFeeInsertCacheMut.RUnlock()
+	battleQueueFeesOldInsertCacheMut.RLock()
+	cache, cached := battleQueueFeesOldInsertCache[key]
+	battleQueueFeesOldInsertCacheMut.RUnlock()
 
 	if !cached {
 		wl, returnColumns := columns.InsertColumnSet(
-			battleQueueFeeAllColumns,
-			battleQueueFeeColumnsWithDefault,
-			battleQueueFeeColumnsWithoutDefault,
+			battleQueueFeesOldAllColumns,
+			battleQueueFeesOldColumnsWithDefault,
+			battleQueueFeesOldColumnsWithoutDefault,
 			nzDefaults,
 		)
 
-		cache.valueMapping, err = queries.BindMapping(battleQueueFeeType, battleQueueFeeMapping, wl)
+		cache.valueMapping, err = queries.BindMapping(battleQueueFeesOldType, battleQueueFeesOldMapping, wl)
 		if err != nil {
 			return err
 		}
-		cache.retMapping, err = queries.BindMapping(battleQueueFeeType, battleQueueFeeMapping, returnColumns)
+		cache.retMapping, err = queries.BindMapping(battleQueueFeesOldType, battleQueueFeesOldMapping, returnColumns)
 		if err != nil {
 			return err
 		}
 		if len(wl) != 0 {
-			cache.query = fmt.Sprintf("INSERT INTO \"battle_queue_fees\" (\"%s\") %%sVALUES (%s)%%s", strings.Join(wl, "\",\""), strmangle.Placeholders(dialect.UseIndexPlaceholders, len(wl), 1, 1))
+			cache.query = fmt.Sprintf("INSERT INTO \"battle_queue_fees_old\" (\"%s\") %%sVALUES (%s)%%s", strings.Join(wl, "\",\""), strmangle.Placeholders(dialect.UseIndexPlaceholders, len(wl), 1, 1))
 		} else {
-			cache.query = "INSERT INTO \"battle_queue_fees\" %sDEFAULT VALUES%s"
+			cache.query = "INSERT INTO \"battle_queue_fees_old\" %sDEFAULT VALUES%s"
 		}
 
 		var queryOutput, queryReturning string
@@ -1096,22 +1096,22 @@ func (o *BattleQueueFee) Insert(exec boil.Executor, columns boil.Columns) error 
 	}
 
 	if err != nil {
-		return errors.Wrap(err, "boiler: unable to insert into battle_queue_fees")
+		return errors.Wrap(err, "boiler: unable to insert into battle_queue_fees_old")
 	}
 
 	if !cached {
-		battleQueueFeeInsertCacheMut.Lock()
-		battleQueueFeeInsertCache[key] = cache
-		battleQueueFeeInsertCacheMut.Unlock()
+		battleQueueFeesOldInsertCacheMut.Lock()
+		battleQueueFeesOldInsertCache[key] = cache
+		battleQueueFeesOldInsertCacheMut.Unlock()
 	}
 
 	return o.doAfterInsertHooks(exec)
 }
 
-// Update uses an executor to update the BattleQueueFee.
+// Update uses an executor to update the BattleQueueFeesOld.
 // See boil.Columns.UpdateColumnSet documentation to understand column list inference for updates.
 // Update does not automatically update the record in case of default values. Use .Reload() to refresh the records.
-func (o *BattleQueueFee) Update(exec boil.Executor, columns boil.Columns) (int64, error) {
+func (o *BattleQueueFeesOld) Update(exec boil.Executor, columns boil.Columns) (int64, error) {
 	currTime := time.Now().In(boil.GetLocation())
 
 	o.UpdatedAt = currTime
@@ -1121,28 +1121,28 @@ func (o *BattleQueueFee) Update(exec boil.Executor, columns boil.Columns) (int64
 		return 0, err
 	}
 	key := makeCacheKey(columns, nil)
-	battleQueueFeeUpdateCacheMut.RLock()
-	cache, cached := battleQueueFeeUpdateCache[key]
-	battleQueueFeeUpdateCacheMut.RUnlock()
+	battleQueueFeesOldUpdateCacheMut.RLock()
+	cache, cached := battleQueueFeesOldUpdateCache[key]
+	battleQueueFeesOldUpdateCacheMut.RUnlock()
 
 	if !cached {
 		wl := columns.UpdateColumnSet(
-			battleQueueFeeAllColumns,
-			battleQueueFeePrimaryKeyColumns,
+			battleQueueFeesOldAllColumns,
+			battleQueueFeesOldPrimaryKeyColumns,
 		)
 
 		if !columns.IsWhitelist() {
 			wl = strmangle.SetComplement(wl, []string{"created_at"})
 		}
 		if len(wl) == 0 {
-			return 0, errors.New("boiler: unable to update battle_queue_fees, could not build whitelist")
+			return 0, errors.New("boiler: unable to update battle_queue_fees_old, could not build whitelist")
 		}
 
-		cache.query = fmt.Sprintf("UPDATE \"battle_queue_fees\" SET %s WHERE %s",
+		cache.query = fmt.Sprintf("UPDATE \"battle_queue_fees_old\" SET %s WHERE %s",
 			strmangle.SetParamNames("\"", "\"", 1, wl),
-			strmangle.WhereClause("\"", "\"", len(wl)+1, battleQueueFeePrimaryKeyColumns),
+			strmangle.WhereClause("\"", "\"", len(wl)+1, battleQueueFeesOldPrimaryKeyColumns),
 		)
-		cache.valueMapping, err = queries.BindMapping(battleQueueFeeType, battleQueueFeeMapping, append(wl, battleQueueFeePrimaryKeyColumns...))
+		cache.valueMapping, err = queries.BindMapping(battleQueueFeesOldType, battleQueueFeesOldMapping, append(wl, battleQueueFeesOldPrimaryKeyColumns...))
 		if err != nil {
 			return 0, err
 		}
@@ -1157,42 +1157,42 @@ func (o *BattleQueueFee) Update(exec boil.Executor, columns boil.Columns) (int64
 	var result sql.Result
 	result, err = exec.Exec(cache.query, values...)
 	if err != nil {
-		return 0, errors.Wrap(err, "boiler: unable to update battle_queue_fees row")
+		return 0, errors.Wrap(err, "boiler: unable to update battle_queue_fees_old row")
 	}
 
 	rowsAff, err := result.RowsAffected()
 	if err != nil {
-		return 0, errors.Wrap(err, "boiler: failed to get rows affected by update for battle_queue_fees")
+		return 0, errors.Wrap(err, "boiler: failed to get rows affected by update for battle_queue_fees_old")
 	}
 
 	if !cached {
-		battleQueueFeeUpdateCacheMut.Lock()
-		battleQueueFeeUpdateCache[key] = cache
-		battleQueueFeeUpdateCacheMut.Unlock()
+		battleQueueFeesOldUpdateCacheMut.Lock()
+		battleQueueFeesOldUpdateCache[key] = cache
+		battleQueueFeesOldUpdateCacheMut.Unlock()
 	}
 
 	return rowsAff, o.doAfterUpdateHooks(exec)
 }
 
 // UpdateAll updates all rows with the specified column values.
-func (q battleQueueFeeQuery) UpdateAll(exec boil.Executor, cols M) (int64, error) {
+func (q battleQueueFeesOldQuery) UpdateAll(exec boil.Executor, cols M) (int64, error) {
 	queries.SetUpdate(q.Query, cols)
 
 	result, err := q.Query.Exec(exec)
 	if err != nil {
-		return 0, errors.Wrap(err, "boiler: unable to update all for battle_queue_fees")
+		return 0, errors.Wrap(err, "boiler: unable to update all for battle_queue_fees_old")
 	}
 
 	rowsAff, err := result.RowsAffected()
 	if err != nil {
-		return 0, errors.Wrap(err, "boiler: unable to retrieve rows affected for battle_queue_fees")
+		return 0, errors.Wrap(err, "boiler: unable to retrieve rows affected for battle_queue_fees_old")
 	}
 
 	return rowsAff, nil
 }
 
 // UpdateAll updates all rows with the specified column values, using an executor.
-func (o BattleQueueFeeSlice) UpdateAll(exec boil.Executor, cols M) (int64, error) {
+func (o BattleQueueFeesOldSlice) UpdateAll(exec boil.Executor, cols M) (int64, error) {
 	ln := int64(len(o))
 	if ln == 0 {
 		return 0, nil
@@ -1214,13 +1214,13 @@ func (o BattleQueueFeeSlice) UpdateAll(exec boil.Executor, cols M) (int64, error
 
 	// Append all of the primary key values for each column
 	for _, obj := range o {
-		pkeyArgs := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(obj)), battleQueueFeePrimaryKeyMapping)
+		pkeyArgs := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(obj)), battleQueueFeesOldPrimaryKeyMapping)
 		args = append(args, pkeyArgs...)
 	}
 
-	sql := fmt.Sprintf("UPDATE \"battle_queue_fees\" SET %s WHERE %s",
+	sql := fmt.Sprintf("UPDATE \"battle_queue_fees_old\" SET %s WHERE %s",
 		strmangle.SetParamNames("\"", "\"", 1, colNames),
-		strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), len(colNames)+1, battleQueueFeePrimaryKeyColumns, len(o)))
+		strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), len(colNames)+1, battleQueueFeesOldPrimaryKeyColumns, len(o)))
 
 	if boil.DebugMode {
 		fmt.Fprintln(boil.DebugWriter, sql)
@@ -1228,21 +1228,21 @@ func (o BattleQueueFeeSlice) UpdateAll(exec boil.Executor, cols M) (int64, error
 	}
 	result, err := exec.Exec(sql, args...)
 	if err != nil {
-		return 0, errors.Wrap(err, "boiler: unable to update all in battleQueueFee slice")
+		return 0, errors.Wrap(err, "boiler: unable to update all in battleQueueFeesOld slice")
 	}
 
 	rowsAff, err := result.RowsAffected()
 	if err != nil {
-		return 0, errors.Wrap(err, "boiler: unable to retrieve rows affected all in update all battleQueueFee")
+		return 0, errors.Wrap(err, "boiler: unable to retrieve rows affected all in update all battleQueueFeesOld")
 	}
 	return rowsAff, nil
 }
 
 // Upsert attempts an insert using an executor, and does an update or ignore on conflict.
 // See boil.Columns documentation for how to properly use updateColumns and insertColumns.
-func (o *BattleQueueFee) Upsert(exec boil.Executor, updateOnConflict bool, conflictColumns []string, updateColumns, insertColumns boil.Columns) error {
+func (o *BattleQueueFeesOld) Upsert(exec boil.Executor, updateOnConflict bool, conflictColumns []string, updateColumns, insertColumns boil.Columns) error {
 	if o == nil {
-		return errors.New("boiler: no battle_queue_fees provided for upsert")
+		return errors.New("boiler: no battle_queue_fees_old provided for upsert")
 	}
 	currTime := time.Now().In(boil.GetLocation())
 
@@ -1255,7 +1255,7 @@ func (o *BattleQueueFee) Upsert(exec boil.Executor, updateOnConflict bool, confl
 		return err
 	}
 
-	nzDefaults := queries.NonZeroDefaultSet(battleQueueFeeColumnsWithDefault, o)
+	nzDefaults := queries.NonZeroDefaultSet(battleQueueFeesOldColumnsWithDefault, o)
 
 	// Build cache key in-line uglily - mysql vs psql problems
 	buf := strmangle.GetBuffer()
@@ -1285,42 +1285,42 @@ func (o *BattleQueueFee) Upsert(exec boil.Executor, updateOnConflict bool, confl
 	key := buf.String()
 	strmangle.PutBuffer(buf)
 
-	battleQueueFeeUpsertCacheMut.RLock()
-	cache, cached := battleQueueFeeUpsertCache[key]
-	battleQueueFeeUpsertCacheMut.RUnlock()
+	battleQueueFeesOldUpsertCacheMut.RLock()
+	cache, cached := battleQueueFeesOldUpsertCache[key]
+	battleQueueFeesOldUpsertCacheMut.RUnlock()
 
 	var err error
 
 	if !cached {
 		insert, ret := insertColumns.InsertColumnSet(
-			battleQueueFeeAllColumns,
-			battleQueueFeeColumnsWithDefault,
-			battleQueueFeeColumnsWithoutDefault,
+			battleQueueFeesOldAllColumns,
+			battleQueueFeesOldColumnsWithDefault,
+			battleQueueFeesOldColumnsWithoutDefault,
 			nzDefaults,
 		)
 
 		update := updateColumns.UpdateColumnSet(
-			battleQueueFeeAllColumns,
-			battleQueueFeePrimaryKeyColumns,
+			battleQueueFeesOldAllColumns,
+			battleQueueFeesOldPrimaryKeyColumns,
 		)
 
 		if updateOnConflict && len(update) == 0 {
-			return errors.New("boiler: unable to upsert battle_queue_fees, could not build update column list")
+			return errors.New("boiler: unable to upsert battle_queue_fees_old, could not build update column list")
 		}
 
 		conflict := conflictColumns
 		if len(conflict) == 0 {
-			conflict = make([]string, len(battleQueueFeePrimaryKeyColumns))
-			copy(conflict, battleQueueFeePrimaryKeyColumns)
+			conflict = make([]string, len(battleQueueFeesOldPrimaryKeyColumns))
+			copy(conflict, battleQueueFeesOldPrimaryKeyColumns)
 		}
-		cache.query = buildUpsertQueryPostgres(dialect, "\"battle_queue_fees\"", updateOnConflict, ret, update, conflict, insert)
+		cache.query = buildUpsertQueryPostgres(dialect, "\"battle_queue_fees_old\"", updateOnConflict, ret, update, conflict, insert)
 
-		cache.valueMapping, err = queries.BindMapping(battleQueueFeeType, battleQueueFeeMapping, insert)
+		cache.valueMapping, err = queries.BindMapping(battleQueueFeesOldType, battleQueueFeesOldMapping, insert)
 		if err != nil {
 			return err
 		}
 		if len(ret) != 0 {
-			cache.retMapping, err = queries.BindMapping(battleQueueFeeType, battleQueueFeeMapping, ret)
+			cache.retMapping, err = queries.BindMapping(battleQueueFeesOldType, battleQueueFeesOldMapping, ret)
 			if err != nil {
 				return err
 			}
@@ -1347,23 +1347,23 @@ func (o *BattleQueueFee) Upsert(exec boil.Executor, updateOnConflict bool, confl
 		_, err = exec.Exec(cache.query, vals...)
 	}
 	if err != nil {
-		return errors.Wrap(err, "boiler: unable to upsert battle_queue_fees")
+		return errors.Wrap(err, "boiler: unable to upsert battle_queue_fees_old")
 	}
 
 	if !cached {
-		battleQueueFeeUpsertCacheMut.Lock()
-		battleQueueFeeUpsertCache[key] = cache
-		battleQueueFeeUpsertCacheMut.Unlock()
+		battleQueueFeesOldUpsertCacheMut.Lock()
+		battleQueueFeesOldUpsertCache[key] = cache
+		battleQueueFeesOldUpsertCacheMut.Unlock()
 	}
 
 	return o.doAfterUpsertHooks(exec)
 }
 
-// Delete deletes a single BattleQueueFee record with an executor.
+// Delete deletes a single BattleQueueFeesOld record with an executor.
 // Delete will match against the primary key column to find the record to delete.
-func (o *BattleQueueFee) Delete(exec boil.Executor, hardDelete bool) (int64, error) {
+func (o *BattleQueueFeesOld) Delete(exec boil.Executor, hardDelete bool) (int64, error) {
 	if o == nil {
-		return 0, errors.New("boiler: no BattleQueueFee provided for delete")
+		return 0, errors.New("boiler: no BattleQueueFeesOld provided for delete")
 	}
 
 	if err := o.doBeforeDeleteHooks(exec); err != nil {
@@ -1375,16 +1375,16 @@ func (o *BattleQueueFee) Delete(exec boil.Executor, hardDelete bool) (int64, err
 		args []interface{}
 	)
 	if hardDelete {
-		args = queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(o)), battleQueueFeePrimaryKeyMapping)
-		sql = "DELETE FROM \"battle_queue_fees\" WHERE \"id\"=$1"
+		args = queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(o)), battleQueueFeesOldPrimaryKeyMapping)
+		sql = "DELETE FROM \"battle_queue_fees_old\" WHERE \"id\"=$1"
 	} else {
 		currTime := time.Now().In(boil.GetLocation())
 		o.DeletedAt = null.TimeFrom(currTime)
 		wl := []string{"deleted_at"}
-		sql = fmt.Sprintf("UPDATE \"battle_queue_fees\" SET %s WHERE \"id\"=$2",
+		sql = fmt.Sprintf("UPDATE \"battle_queue_fees_old\" SET %s WHERE \"id\"=$2",
 			strmangle.SetParamNames("\"", "\"", 1, wl),
 		)
-		valueMapping, err := queries.BindMapping(battleQueueFeeType, battleQueueFeeMapping, append(wl, battleQueueFeePrimaryKeyColumns...))
+		valueMapping, err := queries.BindMapping(battleQueueFeesOldType, battleQueueFeesOldMapping, append(wl, battleQueueFeesOldPrimaryKeyColumns...))
 		if err != nil {
 			return 0, err
 		}
@@ -1397,12 +1397,12 @@ func (o *BattleQueueFee) Delete(exec boil.Executor, hardDelete bool) (int64, err
 	}
 	result, err := exec.Exec(sql, args...)
 	if err != nil {
-		return 0, errors.Wrap(err, "boiler: unable to delete from battle_queue_fees")
+		return 0, errors.Wrap(err, "boiler: unable to delete from battle_queue_fees_old")
 	}
 
 	rowsAff, err := result.RowsAffected()
 	if err != nil {
-		return 0, errors.Wrap(err, "boiler: failed to get rows affected by delete for battle_queue_fees")
+		return 0, errors.Wrap(err, "boiler: failed to get rows affected by delete for battle_queue_fees_old")
 	}
 
 	if err := o.doAfterDeleteHooks(exec); err != nil {
@@ -1413,9 +1413,9 @@ func (o *BattleQueueFee) Delete(exec boil.Executor, hardDelete bool) (int64, err
 }
 
 // DeleteAll deletes all matching rows.
-func (q battleQueueFeeQuery) DeleteAll(exec boil.Executor, hardDelete bool) (int64, error) {
+func (q battleQueueFeesOldQuery) DeleteAll(exec boil.Executor, hardDelete bool) (int64, error) {
 	if q.Query == nil {
-		return 0, errors.New("boiler: no battleQueueFeeQuery provided for delete all")
+		return 0, errors.New("boiler: no battleQueueFeesOldQuery provided for delete all")
 	}
 
 	if hardDelete {
@@ -1427,24 +1427,24 @@ func (q battleQueueFeeQuery) DeleteAll(exec boil.Executor, hardDelete bool) (int
 
 	result, err := q.Query.Exec(exec)
 	if err != nil {
-		return 0, errors.Wrap(err, "boiler: unable to delete all from battle_queue_fees")
+		return 0, errors.Wrap(err, "boiler: unable to delete all from battle_queue_fees_old")
 	}
 
 	rowsAff, err := result.RowsAffected()
 	if err != nil {
-		return 0, errors.Wrap(err, "boiler: failed to get rows affected by deleteall for battle_queue_fees")
+		return 0, errors.Wrap(err, "boiler: failed to get rows affected by deleteall for battle_queue_fees_old")
 	}
 
 	return rowsAff, nil
 }
 
 // DeleteAll deletes all rows in the slice, using an executor.
-func (o BattleQueueFeeSlice) DeleteAll(exec boil.Executor, hardDelete bool) (int64, error) {
+func (o BattleQueueFeesOldSlice) DeleteAll(exec boil.Executor, hardDelete bool) (int64, error) {
 	if len(o) == 0 {
 		return 0, nil
 	}
 
-	if len(battleQueueFeeBeforeDeleteHooks) != 0 {
+	if len(battleQueueFeesOldBeforeDeleteHooks) != 0 {
 		for _, obj := range o {
 			if err := obj.doBeforeDeleteHooks(exec); err != nil {
 				return 0, err
@@ -1458,21 +1458,21 @@ func (o BattleQueueFeeSlice) DeleteAll(exec boil.Executor, hardDelete bool) (int
 	)
 	if hardDelete {
 		for _, obj := range o {
-			pkeyArgs := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(obj)), battleQueueFeePrimaryKeyMapping)
+			pkeyArgs := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(obj)), battleQueueFeesOldPrimaryKeyMapping)
 			args = append(args, pkeyArgs...)
 		}
-		sql = "DELETE FROM \"battle_queue_fees\" WHERE " +
-			strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), 1, battleQueueFeePrimaryKeyColumns, len(o))
+		sql = "DELETE FROM \"battle_queue_fees_old\" WHERE " +
+			strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), 1, battleQueueFeesOldPrimaryKeyColumns, len(o))
 	} else {
 		currTime := time.Now().In(boil.GetLocation())
 		for _, obj := range o {
-			pkeyArgs := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(obj)), battleQueueFeePrimaryKeyMapping)
+			pkeyArgs := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(obj)), battleQueueFeesOldPrimaryKeyMapping)
 			args = append(args, pkeyArgs...)
 			obj.DeletedAt = null.TimeFrom(currTime)
 		}
 		wl := []string{"deleted_at"}
-		sql = fmt.Sprintf("UPDATE \"battle_queue_fees\" SET %s WHERE "+
-			strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), 2, battleQueueFeePrimaryKeyColumns, len(o)),
+		sql = fmt.Sprintf("UPDATE \"battle_queue_fees_old\" SET %s WHERE "+
+			strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), 2, battleQueueFeesOldPrimaryKeyColumns, len(o)),
 			strmangle.SetParamNames("\"", "\"", 1, wl),
 		)
 		args = append([]interface{}{currTime}, args...)
@@ -1484,15 +1484,15 @@ func (o BattleQueueFeeSlice) DeleteAll(exec boil.Executor, hardDelete bool) (int
 	}
 	result, err := exec.Exec(sql, args...)
 	if err != nil {
-		return 0, errors.Wrap(err, "boiler: unable to delete all from battleQueueFee slice")
+		return 0, errors.Wrap(err, "boiler: unable to delete all from battleQueueFeesOld slice")
 	}
 
 	rowsAff, err := result.RowsAffected()
 	if err != nil {
-		return 0, errors.Wrap(err, "boiler: failed to get rows affected by deleteall for battle_queue_fees")
+		return 0, errors.Wrap(err, "boiler: failed to get rows affected by deleteall for battle_queue_fees_old")
 	}
 
-	if len(battleQueueFeeAfterDeleteHooks) != 0 {
+	if len(battleQueueFeesOldAfterDeleteHooks) != 0 {
 		for _, obj := range o {
 			if err := obj.doAfterDeleteHooks(exec); err != nil {
 				return 0, err
@@ -1505,8 +1505,8 @@ func (o BattleQueueFeeSlice) DeleteAll(exec boil.Executor, hardDelete bool) (int
 
 // Reload refetches the object from the database
 // using the primary keys with an executor.
-func (o *BattleQueueFee) Reload(exec boil.Executor) error {
-	ret, err := FindBattleQueueFee(exec, o.ID)
+func (o *BattleQueueFeesOld) Reload(exec boil.Executor) error {
+	ret, err := FindBattleQueueFeesOld(exec, o.ID)
 	if err != nil {
 		return err
 	}
@@ -1517,27 +1517,27 @@ func (o *BattleQueueFee) Reload(exec boil.Executor) error {
 
 // ReloadAll refetches every row with matching primary key column values
 // and overwrites the original object slice with the newly updated slice.
-func (o *BattleQueueFeeSlice) ReloadAll(exec boil.Executor) error {
+func (o *BattleQueueFeesOldSlice) ReloadAll(exec boil.Executor) error {
 	if o == nil || len(*o) == 0 {
 		return nil
 	}
 
-	slice := BattleQueueFeeSlice{}
+	slice := BattleQueueFeesOldSlice{}
 	var args []interface{}
 	for _, obj := range *o {
-		pkeyArgs := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(obj)), battleQueueFeePrimaryKeyMapping)
+		pkeyArgs := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(obj)), battleQueueFeesOldPrimaryKeyMapping)
 		args = append(args, pkeyArgs...)
 	}
 
-	sql := "SELECT \"battle_queue_fees\".* FROM \"battle_queue_fees\" WHERE " +
-		strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), 1, battleQueueFeePrimaryKeyColumns, len(*o)) +
+	sql := "SELECT \"battle_queue_fees_old\".* FROM \"battle_queue_fees_old\" WHERE " +
+		strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), 1, battleQueueFeesOldPrimaryKeyColumns, len(*o)) +
 		"and \"deleted_at\" is null"
 
 	q := queries.Raw(sql, args...)
 
 	err := q.Bind(nil, exec, &slice)
 	if err != nil {
-		return errors.Wrap(err, "boiler: unable to reload all in BattleQueueFeeSlice")
+		return errors.Wrap(err, "boiler: unable to reload all in BattleQueueFeesOldSlice")
 	}
 
 	*o = slice
@@ -1545,10 +1545,10 @@ func (o *BattleQueueFeeSlice) ReloadAll(exec boil.Executor) error {
 	return nil
 }
 
-// BattleQueueFeeExists checks if the BattleQueueFee row exists.
-func BattleQueueFeeExists(exec boil.Executor, iD string) (bool, error) {
+// BattleQueueFeesOldExists checks if the BattleQueueFeesOld row exists.
+func BattleQueueFeesOldExists(exec boil.Executor, iD string) (bool, error) {
 	var exists bool
-	sql := "select exists(select 1 from \"battle_queue_fees\" where \"id\"=$1 and \"deleted_at\" is null limit 1)"
+	sql := "select exists(select 1 from \"battle_queue_fees_old\" where \"id\"=$1 and \"deleted_at\" is null limit 1)"
 
 	if boil.DebugMode {
 		fmt.Fprintln(boil.DebugWriter, sql)
@@ -1558,7 +1558,7 @@ func BattleQueueFeeExists(exec boil.Executor, iD string) (bool, error) {
 
 	err := row.Scan(&exists)
 	if err != nil {
-		return false, errors.Wrap(err, "boiler: unable to check if battle_queue_fees exists")
+		return false, errors.Wrap(err, "boiler: unable to check if battle_queue_fees_old exists")
 	}
 
 	return exists, nil

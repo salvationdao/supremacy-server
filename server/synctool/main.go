@@ -6,6 +6,8 @@ import (
 	"database/sql"
 	"encoding/csv"
 	"fmt"
+	"github.com/davecgh/go-spew/spew"
+	"github.com/volatiletech/null/v8"
 	"io"
 	"log"
 	"net/http"
@@ -16,7 +18,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 )
 
@@ -27,7 +28,17 @@ type StaticSyncTool struct {
 
 func SyncTool(dt *StaticSyncTool) error {
 
-	f, err := readFile(fmt.Sprintf("%sfactions.csv", dt.FilePath))
+	f, err := readFile(fmt.Sprintf("%sbattle_arena.csv", dt.FilePath))
+	if err != nil {
+		return err
+	}
+	err = SyncBattleArenas(f, dt.DB)
+	if err != nil {
+		return err
+	}
+	f.Close()
+
+	f, err = readFile(fmt.Sprintf("%sfactions.csv", dt.FilePath))
 	if err != nil {
 		return err
 	}
@@ -262,6 +273,41 @@ func RemoveFKContraints(dt StaticSyncTool) error {
 	return nil
 }
 
+func SyncBattleArenas(f io.Reader, db *sql.DB) error {
+
+	r := csv.NewReader(f)
+	if _, err := r.Read(); err != nil {
+		return err
+	}
+
+	records, err := r.ReadAll()
+	if err != nil {
+		return err
+	}
+
+	for _, record := range records {
+		battleArena := &boiler.BattleArena{
+			ID: record[0],
+		}
+
+		if record[1] != "" {
+			battleArena.DeletedAt = null.TimeFrom(time.Now())
+		}
+
+		err = battleArena.Upsert(db, false, []string{boiler.BattleArenaColumns.ID}, boil.Whitelist(boiler.BattleArenaColumns.DeletedAt), boil.Infer())
+		if err != nil {
+			fmt.Println(err.Error(), battleArena.ID)
+			return err
+		}
+
+		fmt.Println("UPDATED: " + battleArena.ID)
+	}
+
+	fmt.Println("Finish syncing battle arenas")
+
+	return nil
+}
+
 func SyncMechModels(f io.Reader, db *sql.DB) error {
 
 	r := csv.NewReader(f)
@@ -295,6 +341,7 @@ func SyncMechModels(f io.Reader, db *sql.DB) error {
 			ShieldRechargeRate:      record[15],
 			ShieldRechargePowerCost: record[16],
 			ShieldTypeID:            record[17],
+			ShieldRechargeDelay:     record[18],
 		}
 
 		MechModels = append(MechModels, *mechModel)
@@ -321,9 +368,10 @@ func SyncMechModels(f io.Reader, db *sql.DB) error {
 												shield_max,
 												shield_recharge_rate,
 												shield_recharge_power_cost,
-			                             		shield_type_id
+			                             		shield_type_id,
+			                             		shield_recharge_delay
 			                                   )
-			VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)
+			VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18)
 			ON CONFLICT (id)
 			DO
 				UPDATE SET 
@@ -343,7 +391,8 @@ func SyncMechModels(f io.Reader, db *sql.DB) error {
 							shield_max=$14,
 							shield_recharge_rate=$15,
 							shield_recharge_power_cost=$16,
-							shield_type_id=$17;
+							shield_type_id=$17,
+							shield_recharge_delay=$18;
 		`,
 			mechModel.ID,
 			mechModel.Label,
@@ -362,6 +411,7 @@ func SyncMechModels(f io.Reader, db *sql.DB) error {
 			mechModel.ShieldRechargeRate,
 			mechModel.ShieldRechargePowerCost,
 			mechModel.ShieldTypeID,
+			mechModel.ShieldRechargeDelay,
 		)
 		if err != nil {
 			fmt.Println("ERROR: " + err.Error())
@@ -1010,6 +1060,7 @@ func SyncWeaponSkins(f io.Reader, db *sql.DB) error {
 			weaponSkin.YoutubeUrl,
 		)
 		if err != nil {
+			spew.Dump(weaponSkin)
 			fmt.Println(err.Error()+weaponSkin.ID, weaponSkin.Label, weaponSkin.Tier)
 			return err
 		}
@@ -1096,7 +1147,7 @@ func SyncWeaponModelSkinCompatibilities(f io.Reader, db *sql.DB) error {
 		fmt.Printf("UPDATED: %s:%s \n", weaponModelSkinCompat.WeaponSkinID, weaponModelSkinCompat.WeaponModelID)
 	}
 
-	fmt.Println("Finish syncing mech_model_skin_compatibilities Count: " + strconv.Itoa(count))
+	fmt.Println("Finish syncing weapon_model_skin_compatibilities Count: " + strconv.Itoa(count))
 
 	return nil
 }

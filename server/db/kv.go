@@ -80,6 +80,10 @@ const KeyAutoRepairDurationSeconds KVKey = "auto_repair_duration_seconds"
 
 const KeyFiatToSUPCut KVKey = "fiat_to_sup_cut" // TODO: find better name to describe: "20% cheaper than fiat pricing"
 
+const KeyDefaultPublicLobbyCount KVKey = "default_public_lobby_count"
+const KeyScheduledLobbyPrepareDurationSeconds KVKey = "scheduled_lobby_prepare_duration_seconds"
+const KeyOpenNewArenaEveryXAmountOfBattleLobbies KVKey = "open_new_arena_after_x_amount_of_battle_lobbies"
+
 func get(key KVKey) string {
 	kv, err := boiler.KVS(boiler.KVWhere.Key.EQ(string(key))).One(gamedb.StdConn)
 	if err != nil {

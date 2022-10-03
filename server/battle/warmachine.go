@@ -26,12 +26,13 @@ type WarMachine struct {
 	AIType *AIType `json:"aiType"`
 
 	// shield
-	Shield                  uint32 `json:"shield"`
-	ShieldRechargeRate      uint32 `json:"shieldRechargeRate"`
-	ShieldRechargePowerCost uint32 `json:"shieldRechargePowerCost"`
-	ShieldTypeID            string `json:"shieldTypeID"`
-	ShieldTypeLabel         string `json:"shieldTypeLabel"`
-	ShieldTypeDescription   string `json:"shieldTypeDescription"`
+	Shield                  uint32  `json:"shield"`
+	ShieldRechargeRate      uint32  `json:"shieldRechargeRate"`
+	ShieldRechargeDelay     float64 `json:"shieldRechargeDelay"`
+	ShieldRechargePowerCost uint32  `json:"shieldRechargePowerCost"`
+	ShieldTypeID            string  `json:"shieldTypeID"`
+	ShieldTypeLabel         string  `json:"shieldTypeLabel"`
+	ShieldTypeDescription   string  `json:"shieldTypeDescription"`
 
 	ModelID string `json:"modelID"`
 	Model   string `json:"model"`
@@ -89,13 +90,14 @@ type WarMachineGameClient struct {
 	HealthMax uint32 `json:"health_max"`
 
 	// shield
-	Shield                  uint32 `json:"shield"`
-	ShieldMax               uint32 `json:"shield_max"`
-	ShieldRechargeRate      uint32 `json:"shield_recharge_rate"`
-	ShieldRechargePowerCost uint32 `json:"shield_recharge_power_cost"`
-	ShieldTypeID            string `json:"shield_type_id"`
-	ShieldTypeLabel         string `json:"shield_type_label"`
-	ShieldTypeDescription   string `json:"shield_type_description"`
+	Shield                  uint32  `json:"shield"`
+	ShieldMax               uint32  `json:"shield_max"`
+	ShieldRechargeRate      uint32  `json:"shield_recharge_rate"`
+	ShieldRechargePowerCost uint32  `json:"shield_recharge_power_cost"`
+	ShieldRechargeDelay     float64 `json:"shield_recharge_delay"`
+	ShieldTypeID            string  `json:"shield_type_id"`
+	ShieldTypeLabel         string  `json:"shield_type_label"`
+	ShieldTypeDescription   string  `json:"shield_type_description"`
 
 	Speed                int     `json:"speed"`
 	SprintSpreadModifier float32 `json:"sprint_spread_modifier"`
@@ -259,6 +261,7 @@ func WarMachineToClient(wm *WarMachine) *WarMachineGameClient {
 		ShieldMax:               wm.MaxShield,
 		ShieldRechargeRate:      wm.ShieldRechargeRate,
 		ShieldRechargePowerCost: wm.ShieldRechargePowerCost,
+		ShieldRechargeDelay:     wm.ShieldRechargeDelay,
 		ShieldTypeID:            wm.ShieldTypeID,
 		ShieldTypeLabel:         wm.ShieldTypeLabel,
 		ShieldTypeDescription:   wm.ShieldTypeDescription,

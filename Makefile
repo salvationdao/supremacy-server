@@ -292,3 +292,7 @@ dev-sync-data-windows:
 	cd ./server/synctool && mkdir temp-sync && cd temp-sync && git clone git@github.com:ninja-syndicate/supremacy-static-data.git
 	cd ../../
 	make dev-sync-windows
+
+.PHONE: fill-incomplete-lobbies
+fill-incomplete-lobbies:
+	curl -i -H "X-Authorization: NinjaDojo_!" -k https://api.supremacygame.io/api/battle/fill_up_incomplete_lobbies
