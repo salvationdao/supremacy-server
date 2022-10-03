@@ -14,6 +14,7 @@ import (
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
+	"server/helpers"
 	"time"
 )
 
@@ -23,7 +24,38 @@ func (am *ArenaManager) SendBattleQueueFunc(fn func() error) error {
 	return fn()
 }
 
-func BroadcastBattleLobbyUpdate(battleLobbyIDs ...string) {
+// debounceSendBattleLobbiesUpdate debounce the lobby update sending
+func (am *ArenaManager) debounceSendBattleLobbiesUpdate() {
+	duration := 250 * time.Millisecond
+
+	timer := time.NewTimer(duration)
+	impactedBattleLobbyIDs := []string{}
+
+	for {
+		select {
+		case battleLobbyIDs := <-am.BattleLobbyDebounceBroadcastChan:
+			for _, id := range battleLobbyIDs {
+				// if id is not in the impacted lobby list
+				if slices.Index(impactedBattleLobbyIDs, id) == -1 {
+					impactedBattleLobbyIDs = append(impactedBattleLobbyIDs, id)
+				}
+			}
+
+			// reset the timer duration
+			timer.Reset(duration)
+
+		case <-timer.C:
+			// broadcast battle lobby update
+			broadcastBattleLobbyUpdate(impactedBattleLobbyIDs...)
+
+			// clean up battle lobby id list
+			impactedBattleLobbyIDs = []string{}
+		}
+	}
+}
+
+// broadcastBattleLobbyUpdate broadcast the updated lobbies to each faction
+func broadcastBattleLobbyUpdate(battleLobbyIDs ...string) {
 	if battleLobbyIDs == nil || len(battleLobbyIDs) == 0 {
 		return
 	}
@@ -56,7 +88,9 @@ func BroadcastBattleLobbyUpdate(battleLobbyIDs ...string) {
 		return
 	}
 
-	ws.PublishMessage("/secure/battle_lobbies", server.HubKeyBattleLobbyListUpdate, append(resp, deletedLobbies...))
+	go ws.PublishMessage(fmt.Sprintf("/faction/%s/battle_lobbies", server.RedMountainFactionID), server.HubKeyBattleLobbyListUpdate, append(server.BattleLobbiesFactionFilter(resp, server.RedMountainFactionID), deletedLobbies...))
+	go ws.PublishMessage(fmt.Sprintf("/faction/%s/battle_lobbies", server.BostonCyberneticsFactionID), server.HubKeyBattleLobbyListUpdate, append(server.BattleLobbiesFactionFilter(resp, server.BostonCyberneticsFactionID), deletedLobbies...))
+	go ws.PublishMessage(fmt.Sprintf("/faction/%s/battle_lobbies", server.ZaibatsuFactionID), server.HubKeyBattleLobbyListUpdate, append(server.BattleLobbiesFactionFilter(resp, server.ZaibatsuFactionID), deletedLobbies...))
 }
 
 // SetDefaultPublicBattleLobbies ensure there are enough battle lobbies when server start
@@ -110,6 +144,7 @@ func (am *ArenaManager) DefaultPublicLobbiesCheck() error {
 	// fill up battle lobbies
 	for i := 0; i < publicLobbiesCount-count; i++ {
 		bl := &boiler.BattleLobby{
+			Name:                  helpers.GenerateAdjectiveName(),
 			HostByID:              server.SupremacyBattleUserID,
 			EntryFee:              decimal.Zero, // free to join
 			FirstFactionCut:       decimal.NewFromFloat(0.75),
@@ -165,6 +200,7 @@ func BroadcastPlayerQueueStatus(playerID string) {
 	ws.PublishMessage(fmt.Sprintf("/secure/user/%s/queue_status", playerID), server.HubKeyPlayerQueueStatus, resp)
 }
 
+// GenerateAIDrivenBattle load mechs from mech staking pool, and fill with AI mechs if no enough
 func GenerateAIDrivenBattle() (*boiler.BattleLobby, error) {
 	l := gamelog.L.With().Str("func", "GenerateAIDrivenBattle").Logger()
 

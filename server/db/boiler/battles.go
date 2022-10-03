@@ -152,6 +152,7 @@ var BattleRels = struct {
 	BattleNumberPlayerBans             string
 	PlayerKillLogs                     string
 	PlayerSpoilsOfWars                 string
+	StackedMechBattleLogs              string
 }{
 	Arena:                              "Arena",
 	GameMap:                            "GameMap",
@@ -178,6 +179,7 @@ var BattleRels = struct {
 	BattleNumberPlayerBans:             "BattleNumberPlayerBans",
 	PlayerKillLogs:                     "PlayerKillLogs",
 	PlayerSpoilsOfWars:                 "PlayerSpoilsOfWars",
+	StackedMechBattleLogs:              "StackedMechBattleLogs",
 }
 
 // battleR is where relationships are stored.
@@ -207,6 +209,7 @@ type battleR struct {
 	BattleNumberPlayerBans             PlayerBanSlice               `boiler:"BattleNumberPlayerBans" boil:"BattleNumberPlayerBans" json:"BattleNumberPlayerBans" toml:"BattleNumberPlayerBans" yaml:"BattleNumberPlayerBans"`
 	PlayerKillLogs                     PlayerKillLogSlice           `boiler:"PlayerKillLogs" boil:"PlayerKillLogs" json:"PlayerKillLogs" toml:"PlayerKillLogs" yaml:"PlayerKillLogs"`
 	PlayerSpoilsOfWars                 PlayerSpoilsOfWarSlice       `boiler:"PlayerSpoilsOfWars" boil:"PlayerSpoilsOfWars" json:"PlayerSpoilsOfWars" toml:"PlayerSpoilsOfWars" yaml:"PlayerSpoilsOfWars"`
+	StackedMechBattleLogs              StackedMechBattleLogSlice    `boiler:"StackedMechBattleLogs" boil:"StackedMechBattleLogs" json:"StackedMechBattleLogs" toml:"StackedMechBattleLogs" yaml:"StackedMechBattleLogs"`
 }
 
 // NewStruct creates a new relationship struct
@@ -968,6 +971,28 @@ func (o *Battle) PlayerSpoilsOfWars(mods ...qm.QueryMod) playerSpoilsOfWarQuery 
 
 	if len(queries.GetSelect(query.Query)) == 0 {
 		queries.SetSelect(query.Query, []string{"\"player_spoils_of_war\".*"})
+	}
+
+	return query
+}
+
+// StackedMechBattleLogs retrieves all the stacked_mech_battle_log's StackedMechBattleLogs with an executor.
+func (o *Battle) StackedMechBattleLogs(mods ...qm.QueryMod) stackedMechBattleLogQuery {
+	var queryMods []qm.QueryMod
+	if len(mods) != 0 {
+		queryMods = append(queryMods, mods...)
+	}
+
+	queryMods = append(queryMods,
+		qm.Where("\"stacked_mech_battle_logs\".\"battle_id\"=?", o.ID),
+		qmhelper.WhereIsNull("\"stacked_mech_battle_logs\".\"deleted_at\""),
+	)
+
+	query := StackedMechBattleLogs(queryMods...)
+	queries.SetFrom(query.Query, "\"stacked_mech_battle_logs\"")
+
+	if len(queries.GetSelect(query.Query)) == 0 {
+		queries.SetSelect(query.Query, []string{"\"stacked_mech_battle_logs\".*"})
 	}
 
 	return query
@@ -3467,6 +3492,105 @@ func (battleL) LoadPlayerSpoilsOfWars(e boil.Executor, singular bool, maybeBattl
 	return nil
 }
 
+// LoadStackedMechBattleLogs allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for a 1-M or N-M relationship.
+func (battleL) LoadStackedMechBattleLogs(e boil.Executor, singular bool, maybeBattle interface{}, mods queries.Applicator) error {
+	var slice []*Battle
+	var object *Battle
+
+	if singular {
+		object = maybeBattle.(*Battle)
+	} else {
+		slice = *maybeBattle.(*[]*Battle)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &battleR{}
+		}
+		args = append(args, object.ID)
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &battleR{}
+			}
+
+			for _, a := range args {
+				if a == obj.ID {
+					continue Outer
+				}
+			}
+
+			args = append(args, obj.ID)
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`stacked_mech_battle_logs`),
+		qm.WhereIn(`stacked_mech_battle_logs.battle_id in ?`, args...),
+		qmhelper.WhereIsNull(`stacked_mech_battle_logs.deleted_at`),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load stacked_mech_battle_logs")
+	}
+
+	var resultSlice []*StackedMechBattleLog
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice stacked_mech_battle_logs")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results in eager load on stacked_mech_battle_logs")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for stacked_mech_battle_logs")
+	}
+
+	if len(stackedMechBattleLogAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+	if singular {
+		object.R.StackedMechBattleLogs = resultSlice
+		for _, foreign := range resultSlice {
+			if foreign.R == nil {
+				foreign.R = &stackedMechBattleLogR{}
+			}
+			foreign.R.Battle = object
+		}
+		return nil
+	}
+
+	for _, foreign := range resultSlice {
+		for _, local := range slice {
+			if local.ID == foreign.BattleID {
+				local.R.StackedMechBattleLogs = append(local.R.StackedMechBattleLogs, foreign)
+				if foreign.R == nil {
+					foreign.R = &stackedMechBattleLogR{}
+				}
+				foreign.R.Battle = local
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
 // SetArena of the battle to the related item.
 // Sets o.R.Arena to related.
 // Adds o to related.R.ArenaBattles.
@@ -5415,6 +5539,58 @@ func (o *Battle) AddPlayerSpoilsOfWars(exec boil.Executor, insert bool, related 
 	for _, rel := range related {
 		if rel.R == nil {
 			rel.R = &playerSpoilsOfWarR{
+				Battle: o,
+			}
+		} else {
+			rel.R.Battle = o
+		}
+	}
+	return nil
+}
+
+// AddStackedMechBattleLogs adds the given related objects to the existing relationships
+// of the battle, optionally inserting them as new records.
+// Appends related to o.R.StackedMechBattleLogs.
+// Sets related.R.Battle appropriately.
+func (o *Battle) AddStackedMechBattleLogs(exec boil.Executor, insert bool, related ...*StackedMechBattleLog) error {
+	var err error
+	for _, rel := range related {
+		if insert {
+			rel.BattleID = o.ID
+			if err = rel.Insert(exec, boil.Infer()); err != nil {
+				return errors.Wrap(err, "failed to insert into foreign table")
+			}
+		} else {
+			updateQuery := fmt.Sprintf(
+				"UPDATE \"stacked_mech_battle_logs\" SET %s WHERE %s",
+				strmangle.SetParamNames("\"", "\"", 1, []string{"battle_id"}),
+				strmangle.WhereClause("\"", "\"", 2, stackedMechBattleLogPrimaryKeyColumns),
+			)
+			values := []interface{}{o.ID, rel.ID}
+
+			if boil.DebugMode {
+				fmt.Fprintln(boil.DebugWriter, updateQuery)
+				fmt.Fprintln(boil.DebugWriter, values)
+			}
+			if _, err = exec.Exec(updateQuery, values...); err != nil {
+				return errors.Wrap(err, "failed to update foreign table")
+			}
+
+			rel.BattleID = o.ID
+		}
+	}
+
+	if o.R == nil {
+		o.R = &battleR{
+			StackedMechBattleLogs: related,
+		}
+	} else {
+		o.R.StackedMechBattleLogs = append(o.R.StackedMechBattleLogs, related...)
+	}
+
+	for _, rel := range related {
+		if rel.R == nil {
+			rel.R = &stackedMechBattleLogR{
 				Battle: o,
 			}
 		} else {

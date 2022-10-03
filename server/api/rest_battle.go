@@ -4,13 +4,14 @@ import (
 	"fmt"
 	"github.com/go-chi/chi/v5"
 	"github.com/gofrs/uuid"
+	"github.com/ninja-syndicate/ws"
 	"github.com/shopspring/decimal"
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
+	"golang.org/x/exp/slices"
 	"net/http"
 	"server"
-	"server/battle"
 	"server/db"
 	"server/db/boiler"
 	"server/gamedb"
@@ -110,6 +111,8 @@ func (api *API) FillUpIncompleteLobbies(w http.ResponseWriter, r *http.Request) 
 
 		var impactedLobbyIDs []string
 
+		deployedMechs := []*boiler.BattleLobbiesMech{}
+
 		for _, bl := range bls {
 			impactedLobbyIDs = append(impactedLobbyIDs, bl.ID)
 
@@ -119,6 +122,9 @@ func (api *API) FillUpIncompleteLobbies(w http.ResponseWriter, r *http.Request) 
 
 			if bl.R != nil {
 				for _, blm := range bl.R.BattleLobbiesMechs {
+					if slices.IndexFunc(deployedMechs, func(bm *boiler.BattleLobbiesMech) bool { return bm.MechID == blm.ID }) == -1 {
+						deployedMechs = append(deployedMechs, blm)
+					}
 					switch blm.FactionID {
 					case server.BostonCyberneticsFactionID:
 						needBC -= 1
@@ -213,7 +219,15 @@ func (api *API) FillUpIncompleteLobbies(w http.ResponseWriter, r *http.Request) 
 		}
 
 		if impactedLobbyIDs != nil {
-			go battle.BroadcastBattleLobbyUpdate(impactedLobbyIDs...)
+			api.ArenaManager.BattleLobbyDebounceBroadcastChan <- impactedLobbyIDs
+		}
+
+		for _, blm := range deployedMechs {
+			ws.PublishMessage(fmt.Sprintf("/faction/%s/queue/%s", blm.FactionID, blm.MechID), server.HubKeyPlayerAssetMechQueueSubscribe, &server.MechArenaInfo{
+				Status:              server.MechArenaStatusQueue,
+				CanDeploy:           false,
+				BattleLobbyIsLocked: true,
+			})
 		}
 		return nil
 	})
