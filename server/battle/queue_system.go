@@ -200,6 +200,7 @@ func BroadcastPlayerQueueStatus(playerID string) {
 	ws.PublishMessage(fmt.Sprintf("/secure/user/%s/queue_status", playerID), server.HubKeyPlayerQueueStatus, resp)
 }
 
+// GenerateAIDrivenBattle load mechs from mech staking pool, and fill with AI mechs if no enough
 func GenerateAIDrivenBattle() (*boiler.BattleLobby, error) {
 	l := gamelog.L.With().Str("func", "GenerateAIDrivenBattle").Logger()
 

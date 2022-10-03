@@ -170,7 +170,7 @@ const (
 type MechArenaInfo struct {
 	Status                   MechArenaStatus `json:"status"` // "QUEUE" | "BATTLE" | "MARKET" | "IDLE" | "SOLD"
 	CanDeploy                bool            `json:"can_deploy"`
-	BattleLobbyNumber        null.Int        `json:"battle_lobby_number"`
+	BattleLobbyIsLocked      bool            `json:"battle_lobby_is_locked"`
 	BattleLobbyQueuePosition null.Int        `json:"battle_lobby_queue_position"`
 }
 

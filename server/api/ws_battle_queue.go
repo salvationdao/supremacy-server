@@ -206,9 +206,9 @@ func (api *API) BattleLobbyCreate(ctx context.Context, user *boiler.Player, fact
 
 				// update mech queue status
 				ws.PublishMessage(fmt.Sprintf("/faction/%s/queue/%s", factionID, mechID), server.HubKeyPlayerAssetMechQueueSubscribe, &server.MechArenaInfo{
-					Status:            server.MechArenaStatusQueue,
-					CanDeploy:         false,
-					BattleLobbyNumber: null.IntFrom(bl.Number),
+					Status:              server.MechArenaStatusQueue,
+					CanDeploy:           false,
+					BattleLobbyIsLocked: bl.ReadyAt.Valid,
 				})
 			}
 
@@ -507,9 +507,9 @@ func (api *API) BattleLobbyJoin(ctx context.Context, user *boiler.Player, factio
 			battle.BroadcastMechQueueStatus(user.ID, deployedMechIDs...)
 
 			mai := &server.MechArenaInfo{
-				Status:            server.MechArenaStatusQueue,
-				CanDeploy:         false,
-				BattleLobbyNumber: null.IntFrom(battleLobby.Number),
+				Status:              server.MechArenaStatusQueue,
+				CanDeploy:           false,
+				BattleLobbyIsLocked: battleLobby.ReadyAt.Valid,
 			}
 
 			// only broadcast queue status change for deployed mechs, if battle lobby is not ready
