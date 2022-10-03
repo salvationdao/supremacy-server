@@ -1140,7 +1140,7 @@ func SyncWeaponModelSkinCompatibilities(f io.Reader, db *sql.DB) error {
 			null.NewString(weaponModelSkinCompat.YoutubeUrl, weaponModelSkinCompat.YoutubeUrl != ""),
 		)
 		if err != nil {
-			fmt.Println("ERROR: " + err.Error())
+			fmt.Printf("ERROR WITH %s - %s: %s\n", weaponModelSkinCompat.WeaponSkinID, weaponModelSkinCompat.WeaponModelID,err.Error())
 			return err
 		}
 		count++

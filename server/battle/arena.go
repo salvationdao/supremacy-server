@@ -61,13 +61,15 @@ type ArenaManager struct {
 	SystemMessagingManager   *system_messages.SystemMessagingManager
 	RepairFuncMx             deadlock.Mutex
 	BattleQueueFuncMx        deadlock.Mutex
+	MechStakeMx              deadlock.Mutex // IMPORTANT: never lock MechStakeMx before BattleQueueFuncMx
 	QuestManager             *quest.System
 
 	arenas           map[string]*Arena
 	deadlock.RWMutex // lock for arena
 
-	ChallengeFundUpdateChan chan bool
-	LobbyFuncMx             *deadlock.Mutex
+	ChallengeFundUpdateChan          chan bool
+	BattleLobbyDebounceBroadcastChan chan []string
+	LobbyFuncMx                      *deadlock.Mutex
 }
 
 type Opts struct {
@@ -95,8 +97,9 @@ func NewArenaManager(opts *Opts) (*ArenaManager, error) {
 		QuestManager:             opts.QuestManager,
 		arenas:                   make(map[string]*Arena),
 
-		ChallengeFundUpdateChan: make(chan bool),
-		LobbyFuncMx:             &deadlock.Mutex{},
+		ChallengeFundUpdateChan:          make(chan bool),
+		BattleLobbyDebounceBroadcastChan: make(chan []string, 10),
+		LobbyFuncMx:                      &deadlock.Mutex{},
 	}
 
 	am.server = &http.Server{
@@ -127,6 +130,9 @@ func NewArenaManager(opts *Opts) (*ArenaManager, error) {
 
 	// start repair offer cleaner
 	go am.RepairOfferCleaner()
+
+	// start debounce lobby update sender
+	go am.debounceSendBattleLobbiesUpdate()
 
 	return am, nil
 }
@@ -393,7 +399,7 @@ func (am *ArenaManager) NewArena(battleArena *boiler.BattleArena, wsConn *websoc
 	arena := &Arena{
 		BattleArena:            battleArena,
 		currentLobbyID:         atomic.NewString(""),
-		Name:                   helpers.GenerateStupidArenaName(),
+		Name:                   helpers.GenerateAdjectiveName(),
 		Stage:                  atomic.NewString(ArenaStageIdle),
 		socket:                 wsConn,
 		connected:              atomic.NewBool(true),
@@ -618,6 +624,17 @@ func (arena *Arena) CurrentBattleWarMachine(participantID int) *WarMachine {
 	return nil
 }
 
+func (arena *Arena) IsRunningAIDrivenMatch() bool {
+	arena.RLock()
+	defer arena.RUnlock()
+
+	if arena._currentBattle == nil || arena._currentBattle.lobby == nil {
+		return true
+	}
+
+	return arena._currentBattle.lobby.IsAiDrivenMatch
+}
+
 func (arena *Arena) currentDisableCells() []int64 {
 	arena.RLock()
 	defer arena.RUnlock()
@@ -745,14 +762,18 @@ func (am *ArenaManager) AbilityLocationSelect(ctx context.Context, user *boiler.
 	btl := arena.CurrentBattle()
 	// skip, if current not battle
 	if btl == nil {
-		gamelog.L.Warn().Msg("no current battle")
-		return nil
+		gamelog.L.Debug().Msg("no current battle")
+		return terror.Error(fmt.Errorf("no battle running"), "No battle running at the moment.")
+	}
+
+	if arena.IsRunningAIDrivenMatch() {
+		return terror.Error(fmt.Errorf("no ability is allowed for AI driven match"), "Battle abilities are not allowed during AI driven match.")
 	}
 
 	as := btl.AbilitySystem()
 
 	if !AbilitySystemIsAvailable(as) {
-		gamelog.L.Error().Str("log_name", "battle arena").Msg("AbilitySystem is nil")
+		gamelog.L.Debug().Str("log_name", "battle arena").Msg("AbilitySystem is not available")
 		return terror.Error(fmt.Errorf("ability system is closed"), "Ability system is closed")
 	}
 
@@ -1807,7 +1828,7 @@ func (arena *Arena) BeginBattle() {
 	}
 
 	// broadcast battle lobby change
-	go BroadcastBattleLobbyUpdate(battleLobby.ID)
+	arena.Manager.BattleLobbyDebounceBroadcastChan <- []string{battleLobby.ID}
 
 	btl := &Battle{
 		arena:   arena,
