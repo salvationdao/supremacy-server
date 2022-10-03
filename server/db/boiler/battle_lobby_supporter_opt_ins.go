@@ -21,8 +21,8 @@ import (
 	"github.com/volatiletech/strmangle"
 )
 
-// BattleLobbySupporter is an object representing the database table.
-type BattleLobbySupporter struct {
+// BattleLobbySupporterOptIn is an object representing the database table.
+type BattleLobbySupporterOptIn struct {
 	ID            string    `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
 	SupporterID   string    `boiler:"supporter_id" boil:"supporter_id" json:"supporter_id" toml:"supporter_id" yaml:"supporter_id"`
 	FactionID     string    `boiler:"faction_id" boil:"faction_id" json:"faction_id" toml:"faction_id" yaml:"faction_id"`
@@ -31,11 +31,11 @@ type BattleLobbySupporter struct {
 	UpdatedAt     time.Time `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
 	CreatedAt     time.Time `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
 
-	R *battleLobbySupporterR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
-	L battleLobbySupporterL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
+	R *battleLobbySupporterOptInR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
+	L battleLobbySupporterOptInL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 }
 
-var BattleLobbySupporterColumns = struct {
+var BattleLobbySupporterOptInColumns = struct {
 	ID            string
 	SupporterID   string
 	FactionID     string
@@ -53,7 +53,7 @@ var BattleLobbySupporterColumns = struct {
 	CreatedAt:     "created_at",
 }
 
-var BattleLobbySupporterTableColumns = struct {
+var BattleLobbySupporterOptInTableColumns = struct {
 	ID            string
 	SupporterID   string
 	FactionID     string
@@ -62,18 +62,18 @@ var BattleLobbySupporterTableColumns = struct {
 	UpdatedAt     string
 	CreatedAt     string
 }{
-	ID:            "battle_lobby_supporters.id",
-	SupporterID:   "battle_lobby_supporters.supporter_id",
-	FactionID:     "battle_lobby_supporters.faction_id",
-	BattleLobbyID: "battle_lobby_supporters.battle_lobby_id",
-	DeletedAt:     "battle_lobby_supporters.deleted_at",
-	UpdatedAt:     "battle_lobby_supporters.updated_at",
-	CreatedAt:     "battle_lobby_supporters.created_at",
+	ID:            "battle_lobby_supporter_opt_ins.id",
+	SupporterID:   "battle_lobby_supporter_opt_ins.supporter_id",
+	FactionID:     "battle_lobby_supporter_opt_ins.faction_id",
+	BattleLobbyID: "battle_lobby_supporter_opt_ins.battle_lobby_id",
+	DeletedAt:     "battle_lobby_supporter_opt_ins.deleted_at",
+	UpdatedAt:     "battle_lobby_supporter_opt_ins.updated_at",
+	CreatedAt:     "battle_lobby_supporter_opt_ins.created_at",
 }
 
 // Generated where
 
-var BattleLobbySupporterWhere = struct {
+var BattleLobbySupporterOptInWhere = struct {
 	ID            whereHelperstring
 	SupporterID   whereHelperstring
 	FactionID     whereHelperstring
@@ -82,17 +82,17 @@ var BattleLobbySupporterWhere = struct {
 	UpdatedAt     whereHelpertime_Time
 	CreatedAt     whereHelpertime_Time
 }{
-	ID:            whereHelperstring{field: "\"battle_lobby_supporters\".\"id\""},
-	SupporterID:   whereHelperstring{field: "\"battle_lobby_supporters\".\"supporter_id\""},
-	FactionID:     whereHelperstring{field: "\"battle_lobby_supporters\".\"faction_id\""},
-	BattleLobbyID: whereHelperstring{field: "\"battle_lobby_supporters\".\"battle_lobby_id\""},
-	DeletedAt:     whereHelpernull_Time{field: "\"battle_lobby_supporters\".\"deleted_at\""},
-	UpdatedAt:     whereHelpertime_Time{field: "\"battle_lobby_supporters\".\"updated_at\""},
-	CreatedAt:     whereHelpertime_Time{field: "\"battle_lobby_supporters\".\"created_at\""},
+	ID:            whereHelperstring{field: "\"battle_lobby_supporter_opt_ins\".\"id\""},
+	SupporterID:   whereHelperstring{field: "\"battle_lobby_supporter_opt_ins\".\"supporter_id\""},
+	FactionID:     whereHelperstring{field: "\"battle_lobby_supporter_opt_ins\".\"faction_id\""},
+	BattleLobbyID: whereHelperstring{field: "\"battle_lobby_supporter_opt_ins\".\"battle_lobby_id\""},
+	DeletedAt:     whereHelpernull_Time{field: "\"battle_lobby_supporter_opt_ins\".\"deleted_at\""},
+	UpdatedAt:     whereHelpertime_Time{field: "\"battle_lobby_supporter_opt_ins\".\"updated_at\""},
+	CreatedAt:     whereHelpertime_Time{field: "\"battle_lobby_supporter_opt_ins\".\"created_at\""},
 }
 
-// BattleLobbySupporterRels is where relationship names are stored.
-var BattleLobbySupporterRels = struct {
+// BattleLobbySupporterOptInRels is where relationship names are stored.
+var BattleLobbySupporterOptInRels = struct {
 	BattleLobby string
 	Faction     string
 	Supporter   string
@@ -102,52 +102,52 @@ var BattleLobbySupporterRels = struct {
 	Supporter:   "Supporter",
 }
 
-// battleLobbySupporterR is where relationships are stored.
-type battleLobbySupporterR struct {
+// battleLobbySupporterOptInR is where relationships are stored.
+type battleLobbySupporterOptInR struct {
 	BattleLobby *BattleLobby `boiler:"BattleLobby" boil:"BattleLobby" json:"BattleLobby" toml:"BattleLobby" yaml:"BattleLobby"`
 	Faction     *Faction     `boiler:"Faction" boil:"Faction" json:"Faction" toml:"Faction" yaml:"Faction"`
 	Supporter   *Player      `boiler:"Supporter" boil:"Supporter" json:"Supporter" toml:"Supporter" yaml:"Supporter"`
 }
 
 // NewStruct creates a new relationship struct
-func (*battleLobbySupporterR) NewStruct() *battleLobbySupporterR {
-	return &battleLobbySupporterR{}
+func (*battleLobbySupporterOptInR) NewStruct() *battleLobbySupporterOptInR {
+	return &battleLobbySupporterOptInR{}
 }
 
-// battleLobbySupporterL is where Load methods for each relationship are stored.
-type battleLobbySupporterL struct{}
+// battleLobbySupporterOptInL is where Load methods for each relationship are stored.
+type battleLobbySupporterOptInL struct{}
 
 var (
-	battleLobbySupporterAllColumns            = []string{"id", "supporter_id", "faction_id", "battle_lobby_id", "deleted_at", "updated_at", "created_at"}
-	battleLobbySupporterColumnsWithoutDefault = []string{"supporter_id", "faction_id", "battle_lobby_id"}
-	battleLobbySupporterColumnsWithDefault    = []string{"id", "deleted_at", "updated_at", "created_at"}
-	battleLobbySupporterPrimaryKeyColumns     = []string{"id"}
-	battleLobbySupporterGeneratedColumns      = []string{}
+	battleLobbySupporterOptInAllColumns            = []string{"id", "supporter_id", "faction_id", "battle_lobby_id", "deleted_at", "updated_at", "created_at"}
+	battleLobbySupporterOptInColumnsWithoutDefault = []string{"supporter_id", "faction_id", "battle_lobby_id"}
+	battleLobbySupporterOptInColumnsWithDefault    = []string{"id", "deleted_at", "updated_at", "created_at"}
+	battleLobbySupporterOptInPrimaryKeyColumns     = []string{"id"}
+	battleLobbySupporterOptInGeneratedColumns      = []string{}
 )
 
 type (
-	// BattleLobbySupporterSlice is an alias for a slice of pointers to BattleLobbySupporter.
-	// This should almost always be used instead of []BattleLobbySupporter.
-	BattleLobbySupporterSlice []*BattleLobbySupporter
-	// BattleLobbySupporterHook is the signature for custom BattleLobbySupporter hook methods
-	BattleLobbySupporterHook func(boil.Executor, *BattleLobbySupporter) error
+	// BattleLobbySupporterOptInSlice is an alias for a slice of pointers to BattleLobbySupporterOptIn.
+	// This should almost always be used instead of []BattleLobbySupporterOptIn.
+	BattleLobbySupporterOptInSlice []*BattleLobbySupporterOptIn
+	// BattleLobbySupporterOptInHook is the signature for custom BattleLobbySupporterOptIn hook methods
+	BattleLobbySupporterOptInHook func(boil.Executor, *BattleLobbySupporterOptIn) error
 
-	battleLobbySupporterQuery struct {
+	battleLobbySupporterOptInQuery struct {
 		*queries.Query
 	}
 )
 
 // Cache for insert, update and upsert
 var (
-	battleLobbySupporterType                 = reflect.TypeOf(&BattleLobbySupporter{})
-	battleLobbySupporterMapping              = queries.MakeStructMapping(battleLobbySupporterType)
-	battleLobbySupporterPrimaryKeyMapping, _ = queries.BindMapping(battleLobbySupporterType, battleLobbySupporterMapping, battleLobbySupporterPrimaryKeyColumns)
-	battleLobbySupporterInsertCacheMut       sync.RWMutex
-	battleLobbySupporterInsertCache          = make(map[string]insertCache)
-	battleLobbySupporterUpdateCacheMut       sync.RWMutex
-	battleLobbySupporterUpdateCache          = make(map[string]updateCache)
-	battleLobbySupporterUpsertCacheMut       sync.RWMutex
-	battleLobbySupporterUpsertCache          = make(map[string]insertCache)
+	battleLobbySupporterOptInType                 = reflect.TypeOf(&BattleLobbySupporterOptIn{})
+	battleLobbySupporterOptInMapping              = queries.MakeStructMapping(battleLobbySupporterOptInType)
+	battleLobbySupporterOptInPrimaryKeyMapping, _ = queries.BindMapping(battleLobbySupporterOptInType, battleLobbySupporterOptInMapping, battleLobbySupporterOptInPrimaryKeyColumns)
+	battleLobbySupporterOptInInsertCacheMut       sync.RWMutex
+	battleLobbySupporterOptInInsertCache          = make(map[string]insertCache)
+	battleLobbySupporterOptInUpdateCacheMut       sync.RWMutex
+	battleLobbySupporterOptInUpdateCache          = make(map[string]updateCache)
+	battleLobbySupporterOptInUpsertCacheMut       sync.RWMutex
+	battleLobbySupporterOptInUpsertCache          = make(map[string]insertCache)
 )
 
 var (
@@ -158,23 +158,23 @@ var (
 	_ = qmhelper.Where
 )
 
-var battleLobbySupporterAfterSelectHooks []BattleLobbySupporterHook
+var battleLobbySupporterOptInAfterSelectHooks []BattleLobbySupporterOptInHook
 
-var battleLobbySupporterBeforeInsertHooks []BattleLobbySupporterHook
-var battleLobbySupporterAfterInsertHooks []BattleLobbySupporterHook
+var battleLobbySupporterOptInBeforeInsertHooks []BattleLobbySupporterOptInHook
+var battleLobbySupporterOptInAfterInsertHooks []BattleLobbySupporterOptInHook
 
-var battleLobbySupporterBeforeUpdateHooks []BattleLobbySupporterHook
-var battleLobbySupporterAfterUpdateHooks []BattleLobbySupporterHook
+var battleLobbySupporterOptInBeforeUpdateHooks []BattleLobbySupporterOptInHook
+var battleLobbySupporterOptInAfterUpdateHooks []BattleLobbySupporterOptInHook
 
-var battleLobbySupporterBeforeDeleteHooks []BattleLobbySupporterHook
-var battleLobbySupporterAfterDeleteHooks []BattleLobbySupporterHook
+var battleLobbySupporterOptInBeforeDeleteHooks []BattleLobbySupporterOptInHook
+var battleLobbySupporterOptInAfterDeleteHooks []BattleLobbySupporterOptInHook
 
-var battleLobbySupporterBeforeUpsertHooks []BattleLobbySupporterHook
-var battleLobbySupporterAfterUpsertHooks []BattleLobbySupporterHook
+var battleLobbySupporterOptInBeforeUpsertHooks []BattleLobbySupporterOptInHook
+var battleLobbySupporterOptInAfterUpsertHooks []BattleLobbySupporterOptInHook
 
 // doAfterSelectHooks executes all "after Select" hooks.
-func (o *BattleLobbySupporter) doAfterSelectHooks(exec boil.Executor) (err error) {
-	for _, hook := range battleLobbySupporterAfterSelectHooks {
+func (o *BattleLobbySupporterOptIn) doAfterSelectHooks(exec boil.Executor) (err error) {
+	for _, hook := range battleLobbySupporterOptInAfterSelectHooks {
 		if err := hook(exec, o); err != nil {
 			return err
 		}
@@ -184,8 +184,8 @@ func (o *BattleLobbySupporter) doAfterSelectHooks(exec boil.Executor) (err error
 }
 
 // doBeforeInsertHooks executes all "before insert" hooks.
-func (o *BattleLobbySupporter) doBeforeInsertHooks(exec boil.Executor) (err error) {
-	for _, hook := range battleLobbySupporterBeforeInsertHooks {
+func (o *BattleLobbySupporterOptIn) doBeforeInsertHooks(exec boil.Executor) (err error) {
+	for _, hook := range battleLobbySupporterOptInBeforeInsertHooks {
 		if err := hook(exec, o); err != nil {
 			return err
 		}
@@ -195,8 +195,8 @@ func (o *BattleLobbySupporter) doBeforeInsertHooks(exec boil.Executor) (err erro
 }
 
 // doAfterInsertHooks executes all "after Insert" hooks.
-func (o *BattleLobbySupporter) doAfterInsertHooks(exec boil.Executor) (err error) {
-	for _, hook := range battleLobbySupporterAfterInsertHooks {
+func (o *BattleLobbySupporterOptIn) doAfterInsertHooks(exec boil.Executor) (err error) {
+	for _, hook := range battleLobbySupporterOptInAfterInsertHooks {
 		if err := hook(exec, o); err != nil {
 			return err
 		}
@@ -206,8 +206,8 @@ func (o *BattleLobbySupporter) doAfterInsertHooks(exec boil.Executor) (err error
 }
 
 // doBeforeUpdateHooks executes all "before Update" hooks.
-func (o *BattleLobbySupporter) doBeforeUpdateHooks(exec boil.Executor) (err error) {
-	for _, hook := range battleLobbySupporterBeforeUpdateHooks {
+func (o *BattleLobbySupporterOptIn) doBeforeUpdateHooks(exec boil.Executor) (err error) {
+	for _, hook := range battleLobbySupporterOptInBeforeUpdateHooks {
 		if err := hook(exec, o); err != nil {
 			return err
 		}
@@ -217,8 +217,8 @@ func (o *BattleLobbySupporter) doBeforeUpdateHooks(exec boil.Executor) (err erro
 }
 
 // doAfterUpdateHooks executes all "after Update" hooks.
-func (o *BattleLobbySupporter) doAfterUpdateHooks(exec boil.Executor) (err error) {
-	for _, hook := range battleLobbySupporterAfterUpdateHooks {
+func (o *BattleLobbySupporterOptIn) doAfterUpdateHooks(exec boil.Executor) (err error) {
+	for _, hook := range battleLobbySupporterOptInAfterUpdateHooks {
 		if err := hook(exec, o); err != nil {
 			return err
 		}
@@ -228,8 +228,8 @@ func (o *BattleLobbySupporter) doAfterUpdateHooks(exec boil.Executor) (err error
 }
 
 // doBeforeDeleteHooks executes all "before Delete" hooks.
-func (o *BattleLobbySupporter) doBeforeDeleteHooks(exec boil.Executor) (err error) {
-	for _, hook := range battleLobbySupporterBeforeDeleteHooks {
+func (o *BattleLobbySupporterOptIn) doBeforeDeleteHooks(exec boil.Executor) (err error) {
+	for _, hook := range battleLobbySupporterOptInBeforeDeleteHooks {
 		if err := hook(exec, o); err != nil {
 			return err
 		}
@@ -239,8 +239,8 @@ func (o *BattleLobbySupporter) doBeforeDeleteHooks(exec boil.Executor) (err erro
 }
 
 // doAfterDeleteHooks executes all "after Delete" hooks.
-func (o *BattleLobbySupporter) doAfterDeleteHooks(exec boil.Executor) (err error) {
-	for _, hook := range battleLobbySupporterAfterDeleteHooks {
+func (o *BattleLobbySupporterOptIn) doAfterDeleteHooks(exec boil.Executor) (err error) {
+	for _, hook := range battleLobbySupporterOptInAfterDeleteHooks {
 		if err := hook(exec, o); err != nil {
 			return err
 		}
@@ -250,8 +250,8 @@ func (o *BattleLobbySupporter) doAfterDeleteHooks(exec boil.Executor) (err error
 }
 
 // doBeforeUpsertHooks executes all "before Upsert" hooks.
-func (o *BattleLobbySupporter) doBeforeUpsertHooks(exec boil.Executor) (err error) {
-	for _, hook := range battleLobbySupporterBeforeUpsertHooks {
+func (o *BattleLobbySupporterOptIn) doBeforeUpsertHooks(exec boil.Executor) (err error) {
+	for _, hook := range battleLobbySupporterOptInBeforeUpsertHooks {
 		if err := hook(exec, o); err != nil {
 			return err
 		}
@@ -261,8 +261,8 @@ func (o *BattleLobbySupporter) doBeforeUpsertHooks(exec boil.Executor) (err erro
 }
 
 // doAfterUpsertHooks executes all "after Upsert" hooks.
-func (o *BattleLobbySupporter) doAfterUpsertHooks(exec boil.Executor) (err error) {
-	for _, hook := range battleLobbySupporterAfterUpsertHooks {
+func (o *BattleLobbySupporterOptIn) doAfterUpsertHooks(exec boil.Executor) (err error) {
+	for _, hook := range battleLobbySupporterOptInAfterUpsertHooks {
 		if err := hook(exec, o); err != nil {
 			return err
 		}
@@ -271,33 +271,33 @@ func (o *BattleLobbySupporter) doAfterUpsertHooks(exec boil.Executor) (err error
 	return nil
 }
 
-// AddBattleLobbySupporterHook registers your hook function for all future operations.
-func AddBattleLobbySupporterHook(hookPoint boil.HookPoint, battleLobbySupporterHook BattleLobbySupporterHook) {
+// AddBattleLobbySupporterOptInHook registers your hook function for all future operations.
+func AddBattleLobbySupporterOptInHook(hookPoint boil.HookPoint, battleLobbySupporterOptInHook BattleLobbySupporterOptInHook) {
 	switch hookPoint {
 	case boil.AfterSelectHook:
-		battleLobbySupporterAfterSelectHooks = append(battleLobbySupporterAfterSelectHooks, battleLobbySupporterHook)
+		battleLobbySupporterOptInAfterSelectHooks = append(battleLobbySupporterOptInAfterSelectHooks, battleLobbySupporterOptInHook)
 	case boil.BeforeInsertHook:
-		battleLobbySupporterBeforeInsertHooks = append(battleLobbySupporterBeforeInsertHooks, battleLobbySupporterHook)
+		battleLobbySupporterOptInBeforeInsertHooks = append(battleLobbySupporterOptInBeforeInsertHooks, battleLobbySupporterOptInHook)
 	case boil.AfterInsertHook:
-		battleLobbySupporterAfterInsertHooks = append(battleLobbySupporterAfterInsertHooks, battleLobbySupporterHook)
+		battleLobbySupporterOptInAfterInsertHooks = append(battleLobbySupporterOptInAfterInsertHooks, battleLobbySupporterOptInHook)
 	case boil.BeforeUpdateHook:
-		battleLobbySupporterBeforeUpdateHooks = append(battleLobbySupporterBeforeUpdateHooks, battleLobbySupporterHook)
+		battleLobbySupporterOptInBeforeUpdateHooks = append(battleLobbySupporterOptInBeforeUpdateHooks, battleLobbySupporterOptInHook)
 	case boil.AfterUpdateHook:
-		battleLobbySupporterAfterUpdateHooks = append(battleLobbySupporterAfterUpdateHooks, battleLobbySupporterHook)
+		battleLobbySupporterOptInAfterUpdateHooks = append(battleLobbySupporterOptInAfterUpdateHooks, battleLobbySupporterOptInHook)
 	case boil.BeforeDeleteHook:
-		battleLobbySupporterBeforeDeleteHooks = append(battleLobbySupporterBeforeDeleteHooks, battleLobbySupporterHook)
+		battleLobbySupporterOptInBeforeDeleteHooks = append(battleLobbySupporterOptInBeforeDeleteHooks, battleLobbySupporterOptInHook)
 	case boil.AfterDeleteHook:
-		battleLobbySupporterAfterDeleteHooks = append(battleLobbySupporterAfterDeleteHooks, battleLobbySupporterHook)
+		battleLobbySupporterOptInAfterDeleteHooks = append(battleLobbySupporterOptInAfterDeleteHooks, battleLobbySupporterOptInHook)
 	case boil.BeforeUpsertHook:
-		battleLobbySupporterBeforeUpsertHooks = append(battleLobbySupporterBeforeUpsertHooks, battleLobbySupporterHook)
+		battleLobbySupporterOptInBeforeUpsertHooks = append(battleLobbySupporterOptInBeforeUpsertHooks, battleLobbySupporterOptInHook)
 	case boil.AfterUpsertHook:
-		battleLobbySupporterAfterUpsertHooks = append(battleLobbySupporterAfterUpsertHooks, battleLobbySupporterHook)
+		battleLobbySupporterOptInAfterUpsertHooks = append(battleLobbySupporterOptInAfterUpsertHooks, battleLobbySupporterOptInHook)
 	}
 }
 
-// One returns a single battleLobbySupporter record from the query.
-func (q battleLobbySupporterQuery) One(exec boil.Executor) (*BattleLobbySupporter, error) {
-	o := &BattleLobbySupporter{}
+// One returns a single battleLobbySupporterOptIn record from the query.
+func (q battleLobbySupporterOptInQuery) One(exec boil.Executor) (*BattleLobbySupporterOptIn, error) {
+	o := &BattleLobbySupporterOptIn{}
 
 	queries.SetLimit(q.Query, 1)
 
@@ -306,7 +306,7 @@ func (q battleLobbySupporterQuery) One(exec boil.Executor) (*BattleLobbySupporte
 		if errors.Cause(err) == sql.ErrNoRows {
 			return nil, sql.ErrNoRows
 		}
-		return nil, errors.Wrap(err, "boiler: failed to execute a one query for battle_lobby_supporters")
+		return nil, errors.Wrap(err, "boiler: failed to execute a one query for battle_lobby_supporter_opt_ins")
 	}
 
 	if err := o.doAfterSelectHooks(exec); err != nil {
@@ -316,16 +316,16 @@ func (q battleLobbySupporterQuery) One(exec boil.Executor) (*BattleLobbySupporte
 	return o, nil
 }
 
-// All returns all BattleLobbySupporter records from the query.
-func (q battleLobbySupporterQuery) All(exec boil.Executor) (BattleLobbySupporterSlice, error) {
-	var o []*BattleLobbySupporter
+// All returns all BattleLobbySupporterOptIn records from the query.
+func (q battleLobbySupporterOptInQuery) All(exec boil.Executor) (BattleLobbySupporterOptInSlice, error) {
+	var o []*BattleLobbySupporterOptIn
 
 	err := q.Bind(nil, exec, &o)
 	if err != nil {
-		return nil, errors.Wrap(err, "boiler: failed to assign all query results to BattleLobbySupporter slice")
+		return nil, errors.Wrap(err, "boiler: failed to assign all query results to BattleLobbySupporterOptIn slice")
 	}
 
-	if len(battleLobbySupporterAfterSelectHooks) != 0 {
+	if len(battleLobbySupporterOptInAfterSelectHooks) != 0 {
 		for _, obj := range o {
 			if err := obj.doAfterSelectHooks(exec); err != nil {
 				return o, err
@@ -336,8 +336,8 @@ func (q battleLobbySupporterQuery) All(exec boil.Executor) (BattleLobbySupporter
 	return o, nil
 }
 
-// Count returns the count of all BattleLobbySupporter records in the query.
-func (q battleLobbySupporterQuery) Count(exec boil.Executor) (int64, error) {
+// Count returns the count of all BattleLobbySupporterOptIn records in the query.
+func (q battleLobbySupporterOptInQuery) Count(exec boil.Executor) (int64, error) {
 	var count int64
 
 	queries.SetSelect(q.Query, nil)
@@ -345,14 +345,14 @@ func (q battleLobbySupporterQuery) Count(exec boil.Executor) (int64, error) {
 
 	err := q.Query.QueryRow(exec).Scan(&count)
 	if err != nil {
-		return 0, errors.Wrap(err, "boiler: failed to count battle_lobby_supporters rows")
+		return 0, errors.Wrap(err, "boiler: failed to count battle_lobby_supporter_opt_ins rows")
 	}
 
 	return count, nil
 }
 
 // Exists checks if the row exists in the table.
-func (q battleLobbySupporterQuery) Exists(exec boil.Executor) (bool, error) {
+func (q battleLobbySupporterOptInQuery) Exists(exec boil.Executor) (bool, error) {
 	var count int64
 
 	queries.SetSelect(q.Query, nil)
@@ -361,14 +361,14 @@ func (q battleLobbySupporterQuery) Exists(exec boil.Executor) (bool, error) {
 
 	err := q.Query.QueryRow(exec).Scan(&count)
 	if err != nil {
-		return false, errors.Wrap(err, "boiler: failed to check if battle_lobby_supporters exists")
+		return false, errors.Wrap(err, "boiler: failed to check if battle_lobby_supporter_opt_ins exists")
 	}
 
 	return count > 0, nil
 }
 
 // BattleLobby pointed to by the foreign key.
-func (o *BattleLobbySupporter) BattleLobby(mods ...qm.QueryMod) battleLobbyQuery {
+func (o *BattleLobbySupporterOptIn) BattleLobby(mods ...qm.QueryMod) battleLobbyQuery {
 	queryMods := []qm.QueryMod{
 		qm.Where("\"id\" = ?", o.BattleLobbyID),
 		qmhelper.WhereIsNull("deleted_at"),
@@ -383,7 +383,7 @@ func (o *BattleLobbySupporter) BattleLobby(mods ...qm.QueryMod) battleLobbyQuery
 }
 
 // Faction pointed to by the foreign key.
-func (o *BattleLobbySupporter) Faction(mods ...qm.QueryMod) factionQuery {
+func (o *BattleLobbySupporterOptIn) Faction(mods ...qm.QueryMod) factionQuery {
 	queryMods := []qm.QueryMod{
 		qm.Where("\"id\" = ?", o.FactionID),
 		qmhelper.WhereIsNull("deleted_at"),
@@ -398,7 +398,7 @@ func (o *BattleLobbySupporter) Faction(mods ...qm.QueryMod) factionQuery {
 }
 
 // Supporter pointed to by the foreign key.
-func (o *BattleLobbySupporter) Supporter(mods ...qm.QueryMod) playerQuery {
+func (o *BattleLobbySupporterOptIn) Supporter(mods ...qm.QueryMod) playerQuery {
 	queryMods := []qm.QueryMod{
 		qm.Where("\"id\" = ?", o.SupporterID),
 		qmhelper.WhereIsNull("deleted_at"),
@@ -414,20 +414,20 @@ func (o *BattleLobbySupporter) Supporter(mods ...qm.QueryMod) playerQuery {
 
 // LoadBattleLobby allows an eager lookup of values, cached into the
 // loaded structs of the objects. This is for an N-1 relationship.
-func (battleLobbySupporterL) LoadBattleLobby(e boil.Executor, singular bool, maybeBattleLobbySupporter interface{}, mods queries.Applicator) error {
-	var slice []*BattleLobbySupporter
-	var object *BattleLobbySupporter
+func (battleLobbySupporterOptInL) LoadBattleLobby(e boil.Executor, singular bool, maybeBattleLobbySupporterOptIn interface{}, mods queries.Applicator) error {
+	var slice []*BattleLobbySupporterOptIn
+	var object *BattleLobbySupporterOptIn
 
 	if singular {
-		object = maybeBattleLobbySupporter.(*BattleLobbySupporter)
+		object = maybeBattleLobbySupporterOptIn.(*BattleLobbySupporterOptIn)
 	} else {
-		slice = *maybeBattleLobbySupporter.(*[]*BattleLobbySupporter)
+		slice = *maybeBattleLobbySupporterOptIn.(*[]*BattleLobbySupporterOptIn)
 	}
 
 	args := make([]interface{}, 0, 1)
 	if singular {
 		if object.R == nil {
-			object.R = &battleLobbySupporterR{}
+			object.R = &battleLobbySupporterOptInR{}
 		}
 		args = append(args, object.BattleLobbyID)
 
@@ -435,7 +435,7 @@ func (battleLobbySupporterL) LoadBattleLobby(e boil.Executor, singular bool, may
 	Outer:
 		for _, obj := range slice {
 			if obj.R == nil {
-				obj.R = &battleLobbySupporterR{}
+				obj.R = &battleLobbySupporterOptInR{}
 			}
 
 			for _, a := range args {
@@ -479,7 +479,7 @@ func (battleLobbySupporterL) LoadBattleLobby(e boil.Executor, singular bool, may
 		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for battle_lobbies")
 	}
 
-	if len(battleLobbySupporterAfterSelectHooks) != 0 {
+	if len(battleLobbySupporterOptInAfterSelectHooks) != 0 {
 		for _, obj := range resultSlice {
 			if err := obj.doAfterSelectHooks(e); err != nil {
 				return err
@@ -497,7 +497,7 @@ func (battleLobbySupporterL) LoadBattleLobby(e boil.Executor, singular bool, may
 		if foreign.R == nil {
 			foreign.R = &battleLobbyR{}
 		}
-		foreign.R.BattleLobbySupporters = append(foreign.R.BattleLobbySupporters, object)
+		foreign.R.BattleLobbySupporterOptIns = append(foreign.R.BattleLobbySupporterOptIns, object)
 		return nil
 	}
 
@@ -508,7 +508,7 @@ func (battleLobbySupporterL) LoadBattleLobby(e boil.Executor, singular bool, may
 				if foreign.R == nil {
 					foreign.R = &battleLobbyR{}
 				}
-				foreign.R.BattleLobbySupporters = append(foreign.R.BattleLobbySupporters, local)
+				foreign.R.BattleLobbySupporterOptIns = append(foreign.R.BattleLobbySupporterOptIns, local)
 				break
 			}
 		}
@@ -519,20 +519,20 @@ func (battleLobbySupporterL) LoadBattleLobby(e boil.Executor, singular bool, may
 
 // LoadFaction allows an eager lookup of values, cached into the
 // loaded structs of the objects. This is for an N-1 relationship.
-func (battleLobbySupporterL) LoadFaction(e boil.Executor, singular bool, maybeBattleLobbySupporter interface{}, mods queries.Applicator) error {
-	var slice []*BattleLobbySupporter
-	var object *BattleLobbySupporter
+func (battleLobbySupporterOptInL) LoadFaction(e boil.Executor, singular bool, maybeBattleLobbySupporterOptIn interface{}, mods queries.Applicator) error {
+	var slice []*BattleLobbySupporterOptIn
+	var object *BattleLobbySupporterOptIn
 
 	if singular {
-		object = maybeBattleLobbySupporter.(*BattleLobbySupporter)
+		object = maybeBattleLobbySupporterOptIn.(*BattleLobbySupporterOptIn)
 	} else {
-		slice = *maybeBattleLobbySupporter.(*[]*BattleLobbySupporter)
+		slice = *maybeBattleLobbySupporterOptIn.(*[]*BattleLobbySupporterOptIn)
 	}
 
 	args := make([]interface{}, 0, 1)
 	if singular {
 		if object.R == nil {
-			object.R = &battleLobbySupporterR{}
+			object.R = &battleLobbySupporterOptInR{}
 		}
 		args = append(args, object.FactionID)
 
@@ -540,7 +540,7 @@ func (battleLobbySupporterL) LoadFaction(e boil.Executor, singular bool, maybeBa
 	Outer:
 		for _, obj := range slice {
 			if obj.R == nil {
-				obj.R = &battleLobbySupporterR{}
+				obj.R = &battleLobbySupporterOptInR{}
 			}
 
 			for _, a := range args {
@@ -584,7 +584,7 @@ func (battleLobbySupporterL) LoadFaction(e boil.Executor, singular bool, maybeBa
 		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for factions")
 	}
 
-	if len(battleLobbySupporterAfterSelectHooks) != 0 {
+	if len(battleLobbySupporterOptInAfterSelectHooks) != 0 {
 		for _, obj := range resultSlice {
 			if err := obj.doAfterSelectHooks(e); err != nil {
 				return err
@@ -602,7 +602,7 @@ func (battleLobbySupporterL) LoadFaction(e boil.Executor, singular bool, maybeBa
 		if foreign.R == nil {
 			foreign.R = &factionR{}
 		}
-		foreign.R.BattleLobbySupporters = append(foreign.R.BattleLobbySupporters, object)
+		foreign.R.BattleLobbySupporterOptIns = append(foreign.R.BattleLobbySupporterOptIns, object)
 		return nil
 	}
 
@@ -613,7 +613,7 @@ func (battleLobbySupporterL) LoadFaction(e boil.Executor, singular bool, maybeBa
 				if foreign.R == nil {
 					foreign.R = &factionR{}
 				}
-				foreign.R.BattleLobbySupporters = append(foreign.R.BattleLobbySupporters, local)
+				foreign.R.BattleLobbySupporterOptIns = append(foreign.R.BattleLobbySupporterOptIns, local)
 				break
 			}
 		}
@@ -624,20 +624,20 @@ func (battleLobbySupporterL) LoadFaction(e boil.Executor, singular bool, maybeBa
 
 // LoadSupporter allows an eager lookup of values, cached into the
 // loaded structs of the objects. This is for an N-1 relationship.
-func (battleLobbySupporterL) LoadSupporter(e boil.Executor, singular bool, maybeBattleLobbySupporter interface{}, mods queries.Applicator) error {
-	var slice []*BattleLobbySupporter
-	var object *BattleLobbySupporter
+func (battleLobbySupporterOptInL) LoadSupporter(e boil.Executor, singular bool, maybeBattleLobbySupporterOptIn interface{}, mods queries.Applicator) error {
+	var slice []*BattleLobbySupporterOptIn
+	var object *BattleLobbySupporterOptIn
 
 	if singular {
-		object = maybeBattleLobbySupporter.(*BattleLobbySupporter)
+		object = maybeBattleLobbySupporterOptIn.(*BattleLobbySupporterOptIn)
 	} else {
-		slice = *maybeBattleLobbySupporter.(*[]*BattleLobbySupporter)
+		slice = *maybeBattleLobbySupporterOptIn.(*[]*BattleLobbySupporterOptIn)
 	}
 
 	args := make([]interface{}, 0, 1)
 	if singular {
 		if object.R == nil {
-			object.R = &battleLobbySupporterR{}
+			object.R = &battleLobbySupporterOptInR{}
 		}
 		args = append(args, object.SupporterID)
 
@@ -645,7 +645,7 @@ func (battleLobbySupporterL) LoadSupporter(e boil.Executor, singular bool, maybe
 	Outer:
 		for _, obj := range slice {
 			if obj.R == nil {
-				obj.R = &battleLobbySupporterR{}
+				obj.R = &battleLobbySupporterOptInR{}
 			}
 
 			for _, a := range args {
@@ -689,7 +689,7 @@ func (battleLobbySupporterL) LoadSupporter(e boil.Executor, singular bool, maybe
 		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for players")
 	}
 
-	if len(battleLobbySupporterAfterSelectHooks) != 0 {
+	if len(battleLobbySupporterOptInAfterSelectHooks) != 0 {
 		for _, obj := range resultSlice {
 			if err := obj.doAfterSelectHooks(e); err != nil {
 				return err
@@ -707,7 +707,7 @@ func (battleLobbySupporterL) LoadSupporter(e boil.Executor, singular bool, maybe
 		if foreign.R == nil {
 			foreign.R = &playerR{}
 		}
-		foreign.R.SupporterBattleLobbySupporters = append(foreign.R.SupporterBattleLobbySupporters, object)
+		foreign.R.SupporterBattleLobbySupporterOptIns = append(foreign.R.SupporterBattleLobbySupporterOptIns, object)
 		return nil
 	}
 
@@ -718,7 +718,7 @@ func (battleLobbySupporterL) LoadSupporter(e boil.Executor, singular bool, maybe
 				if foreign.R == nil {
 					foreign.R = &playerR{}
 				}
-				foreign.R.SupporterBattleLobbySupporters = append(foreign.R.SupporterBattleLobbySupporters, local)
+				foreign.R.SupporterBattleLobbySupporterOptIns = append(foreign.R.SupporterBattleLobbySupporterOptIns, local)
 				break
 			}
 		}
@@ -727,10 +727,10 @@ func (battleLobbySupporterL) LoadSupporter(e boil.Executor, singular bool, maybe
 	return nil
 }
 
-// SetBattleLobby of the battleLobbySupporter to the related item.
+// SetBattleLobby of the battleLobbySupporterOptIn to the related item.
 // Sets o.R.BattleLobby to related.
-// Adds o to related.R.BattleLobbySupporters.
-func (o *BattleLobbySupporter) SetBattleLobby(exec boil.Executor, insert bool, related *BattleLobby) error {
+// Adds o to related.R.BattleLobbySupporterOptIns.
+func (o *BattleLobbySupporterOptIn) SetBattleLobby(exec boil.Executor, insert bool, related *BattleLobby) error {
 	var err error
 	if insert {
 		if err = related.Insert(exec, boil.Infer()); err != nil {
@@ -739,9 +739,9 @@ func (o *BattleLobbySupporter) SetBattleLobby(exec boil.Executor, insert bool, r
 	}
 
 	updateQuery := fmt.Sprintf(
-		"UPDATE \"battle_lobby_supporters\" SET %s WHERE %s",
+		"UPDATE \"battle_lobby_supporter_opt_ins\" SET %s WHERE %s",
 		strmangle.SetParamNames("\"", "\"", 1, []string{"battle_lobby_id"}),
-		strmangle.WhereClause("\"", "\"", 2, battleLobbySupporterPrimaryKeyColumns),
+		strmangle.WhereClause("\"", "\"", 2, battleLobbySupporterOptInPrimaryKeyColumns),
 	)
 	values := []interface{}{related.ID, o.ID}
 
@@ -755,7 +755,7 @@ func (o *BattleLobbySupporter) SetBattleLobby(exec boil.Executor, insert bool, r
 
 	o.BattleLobbyID = related.ID
 	if o.R == nil {
-		o.R = &battleLobbySupporterR{
+		o.R = &battleLobbySupporterOptInR{
 			BattleLobby: related,
 		}
 	} else {
@@ -764,19 +764,19 @@ func (o *BattleLobbySupporter) SetBattleLobby(exec boil.Executor, insert bool, r
 
 	if related.R == nil {
 		related.R = &battleLobbyR{
-			BattleLobbySupporters: BattleLobbySupporterSlice{o},
+			BattleLobbySupporterOptIns: BattleLobbySupporterOptInSlice{o},
 		}
 	} else {
-		related.R.BattleLobbySupporters = append(related.R.BattleLobbySupporters, o)
+		related.R.BattleLobbySupporterOptIns = append(related.R.BattleLobbySupporterOptIns, o)
 	}
 
 	return nil
 }
 
-// SetFaction of the battleLobbySupporter to the related item.
+// SetFaction of the battleLobbySupporterOptIn to the related item.
 // Sets o.R.Faction to related.
-// Adds o to related.R.BattleLobbySupporters.
-func (o *BattleLobbySupporter) SetFaction(exec boil.Executor, insert bool, related *Faction) error {
+// Adds o to related.R.BattleLobbySupporterOptIns.
+func (o *BattleLobbySupporterOptIn) SetFaction(exec boil.Executor, insert bool, related *Faction) error {
 	var err error
 	if insert {
 		if err = related.Insert(exec, boil.Infer()); err != nil {
@@ -785,9 +785,9 @@ func (o *BattleLobbySupporter) SetFaction(exec boil.Executor, insert bool, relat
 	}
 
 	updateQuery := fmt.Sprintf(
-		"UPDATE \"battle_lobby_supporters\" SET %s WHERE %s",
+		"UPDATE \"battle_lobby_supporter_opt_ins\" SET %s WHERE %s",
 		strmangle.SetParamNames("\"", "\"", 1, []string{"faction_id"}),
-		strmangle.WhereClause("\"", "\"", 2, battleLobbySupporterPrimaryKeyColumns),
+		strmangle.WhereClause("\"", "\"", 2, battleLobbySupporterOptInPrimaryKeyColumns),
 	)
 	values := []interface{}{related.ID, o.ID}
 
@@ -801,7 +801,7 @@ func (o *BattleLobbySupporter) SetFaction(exec boil.Executor, insert bool, relat
 
 	o.FactionID = related.ID
 	if o.R == nil {
-		o.R = &battleLobbySupporterR{
+		o.R = &battleLobbySupporterOptInR{
 			Faction: related,
 		}
 	} else {
@@ -810,19 +810,19 @@ func (o *BattleLobbySupporter) SetFaction(exec boil.Executor, insert bool, relat
 
 	if related.R == nil {
 		related.R = &factionR{
-			BattleLobbySupporters: BattleLobbySupporterSlice{o},
+			BattleLobbySupporterOptIns: BattleLobbySupporterOptInSlice{o},
 		}
 	} else {
-		related.R.BattleLobbySupporters = append(related.R.BattleLobbySupporters, o)
+		related.R.BattleLobbySupporterOptIns = append(related.R.BattleLobbySupporterOptIns, o)
 	}
 
 	return nil
 }
 
-// SetSupporter of the battleLobbySupporter to the related item.
+// SetSupporter of the battleLobbySupporterOptIn to the related item.
 // Sets o.R.Supporter to related.
-// Adds o to related.R.SupporterBattleLobbySupporters.
-func (o *BattleLobbySupporter) SetSupporter(exec boil.Executor, insert bool, related *Player) error {
+// Adds o to related.R.SupporterBattleLobbySupporterOptIns.
+func (o *BattleLobbySupporterOptIn) SetSupporter(exec boil.Executor, insert bool, related *Player) error {
 	var err error
 	if insert {
 		if err = related.Insert(exec, boil.Infer()); err != nil {
@@ -831,9 +831,9 @@ func (o *BattleLobbySupporter) SetSupporter(exec boil.Executor, insert bool, rel
 	}
 
 	updateQuery := fmt.Sprintf(
-		"UPDATE \"battle_lobby_supporters\" SET %s WHERE %s",
+		"UPDATE \"battle_lobby_supporter_opt_ins\" SET %s WHERE %s",
 		strmangle.SetParamNames("\"", "\"", 1, []string{"supporter_id"}),
-		strmangle.WhereClause("\"", "\"", 2, battleLobbySupporterPrimaryKeyColumns),
+		strmangle.WhereClause("\"", "\"", 2, battleLobbySupporterOptInPrimaryKeyColumns),
 	)
 	values := []interface{}{related.ID, o.ID}
 
@@ -847,7 +847,7 @@ func (o *BattleLobbySupporter) SetSupporter(exec boil.Executor, insert bool, rel
 
 	o.SupporterID = related.ID
 	if o.R == nil {
-		o.R = &battleLobbySupporterR{
+		o.R = &battleLobbySupporterOptInR{
 			Supporter: related,
 		}
 	} else {
@@ -856,56 +856,56 @@ func (o *BattleLobbySupporter) SetSupporter(exec boil.Executor, insert bool, rel
 
 	if related.R == nil {
 		related.R = &playerR{
-			SupporterBattleLobbySupporters: BattleLobbySupporterSlice{o},
+			SupporterBattleLobbySupporterOptIns: BattleLobbySupporterOptInSlice{o},
 		}
 	} else {
-		related.R.SupporterBattleLobbySupporters = append(related.R.SupporterBattleLobbySupporters, o)
+		related.R.SupporterBattleLobbySupporterOptIns = append(related.R.SupporterBattleLobbySupporterOptIns, o)
 	}
 
 	return nil
 }
 
-// BattleLobbySupporters retrieves all the records using an executor.
-func BattleLobbySupporters(mods ...qm.QueryMod) battleLobbySupporterQuery {
-	mods = append(mods, qm.From("\"battle_lobby_supporters\""), qmhelper.WhereIsNull("\"battle_lobby_supporters\".\"deleted_at\""))
-	return battleLobbySupporterQuery{NewQuery(mods...)}
+// BattleLobbySupporterOptIns retrieves all the records using an executor.
+func BattleLobbySupporterOptIns(mods ...qm.QueryMod) battleLobbySupporterOptInQuery {
+	mods = append(mods, qm.From("\"battle_lobby_supporter_opt_ins\""), qmhelper.WhereIsNull("\"battle_lobby_supporter_opt_ins\".\"deleted_at\""))
+	return battleLobbySupporterOptInQuery{NewQuery(mods...)}
 }
 
-// FindBattleLobbySupporter retrieves a single record by ID with an executor.
+// FindBattleLobbySupporterOptIn retrieves a single record by ID with an executor.
 // If selectCols is empty Find will return all columns.
-func FindBattleLobbySupporter(exec boil.Executor, iD string, selectCols ...string) (*BattleLobbySupporter, error) {
-	battleLobbySupporterObj := &BattleLobbySupporter{}
+func FindBattleLobbySupporterOptIn(exec boil.Executor, iD string, selectCols ...string) (*BattleLobbySupporterOptIn, error) {
+	battleLobbySupporterOptInObj := &BattleLobbySupporterOptIn{}
 
 	sel := "*"
 	if len(selectCols) > 0 {
 		sel = strings.Join(strmangle.IdentQuoteSlice(dialect.LQ, dialect.RQ, selectCols), ",")
 	}
 	query := fmt.Sprintf(
-		"select %s from \"battle_lobby_supporters\" where \"id\"=$1 and \"deleted_at\" is null", sel,
+		"select %s from \"battle_lobby_supporter_opt_ins\" where \"id\"=$1 and \"deleted_at\" is null", sel,
 	)
 
 	q := queries.Raw(query, iD)
 
-	err := q.Bind(nil, exec, battleLobbySupporterObj)
+	err := q.Bind(nil, exec, battleLobbySupporterOptInObj)
 	if err != nil {
 		if errors.Cause(err) == sql.ErrNoRows {
 			return nil, sql.ErrNoRows
 		}
-		return nil, errors.Wrap(err, "boiler: unable to select from battle_lobby_supporters")
+		return nil, errors.Wrap(err, "boiler: unable to select from battle_lobby_supporter_opt_ins")
 	}
 
-	if err = battleLobbySupporterObj.doAfterSelectHooks(exec); err != nil {
-		return battleLobbySupporterObj, err
+	if err = battleLobbySupporterOptInObj.doAfterSelectHooks(exec); err != nil {
+		return battleLobbySupporterOptInObj, err
 	}
 
-	return battleLobbySupporterObj, nil
+	return battleLobbySupporterOptInObj, nil
 }
 
 // Insert a single record using an executor.
 // See boil.Columns.InsertColumnSet documentation to understand column list inference for inserts.
-func (o *BattleLobbySupporter) Insert(exec boil.Executor, columns boil.Columns) error {
+func (o *BattleLobbySupporterOptIn) Insert(exec boil.Executor, columns boil.Columns) error {
 	if o == nil {
-		return errors.New("boiler: no battle_lobby_supporters provided for insertion")
+		return errors.New("boiler: no battle_lobby_supporter_opt_ins provided for insertion")
 	}
 
 	var err error
@@ -922,33 +922,33 @@ func (o *BattleLobbySupporter) Insert(exec boil.Executor, columns boil.Columns) 
 		return err
 	}
 
-	nzDefaults := queries.NonZeroDefaultSet(battleLobbySupporterColumnsWithDefault, o)
+	nzDefaults := queries.NonZeroDefaultSet(battleLobbySupporterOptInColumnsWithDefault, o)
 
 	key := makeCacheKey(columns, nzDefaults)
-	battleLobbySupporterInsertCacheMut.RLock()
-	cache, cached := battleLobbySupporterInsertCache[key]
-	battleLobbySupporterInsertCacheMut.RUnlock()
+	battleLobbySupporterOptInInsertCacheMut.RLock()
+	cache, cached := battleLobbySupporterOptInInsertCache[key]
+	battleLobbySupporterOptInInsertCacheMut.RUnlock()
 
 	if !cached {
 		wl, returnColumns := columns.InsertColumnSet(
-			battleLobbySupporterAllColumns,
-			battleLobbySupporterColumnsWithDefault,
-			battleLobbySupporterColumnsWithoutDefault,
+			battleLobbySupporterOptInAllColumns,
+			battleLobbySupporterOptInColumnsWithDefault,
+			battleLobbySupporterOptInColumnsWithoutDefault,
 			nzDefaults,
 		)
 
-		cache.valueMapping, err = queries.BindMapping(battleLobbySupporterType, battleLobbySupporterMapping, wl)
+		cache.valueMapping, err = queries.BindMapping(battleLobbySupporterOptInType, battleLobbySupporterOptInMapping, wl)
 		if err != nil {
 			return err
 		}
-		cache.retMapping, err = queries.BindMapping(battleLobbySupporterType, battleLobbySupporterMapping, returnColumns)
+		cache.retMapping, err = queries.BindMapping(battleLobbySupporterOptInType, battleLobbySupporterOptInMapping, returnColumns)
 		if err != nil {
 			return err
 		}
 		if len(wl) != 0 {
-			cache.query = fmt.Sprintf("INSERT INTO \"battle_lobby_supporters\" (\"%s\") %%sVALUES (%s)%%s", strings.Join(wl, "\",\""), strmangle.Placeholders(dialect.UseIndexPlaceholders, len(wl), 1, 1))
+			cache.query = fmt.Sprintf("INSERT INTO \"battle_lobby_supporter_opt_ins\" (\"%s\") %%sVALUES (%s)%%s", strings.Join(wl, "\",\""), strmangle.Placeholders(dialect.UseIndexPlaceholders, len(wl), 1, 1))
 		} else {
-			cache.query = "INSERT INTO \"battle_lobby_supporters\" %sDEFAULT VALUES%s"
+			cache.query = "INSERT INTO \"battle_lobby_supporter_opt_ins\" %sDEFAULT VALUES%s"
 		}
 
 		var queryOutput, queryReturning string
@@ -975,22 +975,22 @@ func (o *BattleLobbySupporter) Insert(exec boil.Executor, columns boil.Columns) 
 	}
 
 	if err != nil {
-		return errors.Wrap(err, "boiler: unable to insert into battle_lobby_supporters")
+		return errors.Wrap(err, "boiler: unable to insert into battle_lobby_supporter_opt_ins")
 	}
 
 	if !cached {
-		battleLobbySupporterInsertCacheMut.Lock()
-		battleLobbySupporterInsertCache[key] = cache
-		battleLobbySupporterInsertCacheMut.Unlock()
+		battleLobbySupporterOptInInsertCacheMut.Lock()
+		battleLobbySupporterOptInInsertCache[key] = cache
+		battleLobbySupporterOptInInsertCacheMut.Unlock()
 	}
 
 	return o.doAfterInsertHooks(exec)
 }
 
-// Update uses an executor to update the BattleLobbySupporter.
+// Update uses an executor to update the BattleLobbySupporterOptIn.
 // See boil.Columns.UpdateColumnSet documentation to understand column list inference for updates.
 // Update does not automatically update the record in case of default values. Use .Reload() to refresh the records.
-func (o *BattleLobbySupporter) Update(exec boil.Executor, columns boil.Columns) (int64, error) {
+func (o *BattleLobbySupporterOptIn) Update(exec boil.Executor, columns boil.Columns) (int64, error) {
 	currTime := time.Now().In(boil.GetLocation())
 
 	o.UpdatedAt = currTime
@@ -1000,28 +1000,28 @@ func (o *BattleLobbySupporter) Update(exec boil.Executor, columns boil.Columns) 
 		return 0, err
 	}
 	key := makeCacheKey(columns, nil)
-	battleLobbySupporterUpdateCacheMut.RLock()
-	cache, cached := battleLobbySupporterUpdateCache[key]
-	battleLobbySupporterUpdateCacheMut.RUnlock()
+	battleLobbySupporterOptInUpdateCacheMut.RLock()
+	cache, cached := battleLobbySupporterOptInUpdateCache[key]
+	battleLobbySupporterOptInUpdateCacheMut.RUnlock()
 
 	if !cached {
 		wl := columns.UpdateColumnSet(
-			battleLobbySupporterAllColumns,
-			battleLobbySupporterPrimaryKeyColumns,
+			battleLobbySupporterOptInAllColumns,
+			battleLobbySupporterOptInPrimaryKeyColumns,
 		)
 
 		if !columns.IsWhitelist() {
 			wl = strmangle.SetComplement(wl, []string{"created_at"})
 		}
 		if len(wl) == 0 {
-			return 0, errors.New("boiler: unable to update battle_lobby_supporters, could not build whitelist")
+			return 0, errors.New("boiler: unable to update battle_lobby_supporter_opt_ins, could not build whitelist")
 		}
 
-		cache.query = fmt.Sprintf("UPDATE \"battle_lobby_supporters\" SET %s WHERE %s",
+		cache.query = fmt.Sprintf("UPDATE \"battle_lobby_supporter_opt_ins\" SET %s WHERE %s",
 			strmangle.SetParamNames("\"", "\"", 1, wl),
-			strmangle.WhereClause("\"", "\"", len(wl)+1, battleLobbySupporterPrimaryKeyColumns),
+			strmangle.WhereClause("\"", "\"", len(wl)+1, battleLobbySupporterOptInPrimaryKeyColumns),
 		)
-		cache.valueMapping, err = queries.BindMapping(battleLobbySupporterType, battleLobbySupporterMapping, append(wl, battleLobbySupporterPrimaryKeyColumns...))
+		cache.valueMapping, err = queries.BindMapping(battleLobbySupporterOptInType, battleLobbySupporterOptInMapping, append(wl, battleLobbySupporterOptInPrimaryKeyColumns...))
 		if err != nil {
 			return 0, err
 		}
@@ -1036,42 +1036,42 @@ func (o *BattleLobbySupporter) Update(exec boil.Executor, columns boil.Columns) 
 	var result sql.Result
 	result, err = exec.Exec(cache.query, values...)
 	if err != nil {
-		return 0, errors.Wrap(err, "boiler: unable to update battle_lobby_supporters row")
+		return 0, errors.Wrap(err, "boiler: unable to update battle_lobby_supporter_opt_ins row")
 	}
 
 	rowsAff, err := result.RowsAffected()
 	if err != nil {
-		return 0, errors.Wrap(err, "boiler: failed to get rows affected by update for battle_lobby_supporters")
+		return 0, errors.Wrap(err, "boiler: failed to get rows affected by update for battle_lobby_supporter_opt_ins")
 	}
 
 	if !cached {
-		battleLobbySupporterUpdateCacheMut.Lock()
-		battleLobbySupporterUpdateCache[key] = cache
-		battleLobbySupporterUpdateCacheMut.Unlock()
+		battleLobbySupporterOptInUpdateCacheMut.Lock()
+		battleLobbySupporterOptInUpdateCache[key] = cache
+		battleLobbySupporterOptInUpdateCacheMut.Unlock()
 	}
 
 	return rowsAff, o.doAfterUpdateHooks(exec)
 }
 
 // UpdateAll updates all rows with the specified column values.
-func (q battleLobbySupporterQuery) UpdateAll(exec boil.Executor, cols M) (int64, error) {
+func (q battleLobbySupporterOptInQuery) UpdateAll(exec boil.Executor, cols M) (int64, error) {
 	queries.SetUpdate(q.Query, cols)
 
 	result, err := q.Query.Exec(exec)
 	if err != nil {
-		return 0, errors.Wrap(err, "boiler: unable to update all for battle_lobby_supporters")
+		return 0, errors.Wrap(err, "boiler: unable to update all for battle_lobby_supporter_opt_ins")
 	}
 
 	rowsAff, err := result.RowsAffected()
 	if err != nil {
-		return 0, errors.Wrap(err, "boiler: unable to retrieve rows affected for battle_lobby_supporters")
+		return 0, errors.Wrap(err, "boiler: unable to retrieve rows affected for battle_lobby_supporter_opt_ins")
 	}
 
 	return rowsAff, nil
 }
 
 // UpdateAll updates all rows with the specified column values, using an executor.
-func (o BattleLobbySupporterSlice) UpdateAll(exec boil.Executor, cols M) (int64, error) {
+func (o BattleLobbySupporterOptInSlice) UpdateAll(exec boil.Executor, cols M) (int64, error) {
 	ln := int64(len(o))
 	if ln == 0 {
 		return 0, nil
@@ -1093,13 +1093,13 @@ func (o BattleLobbySupporterSlice) UpdateAll(exec boil.Executor, cols M) (int64,
 
 	// Append all of the primary key values for each column
 	for _, obj := range o {
-		pkeyArgs := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(obj)), battleLobbySupporterPrimaryKeyMapping)
+		pkeyArgs := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(obj)), battleLobbySupporterOptInPrimaryKeyMapping)
 		args = append(args, pkeyArgs...)
 	}
 
-	sql := fmt.Sprintf("UPDATE \"battle_lobby_supporters\" SET %s WHERE %s",
+	sql := fmt.Sprintf("UPDATE \"battle_lobby_supporter_opt_ins\" SET %s WHERE %s",
 		strmangle.SetParamNames("\"", "\"", 1, colNames),
-		strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), len(colNames)+1, battleLobbySupporterPrimaryKeyColumns, len(o)))
+		strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), len(colNames)+1, battleLobbySupporterOptInPrimaryKeyColumns, len(o)))
 
 	if boil.DebugMode {
 		fmt.Fprintln(boil.DebugWriter, sql)
@@ -1107,21 +1107,21 @@ func (o BattleLobbySupporterSlice) UpdateAll(exec boil.Executor, cols M) (int64,
 	}
 	result, err := exec.Exec(sql, args...)
 	if err != nil {
-		return 0, errors.Wrap(err, "boiler: unable to update all in battleLobbySupporter slice")
+		return 0, errors.Wrap(err, "boiler: unable to update all in battleLobbySupporterOptIn slice")
 	}
 
 	rowsAff, err := result.RowsAffected()
 	if err != nil {
-		return 0, errors.Wrap(err, "boiler: unable to retrieve rows affected all in update all battleLobbySupporter")
+		return 0, errors.Wrap(err, "boiler: unable to retrieve rows affected all in update all battleLobbySupporterOptIn")
 	}
 	return rowsAff, nil
 }
 
 // Upsert attempts an insert using an executor, and does an update or ignore on conflict.
 // See boil.Columns documentation for how to properly use updateColumns and insertColumns.
-func (o *BattleLobbySupporter) Upsert(exec boil.Executor, updateOnConflict bool, conflictColumns []string, updateColumns, insertColumns boil.Columns) error {
+func (o *BattleLobbySupporterOptIn) Upsert(exec boil.Executor, updateOnConflict bool, conflictColumns []string, updateColumns, insertColumns boil.Columns) error {
 	if o == nil {
-		return errors.New("boiler: no battle_lobby_supporters provided for upsert")
+		return errors.New("boiler: no battle_lobby_supporter_opt_ins provided for upsert")
 	}
 	currTime := time.Now().In(boil.GetLocation())
 
@@ -1134,7 +1134,7 @@ func (o *BattleLobbySupporter) Upsert(exec boil.Executor, updateOnConflict bool,
 		return err
 	}
 
-	nzDefaults := queries.NonZeroDefaultSet(battleLobbySupporterColumnsWithDefault, o)
+	nzDefaults := queries.NonZeroDefaultSet(battleLobbySupporterOptInColumnsWithDefault, o)
 
 	// Build cache key in-line uglily - mysql vs psql problems
 	buf := strmangle.GetBuffer()
@@ -1164,42 +1164,42 @@ func (o *BattleLobbySupporter) Upsert(exec boil.Executor, updateOnConflict bool,
 	key := buf.String()
 	strmangle.PutBuffer(buf)
 
-	battleLobbySupporterUpsertCacheMut.RLock()
-	cache, cached := battleLobbySupporterUpsertCache[key]
-	battleLobbySupporterUpsertCacheMut.RUnlock()
+	battleLobbySupporterOptInUpsertCacheMut.RLock()
+	cache, cached := battleLobbySupporterOptInUpsertCache[key]
+	battleLobbySupporterOptInUpsertCacheMut.RUnlock()
 
 	var err error
 
 	if !cached {
 		insert, ret := insertColumns.InsertColumnSet(
-			battleLobbySupporterAllColumns,
-			battleLobbySupporterColumnsWithDefault,
-			battleLobbySupporterColumnsWithoutDefault,
+			battleLobbySupporterOptInAllColumns,
+			battleLobbySupporterOptInColumnsWithDefault,
+			battleLobbySupporterOptInColumnsWithoutDefault,
 			nzDefaults,
 		)
 
 		update := updateColumns.UpdateColumnSet(
-			battleLobbySupporterAllColumns,
-			battleLobbySupporterPrimaryKeyColumns,
+			battleLobbySupporterOptInAllColumns,
+			battleLobbySupporterOptInPrimaryKeyColumns,
 		)
 
 		if updateOnConflict && len(update) == 0 {
-			return errors.New("boiler: unable to upsert battle_lobby_supporters, could not build update column list")
+			return errors.New("boiler: unable to upsert battle_lobby_supporter_opt_ins, could not build update column list")
 		}
 
 		conflict := conflictColumns
 		if len(conflict) == 0 {
-			conflict = make([]string, len(battleLobbySupporterPrimaryKeyColumns))
-			copy(conflict, battleLobbySupporterPrimaryKeyColumns)
+			conflict = make([]string, len(battleLobbySupporterOptInPrimaryKeyColumns))
+			copy(conflict, battleLobbySupporterOptInPrimaryKeyColumns)
 		}
-		cache.query = buildUpsertQueryPostgres(dialect, "\"battle_lobby_supporters\"", updateOnConflict, ret, update, conflict, insert)
+		cache.query = buildUpsertQueryPostgres(dialect, "\"battle_lobby_supporter_opt_ins\"", updateOnConflict, ret, update, conflict, insert)
 
-		cache.valueMapping, err = queries.BindMapping(battleLobbySupporterType, battleLobbySupporterMapping, insert)
+		cache.valueMapping, err = queries.BindMapping(battleLobbySupporterOptInType, battleLobbySupporterOptInMapping, insert)
 		if err != nil {
 			return err
 		}
 		if len(ret) != 0 {
-			cache.retMapping, err = queries.BindMapping(battleLobbySupporterType, battleLobbySupporterMapping, ret)
+			cache.retMapping, err = queries.BindMapping(battleLobbySupporterOptInType, battleLobbySupporterOptInMapping, ret)
 			if err != nil {
 				return err
 			}
@@ -1226,23 +1226,23 @@ func (o *BattleLobbySupporter) Upsert(exec boil.Executor, updateOnConflict bool,
 		_, err = exec.Exec(cache.query, vals...)
 	}
 	if err != nil {
-		return errors.Wrap(err, "boiler: unable to upsert battle_lobby_supporters")
+		return errors.Wrap(err, "boiler: unable to upsert battle_lobby_supporter_opt_ins")
 	}
 
 	if !cached {
-		battleLobbySupporterUpsertCacheMut.Lock()
-		battleLobbySupporterUpsertCache[key] = cache
-		battleLobbySupporterUpsertCacheMut.Unlock()
+		battleLobbySupporterOptInUpsertCacheMut.Lock()
+		battleLobbySupporterOptInUpsertCache[key] = cache
+		battleLobbySupporterOptInUpsertCacheMut.Unlock()
 	}
 
 	return o.doAfterUpsertHooks(exec)
 }
 
-// Delete deletes a single BattleLobbySupporter record with an executor.
+// Delete deletes a single BattleLobbySupporterOptIn record with an executor.
 // Delete will match against the primary key column to find the record to delete.
-func (o *BattleLobbySupporter) Delete(exec boil.Executor, hardDelete bool) (int64, error) {
+func (o *BattleLobbySupporterOptIn) Delete(exec boil.Executor, hardDelete bool) (int64, error) {
 	if o == nil {
-		return 0, errors.New("boiler: no BattleLobbySupporter provided for delete")
+		return 0, errors.New("boiler: no BattleLobbySupporterOptIn provided for delete")
 	}
 
 	if err := o.doBeforeDeleteHooks(exec); err != nil {
@@ -1254,16 +1254,16 @@ func (o *BattleLobbySupporter) Delete(exec boil.Executor, hardDelete bool) (int6
 		args []interface{}
 	)
 	if hardDelete {
-		args = queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(o)), battleLobbySupporterPrimaryKeyMapping)
-		sql = "DELETE FROM \"battle_lobby_supporters\" WHERE \"id\"=$1"
+		args = queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(o)), battleLobbySupporterOptInPrimaryKeyMapping)
+		sql = "DELETE FROM \"battle_lobby_supporter_opt_ins\" WHERE \"id\"=$1"
 	} else {
 		currTime := time.Now().In(boil.GetLocation())
 		o.DeletedAt = null.TimeFrom(currTime)
 		wl := []string{"deleted_at"}
-		sql = fmt.Sprintf("UPDATE \"battle_lobby_supporters\" SET %s WHERE \"id\"=$2",
+		sql = fmt.Sprintf("UPDATE \"battle_lobby_supporter_opt_ins\" SET %s WHERE \"id\"=$2",
 			strmangle.SetParamNames("\"", "\"", 1, wl),
 		)
-		valueMapping, err := queries.BindMapping(battleLobbySupporterType, battleLobbySupporterMapping, append(wl, battleLobbySupporterPrimaryKeyColumns...))
+		valueMapping, err := queries.BindMapping(battleLobbySupporterOptInType, battleLobbySupporterOptInMapping, append(wl, battleLobbySupporterOptInPrimaryKeyColumns...))
 		if err != nil {
 			return 0, err
 		}
@@ -1276,12 +1276,12 @@ func (o *BattleLobbySupporter) Delete(exec boil.Executor, hardDelete bool) (int6
 	}
 	result, err := exec.Exec(sql, args...)
 	if err != nil {
-		return 0, errors.Wrap(err, "boiler: unable to delete from battle_lobby_supporters")
+		return 0, errors.Wrap(err, "boiler: unable to delete from battle_lobby_supporter_opt_ins")
 	}
 
 	rowsAff, err := result.RowsAffected()
 	if err != nil {
-		return 0, errors.Wrap(err, "boiler: failed to get rows affected by delete for battle_lobby_supporters")
+		return 0, errors.Wrap(err, "boiler: failed to get rows affected by delete for battle_lobby_supporter_opt_ins")
 	}
 
 	if err := o.doAfterDeleteHooks(exec); err != nil {
@@ -1292,9 +1292,9 @@ func (o *BattleLobbySupporter) Delete(exec boil.Executor, hardDelete bool) (int6
 }
 
 // DeleteAll deletes all matching rows.
-func (q battleLobbySupporterQuery) DeleteAll(exec boil.Executor, hardDelete bool) (int64, error) {
+func (q battleLobbySupporterOptInQuery) DeleteAll(exec boil.Executor, hardDelete bool) (int64, error) {
 	if q.Query == nil {
-		return 0, errors.New("boiler: no battleLobbySupporterQuery provided for delete all")
+		return 0, errors.New("boiler: no battleLobbySupporterOptInQuery provided for delete all")
 	}
 
 	if hardDelete {
@@ -1306,24 +1306,24 @@ func (q battleLobbySupporterQuery) DeleteAll(exec boil.Executor, hardDelete bool
 
 	result, err := q.Query.Exec(exec)
 	if err != nil {
-		return 0, errors.Wrap(err, "boiler: unable to delete all from battle_lobby_supporters")
+		return 0, errors.Wrap(err, "boiler: unable to delete all from battle_lobby_supporter_opt_ins")
 	}
 
 	rowsAff, err := result.RowsAffected()
 	if err != nil {
-		return 0, errors.Wrap(err, "boiler: failed to get rows affected by deleteall for battle_lobby_supporters")
+		return 0, errors.Wrap(err, "boiler: failed to get rows affected by deleteall for battle_lobby_supporter_opt_ins")
 	}
 
 	return rowsAff, nil
 }
 
 // DeleteAll deletes all rows in the slice, using an executor.
-func (o BattleLobbySupporterSlice) DeleteAll(exec boil.Executor, hardDelete bool) (int64, error) {
+func (o BattleLobbySupporterOptInSlice) DeleteAll(exec boil.Executor, hardDelete bool) (int64, error) {
 	if len(o) == 0 {
 		return 0, nil
 	}
 
-	if len(battleLobbySupporterBeforeDeleteHooks) != 0 {
+	if len(battleLobbySupporterOptInBeforeDeleteHooks) != 0 {
 		for _, obj := range o {
 			if err := obj.doBeforeDeleteHooks(exec); err != nil {
 				return 0, err
@@ -1337,21 +1337,21 @@ func (o BattleLobbySupporterSlice) DeleteAll(exec boil.Executor, hardDelete bool
 	)
 	if hardDelete {
 		for _, obj := range o {
-			pkeyArgs := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(obj)), battleLobbySupporterPrimaryKeyMapping)
+			pkeyArgs := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(obj)), battleLobbySupporterOptInPrimaryKeyMapping)
 			args = append(args, pkeyArgs...)
 		}
-		sql = "DELETE FROM \"battle_lobby_supporters\" WHERE " +
-			strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), 1, battleLobbySupporterPrimaryKeyColumns, len(o))
+		sql = "DELETE FROM \"battle_lobby_supporter_opt_ins\" WHERE " +
+			strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), 1, battleLobbySupporterOptInPrimaryKeyColumns, len(o))
 	} else {
 		currTime := time.Now().In(boil.GetLocation())
 		for _, obj := range o {
-			pkeyArgs := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(obj)), battleLobbySupporterPrimaryKeyMapping)
+			pkeyArgs := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(obj)), battleLobbySupporterOptInPrimaryKeyMapping)
 			args = append(args, pkeyArgs...)
 			obj.DeletedAt = null.TimeFrom(currTime)
 		}
 		wl := []string{"deleted_at"}
-		sql = fmt.Sprintf("UPDATE \"battle_lobby_supporters\" SET %s WHERE "+
-			strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), 2, battleLobbySupporterPrimaryKeyColumns, len(o)),
+		sql = fmt.Sprintf("UPDATE \"battle_lobby_supporter_opt_ins\" SET %s WHERE "+
+			strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), 2, battleLobbySupporterOptInPrimaryKeyColumns, len(o)),
 			strmangle.SetParamNames("\"", "\"", 1, wl),
 		)
 		args = append([]interface{}{currTime}, args...)
@@ -1363,15 +1363,15 @@ func (o BattleLobbySupporterSlice) DeleteAll(exec boil.Executor, hardDelete bool
 	}
 	result, err := exec.Exec(sql, args...)
 	if err != nil {
-		return 0, errors.Wrap(err, "boiler: unable to delete all from battleLobbySupporter slice")
+		return 0, errors.Wrap(err, "boiler: unable to delete all from battleLobbySupporterOptIn slice")
 	}
 
 	rowsAff, err := result.RowsAffected()
 	if err != nil {
-		return 0, errors.Wrap(err, "boiler: failed to get rows affected by deleteall for battle_lobby_supporters")
+		return 0, errors.Wrap(err, "boiler: failed to get rows affected by deleteall for battle_lobby_supporter_opt_ins")
 	}
 
-	if len(battleLobbySupporterAfterDeleteHooks) != 0 {
+	if len(battleLobbySupporterOptInAfterDeleteHooks) != 0 {
 		for _, obj := range o {
 			if err := obj.doAfterDeleteHooks(exec); err != nil {
 				return 0, err
@@ -1384,8 +1384,8 @@ func (o BattleLobbySupporterSlice) DeleteAll(exec boil.Executor, hardDelete bool
 
 // Reload refetches the object from the database
 // using the primary keys with an executor.
-func (o *BattleLobbySupporter) Reload(exec boil.Executor) error {
-	ret, err := FindBattleLobbySupporter(exec, o.ID)
+func (o *BattleLobbySupporterOptIn) Reload(exec boil.Executor) error {
+	ret, err := FindBattleLobbySupporterOptIn(exec, o.ID)
 	if err != nil {
 		return err
 	}
@@ -1396,27 +1396,27 @@ func (o *BattleLobbySupporter) Reload(exec boil.Executor) error {
 
 // ReloadAll refetches every row with matching primary key column values
 // and overwrites the original object slice with the newly updated slice.
-func (o *BattleLobbySupporterSlice) ReloadAll(exec boil.Executor) error {
+func (o *BattleLobbySupporterOptInSlice) ReloadAll(exec boil.Executor) error {
 	if o == nil || len(*o) == 0 {
 		return nil
 	}
 
-	slice := BattleLobbySupporterSlice{}
+	slice := BattleLobbySupporterOptInSlice{}
 	var args []interface{}
 	for _, obj := range *o {
-		pkeyArgs := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(obj)), battleLobbySupporterPrimaryKeyMapping)
+		pkeyArgs := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(obj)), battleLobbySupporterOptInPrimaryKeyMapping)
 		args = append(args, pkeyArgs...)
 	}
 
-	sql := "SELECT \"battle_lobby_supporters\".* FROM \"battle_lobby_supporters\" WHERE " +
-		strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), 1, battleLobbySupporterPrimaryKeyColumns, len(*o)) +
+	sql := "SELECT \"battle_lobby_supporter_opt_ins\".* FROM \"battle_lobby_supporter_opt_ins\" WHERE " +
+		strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), 1, battleLobbySupporterOptInPrimaryKeyColumns, len(*o)) +
 		"and \"deleted_at\" is null"
 
 	q := queries.Raw(sql, args...)
 
 	err := q.Bind(nil, exec, &slice)
 	if err != nil {
-		return errors.Wrap(err, "boiler: unable to reload all in BattleLobbySupporterSlice")
+		return errors.Wrap(err, "boiler: unable to reload all in BattleLobbySupporterOptInSlice")
 	}
 
 	*o = slice
@@ -1424,10 +1424,10 @@ func (o *BattleLobbySupporterSlice) ReloadAll(exec boil.Executor) error {
 	return nil
 }
 
-// BattleLobbySupporterExists checks if the BattleLobbySupporter row exists.
-func BattleLobbySupporterExists(exec boil.Executor, iD string) (bool, error) {
+// BattleLobbySupporterOptInExists checks if the BattleLobbySupporterOptIn row exists.
+func BattleLobbySupporterOptInExists(exec boil.Executor, iD string) (bool, error) {
 	var exists bool
-	sql := "select exists(select 1 from \"battle_lobby_supporters\" where \"id\"=$1 and \"deleted_at\" is null limit 1)"
+	sql := "select exists(select 1 from \"battle_lobby_supporter_opt_ins\" where \"id\"=$1 and \"deleted_at\" is null limit 1)"
 
 	if boil.DebugMode {
 		fmt.Fprintln(boil.DebugWriter, sql)
@@ -1437,7 +1437,7 @@ func BattleLobbySupporterExists(exec boil.Executor, iD string) (bool, error) {
 
 	err := row.Scan(&exists)
 	if err != nil {
-		return false, errors.Wrap(err, "boiler: unable to check if battle_lobby_supporters exists")
+		return false, errors.Wrap(err, "boiler: unable to check if battle_lobby_supporter_opt_ins exists")
 	}
 
 	return exists, nil

@@ -56,6 +56,8 @@ func GetNextBattleLobby(battleLobbyIDs []string) (*boiler.BattleLobby, error){
 			boiler.BattleLobbyTableColumns.WillNotStartUntil,
 			boiler.BattleLobbyTableColumns.ReadyAt,
 		)),
+		qm.Load(qm.Rels(boiler.BattleLobbyRels.BattleLobbySupporters, boiler.BattleLobbySupporterRels.Supporter)),
+		qm.Load(qm.Rels(boiler.BattleLobbyRels.BattleLobbySupporterOptIns, boiler.BattleLobbySupporterOptInRels.Supporter)),
 	).One(gamedb.StdConn)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return nil, err

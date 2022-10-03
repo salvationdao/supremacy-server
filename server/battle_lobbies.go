@@ -15,10 +15,16 @@ import (
 
 type BattleLobby struct {
 	*boiler.BattleLobby
-	HostBy             *boiler.Player       `json:"host_by"`
-	GameMap            *boiler.GameMap      `json:"game_map"`
-	BattleLobbiesMechs []*BattleLobbiesMech `json:"battle_lobbies_mechs"`
-	IsPrivate          bool                 `json:"is_private"`
+	HostBy                     *boiler.Player          `json:"host_by"`
+	GameMap                    *boiler.GameMap         `json:"game_map"`
+	BattleLobbiesMechs         []*BattleLobbiesMech    `json:"battle_lobbies_mechs"`
+	OptedInRedMountSupporters  []*BattleLobbySupporter `json:"opted_in_rm_supporters"`
+	OptedInZaiSupporters       []*BattleLobbySupporter `json:"opted_in_zai_supporters"`
+	OptedInBostonSupporters    []*BattleLobbySupporter `json:"opted_in_bc_supporters"`
+	SelectedRedMountSupporters []*BattleLobbySupporter `json:"selected_rm_supporters"`
+	SelectedZaiSupporters      []*BattleLobbySupporter `json:"selected_zai_supporters"`
+	SelectedBostonSupporters   []*BattleLobbySupporter `json:"selected_bc_supporters"`
+	IsPrivate                  bool                    `json:"is_private"`
 }
 
 type BattleLobbiesMech struct {
@@ -33,6 +39,14 @@ type BattleLobbiesMech struct {
 	Owner       *boiler.Player `json:"owner"`
 }
 
+type BattleLobbySupporter struct {
+	ID             string `json:"id"`
+	Username       string `json:"username"`
+	FactionID      string `json:"faction_id"`
+	AvatarID       string `json:"avatar_id,omitempty"`
+	CustomAvatarID string `json:"custom_avatar_id,omitempty"`
+}
+
 func BattleLobbiesFromBoiler(bls []*boiler.BattleLobby) ([]*BattleLobby, error) {
 	resp := []*BattleLobby{}
 
@@ -44,9 +58,12 @@ func BattleLobbiesFromBoiler(bls []*boiler.BattleLobby) ([]*BattleLobby, error) 
 	for _, bl := range bls {
 		copiedBattleLobby := *bl
 		sbl := &BattleLobby{
-			BattleLobby:        &copiedBattleLobby,
-			IsPrivate:          copiedBattleLobby.Password.Valid,
-			BattleLobbiesMechs: []*BattleLobbiesMech{},
+			BattleLobby:               &copiedBattleLobby,
+			IsPrivate:                 copiedBattleLobby.Password.Valid,
+			BattleLobbiesMechs:        []*BattleLobbiesMech{},
+			OptedInRedMountSupporters: []*BattleLobbySupporter{},
+			OptedInZaiSupporters:      []*BattleLobbySupporter{},
+			OptedInBostonSupporters:   []*BattleLobbySupporter{},
 		}
 
 		// omit password
@@ -67,6 +84,37 @@ func BattleLobbiesFromBoiler(bls []*boiler.BattleLobby) ([]*BattleLobby, error) 
 
 			if bl.R.GameMap != nil {
 				sbl.GameMap = bl.R.GameMap
+			}
+		}
+
+		if bl.R != nil && bl.R.BattleLobbySupporters != nil && len(bl.R.BattleLobbySupporters) > 0 {
+			for _, sup := range bl.R.BattleLobbySupporters {
+				switch sup.FactionID {
+				case RedMountainFactionID:
+					sbl.OptedInRedMountSupporters = append(sbl.OptedInRedMountSupporters, &BattleLobbySupporter{
+						ID:             sup.ID,
+						Username:       sup.R.Supporter.Username.String,
+						FactionID:      sup.R.Supporter.FactionID.String,
+						AvatarID:       sup.R.Supporter.ProfileAvatarID.String,
+						CustomAvatarID: sup.R.Supporter.CustomAvatarID.String,
+					})
+				case BostonCyberneticsFactionID:
+					sbl.OptedInBostonSupporters = append(sbl.OptedInBostonSupporters, &BattleLobbySupporter{
+						ID:             sup.ID,
+						Username:       sup.R.Supporter.Username.String,
+						FactionID:      sup.R.Supporter.FactionID.String,
+						AvatarID:       sup.R.Supporter.ProfileAvatarID.String,
+						CustomAvatarID: sup.R.Supporter.CustomAvatarID.String,
+					})
+				case ZaibatsuFactionID:
+					sbl.OptedInZaiSupporters = append(sbl.OptedInZaiSupporters, &BattleLobbySupporter{
+						ID:             sup.ID,
+						Username:       sup.R.Supporter.Username.String,
+						FactionID:      sup.R.Supporter.FactionID.String,
+						AvatarID:       sup.R.Supporter.ProfileAvatarID.String,
+						CustomAvatarID: sup.R.Supporter.CustomAvatarID.String,
+					})
+				}
 			}
 		}
 

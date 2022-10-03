@@ -958,7 +958,7 @@ type BattleLobbySupporterJoinRequest struct {
 	} `json:"payload"`
 }
 
-const HubKeyBattleLobbySupporterJoin = "BATTLE:LOBBY:JOIN"
+const HubKeyBattleLobbySupporterJoin = "BATTLE:LOBBY:SUPPORTER:JOIN"
 
 func (api *API) BattleLobbySupporterJoin(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
 	L := gamelog.L.With().Str("func", "").Str("user id", user.ID).Logger()
@@ -973,11 +973,12 @@ func (api *API) BattleLobbySupporterJoin(ctx context.Context, user *boiler.Playe
 	// add support to battle lobby
 	err = api.ArenaManager.SendBattleQueueFunc(func() error {
 		// todo, figure out rules for when they are allowed to join as a supporter
-
 		// check lobby exists
 		bl, err := boiler.BattleLobbies(
 			boiler.BattleLobbyWhere.ID.EQ(req.Payload.BattleLobbyID),
-			qm.Load(boiler.BattleLobbyRels.BattleLobbySupporters),
+			qm.Load(boiler.BattleLobbyRels.BattleLobbySupporters,
+				boiler.BattleLobbySupporterWhere.FactionID.EQ(factionID),
+				),
 			).One(gamedb.StdConn)
 		if err != nil {
 			return err
@@ -987,14 +988,11 @@ func (api *API) BattleLobbySupporterJoin(ctx context.Context, user *boiler.Playe
 			return fmt.Errorf("lobby id: %s does not exist", req.Payload.BattleLobbyID)
 		}
 
-		if bl.R != nil && bl.R.BattleLobbySupporters != nil && len(bl.R.BattleLobbySupporters) >= 5 {
-			return fmt.Errorf("battle lobby supporters positions are full")
-		}
-
 		// add them as a supporter
 		bls := &boiler.BattleLobbySupporter{
 			SupporterID:   user.ID,
 			BattleLobbyID: bl.ID,
+			FactionID: factionID,
 		}
 		err = bls.Insert(gamedb.StdConn, boil.Infer())
 		if err != nil {
