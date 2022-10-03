@@ -43,6 +43,7 @@ type Player struct {
 	SyndicateID      null.String     `boiler:"syndicate_id" boil:"syndicate_id" json:"syndicate_id,omitempty" toml:"syndicate_id" yaml:"syndicate_id,omitempty"`
 	CustomAvatarID   null.String     `boiler:"custom_avatar_id" boil:"custom_avatar_id" json:"custom_avatar_id,omitempty" toml:"custom_avatar_id" yaml:"custom_avatar_id,omitempty"`
 	StripeCustomerID null.String     `boiler:"stripe_customer_id" boil:"stripe_customer_id" json:"stripe_customer_id,omitempty" toml:"stripe_customer_id" yaml:"stripe_customer_id,omitempty"`
+	AcceptsMarketing null.Bool       `boiler:"accepts_marketing" boil:"accepts_marketing" json:"accepts_marketing,omitempty" toml:"accepts_marketing" yaml:"accepts_marketing,omitempty"`
 
 	R *playerR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L playerL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -68,6 +69,7 @@ var PlayerColumns = struct {
 	SyndicateID      string
 	CustomAvatarID   string
 	StripeCustomerID string
+	AcceptsMarketing string
 }{
 	ID:               "id",
 	FactionID:        "faction_id",
@@ -88,6 +90,7 @@ var PlayerColumns = struct {
 	SyndicateID:      "syndicate_id",
 	CustomAvatarID:   "custom_avatar_id",
 	StripeCustomerID: "stripe_customer_id",
+	AcceptsMarketing: "accepts_marketing",
 }
 
 var PlayerTableColumns = struct {
@@ -110,6 +113,7 @@ var PlayerTableColumns = struct {
 	SyndicateID      string
 	CustomAvatarID   string
 	StripeCustomerID string
+	AcceptsMarketing string
 }{
 	ID:               "players.id",
 	FactionID:        "players.faction_id",
@@ -130,6 +134,7 @@ var PlayerTableColumns = struct {
 	SyndicateID:      "players.syndicate_id",
 	CustomAvatarID:   "players.custom_avatar_id",
 	StripeCustomerID: "players.stripe_customer_id",
+	AcceptsMarketing: "players.accepts_marketing",
 }
 
 // Generated where
@@ -154,6 +159,7 @@ var PlayerWhere = struct {
 	SyndicateID      whereHelpernull_String
 	CustomAvatarID   whereHelpernull_String
 	StripeCustomerID whereHelpernull_String
+	AcceptsMarketing whereHelpernull_Bool
 }{
 	ID:               whereHelperstring{field: "\"players\".\"id\""},
 	FactionID:        whereHelpernull_String{field: "\"players\".\"faction_id\""},
@@ -174,6 +180,7 @@ var PlayerWhere = struct {
 	SyndicateID:      whereHelpernull_String{field: "\"players\".\"syndicate_id\""},
 	CustomAvatarID:   whereHelpernull_String{field: "\"players\".\"custom_avatar_id\""},
 	StripeCustomerID: whereHelpernull_String{field: "\"players\".\"stripe_customer_id\""},
+	AcceptsMarketing: whereHelpernull_Bool{field: "\"players\".\"accepts_marketing\""},
 }
 
 // PlayerRels is where relationship names are stored.
@@ -422,9 +429,9 @@ func (*playerR) NewStruct() *playerR {
 type playerL struct{}
 
 var (
-	playerAllColumns            = []string{"id", "faction_id", "username", "public_address", "is_ai", "deleted_at", "updated_at", "created_at", "mobile_number", "issue_punish_fee", "reported_cost", "gid", "rank", "sent_message_count", "about_me", "profile_avatar_id", "syndicate_id", "custom_avatar_id", "stripe_customer_id"}
+	playerAllColumns            = []string{"id", "faction_id", "username", "public_address", "is_ai", "deleted_at", "updated_at", "created_at", "mobile_number", "issue_punish_fee", "reported_cost", "gid", "rank", "sent_message_count", "about_me", "profile_avatar_id", "syndicate_id", "custom_avatar_id", "stripe_customer_id", "accepts_marketing"}
 	playerColumnsWithoutDefault = []string{"id"}
-	playerColumnsWithDefault    = []string{"faction_id", "username", "public_address", "is_ai", "deleted_at", "updated_at", "created_at", "mobile_number", "issue_punish_fee", "reported_cost", "gid", "rank", "sent_message_count", "about_me", "profile_avatar_id", "syndicate_id", "custom_avatar_id", "stripe_customer_id"}
+	playerColumnsWithDefault    = []string{"faction_id", "username", "public_address", "is_ai", "deleted_at", "updated_at", "created_at", "mobile_number", "issue_punish_fee", "reported_cost", "gid", "rank", "sent_message_count", "about_me", "profile_avatar_id", "syndicate_id", "custom_avatar_id", "stripe_customer_id", "accepts_marketing"}
 	playerPrimaryKeyColumns     = []string{"id"}
 	playerGeneratedColumns      = []string{}
 )

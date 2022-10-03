@@ -1,5 +1,9 @@
 package server
 
+// player
+
+const HubKeyPlayerMarketingPreferencesUpdate = "PLAYER:MARKETING:UPDATE"
+
 // player_abilities
 
 const HubKeyPlayerQueueStatus = "PLAYER:QUEUE:STATUS"

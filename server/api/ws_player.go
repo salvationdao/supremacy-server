@@ -43,6 +43,8 @@ func NewPlayerController(api *API) *PlayerController {
 	api.SecureUserCommand(HubKeyPlayerUpdateSettings, pc.PlayerUpdateSettingsHandler)
 	api.SecureUserCommand(HubKeyPlayerGetSettings, pc.PlayerGetSettingsHandler)
 
+	api.SecureUserCommand(server.HubKeyPlayerMarketingPreferencesUpdate, pc.PlayerMarketingPreferencesUpdateHandler)
+
 	api.SecureUserCommand(HubKeyPlayerPreferencesGet, pc.PlayerPreferencesGetHandler)
 
 	api.SecureUserCommand(HubKeyPlayerPreferencesGet, pc.PlayerPreferencesGetHandler)
@@ -105,10 +107,46 @@ func (pc *PlayerController) PlayerQueueStatusHandler(ctx context.Context, user *
 	return nil
 }
 
-type UserUpdatedRequest struct {
+// PlayerMarketingPreferencesUpdateRequest updates a player's marketing preferences
+type PlayerMarketingPreferencesUpdateRequest struct {
 	Payload struct {
-		ID string `json:"id"`
+		AcceptsMarketing bool `json:"accepts_marketing"`
 	} `json:"payload"`
+}
+
+func (pc *PlayerController) PlayerMarketingPreferencesUpdateHandler(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
+	req := &PlayerMarketingPreferencesUpdateRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return terror.Error(err, "Invalid request received.")
+	}
+
+	tx, err := gamedb.StdConn.Begin()
+	if err != nil {
+		return terror.Error(err, "Failed to update player's marketing preferences.")
+	}
+	defer tx.Rollback()
+
+	user.AcceptsMarketing = null.BoolFrom(req.Payload.AcceptsMarketing)
+	_, err = user.Update(tx, boil.Whitelist(boiler.PlayerColumns.AcceptsMarketing))
+	if err != nil {
+		return terror.Error(err, "Failed to update player's marketing preferences.")
+	}
+
+	err = pc.API.Passport.UserMarketingUpdate(user.ID, user.AcceptsMarketing.Bool)
+	if err != nil {
+		return terror.Error(err, "Failed to update player's marketing preferences.")
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		return terror.Error(err, "Failed to update player's marketing preferences.")
+	}
+
+	ws.PublishMessage(fmt.Sprintf("/secure/user/%s", user.ID), server.HubKeyUserSubscribe, user)
+
+	reply(true)
+	return nil
 }
 
 // FactionEnlistRequest enlist a faction

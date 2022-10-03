@@ -21,7 +21,7 @@ import (
 )
 
 // PlayerRegister new user who may or may not be enlisted
-func PlayerRegister(ID uuid.UUID, Username string, FactionID uuid.UUID, PublicAddress common.Address) (*boiler.Player, error) {
+func PlayerRegister(ID uuid.UUID, Username string, FactionID uuid.UUID, PublicAddress common.Address, AcceptsMarketing null.Bool) (*boiler.Player, error) {
 	tx, err := gamedb.StdConn.Begin()
 	if err != nil {
 		return nil, fmt.Errorf("start tx: %w", err)
@@ -49,6 +49,7 @@ func PlayerRegister(ID uuid.UUID, Username string, FactionID uuid.UUID, PublicAd
 		player.PublicAddress = null.NewString(hexPublicAddress, hexPublicAddress != "")
 		player.Username = null.NewString(Username, true)
 		player.FactionID = null.NewString(FactionID.String(), !FactionID.IsNil())
+		player.AcceptsMarketing = AcceptsMarketing
 
 		_, err = player.Update(tx, boil.Infer())
 		if err != nil {
@@ -56,10 +57,11 @@ func PlayerRegister(ID uuid.UUID, Username string, FactionID uuid.UUID, PublicAd
 		}
 	} else {
 		player = &boiler.Player{
-			ID:            ID.String(),
-			PublicAddress: null.NewString(hexPublicAddress, hexPublicAddress != ""),
-			Username:      null.NewString(Username, true),
-			FactionID:     null.NewString(FactionID.String(), !FactionID.IsNil()),
+			ID:               ID.String(),
+			PublicAddress:    null.NewString(hexPublicAddress, hexPublicAddress != ""),
+			Username:         null.NewString(Username, true),
+			FactionID:        null.NewString(FactionID.String(), !FactionID.IsNil()),
+			AcceptsMarketing: AcceptsMarketing,
 		}
 		err = player.Insert(tx, boil.Infer())
 		if err != nil {
