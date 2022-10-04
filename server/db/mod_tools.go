@@ -4,24 +4,34 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"github.com/ninja-software/terror/v2"
-	"github.com/shopspring/decimal"
-	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 	"server"
 	"server/db/boiler"
 	"server/gamedb"
+	"time"
+
+	"github.com/ninja-software/terror/v2"
+	"github.com/shopspring/decimal"
+	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 )
 
 type AdminToolResponse struct {
 	User              *server.Player        `json:"user"`
 	UserAssets        *AdminToolUserAsset   `json:"user_assets,omitempty"`
-	BanHistory        []*boiler.PlayerBan   `json:"ban_history,omitempty"`
+	BanHistory        []*AdminBanHistory    `json:"ban_history,omitempty"`
 	RecentChatHistory []*boiler.ChatHistory `json:"recent_chat_history,omitempty"`
 	RelatedAccounts   []*server.Player      `json:"related_accounts,omitempty"`
 }
 
+type AdminBanHistory struct {
+	CreatedAt time.Time     `json:"created_at"`
+	Reason    string        `json:"reason"`
+	EndAt     time.Time     `json:"end_at"`
+	BannedAt  time.Time     `json:"banned_at"`
+	BannedBy  server.Player `json:"banned_by"`
+}
+
 type AdminToolUserAsset struct {
-	Mechs []*MechBrief    `json:"mechs"`
+	Mechs []*server.Mech  `json:"mechs"`
 	Sups  decimal.Decimal `json:"sups"`
 }
 
@@ -33,13 +43,34 @@ func ModToolGetUserData(userID string, isAdmin bool, supsAmount decimal.Decimal)
 
 	playerBans, err := boiler.PlayerBans(
 		boiler.PlayerBanWhere.BannedPlayerID.EQ(userID),
+		qm.Load(boiler.PlayerBanRels.BannedBy),
 	).All(gamedb.StdConn)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return nil, terror.Error(err, "Failed to get player bans")
 	}
 
+	adminBanHistories := []*AdminBanHistory{}
+
+	if len(playerBans) > 0 {
+		for _, pb := range playerBans {
+			adminBanHistory := &AdminBanHistory{
+				CreatedAt: pb.CreatedAt,
+				BannedAt:  pb.BannedAt,
+				Reason:    pb.Reason,
+				EndAt:     pb.EndAt,
+			}
+
+			if pb.R != nil && pb.R.BannedBy != nil {
+				adminBanHistory.BannedBy = *server.PlayerFromBoiler(pb.R.BannedBy)
+			}
+
+			adminBanHistories = append(adminBanHistories, adminBanHistory)
+		}
+	}
+
 	recentChatHistory, err := boiler.ChatHistories(
 		boiler.ChatHistoryWhere.PlayerID.EQ(userID),
+		qm.OrderBy(fmt.Sprintf("%s DESC", boiler.ChatHistoryTableColumns.CreatedAt)),
 		qm.Limit(15),
 	).All(gamedb.StdConn)
 	if err != nil {
@@ -48,8 +79,11 @@ func ModToolGetUserData(userID string, isAdmin bool, supsAmount decimal.Decimal)
 
 	adminToolResponse := &AdminToolResponse{
 		User:              server.PlayerFromBoiler(player),
-		BanHistory:        playerBans,
 		RecentChatHistory: recentChatHistory,
+	}
+
+	if len(adminBanHistories) > 0 {
+		adminToolResponse.BanHistory = adminBanHistories
 	}
 
 	relatedAccouts, err := getPlayerRelatedAccounts(player.ID)
@@ -79,7 +113,7 @@ func ModToolGetUserData(userID string, isAdmin bool, supsAmount decimal.Decimal)
 				mechIDs = append(mechIDs, mech.ItemID)
 			}
 
-			mechBriefs, err := OwnedMechsBrief(player.ID, mechIDs...)
+			mechBriefs, err := Mechs(mechIDs...)
 			if err != nil {
 				return nil, terror.Error(err, "Failed to get owned mechs brief")
 			}

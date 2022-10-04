@@ -6,16 +6,17 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/gofrs/uuid"
-	"github.com/ninja-software/terror/v2"
-	"github.com/ninja-syndicate/ws"
-	"github.com/volatiletech/null/v8"
-	"github.com/volatiletech/sqlboiler/v4/boil"
 	"server"
 	"server/db"
 	"server/db/boiler"
 	"server/gamedb"
 	"time"
+
+	"github.com/gofrs/uuid"
+	"github.com/ninja-software/terror/v2"
+	"github.com/ninja-syndicate/ws"
+	"github.com/volatiletech/null/v8"
+	"github.com/volatiletech/sqlboiler/v4/boil"
 )
 
 func NewModToolsController(api *API) {
@@ -33,7 +34,6 @@ type ModToolGetUserReq struct {
 }
 
 func (api *API) ModToolsGetUser(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
-	fmt.Println("1111111111111111111111111111111111111111111")
 	req := &ModToolGetUserReq{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
