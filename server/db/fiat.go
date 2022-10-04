@@ -97,10 +97,12 @@ func FiatProduct(conn boil.Executor, id string) (*server.FiatProduct, error) {
 }
 
 // FiatProducts gets a list of available fiat products to purchase by faction.
-func FiatProducts(conn boil.Executor, factionID string, productType string, offset int, pageSize int) (int64, []*server.FiatProduct, error) {
+func FiatProducts(conn boil.Executor, factionID *string, productType string, offset int, pageSize int) (int64, []*server.FiatProduct, error) {
 	queryMods := []qm.QueryMod{
-		boiler.FiatProductWhere.FactionID.EQ(factionID),
 		boiler.FiatProductWhere.ProductType.EQ(productType),
+	}
+	if factionID != nil {
+		queryMods = append(queryMods, boiler.FiatProductWhere.FactionID.EQ(*factionID))
 	}
 
 	// Get total rows
