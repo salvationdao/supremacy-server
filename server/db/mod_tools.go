@@ -4,12 +4,10 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"github.com/gofrs/uuid"
 	"github.com/ninja-software/terror/v2"
 	"github.com/shopspring/decimal"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 	"server"
-	"server/api"
 	"server/db/boiler"
 	"server/gamedb"
 )
@@ -23,11 +21,11 @@ type AdminToolResponse struct {
 }
 
 type AdminToolUserAsset struct {
-	Mechs []*MechBrief `json:"mechs"`
-	Sups  decimal.Decimal
+	Mechs []*MechBrief    `json:"mechs"`
+	Sups  decimal.Decimal `json:"sups"`
 }
 
-func ModToolGetUserData(userID string, isAdmin bool, api *api.API) (*AdminToolResponse, error) {
+func ModToolGetUserData(userID string, isAdmin bool, supsAmount decimal.Decimal) (*AdminToolResponse, error) {
 	player, err := boiler.FindPlayer(gamedb.StdConn, userID)
 	if err != nil {
 		return nil, terror.Error(err, "Failed to find player for admin tool")
@@ -63,7 +61,7 @@ func ModToolGetUserData(userID string, isAdmin bool, api *api.API) (*AdminToolRe
 
 	if isAdmin {
 		userAssets := &AdminToolUserAsset{
-			Sups: api.Passport.UserBalanceGet(uuid.FromStringOrNil(player.ID)),
+			Sups: supsAmount,
 		}
 
 		mechs, err := boiler.CollectionItems(
@@ -101,8 +99,8 @@ func getPlayerRelatedAccounts(userID string) ([]*server.Player, error) {
 			qm.Select(fmt.Sprintf("TO_JSON(%s)", boiler.TableNames.Players)),
 			qm.From(fmt.Sprintf(
 				`(
-						SELECT "DISTINCT (%s) AS id
-						FROM (SELECT %s FROM %s WHERE %s = %s) _pf
+						SELECT DISTINCT (%s) AS id
+						FROM (SELECT %s FROM %s WHERE %s = '%s') _pf
 						INNER JOIN %s ON %s = _pf.%s
 					) p`,
 				boiler.PlayerFingerprintTableColumns.PlayerID,

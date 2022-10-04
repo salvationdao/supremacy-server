@@ -33,6 +33,7 @@ type ModToolGetUserReq struct {
 }
 
 func (api *API) ModToolsGetUser(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
+	fmt.Println("1111111111111111111111111111111111111111111")
 	req := &ModToolGetUserReq{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
@@ -46,7 +47,9 @@ func (api *API) ModToolsGetUser(ctx context.Context, user *boiler.Player, key st
 		return terror.Error(err, "Failed to find player")
 	}
 
-	userResp, err := db.ModToolGetUserData(player.ID, user.R.Role.RoleType == boiler.RoleNameADMIN, api)
+	supsAmount := api.Passport.UserBalanceGet(uuid.FromStringOrNil(player.ID))
+
+	userResp, err := db.ModToolGetUserData(player.ID, user.R.Role.RoleType == boiler.RoleNameADMIN, supsAmount)
 	if err != nil {
 		return terror.Error(err, "Failed to get user data in mod tool")
 	}
@@ -138,7 +141,7 @@ func (api *API) ModToolBanUser(ctx context.Context, user *boiler.Player, key str
 		PlayerID: bannedPlayer.ID,
 		SenderID: user.ID,
 		Title:    "You've been banned by a Moderator",
-		Message:  fmt.Sprintf("You've been banned by moderator %s for the following reasons: %s \n If you think you've been wrongly banned please put a ticket through our support team."),
+		Message:  fmt.Sprintf("You've been banned by moderator %s for the following reasons: %s \n If you think you've been wrongly banned please put a ticket through our support team.", user.Username, req.Payload.BanReason),
 	}
 	err = msg.Insert(gamedb.StdConn, boil.Infer())
 	if err != nil {
@@ -192,7 +195,7 @@ func (api *API) ModToolUnbanUser(ctx context.Context, user *boiler.Player, key s
 		PlayerID: playerBan.BannedPlayerID,
 		SenderID: user.ID,
 		Title:    "You've been unbanned by a Moderator",
-		Message:  fmt.Sprintf("You've been unbanned by moderator %s for the following reasons: %s"),
+		Message:  fmt.Sprintf("You've been unbanned by moderator %s for the following reasons: %s", user.Username, req.Payload.UnbanReason),
 	}
 	err = msg.Insert(gamedb.StdConn, boil.Infer())
 	if err != nil {
