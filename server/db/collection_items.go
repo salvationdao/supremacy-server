@@ -5,8 +5,8 @@ import (
 	"server"
 	"server/db/boiler"
 	"server/gamelog"
-	"time"
 
+	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 
@@ -16,12 +16,10 @@ import (
 type PlayerAsset struct {
 	*server.CollectionItem
 
-	ID    string `json:"id"`
-	Label string `json:"label"`
-	Name  string `json:"name"`
-
-	UpdatedAt time.Time `json:"updated_at"`
-	CreatedAt time.Time `json:"created_at"`
+	ID         string      `json:"id"`
+	Label      string      `json:"label"`
+	Name       null.String `json:"name,omitempty"`
+	ItemSaleID null.String `json:"item_sale_id,omitempty"`
 }
 
 type ForbiddenAssetModificationReason int8

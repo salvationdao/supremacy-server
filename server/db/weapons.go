@@ -593,25 +593,25 @@ func WeaponList(opts *WeaponListOpts) (int64, []*PlayerAsset, error) {
 
 	var weapons []*PlayerAsset
 	for rows.Next() {
-		w := &PlayerAsset{}
+		w := &PlayerAsset{
+			CollectionItem: &server.CollectionItem{},
+		}
 
 		scanArgs := []interface{}{
-			&w.CollectionSlug,
-			&w.Hash,
-			&w.TokenID,
-			&w.OwnerID,
-			&w.Tier,
-			&w.ItemType,
-			&w.ItemID,
-			&w.MarketLocked,
-			&w.XsynLocked,
-			&w.LockedToMarketplace,
-			&w.AssetHidden,
+			&w.CollectionItem.CollectionSlug,
+			&w.CollectionItem.Hash,
+			&w.CollectionItem.TokenID,
+			&w.CollectionItem.OwnerID,
+			&w.CollectionItem.Tier,
+			&w.CollectionItem.ItemType,
+			&w.CollectionItem.ItemID,
+			&w.CollectionItem.MarketLocked,
+			&w.CollectionItem.XsynLocked,
+			&w.CollectionItem.LockedToMarketplace,
+			&w.CollectionItem.AssetHidden,
 			&w.ID,
 			&w.Label,
-			&w.Name,
-			&w.UpdatedAt,
-			&w.CreatedAt,
+			&w.ItemSaleID,
 		}
 
 		err = rows.Scan(scanArgs...)

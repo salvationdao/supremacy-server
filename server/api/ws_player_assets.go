@@ -1987,7 +1987,7 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetWeaponListHandler(ctx context.Co
 
 	total, weapons, err := db.WeaponList(listOpts)
 	if err != nil {
-		gamelog.L.Error().Interface("req.Payload", req.Payload).Err(err).Msg("issue getting mechs")
+		gamelog.L.Error().Interface("req.Payload", req.Payload).Err(err).Msg("issue getting weapons")
 		return terror.Error(err, "Failed to find your War Machine assets, please try again or contact support.")
 	}
 

@@ -209,25 +209,24 @@ func UtilityList(opts *UtilityListOpts) (int64, []*PlayerAsset, error) {
 
 	var utilities []*PlayerAsset
 	for rows.Next() {
-		u := &PlayerAsset{}
+		u := &PlayerAsset{
+			CollectionItem: &server.CollectionItem{},
+		}
 
 		scanArgs := []interface{}{
-			&u.CollectionSlug,
-			&u.Hash,
-			&u.TokenID,
-			&u.OwnerID,
-			&u.Tier,
-			&u.ItemType,
-			&u.ItemID,
-			&u.MarketLocked,
-			&u.XsynLocked,
-			&u.LockedToMarketplace,
-			&u.AssetHidden,
+			&u.CollectionItem.CollectionSlug,
+			&u.CollectionItem.Hash,
+			&u.CollectionItem.TokenID,
+			&u.CollectionItem.OwnerID,
+			&u.CollectionItem.Tier,
+			&u.CollectionItem.ItemType,
+			&u.CollectionItem.ItemID,
+			&u.CollectionItem.MarketLocked,
+			&u.CollectionItem.XsynLocked,
+			&u.CollectionItem.LockedToMarketplace,
+			&u.CollectionItem.AssetHidden,
 			&u.ID,
 			&u.Label,
-			&u.Name,
-			&u.UpdatedAt,
-			&u.CreatedAt,
 		}
 
 		err = rows.Scan(scanArgs...)

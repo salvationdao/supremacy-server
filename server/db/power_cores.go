@@ -223,25 +223,24 @@ func PowerCoreList(opts *PowerCoreListOpts) (int64, []*PlayerAsset, error) {
 
 	var powerCores []*PlayerAsset
 	for rows.Next() {
-		pc := &PlayerAsset{}
+		pc := &PlayerAsset{
+			CollectionItem: &server.CollectionItem{},
+		}
 
 		scanArgs := []interface{}{
-			&pc.CollectionSlug,
-			&pc.Hash,
-			&pc.TokenID,
-			&pc.OwnerID,
-			&pc.Tier,
-			&pc.ItemType,
-			&pc.ItemID,
-			&pc.MarketLocked,
-			&pc.XsynLocked,
-			&pc.LockedToMarketplace,
-			&pc.AssetHidden,
+			&pc.CollectionItem.CollectionSlug,
+			&pc.CollectionItem.Hash,
+			&pc.CollectionItem.TokenID,
+			&pc.CollectionItem.OwnerID,
+			&pc.CollectionItem.Tier,
+			&pc.CollectionItem.ItemType,
+			&pc.CollectionItem.ItemID,
+			&pc.CollectionItem.MarketLocked,
+			&pc.CollectionItem.XsynLocked,
+			&pc.CollectionItem.LockedToMarketplace,
+			&pc.CollectionItem.AssetHidden,
 			&pc.ID,
 			&pc.Label,
-			&pc.Name,
-			&pc.UpdatedAt,
-			&pc.CreatedAt,
 		}
 
 		err = rows.Scan(scanArgs...)
