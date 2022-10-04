@@ -211,17 +211,6 @@ func UtilityList(opts *UtilityListOpts) (int64, []*PlayerAsset, error) {
 	for rows.Next() {
 		u := &PlayerAsset{}
 
-		// CollectionSlug
-		// Hash
-		// TokenID
-		// OwnerID
-		// Tier
-		// ItemType
-		// MarketLocked
-		// XsynLocked
-		// LockedToMarketplace
-		// AssetHidden
-
 		scanArgs := []interface{}{
 			&u.CollectionSlug,
 			&u.Hash,

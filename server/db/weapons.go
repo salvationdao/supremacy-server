@@ -595,17 +595,6 @@ func WeaponList(opts *WeaponListOpts) (int64, []*PlayerAsset, error) {
 	for rows.Next() {
 		w := &PlayerAsset{}
 
-		// CollectionSlug
-		// Hash
-		// TokenID
-		// OwnerID
-		// Tier
-		// ItemType
-		// MarketLocked
-		// XsynLocked
-		// LockedToMarketplace
-		// AssetHidden
-
 		scanArgs := []interface{}{
 			&w.CollectionSlug,
 			&w.Hash,
@@ -784,13 +773,13 @@ func WeaponListDetailed(opts *WeaponListOpts) (int64, []*server.Weapon, error) {
 			boiler.CollectionItemTableColumns.XsynLocked,
 			boiler.CollectionItemTableColumns.LockedToMarketplace,
 			boiler.CollectionItemTableColumns.AssetHidden,
-			boiler.BlueprintWeaponSkinTableColumns.ImageURL,
-			boiler.BlueprintWeaponSkinTableColumns.CardAnimationURL,
-			boiler.BlueprintWeaponSkinTableColumns.AvatarURL,
-			boiler.BlueprintWeaponSkinTableColumns.LargeImageURL,
-			boiler.BlueprintWeaponSkinTableColumns.BackgroundColor,
-			boiler.BlueprintWeaponSkinTableColumns.AnimationURL,
-			boiler.BlueprintWeaponSkinTableColumns.YoutubeURL,
+			boiler.WeaponModelSkinCompatibilityTableColumns.ImageURL,
+			boiler.WeaponModelSkinCompatibilityTableColumns.CardAnimationURL,
+			boiler.WeaponModelSkinCompatibilityTableColumns.AvatarURL,
+			boiler.WeaponModelSkinCompatibilityTableColumns.LargeImageURL,
+			boiler.WeaponModelSkinCompatibilityTableColumns.BackgroundColor,
+			boiler.WeaponModelSkinCompatibilityTableColumns.AnimationURL,
+			boiler.WeaponModelSkinCompatibilityTableColumns.YoutubeURL,
 			boiler.CollectionItemTableColumns.ID,
 			boiler.WeaponTableColumns.ID,
 			boiler.BlueprintWeaponTableColumns.Label,
