@@ -50,6 +50,7 @@ func NewPlayerAssetsController(api *API) *PlayerAssetsControllerWS {
 	api.SecureUserCommand(HubKeyPlayerAssetMechEquip, pac.PlayerAssetMechEquipHandler)
 	api.SecureUserCommand(HubKeyPlayerAssetMechList, pac.PlayerAssetMechListHandler)
 	api.SecureUserCommand(HubKeyPlayerAssetWeaponList, pac.PlayerAssetWeaponListHandler)
+	api.SecureUserCommand(HubKeyPlayerAssetWeaponListDetailed, pac.PlayerAssetWeaponListDetailedHandler)
 	api.SecureUserCommand(HubKeyPlayerAssetPowerCoreList, pac.PlayerAssetPowerCoreListHandler)
 	api.SecureUserCommand(HubKeyPlayerAssetUtilityList, pac.PlayerAssetUtilityListHandler)
 	api.SecureUserCommand(HubKeyPlayerAssetMysteryCrateList, pac.PlayerAssetMysteryCrateListHandler)
@@ -1954,7 +1955,7 @@ type PlayerAssetWeaponListRequest struct {
 	} `json:"payload"`
 }
 
-type PlayerAssetWeaponListResp struct {
+type PlayerAssetWeaponListResponse struct {
 	Total   int64          `json:"total"`
 	Weapons []*PlayerAsset `json:"weapons"`
 }
@@ -2027,9 +2028,70 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetWeaponListHandler(ctx context.Co
 		})
 	}
 
-	reply(&PlayerAssetWeaponListResp{
+	reply(&PlayerAssetWeaponListResponse{
 		Total:   total,
 		Weapons: playerAssWeapons,
+	})
+	return nil
+}
+
+type PlayerAssetWeaponListDetailedResponse struct {
+	Total   int64            `json:"total"`
+	Weapons []*server.Weapon `json:"weapons"`
+}
+
+const HubKeyPlayerAssetWeaponListDetailed = "PLAYER:ASSET:WEAPON:DETAIL:LIST"
+
+func (pac *PlayerAssetsControllerWS) PlayerAssetWeaponListDetailedHandler(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
+	req := &PlayerAssetWeaponListRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return terror.Error(err, "Invalid request received.")
+	}
+
+	if !user.FactionID.Valid {
+		return terror.Error(fmt.Errorf("user has no faction"), "You need a faction to see assets.")
+	}
+
+	listOpts := &db.WeaponListOpts{
+		Search:                        req.Payload.Search,
+		PageSize:                      req.Payload.PageSize,
+		Page:                          req.Payload.Page,
+		OwnerID:                       user.ID,
+		DisplayXsynMechs:              req.Payload.DisplayXsynMechs,
+		DisplayGenesisAndLimited:      req.Payload.DisplayGenesisAndLimited,
+		ExcludeMarketLocked:           req.Payload.ExcludeMarketLocked,
+		IncludeMarketListed:           req.Payload.IncludeMarketListed,
+		ExcludeMechLocked:             req.Payload.ExcludeMechLocked,
+		ExcludeIDs:                    req.Payload.ExcludeIDs,
+		FilterRarities:                req.Payload.FilterRarities,
+		FilterWeaponTypes:             req.Payload.FilterWeaponTypes,
+		FilterEquippedStatuses:        req.Payload.FilterEquippedStatuses,
+		FilterStatAmmo:                req.Payload.FilterStatAmmo,
+		FilterStatDamage:              req.Payload.FilterStatDamage,
+		FilterStatDamageFalloff:       req.Payload.FilterStatDamageFalloff,
+		FilterStatDamageFalloffRate:   req.Payload.FilterStatDamageFalloffRate,
+		FilterStatRadius:              req.Payload.FilterStatRadius,
+		FilterStatRadiusDamageFalloff: req.Payload.FilterStatRadiusDamageFalloff,
+		FilterStatRateOfFire:          req.Payload.FilterStatRateOfFire,
+		FilterStatEnergyCosts:         req.Payload.FilterStatEnergyCosts,
+		FilterStatProjectileSpeed:     req.Payload.FilterStatProjectileSpeed,
+		FilterStatSpread:              req.Payload.FilterStatSpread,
+	}
+	if req.Payload.SortBy != "" && req.Payload.SortDir.IsValid() {
+		listOpts.SortBy = req.Payload.SortBy
+		listOpts.SortDir = req.Payload.SortDir
+	}
+
+	total, weapons, err := db.WeaponList(listOpts)
+	if err != nil {
+		gamelog.L.Error().Interface("req.Payload", req.Payload).Err(err).Msg("issue getting mechs")
+		return terror.Error(err, "Failed to find your War Machine assets, please try again or contact support.")
+	}
+
+	reply(&PlayerAssetWeaponListDetailedResponse{
+		Total:   total,
+		Weapons: weapons,
 	})
 	return nil
 }
