@@ -74,7 +74,7 @@ func GenerateUtilityStatFilterQueryMods(column string, filter *UtilityStatFilter
 	return output
 }
 
-func UtilityList(opts *UtilityListOpts) (int64, []*server.Utility, error) {
+func UtilityList(opts *UtilityListOpts) (int64, []*PlayerAsset, error) {
 	queryMods := getDefaultUtilityQueryMods()
 
 	if opts.OwnerID != "" {
@@ -206,32 +206,34 @@ func UtilityList(opts *UtilityListOpts) (int64, []*server.Utility, error) {
 	}
 	defer rows.Close()
 
-	var utilities []*server.Utility
+	var utilities []*PlayerAsset
 	for rows.Next() {
-		pc := &server.Utility{
-			CollectionItem: &server.CollectionItem{},
-		}
+		u := &PlayerAsset{}
 
 		scanArgs := []interface{}{
-			&pc.CollectionItem.CollectionSlug,
-			&pc.CollectionItem.Hash,
-			&pc.CollectionItem.TokenID,
-			&pc.CollectionItem.OwnerID,
-			&pc.CollectionItem.Tier,
-			&pc.CollectionItem.ItemType,
-			&pc.CollectionItem.MarketLocked,
-			&pc.CollectionItem.XsynLocked,
-			&pc.CollectionItem.LockedToMarketplace,
-			&pc.CollectionItem.AssetHidden,
-			&pc.ID,
-			&pc.Label,
+			&u.CollectionSlug,
+			&u.Hash,
+			&u.TokenID,
+			&u.ItemType,
+			&u.ItemID,
+			&u.Tier,
+			&u.OwnerID,
+			&u.MarketLocked,
+			&u.XsynLocked,
+			&u.LockedToMarketplace,
+			&u.AssetHidden,
+			&u.ID,
+			&u.Label,
+			&u.Name,
+			&u.UpdatedAt,
+			&u.CreatedAt,
 		}
 
 		err = rows.Scan(scanArgs...)
 		if err != nil {
 			return total, utilities, err
 		}
-		utilities = append(utilities, pc)
+		utilities = append(utilities, u)
 	}
 
 	return total, utilities, nil

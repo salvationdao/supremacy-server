@@ -5,12 +5,24 @@ import (
 	"server"
 	"server/db/boiler"
 	"server/gamelog"
+	"time"
 
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 
 	"github.com/ninja-software/terror/v2"
 )
+
+type PlayerAsset struct {
+	*server.CollectionItem
+
+	ID    string `json:"id"`
+	Label string `json:"label"`
+	Name  string `json:"name"`
+
+	UpdatedAt time.Time `json:"updated_at"`
+	CreatedAt time.Time `json:"created_at"`
+}
 
 type ForbiddenAssetModificationReason int8
 

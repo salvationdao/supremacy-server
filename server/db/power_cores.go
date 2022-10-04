@@ -76,7 +76,7 @@ func GeneratePowerCoreStatFilterQueryMods(column string, filter *PowerCoreStatFi
 	return output
 }
 
-func PowerCoreList(opts *PowerCoreListOpts) (int64, []*server.PowerCore, error) {
+func PowerCoreList(opts *PowerCoreListOpts) (int64, []*PlayerAsset, error) {
 	queryMods := getDefaultPowerCoreQueryMods()
 
 	if opts.OwnerID != "" {
@@ -220,25 +220,27 @@ func PowerCoreList(opts *PowerCoreListOpts) (int64, []*server.PowerCore, error) 
 	}
 	defer rows.Close()
 
-	var powerCores []*server.PowerCore
+	var powerCores []*PlayerAsset
 	for rows.Next() {
-		pc := &server.PowerCore{
-			CollectionItem: &server.CollectionItem{},
-		}
+		pc := &PlayerAsset{}
 
 		scanArgs := []interface{}{
-			&pc.CollectionItem.CollectionSlug,
-			&pc.CollectionItem.Hash,
-			&pc.CollectionItem.TokenID,
-			&pc.CollectionItem.OwnerID,
-			&pc.CollectionItem.Tier,
-			&pc.CollectionItem.ItemType,
-			&pc.CollectionItem.MarketLocked,
-			&pc.CollectionItem.XsynLocked,
-			&pc.CollectionItem.LockedToMarketplace,
-			&pc.CollectionItem.AssetHidden,
+			&pc.CollectionSlug,
+			&pc.Hash,
+			&pc.TokenID,
+			&pc.ItemType,
+			&pc.ItemID,
+			&pc.Tier,
+			&pc.OwnerID,
+			&pc.MarketLocked,
+			&pc.XsynLocked,
+			&pc.LockedToMarketplace,
+			&pc.AssetHidden,
 			&pc.ID,
 			&pc.Label,
+			&pc.Name,
+			&pc.UpdatedAt,
+			&pc.CreatedAt,
 		}
 
 		err = rows.Scan(scanArgs...)

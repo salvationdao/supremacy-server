@@ -1908,24 +1908,6 @@ func (api *API) GetMaxWeaponStats(w http.ResponseWriter, r *http.Request) (int, 
 	return status, resp
 }
 
-type PlayerAsset struct {
-	CollectionSlug      string `json:"collection_slug"`
-	Hash                string `json:"hash"`
-	TokenID             int64  `json:"token_id"`
-	Tier                string `json:"tier"`
-	OwnerID             string `json:"owner_id"`
-	MarketLocked        bool   `json:"market_locked"`
-	XsynLocked          bool   `json:"xsyn_locked"`
-	LockedToMarketplace bool   `json:"locked_to_marketplace"`
-
-	ID    string `json:"id"`
-	Label string `json:"label"`
-	Name  string `json:"name"`
-
-	UpdatedAt time.Time `json:"updated_at"`
-	CreatedAt time.Time `json:"created_at"`
-}
-
 type PlayerAssetWeaponListRequest struct {
 	Payload struct {
 		Search                        string                    `json:"search"`
@@ -1956,8 +1938,8 @@ type PlayerAssetWeaponListRequest struct {
 }
 
 type PlayerAssetWeaponListResponse struct {
-	Total   int64          `json:"total"`
-	Weapons []*PlayerAsset `json:"weapons"`
+	Total   int64             `json:"total"`
+	Weapons []*db.PlayerAsset `json:"weapons"`
 }
 
 const HubKeyPlayerAssetWeaponList = "PLAYER:ASSET:WEAPON:LIST"
@@ -2009,28 +1991,9 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetWeaponListHandler(ctx context.Co
 		return terror.Error(err, "Failed to find your War Machine assets, please try again or contact support.")
 	}
 
-	playerAssWeapons := []*PlayerAsset{}
-
-	for _, m := range weapons {
-		playerAssWeapons = append(playerAssWeapons, &PlayerAsset{
-			ID:                  m.ID,
-			Label:               m.Label,
-			UpdatedAt:           m.UpdatedAt,
-			CreatedAt:           m.CreatedAt,
-			CollectionSlug:      m.CollectionItem.CollectionSlug,
-			Hash:                m.CollectionItem.Hash,
-			TokenID:             m.CollectionItem.TokenID,
-			Tier:                m.CollectionItem.Tier,
-			OwnerID:             m.CollectionItem.OwnerID,
-			XsynLocked:          m.CollectionItem.XsynLocked,
-			MarketLocked:        m.CollectionItem.MarketLocked,
-			LockedToMarketplace: m.CollectionItem.LockedToMarketplace,
-		})
-	}
-
 	reply(&PlayerAssetWeaponListResponse{
 		Total:   total,
-		Weapons: playerAssWeapons,
+		Weapons: weapons,
 	})
 	return nil
 }
@@ -2083,7 +2046,7 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetWeaponListDetailedHandler(ctx co
 		listOpts.SortDir = req.Payload.SortDir
 	}
 
-	total, weapons, err := db.WeaponList(listOpts)
+	total, weapons, err := db.WeaponListDetailed(listOpts)
 	if err != nil {
 		gamelog.L.Error().Interface("req.Payload", req.Payload).Err(err).Msg("issue getting mechs")
 		return terror.Error(err, "Failed to find your War Machine assets, please try again or contact support.")
@@ -2455,8 +2418,8 @@ type PlayerAssetPowerCoreListRequest struct {
 }
 
 type PlayerAssetPowerCoreListResp struct {
-	Total      int64          `json:"total"`
-	PowerCores []*PlayerAsset `json:"power_cores"`
+	Total      int64             `json:"total"`
+	PowerCores []*db.PlayerAsset `json:"power_cores"`
 }
 
 const HubKeyPlayerAssetPowerCoreList = "PLAYER:ASSET:POWER_CORE:LIST"
@@ -2502,28 +2465,9 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetPowerCoreListHandler(ctx context
 		return terror.Error(err, "Failed to find your War Machine assets, please try again or contact support.")
 	}
 
-	playerAssets := []*PlayerAsset{}
-
-	for _, m := range powerCores {
-		playerAssets = append(playerAssets, &PlayerAsset{
-			ID:                  m.ID,
-			Label:               m.Label,
-			UpdatedAt:           m.CreatedAt,
-			CreatedAt:           m.CreatedAt,
-			CollectionSlug:      m.CollectionItem.CollectionSlug,
-			Hash:                m.CollectionItem.Hash,
-			TokenID:             m.CollectionItem.TokenID,
-			Tier:                m.CollectionItem.Tier,
-			OwnerID:             m.CollectionItem.OwnerID,
-			XsynLocked:          m.CollectionItem.XsynLocked,
-			MarketLocked:        m.CollectionItem.MarketLocked,
-			LockedToMarketplace: m.CollectionItem.LockedToMarketplace,
-		})
-	}
-
 	reply(&PlayerAssetPowerCoreListResp{
 		Total:      total,
-		PowerCores: playerAssets,
+		PowerCores: powerCores,
 	})
 	return nil
 }
@@ -2585,8 +2529,8 @@ type PlayerAssetUtilityListRequest struct {
 }
 
 type PlayerAssetUtilityListResp struct {
-	Total     int64          `json:"total"`
-	Utilities []*PlayerAsset `json:"utilities"`
+	Total     int64             `json:"total"`
+	Utilities []*db.PlayerAsset `json:"utilities"`
 }
 
 const HubKeyPlayerAssetUtilityList = "PLAYER:ASSET:UTILITY:LIST"
@@ -2629,28 +2573,9 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetUtilityListHandler(ctx context.C
 		return terror.Error(err, "Failed to find your War Machine assets, please try again or contact support.")
 	}
 
-	playerAssets := []*PlayerAsset{}
-
-	for _, m := range utilities {
-		playerAssets = append(playerAssets, &PlayerAsset{
-			ID:                  m.ID,
-			Label:               m.Label,
-			UpdatedAt:           m.CreatedAt,
-			CreatedAt:           m.CreatedAt,
-			CollectionSlug:      m.CollectionItem.CollectionSlug,
-			Hash:                m.CollectionItem.Hash,
-			TokenID:             m.CollectionItem.TokenID,
-			Tier:                m.CollectionItem.Tier,
-			OwnerID:             m.CollectionItem.OwnerID,
-			XsynLocked:          m.CollectionItem.XsynLocked,
-			MarketLocked:        m.CollectionItem.MarketLocked,
-			LockedToMarketplace: m.CollectionItem.LockedToMarketplace,
-		})
-	}
-
 	reply(&PlayerAssetUtilityListResp{
 		Total:     total,
-		Utilities: playerAssets,
+		Utilities: utilities,
 	})
 	return nil
 }
