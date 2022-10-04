@@ -6,10 +6,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"server"
+	"server/benchmark"
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
 	"server/xsyn_rpcclient"
+	"sync"
 	"time"
 
 	"github.com/friendsofgo/errors"
@@ -25,20 +27,67 @@ import (
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 )
 
+type RedeemFailUser struct {
+	Count         int
+	DeleteAt      time.Time
+	LockedUntilAt null.Time
+}
+
 type CouponController struct {
 	Conn *pgxpool.Pool
 	Log  *zerolog.Logger
 	API  *API
+
+	redeemedFailUsersMut sync.RWMutex
+	redeemedFailUsers    map[string]RedeemFailUser
 }
 
 func NewCouponsController(api *API) *CouponController {
 	couponHub := &CouponController{
-		API: api,
+		API:               api,
+		redeemedFailUsers: make(map[string]RedeemFailUser),
 	}
 
 	api.SecureUserFactionCommand(HubKeyCodeRedemption, couponHub.CodeRedemptionHandler)
 
+	go couponHub.RunRedeemFailUserGC()
+
 	return couponHub
+}
+
+func (cc *CouponController) RunRedeemFailUserGC() {
+	defer func() {
+		if r := recover(); r != nil {
+			gamelog.LogPanicRecovery("panic! panic! panic! Panic at the CouponController!", r)
+		}
+	}()
+
+	mainTicker := time.NewTicker(1 * time.Minute)
+
+	for range mainTicker.C {
+		bm := benchmark.New()
+
+		bm.Start("gc_coupon_redeem_fail_users")
+
+		deleteKeys := []string{}
+
+		cc.redeemedFailUsersMut.RLock()
+		for userID, failData := range cc.redeemedFailUsers {
+			if (!failData.LockedUntilAt.Valid && failData.DeleteAt.After(time.Now())) || (failData.LockedUntilAt.Valid && failData.LockedUntilAt.Time.After(time.Now())) {
+				continue
+			}
+			deleteKeys = append(deleteKeys, userID)
+		}
+		cc.redeemedFailUsersMut.RUnlock()
+
+		for _, userID := range deleteKeys {
+			cc.redeemedFailUsersMut.Lock()
+			delete(cc.redeemedFailUsers, userID)
+			cc.redeemedFailUsersMut.Unlock()
+		}
+
+		bm.End("gc_coupon_redeem_fail_users")
+	}
 }
 
 //retrieve code and redeem
@@ -71,6 +120,19 @@ func (cc *CouponController) CodeRedemptionHandler(ctx context.Context, user *boi
 		return terror.Error(fmt.Errorf("too many code redemption requests"), "Currently handling request, please try again.")
 	}
 
+	cc.redeemedFailUsersMut.RLock()
+	redeemFailUser, hasFailedBefore := cc.redeemedFailUsers[user.ID]
+	cc.redeemedFailUsersMut.RUnlock()
+
+	if hasFailedBefore {
+		if redeemFailUser.LockedUntilAt.Valid && redeemFailUser.LockedUntilAt.Time.After(time.Now()) {
+			return terror.Error(fmt.Errorf("too many invalid code redemption requests"), "Too many failed code redemption requests, please try again.")
+		}
+		cc.redeemedFailUsersMut.Lock()
+		delete(cc.redeemedFailUsers, user.ID)
+		cc.redeemedFailUsersMut.Unlock()
+	}
+
 	req := &CodeRedemptionRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
@@ -84,10 +146,11 @@ func (cc *CouponController) CodeRedemptionHandler(ctx context.Context, user *boi
 			qm.SQL(
 				fmt.Sprintf(`
 					UPDATE %s SET %s = false,
-								  %s = null,
+								  %s = null
 					WHERE %s = $1`,
 					boiler.TableNames.Coupons,
 					boiler.CouponColumns.Redeemed,
+					boiler.CouponColumns.RedeemedAt,
 					boiler.CouponColumns.Code,
 				),
 				couponCode,
@@ -104,13 +167,15 @@ func (cc *CouponController) CodeRedemptionHandler(ctx context.Context, user *boi
 		qm.SQL(
 			fmt.Sprintf(`
 					UPDATE %s SET %s = true,
+								  %s = $2,
 								  %s = NOW()
-					WHERE %s IS FALSE 
+					WHERE %s = FALSE 
 					AND %s = $1
 					AND %s > NOW()
 					RETURNING  %s, %s, %s, %s`,
 				boiler.TableNames.Coupons,
 				boiler.CouponColumns.Redeemed,
+				boiler.CouponColumns.RedeemedByID,
 				boiler.CouponColumns.RedeemedAt,
 				boiler.CouponColumns.Redeemed,
 				boiler.CouponColumns.Code,
@@ -121,23 +186,49 @@ func (cc *CouponController) CodeRedemptionHandler(ctx context.Context, user *boi
 				boiler.CouponColumns.ExpiryDate,
 			),
 			couponCode,
+			user.ID,
 		),
 	).QueryRow(gamedb.StdConn).Scan(&coupon.ID, &coupon.Code, &coupon.Redeemed, &coupon.ExpiryDate)
 	if err != nil {
-		if !errors.Is(err, sql.ErrNoRows) {
-			rollbackRedeem()
-			gamelog.L.Error().Err(err).Interface("coupon code: ", couponCode).Msg("failed to find coupon code")
-			return terror.Error(err, "Issue finding coupon code, try again or contact support.")
+		if errors.Is(err, sql.ErrNoRows) {
+			if !hasFailedBefore {
+				redeemFailUser = RedeemFailUser{
+					Count:         0,
+					LockedUntilAt: null.Time{},
+				}
+			}
+			redeemFailUser.DeleteAt = time.Now().Add(time.Minute * 5) // Only keep track of failure for 5 minutes (unless locked)
+			redeemFailUser.Count++
+			if redeemFailUser.Count >= 3 {
+				redeemFailUser.LockedUntilAt = null.TimeFrom(time.Now().Add(time.Minute * 30))
+			}
 
-		} else {
+			cc.redeemedFailUsersMut.Lock()
+			cc.redeemedFailUsers[user.ID] = redeemFailUser
+			cc.redeemedFailUsersMut.Unlock()
+
+			if redeemFailUser.LockedUntilAt.Valid && redeemFailUser.LockedUntilAt.Time.After(time.Now()) {
+				return terror.Error(fmt.Errorf("too many invalid code redemption requests"), "Too many failed code redemption requests, please try again.")
+			}
+
 			return terror.Error(fmt.Errorf("unable to find unclaimed coupon"))
 		}
+
+		gamelog.L.Error().Err(err).Interface("coupon code: ", couponCode).Msg("failed to find coupon code")
+		return terror.Error(err, "Issue finding coupon code, try again or contact support.")
+	}
+
+	if hasFailedBefore {
+		cc.redeemedFailUsersMut.Lock()
+		delete(cc.redeemedFailUsers, user.ID)
+		cc.redeemedFailUsersMut.Unlock()
 	}
 
 	err = coupon.L.LoadCouponItems(gamedb.StdConn, true, coupon,
 		boiler.CouponItemWhere.Claimed.EQ(false),
 	)
 	if err != nil {
+		rollbackRedeem()
 		gamelog.L.Error().Err(err).Interface("coupon code: ", couponCode).Msg("failed to find coupon code loading items")
 		return err
 	}
