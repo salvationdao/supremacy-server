@@ -73,7 +73,7 @@ func (cc *CouponController) RunRedeemFailUserGC() {
 
 		cc.redeemedFailUsersMut.RLock()
 		for userID, failData := range cc.redeemedFailUsers {
-			if failData.DeleteAt.After(time.Now()) || (failData.LockedUntilAt.Valid && failData.LockedUntilAt.Time.After(time.Now())) {
+			if (!failData.LockedUntilAt.Valid && failData.DeleteAt.After(time.Now())) || (failData.LockedUntilAt.Valid && failData.LockedUntilAt.Time.After(time.Now())) {
 				continue
 			}
 			deleteKeys = append(deleteKeys, userID)
