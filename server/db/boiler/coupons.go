@@ -23,76 +23,86 @@ import (
 
 // Coupon is an object representing the database table.
 type Coupon struct {
-	ID         string    `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
-	Code       string    `boiler:"code" boil:"code" json:"code" toml:"code" yaml:"code"`
-	Redeemed   bool      `boiler:"redeemed" boil:"redeemed" json:"redeemed" toml:"redeemed" yaml:"redeemed"`
-	ExpiryDate time.Time `boiler:"expiry_date" boil:"expiry_date" json:"expiry_date" toml:"expiry_date" yaml:"expiry_date"`
-	CreatedAt  time.Time `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
-	RedeemedAt null.Time `boiler:"redeemed_at" boil:"redeemed_at" json:"redeemed_at,omitempty" toml:"redeemed_at" yaml:"redeemed_at,omitempty"`
+	ID           string      `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
+	Code         string      `boiler:"code" boil:"code" json:"code" toml:"code" yaml:"code"`
+	Redeemed     bool        `boiler:"redeemed" boil:"redeemed" json:"redeemed" toml:"redeemed" yaml:"redeemed"`
+	ExpiryDate   time.Time   `boiler:"expiry_date" boil:"expiry_date" json:"expiry_date" toml:"expiry_date" yaml:"expiry_date"`
+	CreatedAt    time.Time   `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
+	RedeemedAt   null.Time   `boiler:"redeemed_at" boil:"redeemed_at" json:"redeemed_at,omitempty" toml:"redeemed_at" yaml:"redeemed_at,omitempty"`
+	RedeemedByID null.String `boiler:"redeemed_by_id" boil:"redeemed_by_id" json:"redeemed_by_id,omitempty" toml:"redeemed_by_id" yaml:"redeemed_by_id,omitempty"`
 
 	R *couponR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L couponL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 }
 
 var CouponColumns = struct {
-	ID         string
-	Code       string
-	Redeemed   string
-	ExpiryDate string
-	CreatedAt  string
-	RedeemedAt string
+	ID           string
+	Code         string
+	Redeemed     string
+	ExpiryDate   string
+	CreatedAt    string
+	RedeemedAt   string
+	RedeemedByID string
 }{
-	ID:         "id",
-	Code:       "code",
-	Redeemed:   "redeemed",
-	ExpiryDate: "expiry_date",
-	CreatedAt:  "created_at",
-	RedeemedAt: "redeemed_at",
+	ID:           "id",
+	Code:         "code",
+	Redeemed:     "redeemed",
+	ExpiryDate:   "expiry_date",
+	CreatedAt:    "created_at",
+	RedeemedAt:   "redeemed_at",
+	RedeemedByID: "redeemed_by_id",
 }
 
 var CouponTableColumns = struct {
-	ID         string
-	Code       string
-	Redeemed   string
-	ExpiryDate string
-	CreatedAt  string
-	RedeemedAt string
+	ID           string
+	Code         string
+	Redeemed     string
+	ExpiryDate   string
+	CreatedAt    string
+	RedeemedAt   string
+	RedeemedByID string
 }{
-	ID:         "coupons.id",
-	Code:       "coupons.code",
-	Redeemed:   "coupons.redeemed",
-	ExpiryDate: "coupons.expiry_date",
-	CreatedAt:  "coupons.created_at",
-	RedeemedAt: "coupons.redeemed_at",
+	ID:           "coupons.id",
+	Code:         "coupons.code",
+	Redeemed:     "coupons.redeemed",
+	ExpiryDate:   "coupons.expiry_date",
+	CreatedAt:    "coupons.created_at",
+	RedeemedAt:   "coupons.redeemed_at",
+	RedeemedByID: "coupons.redeemed_by_id",
 }
 
 // Generated where
 
 var CouponWhere = struct {
-	ID         whereHelperstring
-	Code       whereHelperstring
-	Redeemed   whereHelperbool
-	ExpiryDate whereHelpertime_Time
-	CreatedAt  whereHelpertime_Time
-	RedeemedAt whereHelpernull_Time
+	ID           whereHelperstring
+	Code         whereHelperstring
+	Redeemed     whereHelperbool
+	ExpiryDate   whereHelpertime_Time
+	CreatedAt    whereHelpertime_Time
+	RedeemedAt   whereHelpernull_Time
+	RedeemedByID whereHelpernull_String
 }{
-	ID:         whereHelperstring{field: "\"coupons\".\"id\""},
-	Code:       whereHelperstring{field: "\"coupons\".\"code\""},
-	Redeemed:   whereHelperbool{field: "\"coupons\".\"redeemed\""},
-	ExpiryDate: whereHelpertime_Time{field: "\"coupons\".\"expiry_date\""},
-	CreatedAt:  whereHelpertime_Time{field: "\"coupons\".\"created_at\""},
-	RedeemedAt: whereHelpernull_Time{field: "\"coupons\".\"redeemed_at\""},
+	ID:           whereHelperstring{field: "\"coupons\".\"id\""},
+	Code:         whereHelperstring{field: "\"coupons\".\"code\""},
+	Redeemed:     whereHelperbool{field: "\"coupons\".\"redeemed\""},
+	ExpiryDate:   whereHelpertime_Time{field: "\"coupons\".\"expiry_date\""},
+	CreatedAt:    whereHelpertime_Time{field: "\"coupons\".\"created_at\""},
+	RedeemedAt:   whereHelpernull_Time{field: "\"coupons\".\"redeemed_at\""},
+	RedeemedByID: whereHelpernull_String{field: "\"coupons\".\"redeemed_by_id\""},
 }
 
 // CouponRels is where relationship names are stored.
 var CouponRels = struct {
+	RedeemedBy  string
 	CouponItems string
 }{
+	RedeemedBy:  "RedeemedBy",
 	CouponItems: "CouponItems",
 }
 
 // couponR is where relationships are stored.
 type couponR struct {
+	RedeemedBy  *Player         `boiler:"RedeemedBy" boil:"RedeemedBy" json:"RedeemedBy" toml:"RedeemedBy" yaml:"RedeemedBy"`
 	CouponItems CouponItemSlice `boiler:"CouponItems" boil:"CouponItems" json:"CouponItems" toml:"CouponItems" yaml:"CouponItems"`
 }
 
@@ -105,9 +115,9 @@ func (*couponR) NewStruct() *couponR {
 type couponL struct{}
 
 var (
-	couponAllColumns            = []string{"id", "code", "redeemed", "expiry_date", "created_at", "redeemed_at"}
+	couponAllColumns            = []string{"id", "code", "redeemed", "expiry_date", "created_at", "redeemed_at", "redeemed_by_id"}
 	couponColumnsWithoutDefault = []string{}
-	couponColumnsWithDefault    = []string{"id", "code", "redeemed", "expiry_date", "created_at", "redeemed_at"}
+	couponColumnsWithDefault    = []string{"id", "code", "redeemed", "expiry_date", "created_at", "redeemed_at", "redeemed_by_id"}
 	couponPrimaryKeyColumns     = []string{"id"}
 	couponGeneratedColumns      = []string{}
 )
@@ -354,6 +364,21 @@ func (q couponQuery) Exists(exec boil.Executor) (bool, error) {
 	return count > 0, nil
 }
 
+// RedeemedBy pointed to by the foreign key.
+func (o *Coupon) RedeemedBy(mods ...qm.QueryMod) playerQuery {
+	queryMods := []qm.QueryMod{
+		qm.Where("\"id\" = ?", o.RedeemedByID),
+		qmhelper.WhereIsNull("deleted_at"),
+	}
+
+	queryMods = append(queryMods, mods...)
+
+	query := Players(queryMods...)
+	queries.SetFrom(query.Query, "\"players\"")
+
+	return query
+}
+
 // CouponItems retrieves all the coupon_item's CouponItems with an executor.
 func (o *Coupon) CouponItems(mods ...qm.QueryMod) couponItemQuery {
 	var queryMods []qm.QueryMod
@@ -373,6 +398,115 @@ func (o *Coupon) CouponItems(mods ...qm.QueryMod) couponItemQuery {
 	}
 
 	return query
+}
+
+// LoadRedeemedBy allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for an N-1 relationship.
+func (couponL) LoadRedeemedBy(e boil.Executor, singular bool, maybeCoupon interface{}, mods queries.Applicator) error {
+	var slice []*Coupon
+	var object *Coupon
+
+	if singular {
+		object = maybeCoupon.(*Coupon)
+	} else {
+		slice = *maybeCoupon.(*[]*Coupon)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &couponR{}
+		}
+		if !queries.IsNil(object.RedeemedByID) {
+			args = append(args, object.RedeemedByID)
+		}
+
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &couponR{}
+			}
+
+			for _, a := range args {
+				if queries.Equal(a, obj.RedeemedByID) {
+					continue Outer
+				}
+			}
+
+			if !queries.IsNil(obj.RedeemedByID) {
+				args = append(args, obj.RedeemedByID)
+			}
+
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`players`),
+		qm.WhereIn(`players.id in ?`, args...),
+		qmhelper.WhereIsNull(`players.deleted_at`),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load Player")
+	}
+
+	var resultSlice []*Player
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice Player")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results of eager load for players")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for players")
+	}
+
+	if len(couponAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+
+	if len(resultSlice) == 0 {
+		return nil
+	}
+
+	if singular {
+		foreign := resultSlice[0]
+		object.R.RedeemedBy = foreign
+		if foreign.R == nil {
+			foreign.R = &playerR{}
+		}
+		foreign.R.RedeemedByCoupons = append(foreign.R.RedeemedByCoupons, object)
+		return nil
+	}
+
+	for _, local := range slice {
+		for _, foreign := range resultSlice {
+			if queries.Equal(local.RedeemedByID, foreign.ID) {
+				local.R.RedeemedBy = foreign
+				if foreign.R == nil {
+					foreign.R = &playerR{}
+				}
+				foreign.R.RedeemedByCoupons = append(foreign.R.RedeemedByCoupons, local)
+				break
+			}
+		}
+	}
+
+	return nil
 }
 
 // LoadCouponItems allows an eager lookup of values, cached into the
@@ -470,6 +604,85 @@ func (couponL) LoadCouponItems(e boil.Executor, singular bool, maybeCoupon inter
 		}
 	}
 
+	return nil
+}
+
+// SetRedeemedBy of the coupon to the related item.
+// Sets o.R.RedeemedBy to related.
+// Adds o to related.R.RedeemedByCoupons.
+func (o *Coupon) SetRedeemedBy(exec boil.Executor, insert bool, related *Player) error {
+	var err error
+	if insert {
+		if err = related.Insert(exec, boil.Infer()); err != nil {
+			return errors.Wrap(err, "failed to insert into foreign table")
+		}
+	}
+
+	updateQuery := fmt.Sprintf(
+		"UPDATE \"coupons\" SET %s WHERE %s",
+		strmangle.SetParamNames("\"", "\"", 1, []string{"redeemed_by_id"}),
+		strmangle.WhereClause("\"", "\"", 2, couponPrimaryKeyColumns),
+	)
+	values := []interface{}{related.ID, o.ID}
+
+	if boil.DebugMode {
+		fmt.Fprintln(boil.DebugWriter, updateQuery)
+		fmt.Fprintln(boil.DebugWriter, values)
+	}
+	if _, err = exec.Exec(updateQuery, values...); err != nil {
+		return errors.Wrap(err, "failed to update local table")
+	}
+
+	queries.Assign(&o.RedeemedByID, related.ID)
+	if o.R == nil {
+		o.R = &couponR{
+			RedeemedBy: related,
+		}
+	} else {
+		o.R.RedeemedBy = related
+	}
+
+	if related.R == nil {
+		related.R = &playerR{
+			RedeemedByCoupons: CouponSlice{o},
+		}
+	} else {
+		related.R.RedeemedByCoupons = append(related.R.RedeemedByCoupons, o)
+	}
+
+	return nil
+}
+
+// RemoveRedeemedBy relationship.
+// Sets o.R.RedeemedBy to nil.
+// Removes o from all passed in related items' relationships struct (Optional).
+func (o *Coupon) RemoveRedeemedBy(exec boil.Executor, related *Player) error {
+	var err error
+
+	queries.SetScanner(&o.RedeemedByID, nil)
+	if _, err = o.Update(exec, boil.Whitelist("redeemed_by_id")); err != nil {
+		return errors.Wrap(err, "failed to update local table")
+	}
+
+	if o.R != nil {
+		o.R.RedeemedBy = nil
+	}
+	if related == nil || related.R == nil {
+		return nil
+	}
+
+	for i, ri := range related.R.RedeemedByCoupons {
+		if queries.Equal(o.RedeemedByID, ri.RedeemedByID) {
+			continue
+		}
+
+		ln := len(related.R.RedeemedByCoupons)
+		if ln > 1 && i < ln-1 {
+			related.R.RedeemedByCoupons[i] = related.R.RedeemedByCoupons[ln-1]
+		}
+		related.R.RedeemedByCoupons = related.R.RedeemedByCoupons[:ln-1]
+		break
+	}
 	return nil
 }
 

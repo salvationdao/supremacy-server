@@ -84,10 +84,11 @@ func (cc *CouponController) CodeRedemptionHandler(ctx context.Context, user *boi
 			qm.SQL(
 				fmt.Sprintf(`
 					UPDATE %s SET %s = false,
-								  %s = null,
+								  %s = null
 					WHERE %s = $1`,
 					boiler.TableNames.Coupons,
 					boiler.CouponColumns.Redeemed,
+					boiler.CouponColumns.RedeemedAt,
 					boiler.CouponColumns.Code,
 				),
 				couponCode,
@@ -104,6 +105,7 @@ func (cc *CouponController) CodeRedemptionHandler(ctx context.Context, user *boi
 		qm.SQL(
 			fmt.Sprintf(`
 					UPDATE %s SET %s = true,
+								  %s = $2,
 								  %s = NOW()
 					WHERE %s IS FALSE 
 					AND %s = $1
@@ -111,6 +113,7 @@ func (cc *CouponController) CodeRedemptionHandler(ctx context.Context, user *boi
 					RETURNING  %s, %s, %s, %s`,
 				boiler.TableNames.Coupons,
 				boiler.CouponColumns.Redeemed,
+				boiler.CouponColumns.RedeemedByID,
 				boiler.CouponColumns.RedeemedAt,
 				boiler.CouponColumns.Redeemed,
 				boiler.CouponColumns.Code,
@@ -121,6 +124,7 @@ func (cc *CouponController) CodeRedemptionHandler(ctx context.Context, user *boi
 				boiler.CouponColumns.ExpiryDate,
 			),
 			couponCode,
+			user.ID,
 		),
 	).QueryRow(gamedb.StdConn).Scan(&coupon.ID, &coupon.Code, &coupon.Redeemed, &coupon.ExpiryDate)
 	if err != nil {
