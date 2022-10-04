@@ -57,10 +57,10 @@ func NewPlayerAssetsController(api *API) *PlayerAssetsControllerWS {
 	api.SecureUserCommand(HubKeyPlayerAssetKeycardList, pac.PlayerAssetKeycardListHandler)
 	api.SecureUserCommand(HubKeyPlayerAssetKeycardGet, pac.PlayerAssetKeycardGetHandler)
 	api.SecureUserCommand(HubKeyPlayerAssetRename, pac.PlayerMechRenameHandler)
-	api.SecureUserCommand(HubKeyplayerAssetMechSubmodelList, pac.playerAssetMechSubmodelListHandler)
-	api.SecureUserCommand(HubKeyPlayerMechBlueprintList, pac.playerMechBlueprintListHandler)
-	api.SecureUserCommand(HubKeyplayerAssetWeaponSubmodelList, pac.playerAssetWeaponSubmodelListHandler)
-	api.SecureUserCommand(HubKeyPlayerWeaponBlueprintList, pac.playerWeaponBlueprintListHandler)
+	api.SecureUserCommand(HubKeyplayerAssetMechSubmodelList, pac.PlayerAssetMechSubmodelListDetailedHandler)
+	api.SecureUserCommand(HubKeyPlayerMechBlueprintList, pac.PlayerMechBlueprintListDetailedHandler)
+	api.SecureUserCommand(HubKeyplayerAssetWeaponSubmodelList, pac.PlayerAssetWeaponSubmodelListDetailedHandler)
+	api.SecureUserCommand(HubKeyPlayerWeaponBlueprintList, pac.PlayerWeaponBlueprintListDetailedHandler)
 	api.SecureUserFactionCommand(HubKeyOpenCrate, pac.OpenCrateHandler)
 	// public profile
 	api.Command(HubKeyPlayerAssetMechListPublic, pac.PlayerAssetMechListPublicHandler)
@@ -1175,133 +1175,6 @@ func (pac *PlayerAssetsControllerWS) OpenCrateHandler(ctx context.Context, user 
 	return nil
 }
 
-type PlayerAssetWeaponListRequest struct {
-	Payload struct {
-		Search                        string                    `json:"search"`
-		SortBy                        string                    `json:"sort_by"`
-		SortDir                       db.SortByDir              `json:"sort_dir"`
-		PageSize                      int                       `json:"page_size"`
-		Page                          int                       `json:"page"`
-		DisplayXsynMechs              bool                      `json:"display_xsyn_mechs"`
-		DisplayGenesisAndLimited      bool                      `json:"display_genesis_and_limited"`
-		ExcludeMarketLocked           bool                      `json:"exclude_market_locked"`
-		IncludeMarketListed           bool                      `json:"include_market_listed"`
-		ExcludeMechLocked             bool                      `json:"exclude_mech_locked"`
-		ExcludeIDs                    []string                  `json:"exclude_ids"`
-		FilterRarities                []string                  `json:"rarities"`
-		FilterWeaponTypes             []string                  `json:"weapon_types"`
-		FilterEquippedStatuses        []string                  `json:"equipped_statuses"`
-		FilterStatAmmo                *db.WeaponStatFilterRange `json:"stat_ammo"`
-		FilterStatDamage              *db.WeaponStatFilterRange `json:"stat_damage"`
-		FilterStatDamageFalloff       *db.WeaponStatFilterRange `json:"stat_damage_falloff"`
-		FilterStatDamageFalloffRate   *db.WeaponStatFilterRange `json:"stat_damage_falloff_rate"`
-		FilterStatRadius              *db.WeaponStatFilterRange `json:"stat_radius"`
-		FilterStatRadiusDamageFalloff *db.WeaponStatFilterRange `json:"stat_radius_damage_falloff"`
-		FilterStatRateOfFire          *db.WeaponStatFilterRange `json:"stat_rate_of_fire"`
-		FilterStatEnergyCosts         *db.WeaponStatFilterRange `json:"stat_energy_cost"`
-		FilterStatProjectileSpeed     *db.WeaponStatFilterRange `json:"stat_projectile_speed"`
-		FilterStatSpread              *db.WeaponStatFilterRange `json:"stat_spread"`
-	} `json:"payload"`
-}
-
-type PlayerAssetWeaponListResp struct {
-	Total   int64          `json:"total"`
-	Weapons []*PlayerAsset `json:"weapons"`
-}
-
-type PlayerAsset struct {
-	CollectionSlug      string `json:"collection_slug"`
-	Hash                string `json:"hash"`
-	TokenID             int64  `json:"token_id"`
-	Tier                string `json:"tier"`
-	OwnerID             string `json:"owner_id"`
-	MarketLocked        bool   `json:"market_locked"`
-	XsynLocked          bool   `json:"xsyn_locked"`
-	LockedToMarketplace bool   `json:"locked_to_marketplace"`
-
-	ID    string `json:"id"`
-	Label string `json:"label"`
-	Name  string `json:"name"`
-
-	UpdatedAt time.Time `json:"updated_at"`
-	CreatedAt time.Time `json:"created_at"`
-}
-
-const HubKeyPlayerAssetWeaponList = "PLAYER:ASSET:WEAPON:LIST"
-
-func (pac *PlayerAssetsControllerWS) PlayerAssetWeaponListHandler(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
-	req := &PlayerAssetWeaponListRequest{}
-	err := json.Unmarshal(payload, req)
-	if err != nil {
-		return terror.Error(err, "Invalid request received.")
-	}
-
-	if !user.FactionID.Valid {
-		return terror.Error(fmt.Errorf("user has no faction"), "You need a faction to see assets.")
-	}
-
-	listOpts := &db.WeaponListOpts{
-		Search:                        req.Payload.Search,
-		PageSize:                      req.Payload.PageSize,
-		Page:                          req.Payload.Page,
-		OwnerID:                       user.ID,
-		DisplayXsynMechs:              req.Payload.DisplayXsynMechs,
-		DisplayGenesisAndLimited:      req.Payload.DisplayGenesisAndLimited,
-		ExcludeMarketLocked:           req.Payload.ExcludeMarketLocked,
-		IncludeMarketListed:           req.Payload.IncludeMarketListed,
-		ExcludeMechLocked:             req.Payload.ExcludeMechLocked,
-		ExcludeIDs:                    req.Payload.ExcludeIDs,
-		FilterRarities:                req.Payload.FilterRarities,
-		FilterWeaponTypes:             req.Payload.FilterWeaponTypes,
-		FilterEquippedStatuses:        req.Payload.FilterEquippedStatuses,
-		FilterStatAmmo:                req.Payload.FilterStatAmmo,
-		FilterStatDamage:              req.Payload.FilterStatDamage,
-		FilterStatDamageFalloff:       req.Payload.FilterStatDamageFalloff,
-		FilterStatDamageFalloffRate:   req.Payload.FilterStatDamageFalloffRate,
-		FilterStatRadius:              req.Payload.FilterStatRadius,
-		FilterStatRadiusDamageFalloff: req.Payload.FilterStatRadiusDamageFalloff,
-		FilterStatRateOfFire:          req.Payload.FilterStatRateOfFire,
-		FilterStatEnergyCosts:         req.Payload.FilterStatEnergyCosts,
-		FilterStatProjectileSpeed:     req.Payload.FilterStatProjectileSpeed,
-		FilterStatSpread:              req.Payload.FilterStatSpread,
-	}
-	if req.Payload.SortBy != "" && req.Payload.SortDir.IsValid() {
-		listOpts.SortBy = req.Payload.SortBy
-		listOpts.SortDir = req.Payload.SortDir
-	}
-
-	total, weapons, err := db.WeaponList(listOpts)
-	if err != nil {
-		gamelog.L.Error().Interface("req.Payload", req.Payload).Err(err).Msg("issue getting mechs")
-		return terror.Error(err, "Failed to find your War Machine assets, please try again or contact support.")
-	}
-
-	playerAssWeapons := []*PlayerAsset{}
-
-	for _, m := range weapons {
-		playerAssWeapons = append(playerAssWeapons, &PlayerAsset{
-			ID:                  m.ID,
-			Label:               m.Label,
-			UpdatedAt:           m.UpdatedAt,
-			CreatedAt:           m.CreatedAt,
-			CollectionSlug:      m.CollectionItem.CollectionSlug,
-			Hash:                m.CollectionItem.Hash,
-			TokenID:             m.CollectionItem.TokenID,
-			Tier:                m.CollectionItem.Tier,
-			OwnerID:             m.CollectionItem.OwnerID,
-			XsynLocked:          m.CollectionItem.XsynLocked,
-			MarketLocked:        m.CollectionItem.MarketLocked,
-			LockedToMarketplace: m.CollectionItem.LockedToMarketplace,
-		})
-	}
-
-	reply(&PlayerAssetWeaponListResp{
-		Total:   total,
-		Weapons: playerAssWeapons,
-	})
-	return nil
-}
-
 type PlayerAssetMechEquipRequest struct {
 	*hub.HubCommandRequest
 	Payload struct {
@@ -2034,7 +1907,134 @@ func (api *API) GetMaxWeaponStats(w http.ResponseWriter, r *http.Request) (int, 
 	return status, resp
 }
 
-const HubKeyplayerAssetMechSubmodelList = "PLAYER:ASSET:MECH:SUBMODEL:LIST"
+type PlayerAsset struct {
+	CollectionSlug      string `json:"collection_slug"`
+	Hash                string `json:"hash"`
+	TokenID             int64  `json:"token_id"`
+	Tier                string `json:"tier"`
+	OwnerID             string `json:"owner_id"`
+	MarketLocked        bool   `json:"market_locked"`
+	XsynLocked          bool   `json:"xsyn_locked"`
+	LockedToMarketplace bool   `json:"locked_to_marketplace"`
+
+	ID    string `json:"id"`
+	Label string `json:"label"`
+	Name  string `json:"name"`
+
+	UpdatedAt time.Time `json:"updated_at"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
+type PlayerAssetWeaponListRequest struct {
+	Payload struct {
+		Search                        string                    `json:"search"`
+		SortBy                        string                    `json:"sort_by"`
+		SortDir                       db.SortByDir              `json:"sort_dir"`
+		PageSize                      int                       `json:"page_size"`
+		Page                          int                       `json:"page"`
+		DisplayXsynMechs              bool                      `json:"display_xsyn_mechs"`
+		DisplayGenesisAndLimited      bool                      `json:"display_genesis_and_limited"`
+		ExcludeMarketLocked           bool                      `json:"exclude_market_locked"`
+		IncludeMarketListed           bool                      `json:"include_market_listed"`
+		ExcludeMechLocked             bool                      `json:"exclude_mech_locked"`
+		ExcludeIDs                    []string                  `json:"exclude_ids"`
+		FilterRarities                []string                  `json:"rarities"`
+		FilterWeaponTypes             []string                  `json:"weapon_types"`
+		FilterEquippedStatuses        []string                  `json:"equipped_statuses"`
+		FilterStatAmmo                *db.WeaponStatFilterRange `json:"stat_ammo"`
+		FilterStatDamage              *db.WeaponStatFilterRange `json:"stat_damage"`
+		FilterStatDamageFalloff       *db.WeaponStatFilterRange `json:"stat_damage_falloff"`
+		FilterStatDamageFalloffRate   *db.WeaponStatFilterRange `json:"stat_damage_falloff_rate"`
+		FilterStatRadius              *db.WeaponStatFilterRange `json:"stat_radius"`
+		FilterStatRadiusDamageFalloff *db.WeaponStatFilterRange `json:"stat_radius_damage_falloff"`
+		FilterStatRateOfFire          *db.WeaponStatFilterRange `json:"stat_rate_of_fire"`
+		FilterStatEnergyCosts         *db.WeaponStatFilterRange `json:"stat_energy_cost"`
+		FilterStatProjectileSpeed     *db.WeaponStatFilterRange `json:"stat_projectile_speed"`
+		FilterStatSpread              *db.WeaponStatFilterRange `json:"stat_spread"`
+	} `json:"payload"`
+}
+
+type PlayerAssetWeaponListResp struct {
+	Total   int64          `json:"total"`
+	Weapons []*PlayerAsset `json:"weapons"`
+}
+
+const HubKeyPlayerAssetWeaponList = "PLAYER:ASSET:WEAPON:LIST"
+
+func (pac *PlayerAssetsControllerWS) PlayerAssetWeaponListHandler(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
+	req := &PlayerAssetWeaponListRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return terror.Error(err, "Invalid request received.")
+	}
+
+	if !user.FactionID.Valid {
+		return terror.Error(fmt.Errorf("user has no faction"), "You need a faction to see assets.")
+	}
+
+	listOpts := &db.WeaponListOpts{
+		Search:                        req.Payload.Search,
+		PageSize:                      req.Payload.PageSize,
+		Page:                          req.Payload.Page,
+		OwnerID:                       user.ID,
+		DisplayXsynMechs:              req.Payload.DisplayXsynMechs,
+		DisplayGenesisAndLimited:      req.Payload.DisplayGenesisAndLimited,
+		ExcludeMarketLocked:           req.Payload.ExcludeMarketLocked,
+		IncludeMarketListed:           req.Payload.IncludeMarketListed,
+		ExcludeMechLocked:             req.Payload.ExcludeMechLocked,
+		ExcludeIDs:                    req.Payload.ExcludeIDs,
+		FilterRarities:                req.Payload.FilterRarities,
+		FilterWeaponTypes:             req.Payload.FilterWeaponTypes,
+		FilterEquippedStatuses:        req.Payload.FilterEquippedStatuses,
+		FilterStatAmmo:                req.Payload.FilterStatAmmo,
+		FilterStatDamage:              req.Payload.FilterStatDamage,
+		FilterStatDamageFalloff:       req.Payload.FilterStatDamageFalloff,
+		FilterStatDamageFalloffRate:   req.Payload.FilterStatDamageFalloffRate,
+		FilterStatRadius:              req.Payload.FilterStatRadius,
+		FilterStatRadiusDamageFalloff: req.Payload.FilterStatRadiusDamageFalloff,
+		FilterStatRateOfFire:          req.Payload.FilterStatRateOfFire,
+		FilterStatEnergyCosts:         req.Payload.FilterStatEnergyCosts,
+		FilterStatProjectileSpeed:     req.Payload.FilterStatProjectileSpeed,
+		FilterStatSpread:              req.Payload.FilterStatSpread,
+	}
+	if req.Payload.SortBy != "" && req.Payload.SortDir.IsValid() {
+		listOpts.SortBy = req.Payload.SortBy
+		listOpts.SortDir = req.Payload.SortDir
+	}
+
+	total, weapons, err := db.WeaponList(listOpts)
+	if err != nil {
+		gamelog.L.Error().Interface("req.Payload", req.Payload).Err(err).Msg("issue getting mechs")
+		return terror.Error(err, "Failed to find your War Machine assets, please try again or contact support.")
+	}
+
+	playerAssWeapons := []*PlayerAsset{}
+
+	for _, m := range weapons {
+		playerAssWeapons = append(playerAssWeapons, &PlayerAsset{
+			ID:                  m.ID,
+			Label:               m.Label,
+			UpdatedAt:           m.UpdatedAt,
+			CreatedAt:           m.CreatedAt,
+			CollectionSlug:      m.CollectionItem.CollectionSlug,
+			Hash:                m.CollectionItem.Hash,
+			TokenID:             m.CollectionItem.TokenID,
+			Tier:                m.CollectionItem.Tier,
+			OwnerID:             m.CollectionItem.OwnerID,
+			XsynLocked:          m.CollectionItem.XsynLocked,
+			MarketLocked:        m.CollectionItem.MarketLocked,
+			LockedToMarketplace: m.CollectionItem.LockedToMarketplace,
+		})
+	}
+
+	reply(&PlayerAssetWeaponListResp{
+		Total:   total,
+		Weapons: playerAssWeapons,
+	})
+	return nil
+}
+
+const HubKeyplayerAssetMechSubmodelList = "PLAYER:ASSET:MECH:SUBMODEL:DETAIL:LIST"
 
 type PlayerAssetMechSubmodelListRequest struct {
 	Payload struct {
@@ -2057,13 +2057,13 @@ type PlayerAssetMechSubmodelListRequest struct {
 	} `json:"payload"`
 }
 
-type PlayerAssetMechSubmodelListResp struct {
+type PlayerAssetMechSubmodelListDetailedResponse struct {
 	Total     int64              `json:"total"`
 	Submodels []*server.MechSkin `json:"submodels"`
 }
 
-func (pac *PlayerAssetsControllerWS) playerAssetMechSubmodelListHandler(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
-	l := gamelog.L.With().Str("func", "playerAssetMechSubmodelListHandler").Str("user_id", user.ID).Logger()
+func (pac *PlayerAssetsControllerWS) PlayerAssetMechSubmodelListDetailedHandler(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
+	l := gamelog.L.With().Str("func", "PlayerAssetMechSubmodelListDetailedHandler").Str("user_id", user.ID).Logger()
 
 	req := &PlayerAssetMechSubmodelListRequest{}
 	err := json.Unmarshal(payload, req)
@@ -2101,23 +2101,99 @@ func (pac *PlayerAssetsControllerWS) playerAssetMechSubmodelListHandler(ctx cont
 		listOpts.SortDir = req.Payload.SortDir
 	}
 
-	total, submodels, err := db.MechSkinList(listOpts)
+	total, submodels, err := db.MechSkinListDetailed(listOpts)
 	if err != nil {
 		l.Error().Interface("req.Payload", req.Payload).Err(err).Msg("issue getting war machine skin list")
 		return terror.Error(err, "Failed to find your war machine skin assets, please try again or contact support.")
 	}
 
-	reply(&PlayerAssetMechSubmodelListResp{
+	reply(&PlayerAssetMechSubmodelListDetailedResponse{
 		Total:     total,
 		Submodels: submodels,
 	})
 	return nil
 }
 
-const HubKeyPlayerMechBlueprintList = "PLAYER:MECH:BLUEPRINT:LIST"
+const HubKeyplayerAssetWeaponSubmodelList = "PLAYER:ASSET:WEAPON:SUBMODEL:DETAIL:LIST"
 
-func (pac *PlayerAssetsControllerWS) playerMechBlueprintListHandler(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
-	l := gamelog.L.With().Str("func", "playerMechBlueprintListHandler").Str("user_id", user.ID).Logger()
+type PlayerAssetWeaponSubmodelListRequest struct {
+	Payload struct {
+		Search                   string                `json:"search"`
+		Filter                   *db.ListFilterRequest `json:"filter"`
+		Sort                     *db.ListSortRequest   `json:"sort"`
+		SortBy                   string                `json:"sort_by"`
+		SortDir                  db.SortByDir          `json:"sort_dir"`
+		PageSize                 int                   `json:"page_size"`
+		Page                     int                   `json:"page"`
+		DisplayXsyn              bool                  `json:"display_xsyn"`
+		ExcludeMarketLocked      bool                  `json:"exclude_market_locked"`
+		IncludeMarketListed      bool                  `json:"include_market_listed"`
+		DisplayGenesisAndLimited bool                  `json:"display_genesis_and_limited"`
+		FilterRarities           []string              `json:"rarities"`
+		FilterSkinCompatibility  []string              `json:"skin_compatibility"`
+		FilterEquippedStatuses   []string              `json:"equipped_statuses"`
+	} `json:"payload"`
+}
+
+type PlayerAssetWeaponSubmodelListDetailedResponse struct {
+	Total     int64                `json:"total"`
+	Submodels []*server.WeaponSkin `json:"submodels"`
+}
+
+func (pac *PlayerAssetsControllerWS) PlayerAssetWeaponSubmodelListDetailedHandler(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
+	l := gamelog.L.With().Str("func", "PlayerAssetWeaponSubmodelListDetailedHandler").Str("user_id", user.ID).Logger()
+
+	req := &PlayerAssetWeaponSubmodelListRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		l.Error().Err(err).Msg("json unmarshal error")
+		return terror.Error(err, "Invalid request received.")
+	}
+
+	if !user.FactionID.Valid {
+		return terror.Error(fmt.Errorf("user has no faction"), "You need a faction to see assets.")
+	}
+
+	listOpts := &db.WeaponSkinListOpts{
+		Search:                   req.Payload.Search,
+		Filter:                   req.Payload.Filter,
+		Sort:                     req.Payload.Sort,
+		PageSize:                 req.Payload.PageSize,
+		Page:                     req.Payload.Page,
+		OwnerID:                  user.ID,
+		DisplayXsyn:              req.Payload.DisplayXsyn,
+		ExcludeMarketLocked:      req.Payload.ExcludeMarketLocked,
+		IncludeMarketListed:      req.Payload.IncludeMarketListed,
+		FilterRarities:           req.Payload.FilterRarities,
+		FilterEquippedStatuses:   req.Payload.FilterEquippedStatuses,
+		SortBy:                   req.Payload.SortBy,
+		SortDir:                  req.Payload.SortDir,
+		DisplayGenesisAndLimited: req.Payload.DisplayGenesisAndLimited,
+		FilterSkinCompatibility:  req.Payload.FilterSkinCompatibility,
+	}
+
+	if req.Payload.SortBy != "" && req.Payload.SortDir.IsValid() {
+		listOpts.SortBy = req.Payload.SortBy
+		listOpts.SortDir = req.Payload.SortDir
+	}
+
+	total, submodels, err := db.WeaponSkinListDetailed(listOpts)
+	if err != nil {
+		l.Error().Interface("req.Payload", req.Payload).Err(err).Msg("issue getting weapon skin list")
+		return terror.Error(err, "Failed to find your weapon skin assets, please try again or contact support.")
+	}
+
+	reply(&PlayerAssetWeaponSubmodelListDetailedResponse{
+		Total:     total,
+		Submodels: submodels,
+	})
+	return nil
+}
+
+const HubKeyPlayerMechBlueprintList = "PLAYER:MECH:BLUEPRINT:DETAIL:LIST"
+
+func (pac *PlayerAssetsControllerWS) PlayerMechBlueprintListDetailedHandler(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
+	l := gamelog.L.With().Str("func", "PlayerMechBlueprintListDetailedHandler").Str("user_id", user.ID).Logger()
 
 	if !user.FactionID.Valid {
 		return terror.Error(fmt.Errorf("user has no faction"), "You need a faction to see assets.")
@@ -2193,86 +2269,10 @@ func (pac *PlayerAssetsControllerWS) playerMechBlueprintListHandler(ctx context.
 	return nil
 }
 
-const HubKeyplayerAssetWeaponSubmodelList = "PLAYER:ASSET:WEAPON:SUBMODEL:LIST"
+const HubKeyPlayerWeaponBlueprintList = "PLAYER:WEAPON:BLUEPRINT:DETAIL:LIST"
 
-type PlayerAssetWeaponSubmodelListRequest struct {
-	Payload struct {
-		Search                   string                `json:"search"`
-		Filter                   *db.ListFilterRequest `json:"filter"`
-		Sort                     *db.ListSortRequest   `json:"sort"`
-		SortBy                   string                `json:"sort_by"`
-		SortDir                  db.SortByDir          `json:"sort_dir"`
-		PageSize                 int                   `json:"page_size"`
-		Page                     int                   `json:"page"`
-		DisplayXsyn              bool                  `json:"display_xsyn"`
-		ExcludeMarketLocked      bool                  `json:"exclude_market_locked"`
-		IncludeMarketListed      bool                  `json:"include_market_listed"`
-		DisplayGenesisAndLimited bool                  `json:"display_genesis_and_limited"`
-		FilterRarities           []string              `json:"rarities"`
-		FilterSkinCompatibility  []string              `json:"skin_compatibility"`
-		FilterEquippedStatuses   []string              `json:"equipped_statuses"`
-	} `json:"payload"`
-}
-
-type PlayerAssetWeaponSubmodelListResp struct {
-	Total     int64                `json:"total"`
-	Submodels []*server.WeaponSkin `json:"submodels"`
-}
-
-func (pac *PlayerAssetsControllerWS) playerAssetWeaponSubmodelListHandler(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
-	l := gamelog.L.With().Str("func", "playerAssetWeaponSubmodelListHandler").Str("user_id", user.ID).Logger()
-
-	req := &PlayerAssetWeaponSubmodelListRequest{}
-	err := json.Unmarshal(payload, req)
-	if err != nil {
-		l.Error().Err(err).Msg("json unmarshal error")
-		return terror.Error(err, "Invalid request received.")
-	}
-
-	if !user.FactionID.Valid {
-		return terror.Error(fmt.Errorf("user has no faction"), "You need a faction to see assets.")
-	}
-
-	listOpts := &db.WeaponSkinListOpts{
-		Search:                   req.Payload.Search,
-		Filter:                   req.Payload.Filter,
-		Sort:                     req.Payload.Sort,
-		PageSize:                 req.Payload.PageSize,
-		Page:                     req.Payload.Page,
-		OwnerID:                  user.ID,
-		DisplayXsyn:              req.Payload.DisplayXsyn,
-		ExcludeMarketLocked:      req.Payload.ExcludeMarketLocked,
-		IncludeMarketListed:      req.Payload.IncludeMarketListed,
-		FilterRarities:           req.Payload.FilterRarities,
-		FilterEquippedStatuses:   req.Payload.FilterEquippedStatuses,
-		SortBy:                   req.Payload.SortBy,
-		SortDir:                  req.Payload.SortDir,
-		DisplayGenesisAndLimited: req.Payload.DisplayGenesisAndLimited,
-		FilterSkinCompatibility:  req.Payload.FilterSkinCompatibility,
-	}
-
-	if req.Payload.SortBy != "" && req.Payload.SortDir.IsValid() {
-		listOpts.SortBy = req.Payload.SortBy
-		listOpts.SortDir = req.Payload.SortDir
-	}
-
-	total, submodels, err := db.WeaponSkinList(listOpts)
-	if err != nil {
-		l.Error().Interface("req.Payload", req.Payload).Err(err).Msg("issue getting weapon skin list")
-		return terror.Error(err, "Failed to find your weapon skin assets, please try again or contact support.")
-	}
-
-	reply(&PlayerAssetWeaponSubmodelListResp{
-		Total:     total,
-		Submodels: submodels,
-	})
-	return nil
-}
-
-const HubKeyPlayerWeaponBlueprintList = "PLAYER:WEAPON:BLUEPRINT:LIST"
-
-func (pac *PlayerAssetsControllerWS) playerWeaponBlueprintListHandler(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
-	l := gamelog.L.With().Str("func", "playerWeaponBlueprintListHandler").Str("user_id", user.ID).Logger()
+func (pac *PlayerAssetsControllerWS) PlayerWeaponBlueprintListDetailedHandler(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
+	l := gamelog.L.With().Str("func", "PlayerWeaponBlueprintListDetailedHandler").Str("user_id", user.ID).Logger()
 
 	if !user.FactionID.Valid {
 		return terror.Error(fmt.Errorf("user has no faction"), "You need a faction to see assets.")

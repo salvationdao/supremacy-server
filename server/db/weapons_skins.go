@@ -101,7 +101,7 @@ type WeaponSkinListOpts struct {
 	FilterEquippedStatuses   []string `json:"equipped_statuses"`
 }
 
-func WeaponSkinList(opts *WeaponSkinListOpts) (int64, []*server.WeaponSkin, error) {
+func WeaponSkinListDetailed(opts *WeaponSkinListOpts) (int64, []*server.WeaponSkin, error) {
 
 	var weaponSkins []*server.WeaponSkin
 
