@@ -545,6 +545,7 @@ func WeaponList(opts *WeaponListOpts) (int64, []*PlayerAsset, error) {
 			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.OwnerID),
 			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.Tier),
 			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.ItemType),
+			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.ItemID),
 			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.MarketLocked),
 			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.XsynLocked),
 			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.LockedToMarketplace),
@@ -594,14 +595,25 @@ func WeaponList(opts *WeaponListOpts) (int64, []*PlayerAsset, error) {
 	for rows.Next() {
 		w := &PlayerAsset{}
 
+		// CollectionSlug
+		// Hash
+		// TokenID
+		// OwnerID
+		// Tier
+		// ItemType
+		// MarketLocked
+		// XsynLocked
+		// LockedToMarketplace
+		// AssetHidden
+
 		scanArgs := []interface{}{
 			&w.CollectionSlug,
 			&w.Hash,
 			&w.TokenID,
+			&w.OwnerID,
+			&w.Tier,
 			&w.ItemType,
 			&w.ItemID,
-			&w.Tier,
-			&w.OwnerID,
 			&w.MarketLocked,
 			&w.XsynLocked,
 			&w.LockedToMarketplace,

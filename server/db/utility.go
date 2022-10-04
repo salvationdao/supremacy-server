@@ -178,6 +178,7 @@ func UtilityList(opts *UtilityListOpts) (int64, []*PlayerAsset, error) {
 			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.OwnerID),
 			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.Tier),
 			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.ItemType),
+			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.ItemID),
 			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.MarketLocked),
 			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.XsynLocked),
 			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.LockedToMarketplace),
@@ -210,14 +211,25 @@ func UtilityList(opts *UtilityListOpts) (int64, []*PlayerAsset, error) {
 	for rows.Next() {
 		u := &PlayerAsset{}
 
+		// CollectionSlug
+		// Hash
+		// TokenID
+		// OwnerID
+		// Tier
+		// ItemType
+		// MarketLocked
+		// XsynLocked
+		// LockedToMarketplace
+		// AssetHidden
+
 		scanArgs := []interface{}{
 			&u.CollectionSlug,
 			&u.Hash,
 			&u.TokenID,
+			&u.OwnerID,
+			&u.Tier,
 			&u.ItemType,
 			&u.ItemID,
-			&u.Tier,
-			&u.OwnerID,
 			&u.MarketLocked,
 			&u.XsynLocked,
 			&u.LockedToMarketplace,
