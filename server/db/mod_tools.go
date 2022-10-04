@@ -166,6 +166,10 @@ func getPlayerRelatedAccounts(userID string) ([]*server.Player, error) {
 		if err != nil {
 			return nil, err
 		}
+
+		if relatedPlayer.ID == userID {
+			continue
+		}
 		relatedAccounts = append(relatedAccounts, relatedPlayer)
 	}
 
