@@ -37,7 +37,6 @@ import (
 	"go.uber.org/atomic"
 
 	"github.com/gofrs/uuid"
-	leakybucket "github.com/kevinms/leakybucket-go"
 	"github.com/pkg/errors"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 	"nhooyr.io/websocket"
@@ -327,8 +326,6 @@ func (am *ArenaManager) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 		// clean up current battle, if exists
 		if btl := arena.CurrentBattle(); btl != nil {
-			btl.endAbilities()
-
 			if btl.replaySession.ReplaySession != nil {
 				battle := *btl.Battle
 				go func(battle boiler.Battle, replayID string) {
@@ -748,55 +745,6 @@ type LocationSelectRequest struct {
 	} `json:"payload"`
 }
 
-const HubKeyAbilityLocationSelect = "ABILITY:LOCATION:SELECT"
-
-var locationSelectBucket = leakybucket.NewCollector(1, 1, true)
-
-func (am *ArenaManager) AbilityLocationSelect(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
-	if locationSelectBucket.Add(user.ID, 1) == 0 {
-		return terror.Error(fmt.Errorf("too many requests"), "Too many Requests")
-	}
-
-	req := &LocationSelectRequest{}
-	err := json.Unmarshal(payload, req)
-	if err != nil {
-		gamelog.L.Warn().Err(err).Msg("invalid request received")
-		return terror.Error(err, "Invalid request received")
-	}
-
-	arena, err := am.GetArena(req.Payload.ArenaID)
-	if err != nil {
-		return err
-	}
-
-	btl := arena.CurrentBattle()
-	// skip, if current not battle
-	if btl == nil {
-		gamelog.L.Debug().Msg("no current battle")
-		return terror.Error(fmt.Errorf("no battle running"), "No battle running at the moment.")
-	}
-
-	if arena.IsRunningAIDrivenMatch() {
-		return terror.Error(fmt.Errorf("no ability is allowed for AI driven match"), "Battle abilities are not allowed during AI driven match.")
-	}
-
-	as := btl.AbilitySystem()
-
-	if !AbilitySystemIsAvailable(as) {
-		gamelog.L.Debug().Str("log_name", "battle arena").Msg("AbilitySystem is not available")
-		return terror.Error(fmt.Errorf("ability system is closed"), "Ability system is closed")
-	}
-
-	err = as.LocationSelect(user.ID, factionID, req.Payload.StartCoords, req.Payload.EndCoords)
-	if err != nil {
-		gamelog.L.Warn().Err(err).Msgf("Unable to select location")
-		return terror.Error(err, "Unable to select location")
-	}
-
-	reply(true)
-	return nil
-}
-
 type MinimapEvent struct {
 	ID            string              `json:"id"`
 	GameAbilityID int                 `json:"game_ability_id"`
@@ -860,70 +808,6 @@ func (am *ArenaManager) MinimapEventsSubscribeHandler(ctx context.Context, key s
 	return nil
 }
 
-const HubKeyBattleAbilityUpdated = "BATTLE:ABILITY:UPDATED"
-
-// PublicBattleAbilityUpdateSubscribeHandler return battle ability for non login player
-func (am *ArenaManager) PublicBattleAbilityUpdateSubscribeHandler(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
-	arena, err := am.GetArenaFromContext(ctx)
-	if err != nil {
-		return err
-	}
-
-	// get a random faction id
-	if arena.CurrentBattle() != nil {
-		as := arena.CurrentBattle().AbilitySystem()
-		if AbilitySystemIsAvailable(as) {
-			ba := as.BattleAbilityPool.BattleAbility.LoadBattleAbility()
-			ga, err := boiler.GameAbilities(
-				boiler.GameAbilityWhere.BattleAbilityID.EQ(null.StringFrom(ba.ID)),
-			).One(gamedb.StdConn)
-			if err != nil {
-				return terror.Error(err, "Failed to get battle ability")
-			}
-			reply(GameAbility{
-				ID:                     ga.ID,
-				GameClientAbilityID:    byte(ga.GameClientAbilityID),
-				ImageUrl:               ga.ImageURL,
-				Description:            ba.Description,
-				FactionID:              ga.FactionID,
-				Label:                  ga.Label,
-				Colour:                 ga.Colour,
-				TextColour:             ga.TextColour,
-				CooldownDurationSecond: ba.CooldownDurationSecond,
-			})
-		}
-	}
-	return nil
-}
-
-const HubKeyBattleAbilityOptInCheck = "BATTLE:ABILITY:OPT:IN:CHECK"
-
-// BattleAbilityOptInSubscribeHandler return battle ability for non login player
-func (am *ArenaManager) BattleAbilityOptInSubscribeHandler(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
-	arena, err := am.GetArenaFromContext(ctx)
-	if err != nil {
-		return err
-	}
-
-	// get a random faction id
-	if arena.CurrentBattle() != nil {
-		as := arena.CurrentBattle().AbilitySystem()
-		if AbilitySystemIsAvailable(as) {
-			offeringID := as.BattleAbilityPool.BattleAbility.LoadOfferingID()
-
-			isOptedIn, err := boiler.BattleAbilityOptInLogs(
-				boiler.BattleAbilityOptInLogWhere.BattleAbilityOfferingID.EQ(offeringID),
-				boiler.BattleAbilityOptInLogWhere.PlayerID.EQ(user.ID),
-			).Exists(gamedb.StdConn)
-			if err != nil {
-				return terror.Error(err, "Failed to check opt in stat")
-			}
-
-			reply(isOptedIn)
-		}
-	}
-	return nil
-}
 
 const HubKeyWarMachineAbilitiesUpdated = "WAR:MACHINE:ABILITIES:UPDATED"
 
@@ -1125,24 +1009,6 @@ func (am *ArenaManager) WarMachineStatSubscribe(ctx context.Context, key string,
 	return nil
 }
 
-const HubKeyBribeStageUpdateSubscribe = "BRIBE:STAGE:UPDATED:SUBSCRIBE"
-
-// BribeStageSubscribe subscribe on bribing stage change
-func (am *ArenaManager) BribeStageSubscribe(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
-	arena, err := am.GetArenaFromContext(ctx)
-	if err != nil {
-		return err
-	}
-	// return data if, current battle is not null
-	if arena.CurrentBattle() != nil {
-		btl := arena.CurrentBattle()
-		if AbilitySystemIsAvailable(btl.AbilitySystem()) {
-			reply(btl.AbilitySystem().BribeStageGet())
-		}
-	}
-	return nil
-}
-
 type GameAbilityPriceResponse struct {
 	ID          string `json:"id"`
 	OfferingID  string `json:"offering_id"`
@@ -1298,7 +1164,6 @@ func (arena *Arena) start() {
 		if !arena.connected.Load() {
 			btl := arena.CurrentBattle()
 			if btl != nil {
-				btl.endAbilities()
 				arena.storeCurrentBattle(nil)
 			}
 			// TODO: send shutdown command to the game client to prevent it from reconnecting again.

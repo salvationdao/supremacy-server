@@ -33,14 +33,10 @@ func NewBattleController(api *API) *BattleControllerWS {
 	api.Command(HubKeyBattleMechStats, bc.BattleMechStatsHandler)
 
 	// commands from battle
-
 	api.SecureUserFactionCommand(battle.HubKeyPlayerAbilityUse, api.ArenaManager.PlayerAbilityUse)
 
 	// mech move command related
 	api.SecureUserFactionCommand(battle.HubKeyMechMoveCommandCancel, api.ArenaManager.MechMoveCommandCancelHandler)
-	// battle ability related (bribing)
-	api.SecureUserFactionCommand(battle.HubKeyAbilityLocationSelect, api.ArenaManager.AbilityLocationSelect)
-
 	return bc
 }
 

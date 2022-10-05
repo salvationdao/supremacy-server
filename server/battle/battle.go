@@ -40,8 +40,8 @@ type BattleStage int32
 
 const (
 	BattleStagePreStart = 2
-	BattleStageStart = 1
-	BattleStageEnd   = 0
+	BattleStageStart    = 1
+	BattleStageEnd      = 0
 )
 
 type Battle struct {
@@ -60,7 +60,6 @@ type Battle struct {
 	battleZones            []server.BattleZone
 	currentBattleZoneIndex int
 	nextMapID              null.String
-	_abilities             *AbilitiesSystem
 	rpcClient              *xsyn_rpcclient.XrpcClient
 	startedAt              time.Time
 	replaySession          *RecordingSession
@@ -190,22 +189,10 @@ type RecordingEvents struct {
 	Notification GameNotification `json:"notification"`
 }
 
-func (btl *Battle) AbilitySystem() *AbilitiesSystem {
-	btl.RLock()
-	defer btl.RUnlock()
-	return btl._abilities
-}
-
 func (btl *Battle) playerAbilityManager() *PlayerAbilityManager {
 	btl.RLock()
 	defer btl.RUnlock()
 	return btl._playerAbilityManager
-}
-
-func (btl *Battle) storeAbilities(as *AbilitiesSystem) {
-	btl.Lock()
-	defer btl.Unlock()
-	btl._abilities = as
 }
 
 // storeGameMap set the game map detail from game client
@@ -349,9 +336,6 @@ func (btl *Battle) start() {
 
 	var err error
 
-	gamelog.L.Debug().Int("battle_number", btl.BattleNumber).Str("battle_id", btl.ID).Msg("Spinning up battle AbilitySystem()")
-	btl.storeAbilities(NewAbilitiesSystem(btl))
-
 	// handle global announcements
 	ga, err := boiler.GlobalAnnouncements().One(gamedb.StdConn)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
@@ -404,25 +388,6 @@ func (btl *Battle) getCellCoordinatesFromGameWorldXY(location *server.GameLocati
 type WarMachinePosition struct {
 	X int
 	Y int
-}
-
-func (btl *Battle) endAbilities() {
-	defer func() {
-		if r := recover(); r != nil {
-			gamelog.LogPanicRecovery("panic! panic! panic! Panic at the battle AbilitySystem() end!", r)
-		}
-	}()
-
-	gamelog.L.Debug().Msgf("cleaning up AbilitySystem(): %s", btl.ID)
-
-	if btl.AbilitySystem() == nil {
-		gamelog.L.Error().Str("log_name", "battle arena").Msg("battle did not have AbilitySystem()!")
-		return
-	}
-
-	btl.AbilitySystem().End()
-	btl.AbilitySystem().storeBattle(nil)
-	btl.storeAbilities(nil)
 }
 
 func (btl *Battle) handleBattleEnd(payload *BattleEndPayload) {
@@ -1261,7 +1226,6 @@ func (btl *Battle) end(payload *BattleEndPayload) {
 	btl.arena.beginBattleMux.Lock()
 	defer btl.arena.beginBattleMux.Unlock()
 
-	btl.endAbilities()
 	btl.processWarMachineRepair()
 
 	// clean up current battle
@@ -2296,4 +2260,47 @@ var ModelMap = map[string]string{
 	"BXSD":                "BXSD",
 	"XFVS":                "XFVS",
 	"WREX":                "WREX",
+}
+
+func BuildUserDetailWithFaction(userID uuid.UUID) (*UserBrief, error) {
+	defer func() {
+		if r := recover(); r != nil {
+			gamelog.LogPanicRecovery("panic! panic! panic! Panic at the BuildUserDetailWithFaction!", r)
+		}
+	}()
+	userBrief := &UserBrief{}
+
+	user, err := boiler.FindPlayer(gamedb.StdConn, userID.String())
+	if err != nil {
+		gamelog.L.Error().Str("log_name", "battle arena").Str("player_id", userID.String()).Err(err).Msg("failed to get player from db")
+		return nil, err
+	}
+
+	userBrief.ID = userID
+	userBrief.Username = user.Username.String
+	userBrief.Gid = user.Gid
+
+	if !user.FactionID.Valid {
+		return userBrief, nil
+	}
+
+	userBrief.FactionID = user.FactionID.String
+
+	faction, err := boiler.Factions(boiler.FactionWhere.ID.EQ(user.FactionID.String)).One(gamedb.StdConn)
+	if err != nil {
+		gamelog.L.Error().Str("log_name", "battle arena").Str("player_id", userID.String()).Str("faction_id", user.FactionID.String).Err(err).Msg("failed to get player faction from db")
+		return userBrief, nil
+	}
+
+	userBrief.Faction = &Faction{
+		ID:    faction.ID,
+		Label: faction.Label,
+		Theme: &Theme{
+			PrimaryColor:    faction.PrimaryColor,
+			SecondaryColor:  faction.SecondaryColor,
+			BackgroundColor: faction.BackgroundColor,
+		},
+	}
+
+	return userBrief, nil
 }
