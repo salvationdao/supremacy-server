@@ -2015,7 +2015,7 @@ func (arena *Arena) BeginBattle() {
 	// hold arena for the pre intro phase
 	prebattleTime := db.GetIntWithDefault(db.KeyPreBattleTimeSeconds, 20)
 	// 75% of pre battle time is for opting in
-	preBattleTimer := time.NewTimer(time.Hour * time.Duration(float64(prebattleTime) * 0.75))
+	preBattleTimer := time.NewTimer(time.Second * time.Duration(float64(prebattleTime) * 0.75))
 	// broadcast new lobby details for pre battle setup
 	arena.BroadcastLobbyUpdate()
 	// pause for time
