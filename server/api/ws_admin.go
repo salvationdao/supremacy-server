@@ -21,7 +21,7 @@ func NewAdminController(api *API) *AdminController {
 		API: api,
 	}
 
-	api.SecureAdminCommand(HubKeyModToolsGetUser, adminHub.FiatProductList)
+	api.SecureAdminCommand(HubKeyAdminFiatProductList, adminHub.FiatProductList)
 
 	return adminHub
 }
