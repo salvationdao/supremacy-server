@@ -45,7 +45,7 @@ type WarMachine struct {
 	Tier      string   `json:"tier"`
 
 	PowerCore *PowerCore     `json:"power_core,omitempty"`
-	Abilities []*GameAbility `json:"abilities"`
+	//Abilities []*GameAbility `json:"abilities"`
 	Weapons   []*Weapon      `json:"weapons"`
 	Utility   []*Utility     `json:"utility"`
 

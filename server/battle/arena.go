@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"math"
 	"math/rand"
 	"net"
 	"net/http"
@@ -807,7 +808,6 @@ func (am *ArenaManager) MinimapEventsSubscribeHandler(ctx context.Context, key s
 
 	return nil
 }
-
 
 const HubKeyWarMachineAbilitiesUpdated = "WAR:MACHINE:ABILITIES:UPDATED"
 
@@ -1686,7 +1686,6 @@ func (arena *Arena) AssignSupporters() {
 		return
 	}
 
-
 	// shuffle the slice
 	rand.Seed(time.Now().UnixNano())
 	for i := range bl.R.BattleLobbySupporterOptIns {
@@ -1724,6 +1723,121 @@ func (arena *Arena) AssignSupporters() {
 		IsPreBattle:    true,
 		UpcomingBattle: resp[0],
 	})
+
+	rmAbilityIDs := []string{}
+	bcAbilityIDs := []string{}
+	zaiAbilityIDs := []string{}
+
+	battleAbilities, err := boiler.GameAbilities(
+		boiler.GameAbilityWhere.CountPerBattle.GT(0),
+	).All(gamedb.StdConn)
+	if err != nil {
+		// handle
+	}
+
+	for _, ability := range battleAbilities {
+		switch ability.FactionID {
+		case server.BostonCyberneticsFactionID:
+			for i := 0; i < ability.CountPerBattle; i++ {
+				bcAbilityIDs = append(bcAbilityIDs, ability.ID)
+			}
+		case server.RedMountainFactionID:
+			for i := 0; i < ability.CountPerBattle; i++ {
+				rmAbilityIDs = append(rmAbilityIDs, ability.ID)
+			}
+		case server.ZaibatsuFactionID:
+			for i := 0; i < ability.CountPerBattle; i++ {
+				zaiAbilityIDs = append(zaiAbilityIDs, ability.ID)
+			}
+		}
+	}
+
+	// shuffle all the slices
+	rand.Seed(time.Now().UnixNano())
+	for i := range bcAbilityIDs {
+		j := rand.Intn(i + 1)
+		bcAbilityIDs[i], bcAbilityIDs[j] = bcAbilityIDs[j], bcAbilityIDs[i]
+	}
+	rand.Seed(time.Now().UnixNano())
+	for i := range rmAbilityIDs {
+		j := rand.Intn(i + 1)
+		rmAbilityIDs[i], rmAbilityIDs[j] = rmAbilityIDs[j], rmAbilityIDs[i]
+	}
+	rand.Seed(time.Now().UnixNano())
+	for i := range zaiAbilityIDs {
+		j := rand.Intn(i + 1)
+		zaiAbilityIDs[i], zaiAbilityIDs[j] = zaiAbilityIDs[j], zaiAbilityIDs[i]
+	}
+
+	playerBattleAbilities := []*boiler.PlayerBattleAbility{}
+
+	// loop the abilities until we have popped off all the abilities
+	if len(resp[0].SelectedZaiSupporters) > 0 {
+		for i := 0; len(zaiAbilityIDs) > 0; i++ {
+			abilityID := ""
+			// pop off the first ability ID
+			abilityID, zaiAbilityIDs = zaiAbilityIDs[0], zaiAbilityIDs[1:]
+
+			// this is, i mod len(supporters)
+			// example, we are on the 8th ability with 6 supporters
+			// 8 mod 6 = 2, so we give this 8th ability to the 2nd supporter
+			index := int(math.Mod(float64(i), float64(len(resp[0].SelectedZaiSupporters))))
+			userID := resp[0].SelectedZaiSupporters[index].ID
+
+			playerBattleAbilities = append(playerBattleAbilities, &boiler.PlayerBattleAbility{
+				PlayerID:      userID,
+				GameAbilityID: abilityID,
+				BattleID:      resp[0].AssignedToBattleID.String,
+			})
+		}
+	}
+	if len(resp[0].SelectedRedMountSupporters) > 0 {
+		for i := 0; len(rmAbilityIDs) > 0; i++ {
+			abilityID := ""
+			// pop off the first ability ID
+			abilityID, rmAbilityIDs = rmAbilityIDs[0], rmAbilityIDs[1:]
+
+			// this is, i mod len(supporters)
+			// example, we are on the 8th ability with 6 supporters
+			// 8 mod 6 = 2, so we give this 8th ability to the 2nd supporter
+			index := int(math.Mod(float64(i), float64(len(resp[0].SelectedRedMountSupporters))))
+			userID := resp[0].SelectedRedMountSupporters[index].ID
+
+			playerBattleAbilities = append(playerBattleAbilities, &boiler.PlayerBattleAbility{
+				PlayerID:      userID,
+				GameAbilityID: abilityID,
+				BattleID:      resp[0].AssignedToBattleID.String,
+			})
+		}
+	}
+	if len(resp[0].SelectedBostonSupporters) > 0 {
+		for i := 0; len(bcAbilityIDs) > 0; i++ {
+			abilityID := ""
+			// pop off the first ability ID
+			abilityID, bcAbilityIDs = bcAbilityIDs[0], bcAbilityIDs[1:]
+
+			// this is, i mod len(supporters)
+			// example, we are on the 8th ability with 6 supporters
+			// 8 mod 6 = 2, so we give this 8th ability to the 2nd supporter
+			index := int(math.Mod(float64(i), float64(len(resp[0].SelectedBostonSupporters))))
+			userID := resp[0].SelectedBostonSupporters[index].ID
+
+			playerBattleAbilities = append(playerBattleAbilities, &boiler.PlayerBattleAbility{
+				PlayerID:      userID,
+				GameAbilityID: abilityID,
+				BattleID:      resp[0].AssignedToBattleID.String,
+			})
+		}
+	}
+
+	for _, pba := range playerBattleAbilities {
+		err := pba.Insert(gamedb.StdConn, boil.Infer())
+		if err != nil {
+			gamelog.L.Error().Err(err).Msg("failed to insert support ability")
+		}
+	}
+
+	// TODO: broadcast users new abilities
 }
 
 func (arena *Arena) BeginBattle() {
@@ -1880,7 +1994,7 @@ func (arena *Arena) BeginBattle() {
 	// hold arena for the pre intro phase
 	prebattleTime := db.GetIntWithDefault(db.KeyPreBattleTimeSeconds, 20)
 	// 75% of pre battle time is for opting in
-	preBattleTimer := time.NewTimer(time.Hour * time.Duration(float64(prebattleTime) * 0.75))
+	preBattleTimer := time.NewTimer(time.Second * time.Duration(float64(prebattleTime)*0.75))
 	// broadcast new lobby details for pre battle setup
 	arena.BroadcastLobbyUpdate()
 	// pause for time
@@ -1888,7 +2002,7 @@ func (arena *Arena) BeginBattle() {
 	// assign supporters
 	arena.AssignSupporters()
 	// 25% of pre battle time is just because
-	preBattleTimer = time.NewTimer(time.Second * time.Duration(float64(prebattleTime) * 0.25))
+	preBattleTimer = time.NewTimer(time.Second * time.Duration(float64(prebattleTime)*0.25))
 	// pause for time
 	<-preBattleTimer.C
 	// broadcast that pre battle stage is over
