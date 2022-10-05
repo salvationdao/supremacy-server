@@ -1606,7 +1606,7 @@ func (arena *Arena) getBattleState() int32 {
 	if arena._currentBattle != nil {
 		return arena._currentBattle.stage.Load()
 	}
-	return 0
+	return BattleStageEnd
 }
 
 func (arena *Arena) GetLobbyDetails() *UpcomingBattleResponse {
@@ -1636,6 +1636,7 @@ func (arena *Arena) GetLobbyDetails() *UpcomingBattleResponse {
 
 	resp, err := server.BattleLobbiesFromBoiler([]*boiler.BattleLobby{bl})
 	if err != nil {
+		gamelog.L.Error().Err(err).Msg("failed to find parse battle lobby")
 		return &UpcomingBattleResponse{
 			IsPreBattle:    false,
 			UpcomingBattle: nil,
