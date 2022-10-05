@@ -129,19 +129,11 @@ func (f *FiatController) processStorefrontSupPrices() {
 			continue
 		}
 
+		// Broadcast new storefront mystery crate payload
 		if p.R.StorefrontMysteryCrate != nil {
-			// TODO: Remove storing sup prices on storefront mystery crate table
-			storefrontCrate := p.R.StorefrontMysteryCrate
-			storefrontCrate.Price = convertedPrice
-			_, err = storefrontCrate.Update(gamedb.StdConn, boil.Whitelist(boiler.StorefrontMysteryCrateColumns.Price))
-			if err != nil {
-				pl.Error().Err(err).Str("storefront_mystery_crate_id", storefrontCrate.ID).Msg("failed to update fiat sup pricing (legacy)")
-				continue
-			}
-
-			// Broadcast new storefront mystery crate payload
 			resp := server.StoreFrontMysteryCrateFromBoiler(p.R.StorefrontMysteryCrate)
 			resp.FiatProduct = server.FiatProductFromBoiler(p)
+			resp.Price = convertedPrice
 			ws.PublishMessage(fmt.Sprintf("/faction/%s/crate/%s", p.FactionID, p.R.StorefrontMysteryCrate.ID), server.HubKeyMysteryCrateSubscribe, resp)
 		}
 

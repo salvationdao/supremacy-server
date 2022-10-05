@@ -403,22 +403,23 @@ func BattleLobbiesFromBoiler(bls []*boiler.BattleLobby) ([]*BattleLobby, error) 
 					INNER JOIN %[5]s ON %[6]s = %[7]s
 					INNER JOIN %[8]s ON %[1]s = %[9]s
 					INNER JOIN %[3]s ON %[10]s = %[11]s
-					INNER JOIN %[13]s ON %[14]s = %[6]s
+					INNER JOIN %[13]s ON %[14]s = %[6]s AND %[15]s = %[11]s
 				) %[4]s ON %[4]s.weapon_id = %[12]s`,
-				boiler.WeaponTableColumns.ID,                                  // 1
-				boiler.TableNames.BlueprintWeapons,                            // 2
-				boiler.TableNames.BlueprintWeaponSkin,                         // 3
-				boiler.TableNames.Weapons,                                     // 4
-				boiler.TableNames.BlueprintWeapons,                            // 5
-				boiler.WeaponTableColumns.BlueprintID,                         // 6
-				boiler.BlueprintWeaponTableColumns.ID,                         // 7
-				boiler.TableNames.WeaponSkin,                                  // 8
-				boiler.WeaponSkinTableColumns.EquippedOn,                      // 9
-				boiler.BlueprintWeaponSkinTableColumns.ID,                     // 10
-				boiler.WeaponSkinTableColumns.BlueprintID,                     // 11
-				boiler.MechWeaponTableColumns.WeaponID,                        // 12
-				boiler.TableNames.WeaponModelSkinCompatibilities,              // 13
-				boiler.WeaponModelSkinCompatibilityTableColumns.WeaponModelID, // 14
+				boiler.WeaponTableColumns.ID,                                          // 1
+				boiler.TableNames.BlueprintWeapons,                                    // 2
+				boiler.TableNames.BlueprintWeaponSkin,                                 // 3
+				boiler.TableNames.Weapons,                                             // 4
+				boiler.TableNames.BlueprintWeapons,                                    // 5
+				boiler.WeaponTableColumns.BlueprintID,                                 // 6
+				boiler.BlueprintWeaponTableColumns.ID,                                 // 7
+				boiler.TableNames.WeaponSkin,                                          // 8
+				boiler.WeaponSkinTableColumns.EquippedOn,                              // 9
+				boiler.BlueprintWeaponSkinTableColumns.ID,                             // 10
+				boiler.WeaponSkinTableColumns.BlueprintID,                             // 11
+				boiler.MechWeaponTableColumns.WeaponID,                                // 12
+				boiler.TableNames.WeaponModelSkinCompatibilities,                      // 13
+				boiler.WeaponModelSkinCompatibilityTableColumns.WeaponModelID,         // 14
+				boiler.WeaponModelSkinCompatibilityTableColumns.BlueprintWeaponSkinID, // 15
 			)),
 
 			qm.OrderBy(boiler.MechWeaponTableColumns.SlotNumber),
