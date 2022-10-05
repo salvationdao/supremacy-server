@@ -354,6 +354,7 @@ func BattleLobbiesFromBoiler(bls []*boiler.BattleLobby) ([]*BattleLobby, error) 
 
 		// set is destroyed flag
 		blm.IsDestroyed = slices.Index(destroyedMechIDs, blm.MechID) != -1
+		blm.FactionID = blm.Owner.FactionID
 
 		blms = append(blms, blm)
 	}
