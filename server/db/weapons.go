@@ -54,6 +54,12 @@ func getDefaultWeaponQueryMods() []qm.QueryMod {
 			qm.Rels(boiler.TableNames.WeaponModelSkinCompatibilities, boiler.WeaponModelSkinCompatibilityColumns.BlueprintWeaponSkinID),
 			qm.Rels(boiler.TableNames.BlueprintWeaponSkin, boiler.BlueprintWeaponSkinColumns.ID),
 		)),
+		// join weapon skin collection item
+		qm.LeftOuterJoin(fmt.Sprintf("%s AS _wsci ON _wsci.%s = %s",
+			boiler.TableNames.CollectionItems,
+			boiler.CollectionItemColumns.ItemID,
+			boiler.WeaponSkinTableColumns.ID,
+		)),
 	}
 }
 
@@ -762,6 +768,7 @@ func WeaponListDetailed(opts *WeaponListOpts) (int64, []*server.Weapon, error) {
 	// Build query
 	queryMods = append(queryMods,
 		qm.Select(
+			// CollectionItem
 			boiler.CollectionItemTableColumns.CollectionSlug,
 			boiler.CollectionItemTableColumns.Hash,
 			boiler.CollectionItemTableColumns.TokenID,
@@ -773,6 +780,7 @@ func WeaponListDetailed(opts *WeaponListOpts) (int64, []*server.Weapon, error) {
 			boiler.CollectionItemTableColumns.XsynLocked,
 			boiler.CollectionItemTableColumns.LockedToMarketplace,
 			boiler.CollectionItemTableColumns.AssetHidden,
+			// Images
 			boiler.WeaponModelSkinCompatibilityTableColumns.ImageURL,
 			boiler.WeaponModelSkinCompatibilityTableColumns.CardAnimationURL,
 			boiler.WeaponModelSkinCompatibilityTableColumns.AvatarURL,
@@ -780,6 +788,31 @@ func WeaponListDetailed(opts *WeaponListOpts) (int64, []*server.Weapon, error) {
 			boiler.WeaponModelSkinCompatibilityTableColumns.BackgroundColor,
 			boiler.WeaponModelSkinCompatibilityTableColumns.AnimationURL,
 			boiler.WeaponModelSkinCompatibilityTableColumns.YoutubeURL,
+			// WeaponSkin
+			qm.Rels("_wsci", boiler.CollectionItemColumns.CollectionSlug),
+			qm.Rels("_wsci", boiler.CollectionItemColumns.Hash),
+			qm.Rels("_wsci", boiler.CollectionItemColumns.TokenID),
+			qm.Rels("_wsci", boiler.CollectionItemColumns.ItemType),
+			qm.Rels("_wsci", boiler.CollectionItemColumns.ItemID),
+			qm.Rels("_wsci", boiler.CollectionItemColumns.Tier),
+			qm.Rels("_wsci", boiler.CollectionItemColumns.OwnerID),
+			qm.Rels("_wsci", boiler.CollectionItemColumns.MarketLocked),
+			qm.Rels("_wsci", boiler.CollectionItemColumns.XsynLocked),
+			qm.Rels("_wsci", boiler.CollectionItemColumns.AssetHidden),
+			boiler.BlueprintWeaponSkinTableColumns.ImageURL,
+			boiler.BlueprintWeaponSkinTableColumns.CardAnimationURL,
+			boiler.BlueprintWeaponSkinTableColumns.AvatarURL,
+			boiler.BlueprintWeaponSkinTableColumns.LargeImageURL,
+			boiler.BlueprintWeaponSkinTableColumns.BackgroundColor,
+			boiler.BlueprintWeaponSkinTableColumns.AnimationURL,
+			boiler.BlueprintWeaponSkinTableColumns.YoutubeURL,
+			boiler.BlueprintWeaponSkinTableColumns.Label,
+			boiler.BlueprintWeaponSkinTableColumns.StatModifier,
+			boiler.WeaponSkinTableColumns.ID,
+			boiler.WeaponSkinTableColumns.BlueprintID,
+			boiler.WeaponSkinTableColumns.EquippedOn,
+			boiler.WeaponSkinTableColumns.CreatedAt,
+			// Other fields
 			boiler.CollectionItemTableColumns.ID,
 			boiler.WeaponTableColumns.ID,
 			boiler.BlueprintWeaponTableColumns.Label,
@@ -846,6 +879,11 @@ func WeaponListDetailed(opts *WeaponListOpts) (int64, []*server.Weapon, error) {
 		w := &server.Weapon{
 			CollectionItem: &server.CollectionItem{},
 			Images:         &server.Images{},
+			WeaponSkin: &server.WeaponSkin{
+				CollectionItem: &server.CollectionItem{},
+				Images:         &server.Images{},
+				SkinSwatch:     &server.Images{},
+			},
 		}
 
 		scanArgs := []interface{}{
@@ -867,6 +905,29 @@ func WeaponListDetailed(opts *WeaponListOpts) (int64, []*server.Weapon, error) {
 			&w.Images.BackgroundColor,
 			&w.Images.AnimationURL,
 			&w.Images.YoutubeURL,
+			&w.WeaponSkin.CollectionItem.CollectionSlug,
+			&w.WeaponSkin.CollectionItem.Hash,
+			&w.WeaponSkin.CollectionItem.TokenID,
+			&w.WeaponSkin.CollectionItem.ItemType,
+			&w.WeaponSkin.CollectionItem.ItemID,
+			&w.WeaponSkin.CollectionItem.Tier,
+			&w.WeaponSkin.CollectionItem.OwnerID,
+			&w.WeaponSkin.CollectionItem.MarketLocked,
+			&w.WeaponSkin.CollectionItem.XsynLocked,
+			&w.WeaponSkin.CollectionItem.AssetHidden,
+			&w.WeaponSkin.SkinSwatch.ImageURL,
+			&w.WeaponSkin.SkinSwatch.CardAnimationURL,
+			&w.WeaponSkin.SkinSwatch.AvatarURL,
+			&w.WeaponSkin.SkinSwatch.LargeImageURL,
+			&w.WeaponSkin.SkinSwatch.BackgroundColor,
+			&w.WeaponSkin.SkinSwatch.AnimationURL,
+			&w.WeaponSkin.SkinSwatch.YoutubeURL,
+			&w.WeaponSkin.Label,
+			&w.WeaponSkin.StatModifier,
+			&w.WeaponSkin.ID,
+			&w.WeaponSkin.BlueprintID,
+			&w.WeaponSkin.EquippedOn,
+			&w.WeaponSkin.CreatedAt,
 			&w.CollectionItemID,
 			&w.ID,
 			&w.Label,
@@ -890,6 +951,16 @@ func WeaponListDetailed(opts *WeaponListOpts) (int64, []*server.Weapon, error) {
 			&w.EquippedWeaponSkinID,
 			&w.LockedToMech,
 			&w.ItemSaleID,
+		}
+
+		w.WeaponSkin.Images = &server.Images{
+			ImageURL:         w.Images.ImageURL,
+			CardAnimationURL: w.Images.CardAnimationURL,
+			AvatarURL:        w.Images.AvatarURL,
+			LargeImageURL:    w.Images.LargeImageURL,
+			BackgroundColor:  w.Images.BackgroundColor,
+			AnimationURL:     w.Images.AnimationURL,
+			YoutubeURL:       w.Images.YoutubeURL,
 		}
 
 		err = rows.Scan(scanArgs...)
