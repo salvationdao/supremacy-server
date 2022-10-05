@@ -21,6 +21,7 @@ import (
 	"server/gamedb"
 	"server/gamelog"
 	"server/xsyn_rpcclient"
+	"strings"
 	"time"
 )
 
@@ -1129,26 +1130,13 @@ func (api *API) MechUnstake(ctx context.Context, user *boiler.Player, factionID 
 
 
 func (api *API)  NextBattleDetails(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
-	battleLobbyIDs := api.ArenaManager.GetCurrentBattleLobbyIDs()
-	bl, err := db.GetNextBattleLobby(battleLobbyIDs)
+	arena, err := api.ArenaManager.GetArenaFromContext(ctx)
 	if err != nil {
 		return err
 	}
 
-	if bl == nil {
-		return nil
-	}
-
-	resp, err := server.BattleLobbiesFromBoiler([]*boiler.BattleLobby{bl})
-	if err != nil {
-		return err
-	}
-
-	if len(resp) != 1 {
-		return fmt.Errorf("unable to retrieve upcoming lobby details")
-	}
-
-	ws.PublishMessage("/public/upcoming_battle", server.HubKeyNextBattleDetails, resp[0])
+	//ws.PublishMessage(fmt.Sprintf("/arena/%s/upcoming_battle", arena.ID), server.HubKeyNextBattleDetails, arena.GetLobbyDetails())
+	reply(arena.GetLobbyDetails())
 	return nil
 }
 
@@ -1176,7 +1164,8 @@ func (api *API) BattleLobbySupporterJoin(ctx context.Context, user *boiler.Playe
 		// check lobby exists
 		bl, err := boiler.BattleLobbies(
 			boiler.BattleLobbyWhere.ID.EQ(req.Payload.BattleLobbyID),
-			qm.Load(boiler.BattleLobbyRels.BattleLobbySupporterOptIns,
+			qm.Load(
+				boiler.BattleLobbyRels.BattleLobbySupporterOptIns,
 				boiler.BattleLobbySupporterOptInWhere.FactionID.EQ(factionID),
 				),
 			).One(gamedb.StdConn)
@@ -1186,6 +1175,9 @@ func (api *API) BattleLobbySupporterJoin(ctx context.Context, user *boiler.Playe
 
 		if bl == nil {
 			return fmt.Errorf("lobby id: %s does not exist", req.Payload.BattleLobbyID)
+		}
+		if !bl.AssignedToArenaID.Valid || bl.AssignedToArenaID.String == "" {
+			return fmt.Errorf("lobby id: %s does not have a arena id assigned", req.Payload.BattleLobbyID)
 		}
 
 		if bl.R != nil && bl.R.BattleLobbySupporterOptIns != nil {
@@ -1207,37 +1199,16 @@ func (api *API) BattleLobbySupporterJoin(ctx context.Context, user *boiler.Playe
 			return err
 		}
 
+		api.ArenaManager.BroadcastLobbyUpdate(bl.AssignedToArenaID.String)
+
 		return nil
 	})
 	if err != nil {
-		L.Error().Err(err).Msg("failed to insert new battle lobby supporter")
+		if !strings.Contains(err.Error(), "already registered as a supporter") {
+			L.Error().Err(err).Msg("failed to insert new battle lobby supporter")
+		}
 		return err
 	}
-
-	// broadcast updated battle
-	go func() {
-		battleLobbyIDs := api.ArenaManager.GetCurrentBattleLobbyIDs()
-		bl, err := db.GetNextBattleLobby(battleLobbyIDs)
-		if err != nil {
-			return
-		}
-
-		if bl == nil {
-			return
-		}
-
-		resp, err := server.BattleLobbiesFromBoiler([]*boiler.BattleLobby{bl})
-		if err != nil {
-			return
-		}
-
-		if len(resp) != 1 {
-			return
-		}
-
-		ws.PublishMessage("/public/upcoming_battle", server.HubKeyNextBattleDetails, resp[0])
-	}()
-
 
 	reply(true)
 	return nil

@@ -215,6 +215,16 @@ func (am *ArenaManager) GetCurrentBattleLobbyIDs() []string {
 	return battleLobbyIDs
 }
 
+func (am *ArenaManager) BroadcastLobbyUpdate(arenaID string) {
+	am.RLock()
+	defer am.RUnlock()
+	for _, arena := range am.arenas {
+		if arena.ID == arenaID {
+			arena.BroadcastLobbyUpdate()
+			return
+		}
+	}
+}
 
 func (am *ArenaManager) Serve() {
 	l, err := net.Listen("tcp", am.Addr)
@@ -1625,7 +1635,6 @@ func (arena *Arena) GameClientJsonDataParser() {
 	}
 }
 
-
 // assignBattleLobby assign the next
 // skipLobbyCheck ONLY happen on the battle end
 func (arena *Arena) assignBattleLobby() {
@@ -1679,30 +1688,176 @@ func (arena *Arena) assignBattleLobby() {
 	// assign battle lobby
 	arena.currentLobbyID.Store(bl.ID)
 	arena.Stage.Store(ArenaStageProcessing)
+}
 
+type UpcomingBattleResponse struct {
+	IsPreBattle    bool                `json:"is_pre_battle"`
+	UpcomingBattle *server.BattleLobby `json:"upcoming_battle"`
+}
+
+func (arena *Arena) BroadcastLobbyUpdate() {
 	//broadcast next lobby
-	go func(){
-		battleLobbyIDs := arena.Manager.GetCurrentBattleLobbyIDs()
-		bl, err := db.GetNextBattleLobby(battleLobbyIDs)
-		if err != nil {
+	go func() {
+		blID := arena.currentLobbyID.Load()
+		if blID == "" {
+			gamelog.L.Error().Err(fmt.Errorf("no battle id")).Msg("failed to find battle lobby")
+			ws.PublishMessage(fmt.Sprintf("/public/arena/%s/upcoming_battle", arena.ID), server.HubKeyNextBattleDetails, &UpcomingBattleResponse{
+				IsPreBattle:    false,
+				UpcomingBattle: nil,
+			})
 			return
 		}
 
-		if bl == nil {
-			return 
+		bl, err := db.GetBattleLobby(blID)
+		if err != nil {
+			gamelog.L.Error().Err(err).Str("blID", blID).Msg("failed to find battle lobby")
+			ws.PublishMessage(fmt.Sprintf("/public/arena/%s/upcoming_battle", arena.ID), server.HubKeyNextBattleDetails, &UpcomingBattleResponse{
+				IsPreBattle:    false,
+				UpcomingBattle: nil,
+			})
+			return
 		}
 
 		resp, err := server.BattleLobbiesFromBoiler([]*boiler.BattleLobby{bl})
 		if err != nil {
+			gamelog.L.Error().Err(err).Interface("battle lobby", bl).Msg("failed to parse battle lobby")
+			ws.PublishMessage(fmt.Sprintf("/public/arena/%s/upcoming_battle", arena.ID), server.HubKeyNextBattleDetails, &UpcomingBattleResponse{
+				IsPreBattle:    false,
+				UpcomingBattle: nil,
+			})
 			return
 		}
 
-		if len(resp) != 1 {
-			return
-		}
-
-		ws.PublishMessage("/public/upcoming_battle", server.HubKeyNextBattleDetails, resp[0])
+		ws.PublishMessage(fmt.Sprintf("/public/arena/%s/upcoming_battle", arena.ID), server.HubKeyNextBattleDetails, &UpcomingBattleResponse{
+			IsPreBattle:    true,
+			UpcomingBattle: resp[0],
+		})
 	}()
+}
+
+func (arena *Arena) getBattleState() int32 {
+	arena.RLock()
+	defer arena.RUnlock()
+	if arena._currentBattle != nil {
+		return arena._currentBattle.stage.Load()
+	}
+	return 0
+}
+
+func (arena *Arena) GetLobbyDetails() *UpcomingBattleResponse {
+	if arena.getBattleState() != BattleStagePreStart {
+		return &UpcomingBattleResponse{
+			IsPreBattle:    false,
+			UpcomingBattle: nil,
+		}
+	}
+
+	blID := arena.currentLobbyID.Load()
+	if blID == "" {
+		return &UpcomingBattleResponse{
+			IsPreBattle:    false,
+			UpcomingBattle: nil,
+		}
+	}
+
+	bl, err := db.GetBattleLobby(blID)
+	if err != nil {
+		gamelog.L.Error().Err(err).Str("blID", blID).Msg("failed to find battle lobby")
+		return &UpcomingBattleResponse{
+			IsPreBattle:    false,
+			UpcomingBattle: nil,
+		}
+	}
+
+	resp, err := server.BattleLobbiesFromBoiler([]*boiler.BattleLobby{bl})
+	if err != nil {
+		return &UpcomingBattleResponse{
+			IsPreBattle:    false,
+			UpcomingBattle: nil,
+		}
+	}
+
+	return &UpcomingBattleResponse{
+		IsPreBattle:    true,
+		UpcomingBattle: resp[0],
+	}
+}
+
+func (arena *Arena) AssignSupporters() {
+	L := gamelog.L.With().Str("func", "AssignSupporters").Logger()
+	blID := arena.currentLobbyID.Load()
+	if blID == "" {
+		L.Error().Err(fmt.Errorf("no battle lobby id while trying to assign supporters")).Msg("missing battle lobby id")
+		return
+	}
+
+	L = L.With().Str("blID", blID).Logger()
+
+	// get all opted in supporters
+	bl, err := db.GetBattleLobby(blID)
+	if err != nil {
+		L.Error().Err(err).Msg("failed to get battle lobby")
+		return
+	}
+
+	L = L.With().Interface("bl", bl).Logger()
+
+	if (bl.R == nil || bl.R.BattleLobbySupporterOptIns == nil) && len(bl.R.BattleLobbySupporters) == 0 {
+		L.Error().Err(fmt.Errorf("BattleLobbySupporterOptIns is nil")).Msg("failed to find supporters")
+		return
+	}
+	if len(bl.R.BattleLobbySupporters) > 0 {
+		L.Warn().Err(fmt.Errorf("unable to assign lobby supporters")).Msg("already have supporters")
+		resp, err := server.BattleLobbiesFromBoiler([]*boiler.BattleLobby{bl})
+		if err != nil {
+			L.Error().Err(err).Msg("failed to convert to lobby object")
+			return
+		}
+		ws.PublishMessage(fmt.Sprintf("/public/arena/%s/upcoming_battle", arena.ID), server.HubKeyNextBattleDetails, &UpcomingBattleResponse{
+			IsPreBattle:    true,
+			UpcomingBattle: resp[0],
+		})
+		return
+	}
+
+
+	// shuffle the slice
+	rand.Seed(time.Now().UnixNano())
+	for i := range bl.R.BattleLobbySupporterOptIns {
+		j := rand.Intn(i + 1)
+		bl.R.BattleLobbySupporterOptIns[i], bl.R.BattleLobbySupporterOptIns[j] = bl.R.BattleLobbySupporterOptIns[j], bl.R.BattleLobbySupporterOptIns[i]
+	}
+	for i, optIn := range bl.R.BattleLobbySupporterOptIns {
+		if i >= 5 {
+			break
+		}
+		selectedSupporter := &boiler.BattleLobbySupporter{
+			SupporterID:   optIn.SupporterID,
+			FactionID:     optIn.FactionID,
+			BattleLobbyID: optIn.BattleLobbyID,
+		}
+		err := selectedSupporter.Insert(gamedb.StdConn, boil.Infer())
+		if err != nil {
+			L.Error().Err(err).Interface("optIn", optIn).Msg("failed to insert new supporter")
+		}
+	}
+
+	// get all opted in supporters
+	bl, err = db.GetBattleLobby(blID)
+	if err != nil {
+		L.Error().Err(err).Msg("failed to get battle lobby")
+		return
+	}
+	resp, err := server.BattleLobbiesFromBoiler([]*boiler.BattleLobby{bl})
+	if err != nil {
+		L.Error().Err(err).Msg("failed to convert to lobby object")
+		return
+	}
+
+	ws.PublishMessage(fmt.Sprintf("/public/arena/%s/upcoming_battle", arena.ID), server.HubKeyNextBattleDetails, &UpcomingBattleResponse{
+		IsPreBattle:    true,
+		UpcomingBattle: resp[0],
+	})
 }
 
 func (arena *Arena) BeginBattle() {
@@ -1840,7 +1995,7 @@ func (arena *Arena) BeginBattle() {
 			Name:          gameMap.Name,
 			BackgroundUrl: gameMap.BackgroundURL,
 		},
-		stage:                  atomic.NewInt32(BattleStageStart),
+		stage:                  atomic.NewInt32(BattleStagePreStart),
 		destroyedWarMachineMap: make(map[string]*WMDestroyedRecord),
 		MiniMapAbilityDisplayList: &MiniMapAbilityDisplayList{
 			m: make(map[string]*MiniMapAbilityContent),
@@ -1855,6 +2010,28 @@ func (arena *Arena) BeginBattle() {
 			Events: []*RecordingEvents{},
 		},
 	}
+
+	// hold arena for the pre intro phase
+	prebattleTime := db.GetIntWithDefault(db.KeyPreBattleTimeSeconds, 20)
+	// 75% of pre battle time is for opting in
+	preBattleTimer := time.NewTimer(time.Hour * time.Duration(float64(prebattleTime) * 0.75))
+	// broadcast new lobby details for pre battle setup
+	arena.BroadcastLobbyUpdate()
+	// pause for time
+	<-preBattleTimer.C
+	// assign supporters
+	arena.AssignSupporters()
+	// 25% of pre battle time is just because
+	preBattleTimer = time.NewTimer(time.Second * time.Duration(float64(prebattleTime) * 0.25))
+	// pause for time
+	<-preBattleTimer.C
+	// broadcast that pre battle stage is over
+	ws.PublishMessage(fmt.Sprintf("/public/arena/%s/upcoming_battle", arena.ID), server.HubKeyNextBattleDetails, &UpcomingBattleResponse{
+		IsPreBattle:    false,
+		UpcomingBattle: nil,
+	})
+	// set battle stage as started
+	btl.stage.Store(BattleStageStart)
 
 	// load war machines
 	err = btl.Load(battleLobby)

@@ -10,6 +10,35 @@ import (
 	"server/gamelog"
 )
 
+func GetBattleLobby(lobbyID string) (*boiler.BattleLobby, error) {
+	// get next lobby
+	bl, err := boiler.BattleLobbies(
+		boiler.BattleLobbyWhere.ID.EQ(lobbyID),
+		qm.Load(
+			qm.Rels(boiler.BattleLobbyRels.GameMap),
+			),
+		qm.Load(
+			qm.Rels(
+				boiler.BattleLobbyRels.BattleLobbySupporters,
+				boiler.BattleLobbySupporterRels.Supporter,
+				boiler.PlayerRels.ProfileAvatar,
+			),
+		),
+		qm.Load(
+			qm.Rels(
+				boiler.BattleLobbyRels.BattleLobbySupporterOptIns,
+				boiler.BattleLobbySupporterOptInRels.Supporter,
+				boiler.PlayerRels.ProfileAvatar,
+			),
+		),
+	).One(gamedb.StdConn)
+	if err != nil {
+		return nil, err
+	}
+
+	return bl, nil
+}
+
 // GetNextBattleLobby finds the next upcoming battle
 func GetNextBattleLobby(battleLobbyIDs []string) (*boiler.BattleLobby, error) {
 	excludingPlayerIDs, err := playersInLobbies(battleLobbyIDs)
