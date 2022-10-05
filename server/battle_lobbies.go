@@ -56,12 +56,12 @@ func BattleLobbiesFromBoiler(bls []*boiler.BattleLobby) ([]*BattleLobby, error) 
 		copiedBattleLobby := *bl
 		sbl := &BattleLobby{
 			BattleLobby:        &copiedBattleLobby,
-			IsPrivate:          copiedBattleLobby.Password.Valid,
+			IsPrivate:          copiedBattleLobby.AccessCode.Valid,
 			BattleLobbiesMechs: []*BattleLobbiesMech{},
 		}
 
 		// omit password
-		sbl.Password = null.StringFromPtr(nil)
+		sbl.AccessCode = null.StringFromPtr(nil)
 
 		if bl.R != nil {
 			if bl.R.HostBy != nil {

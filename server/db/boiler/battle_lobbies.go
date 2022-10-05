@@ -34,7 +34,7 @@ type BattleLobby struct {
 	EachFactionMechAmount int             `boiler:"each_faction_mech_amount" boil:"each_faction_mech_amount" json:"each_faction_mech_amount" toml:"each_faction_mech_amount" yaml:"each_faction_mech_amount"`
 	GameMapID             null.String     `boiler:"game_map_id" boil:"game_map_id" json:"game_map_id,omitempty" toml:"game_map_id" yaml:"game_map_id,omitempty"`
 	GeneratedBySystem     bool            `boiler:"generated_by_system" boil:"generated_by_system" json:"generated_by_system" toml:"generated_by_system" yaml:"generated_by_system"`
-	Password              null.String     `boiler:"password" boil:"password" json:"password,omitempty" toml:"password" yaml:"password,omitempty"`
+	AccessCode            null.String     `boiler:"access_code" boil:"access_code" json:"access_code,omitempty" toml:"access_code" yaml:"access_code,omitempty"`
 	WillNotStartUntil     null.Time       `boiler:"will_not_start_until" boil:"will_not_start_until" json:"will_not_start_until,omitempty" toml:"will_not_start_until" yaml:"will_not_start_until,omitempty"`
 	ReadyAt               null.Time       `boiler:"ready_at" boil:"ready_at" json:"ready_at,omitempty" toml:"ready_at" yaml:"ready_at,omitempty"`
 	AssignedToBattleID    null.String     `boiler:"assigned_to_battle_id" boil:"assigned_to_battle_id" json:"assigned_to_battle_id,omitempty" toml:"assigned_to_battle_id" yaml:"assigned_to_battle_id,omitempty"`
@@ -45,6 +45,7 @@ type BattleLobby struct {
 	UpdatedAt             time.Time       `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
 	DeletedAt             null.Time       `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
 	Name                  string          `boiler:"name" boil:"name" json:"name" toml:"name" yaml:"name"`
+	MaxDeployPerPlayer    int             `boiler:"max_deploy_per_player" boil:"max_deploy_per_player" json:"max_deploy_per_player" toml:"max_deploy_per_player" yaml:"max_deploy_per_player"`
 
 	R *battleLobbyR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L battleLobbyL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -61,7 +62,7 @@ var BattleLobbyColumns = struct {
 	EachFactionMechAmount string
 	GameMapID             string
 	GeneratedBySystem     string
-	Password              string
+	AccessCode            string
 	WillNotStartUntil     string
 	ReadyAt               string
 	AssignedToBattleID    string
@@ -72,6 +73,7 @@ var BattleLobbyColumns = struct {
 	UpdatedAt             string
 	DeletedAt             string
 	Name                  string
+	MaxDeployPerPlayer    string
 }{
 	ID:                    "id",
 	HostByID:              "host_by_id",
@@ -83,7 +85,7 @@ var BattleLobbyColumns = struct {
 	EachFactionMechAmount: "each_faction_mech_amount",
 	GameMapID:             "game_map_id",
 	GeneratedBySystem:     "generated_by_system",
-	Password:              "password",
+	AccessCode:            "access_code",
 	WillNotStartUntil:     "will_not_start_until",
 	ReadyAt:               "ready_at",
 	AssignedToBattleID:    "assigned_to_battle_id",
@@ -94,6 +96,7 @@ var BattleLobbyColumns = struct {
 	UpdatedAt:             "updated_at",
 	DeletedAt:             "deleted_at",
 	Name:                  "name",
+	MaxDeployPerPlayer:    "max_deploy_per_player",
 }
 
 var BattleLobbyTableColumns = struct {
@@ -107,7 +110,7 @@ var BattleLobbyTableColumns = struct {
 	EachFactionMechAmount string
 	GameMapID             string
 	GeneratedBySystem     string
-	Password              string
+	AccessCode            string
 	WillNotStartUntil     string
 	ReadyAt               string
 	AssignedToBattleID    string
@@ -118,6 +121,7 @@ var BattleLobbyTableColumns = struct {
 	UpdatedAt             string
 	DeletedAt             string
 	Name                  string
+	MaxDeployPerPlayer    string
 }{
 	ID:                    "battle_lobbies.id",
 	HostByID:              "battle_lobbies.host_by_id",
@@ -129,7 +133,7 @@ var BattleLobbyTableColumns = struct {
 	EachFactionMechAmount: "battle_lobbies.each_faction_mech_amount",
 	GameMapID:             "battle_lobbies.game_map_id",
 	GeneratedBySystem:     "battle_lobbies.generated_by_system",
-	Password:              "battle_lobbies.password",
+	AccessCode:            "battle_lobbies.access_code",
 	WillNotStartUntil:     "battle_lobbies.will_not_start_until",
 	ReadyAt:               "battle_lobbies.ready_at",
 	AssignedToBattleID:    "battle_lobbies.assigned_to_battle_id",
@@ -140,6 +144,7 @@ var BattleLobbyTableColumns = struct {
 	UpdatedAt:             "battle_lobbies.updated_at",
 	DeletedAt:             "battle_lobbies.deleted_at",
 	Name:                  "battle_lobbies.name",
+	MaxDeployPerPlayer:    "battle_lobbies.max_deploy_per_player",
 }
 
 // Generated where
@@ -155,7 +160,7 @@ var BattleLobbyWhere = struct {
 	EachFactionMechAmount whereHelperint
 	GameMapID             whereHelpernull_String
 	GeneratedBySystem     whereHelperbool
-	Password              whereHelpernull_String
+	AccessCode            whereHelpernull_String
 	WillNotStartUntil     whereHelpernull_Time
 	ReadyAt               whereHelpernull_Time
 	AssignedToBattleID    whereHelpernull_String
@@ -166,6 +171,7 @@ var BattleLobbyWhere = struct {
 	UpdatedAt             whereHelpertime_Time
 	DeletedAt             whereHelpernull_Time
 	Name                  whereHelperstring
+	MaxDeployPerPlayer    whereHelperint
 }{
 	ID:                    whereHelperstring{field: "\"battle_lobbies\".\"id\""},
 	HostByID:              whereHelperstring{field: "\"battle_lobbies\".\"host_by_id\""},
@@ -177,7 +183,7 @@ var BattleLobbyWhere = struct {
 	EachFactionMechAmount: whereHelperint{field: "\"battle_lobbies\".\"each_faction_mech_amount\""},
 	GameMapID:             whereHelpernull_String{field: "\"battle_lobbies\".\"game_map_id\""},
 	GeneratedBySystem:     whereHelperbool{field: "\"battle_lobbies\".\"generated_by_system\""},
-	Password:              whereHelpernull_String{field: "\"battle_lobbies\".\"password\""},
+	AccessCode:            whereHelpernull_String{field: "\"battle_lobbies\".\"access_code\""},
 	WillNotStartUntil:     whereHelpernull_Time{field: "\"battle_lobbies\".\"will_not_start_until\""},
 	ReadyAt:               whereHelpernull_Time{field: "\"battle_lobbies\".\"ready_at\""},
 	AssignedToBattleID:    whereHelpernull_String{field: "\"battle_lobbies\".\"assigned_to_battle_id\""},
@@ -188,30 +194,34 @@ var BattleLobbyWhere = struct {
 	UpdatedAt:             whereHelpertime_Time{field: "\"battle_lobbies\".\"updated_at\""},
 	DeletedAt:             whereHelpernull_Time{field: "\"battle_lobbies\".\"deleted_at\""},
 	Name:                  whereHelperstring{field: "\"battle_lobbies\".\"name\""},
+	MaxDeployPerPlayer:    whereHelperint{field: "\"battle_lobbies\".\"max_deploy_per_player\""},
 }
 
 // BattleLobbyRels is where relationship names are stored.
 var BattleLobbyRels = struct {
-	AssignedToArena    string
-	AssignedToBattle   string
-	GameMap            string
-	HostBy             string
-	BattleLobbiesMechs string
+	AssignedToArena             string
+	AssignedToBattle            string
+	GameMap                     string
+	HostBy                      string
+	BattleLobbiesMechs          string
+	BattleLobbyExtraSupsRewards string
 }{
-	AssignedToArena:    "AssignedToArena",
-	AssignedToBattle:   "AssignedToBattle",
-	GameMap:            "GameMap",
-	HostBy:             "HostBy",
-	BattleLobbiesMechs: "BattleLobbiesMechs",
+	AssignedToArena:             "AssignedToArena",
+	AssignedToBattle:            "AssignedToBattle",
+	GameMap:                     "GameMap",
+	HostBy:                      "HostBy",
+	BattleLobbiesMechs:          "BattleLobbiesMechs",
+	BattleLobbyExtraSupsRewards: "BattleLobbyExtraSupsRewards",
 }
 
 // battleLobbyR is where relationships are stored.
 type battleLobbyR struct {
-	AssignedToArena    *BattleArena           `boiler:"AssignedToArena" boil:"AssignedToArena" json:"AssignedToArena" toml:"AssignedToArena" yaml:"AssignedToArena"`
-	AssignedToBattle   *Battle                `boiler:"AssignedToBattle" boil:"AssignedToBattle" json:"AssignedToBattle" toml:"AssignedToBattle" yaml:"AssignedToBattle"`
-	GameMap            *GameMap               `boiler:"GameMap" boil:"GameMap" json:"GameMap" toml:"GameMap" yaml:"GameMap"`
-	HostBy             *Player                `boiler:"HostBy" boil:"HostBy" json:"HostBy" toml:"HostBy" yaml:"HostBy"`
-	BattleLobbiesMechs BattleLobbiesMechSlice `boiler:"BattleLobbiesMechs" boil:"BattleLobbiesMechs" json:"BattleLobbiesMechs" toml:"BattleLobbiesMechs" yaml:"BattleLobbiesMechs"`
+	AssignedToArena             *BattleArena                    `boiler:"AssignedToArena" boil:"AssignedToArena" json:"AssignedToArena" toml:"AssignedToArena" yaml:"AssignedToArena"`
+	AssignedToBattle            *Battle                         `boiler:"AssignedToBattle" boil:"AssignedToBattle" json:"AssignedToBattle" toml:"AssignedToBattle" yaml:"AssignedToBattle"`
+	GameMap                     *GameMap                        `boiler:"GameMap" boil:"GameMap" json:"GameMap" toml:"GameMap" yaml:"GameMap"`
+	HostBy                      *Player                         `boiler:"HostBy" boil:"HostBy" json:"HostBy" toml:"HostBy" yaml:"HostBy"`
+	BattleLobbiesMechs          BattleLobbiesMechSlice          `boiler:"BattleLobbiesMechs" boil:"BattleLobbiesMechs" json:"BattleLobbiesMechs" toml:"BattleLobbiesMechs" yaml:"BattleLobbiesMechs"`
+	BattleLobbyExtraSupsRewards BattleLobbyExtraSupsRewardSlice `boiler:"BattleLobbyExtraSupsRewards" boil:"BattleLobbyExtraSupsRewards" json:"BattleLobbyExtraSupsRewards" toml:"BattleLobbyExtraSupsRewards" yaml:"BattleLobbyExtraSupsRewards"`
 }
 
 // NewStruct creates a new relationship struct
@@ -223,9 +233,9 @@ func (*battleLobbyR) NewStruct() *battleLobbyR {
 type battleLobbyL struct{}
 
 var (
-	battleLobbyAllColumns            = []string{"id", "host_by_id", "number", "entry_fee", "first_faction_cut", "second_faction_cut", "third_faction_cut", "each_faction_mech_amount", "game_map_id", "generated_by_system", "password", "will_not_start_until", "ready_at", "assigned_to_battle_id", "ended_at", "assigned_to_arena_id", "is_ai_driven_match", "created_at", "updated_at", "deleted_at", "name"}
+	battleLobbyAllColumns            = []string{"id", "host_by_id", "number", "entry_fee", "first_faction_cut", "second_faction_cut", "third_faction_cut", "each_faction_mech_amount", "game_map_id", "generated_by_system", "access_code", "will_not_start_until", "ready_at", "assigned_to_battle_id", "ended_at", "assigned_to_arena_id", "is_ai_driven_match", "created_at", "updated_at", "deleted_at", "name", "max_deploy_per_player"}
 	battleLobbyColumnsWithoutDefault = []string{"host_by_id"}
-	battleLobbyColumnsWithDefault    = []string{"id", "number", "entry_fee", "first_faction_cut", "second_faction_cut", "third_faction_cut", "each_faction_mech_amount", "game_map_id", "generated_by_system", "password", "will_not_start_until", "ready_at", "assigned_to_battle_id", "ended_at", "assigned_to_arena_id", "is_ai_driven_match", "created_at", "updated_at", "deleted_at", "name"}
+	battleLobbyColumnsWithDefault    = []string{"id", "number", "entry_fee", "first_faction_cut", "second_faction_cut", "third_faction_cut", "each_faction_mech_amount", "game_map_id", "generated_by_system", "access_code", "will_not_start_until", "ready_at", "assigned_to_battle_id", "ended_at", "assigned_to_arena_id", "is_ai_driven_match", "created_at", "updated_at", "deleted_at", "name", "max_deploy_per_player"}
 	battleLobbyPrimaryKeyColumns     = []string{"id"}
 	battleLobbyGeneratedColumns      = []string{}
 )
@@ -547,6 +557,28 @@ func (o *BattleLobby) BattleLobbiesMechs(mods ...qm.QueryMod) battleLobbiesMechQ
 
 	if len(queries.GetSelect(query.Query)) == 0 {
 		queries.SetSelect(query.Query, []string{"\"battle_lobbies_mechs\".*"})
+	}
+
+	return query
+}
+
+// BattleLobbyExtraSupsRewards retrieves all the battle_lobby_extra_sups_reward's BattleLobbyExtraSupsRewards with an executor.
+func (o *BattleLobby) BattleLobbyExtraSupsRewards(mods ...qm.QueryMod) battleLobbyExtraSupsRewardQuery {
+	var queryMods []qm.QueryMod
+	if len(mods) != 0 {
+		queryMods = append(queryMods, mods...)
+	}
+
+	queryMods = append(queryMods,
+		qm.Where("\"battle_lobby_extra_sups_rewards\".\"battle_lobby_id\"=?", o.ID),
+		qmhelper.WhereIsNull("\"battle_lobby_extra_sups_rewards\".\"deleted_at\""),
+	)
+
+	query := BattleLobbyExtraSupsRewards(queryMods...)
+	queries.SetFrom(query.Query, "\"battle_lobby_extra_sups_rewards\"")
+
+	if len(queries.GetSelect(query.Query)) == 0 {
+		queries.SetSelect(query.Query, []string{"\"battle_lobby_extra_sups_rewards\".*"})
 	}
 
 	return query
@@ -1081,6 +1113,105 @@ func (battleLobbyL) LoadBattleLobbiesMechs(e boil.Executor, singular bool, maybe
 	return nil
 }
 
+// LoadBattleLobbyExtraSupsRewards allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for a 1-M or N-M relationship.
+func (battleLobbyL) LoadBattleLobbyExtraSupsRewards(e boil.Executor, singular bool, maybeBattleLobby interface{}, mods queries.Applicator) error {
+	var slice []*BattleLobby
+	var object *BattleLobby
+
+	if singular {
+		object = maybeBattleLobby.(*BattleLobby)
+	} else {
+		slice = *maybeBattleLobby.(*[]*BattleLobby)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &battleLobbyR{}
+		}
+		args = append(args, object.ID)
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &battleLobbyR{}
+			}
+
+			for _, a := range args {
+				if a == obj.ID {
+					continue Outer
+				}
+			}
+
+			args = append(args, obj.ID)
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`battle_lobby_extra_sups_rewards`),
+		qm.WhereIn(`battle_lobby_extra_sups_rewards.battle_lobby_id in ?`, args...),
+		qmhelper.WhereIsNull(`battle_lobby_extra_sups_rewards.deleted_at`),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load battle_lobby_extra_sups_rewards")
+	}
+
+	var resultSlice []*BattleLobbyExtraSupsReward
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice battle_lobby_extra_sups_rewards")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results in eager load on battle_lobby_extra_sups_rewards")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for battle_lobby_extra_sups_rewards")
+	}
+
+	if len(battleLobbyExtraSupsRewardAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+	if singular {
+		object.R.BattleLobbyExtraSupsRewards = resultSlice
+		for _, foreign := range resultSlice {
+			if foreign.R == nil {
+				foreign.R = &battleLobbyExtraSupsRewardR{}
+			}
+			foreign.R.BattleLobby = object
+		}
+		return nil
+	}
+
+	for _, foreign := range resultSlice {
+		for _, local := range slice {
+			if local.ID == foreign.BattleLobbyID {
+				local.R.BattleLobbyExtraSupsRewards = append(local.R.BattleLobbyExtraSupsRewards, foreign)
+				if foreign.R == nil {
+					foreign.R = &battleLobbyExtraSupsRewardR{}
+				}
+				foreign.R.BattleLobby = local
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
 // SetAssignedToArena of the battleLobby to the related item.
 // Sets o.R.AssignedToArena to related.
 // Adds o to related.R.AssignedToArenaBattleLobbies.
@@ -1407,6 +1538,58 @@ func (o *BattleLobby) AddBattleLobbiesMechs(exec boil.Executor, insert bool, rel
 	for _, rel := range related {
 		if rel.R == nil {
 			rel.R = &battleLobbiesMechR{
+				BattleLobby: o,
+			}
+		} else {
+			rel.R.BattleLobby = o
+		}
+	}
+	return nil
+}
+
+// AddBattleLobbyExtraSupsRewards adds the given related objects to the existing relationships
+// of the battle_lobby, optionally inserting them as new records.
+// Appends related to o.R.BattleLobbyExtraSupsRewards.
+// Sets related.R.BattleLobby appropriately.
+func (o *BattleLobby) AddBattleLobbyExtraSupsRewards(exec boil.Executor, insert bool, related ...*BattleLobbyExtraSupsReward) error {
+	var err error
+	for _, rel := range related {
+		if insert {
+			rel.BattleLobbyID = o.ID
+			if err = rel.Insert(exec, boil.Infer()); err != nil {
+				return errors.Wrap(err, "failed to insert into foreign table")
+			}
+		} else {
+			updateQuery := fmt.Sprintf(
+				"UPDATE \"battle_lobby_extra_sups_rewards\" SET %s WHERE %s",
+				strmangle.SetParamNames("\"", "\"", 1, []string{"battle_lobby_id"}),
+				strmangle.WhereClause("\"", "\"", 2, battleLobbyExtraSupsRewardPrimaryKeyColumns),
+			)
+			values := []interface{}{o.ID, rel.ID}
+
+			if boil.DebugMode {
+				fmt.Fprintln(boil.DebugWriter, updateQuery)
+				fmt.Fprintln(boil.DebugWriter, values)
+			}
+			if _, err = exec.Exec(updateQuery, values...); err != nil {
+				return errors.Wrap(err, "failed to update foreign table")
+			}
+
+			rel.BattleLobbyID = o.ID
+		}
+	}
+
+	if o.R == nil {
+		o.R = &battleLobbyR{
+			BattleLobbyExtraSupsRewards: related,
+		}
+	} else {
+		o.R.BattleLobbyExtraSupsRewards = append(o.R.BattleLobbyExtraSupsRewards, related...)
+	}
+
+	for _, rel := range related {
+		if rel.R == nil {
+			rel.R = &battleLobbyExtraSupsRewardR{
 				BattleLobby: o,
 			}
 		} else {
