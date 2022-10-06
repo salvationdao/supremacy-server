@@ -76,7 +76,7 @@ func GeneratePowerCoreStatFilterQueryMods(column string, filter *PowerCoreStatFi
 	return output
 }
 
-func PowerCoreList(opts *PowerCoreListOpts) (int64, []*server.PowerCore, error) {
+func PowerCoreList(opts *PowerCoreListOpts) (int64, []*PlayerAsset, error) {
 	queryMods := getDefaultPowerCoreQueryMods()
 
 	if opts.OwnerID != "" {
@@ -192,6 +192,7 @@ func PowerCoreList(opts *PowerCoreListOpts) (int64, []*server.PowerCore, error) 
 			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.OwnerID),
 			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.Tier),
 			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.ItemType),
+			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.ItemID),
 			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.MarketLocked),
 			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.XsynLocked),
 			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.LockedToMarketplace),
@@ -220,9 +221,9 @@ func PowerCoreList(opts *PowerCoreListOpts) (int64, []*server.PowerCore, error) 
 	}
 	defer rows.Close()
 
-	var powerCores []*server.PowerCore
+	var powerCores []*PlayerAsset
 	for rows.Next() {
-		pc := &server.PowerCore{
+		pc := &PlayerAsset{
 			CollectionItem: &server.CollectionItem{},
 		}
 
@@ -233,6 +234,7 @@ func PowerCoreList(opts *PowerCoreListOpts) (int64, []*server.PowerCore, error) 
 			&pc.CollectionItem.OwnerID,
 			&pc.CollectionItem.Tier,
 			&pc.CollectionItem.ItemType,
+			&pc.CollectionItem.ItemID,
 			&pc.CollectionItem.MarketLocked,
 			&pc.CollectionItem.XsynLocked,
 			&pc.CollectionItem.LockedToMarketplace,
