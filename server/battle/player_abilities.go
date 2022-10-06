@@ -298,7 +298,7 @@ func (am *ArenaManager) PlayerAbilityUse(ctx context.Context, user *boiler.Playe
 		return terror.Error(fmt.Errorf("wrong battle state"), "There is no battle currently to use this ability on.")
 	}
 
-	if arena.currentBattleState() != BattleStageStart {
+	if arena.CurrentBattleState() != BattlingState {
 		return terror.Error(terror.ErrForbidden, "You cannot execute an ability when the battle has not started yet.")
 	}
 
@@ -354,8 +354,8 @@ func (am *ArenaManager) PlayerAbilityUse(ctx context.Context, user *boiler.Playe
 	}()
 
 	// check battle end
-	if arena.CurrentBattle().stage.Load() == BattleStageEnd {
-		gamelog.L.Warn().Str("func", "LocationSelect").Msg("battle stage has en ended")
+	if arena.CurrentBattle().state.Load() == EndState {
+		gamelog.L.Warn().Str("func", "LocationSelect").Msg("battle state has en ended")
 		return nil
 	}
 
@@ -615,7 +615,7 @@ func (am *ArenaManager) PlayerAbilityUse(ctx context.Context, user *boiler.Playe
 			if bpa.AnimationDurationSeconds > 0 {
 				go func(battle *Battle, bpa *boiler.BlueprintPlayerAbility) {
 					time.Sleep(time.Duration(bpa.AnimationDurationSeconds) * time.Second)
-					if battle != nil && battle.stage.Load() == BattleStageStart {
+					if battle != nil && battle.state.Load() == BattlingState {
 						if ab := battle.MiniMapAbilityDisplayList.Get(offeringID.String()); ab != nil {
 							ws.PublishMessage(
 								fmt.Sprintf("/public/arena/%s/mini_map_ability_display_list", arena.ID),
@@ -678,7 +678,7 @@ type FactionMechCommands struct {
 }
 
 func (arena *Arena) BroadcastFactionMechCommands(factionID string) error {
-	if arena.currentBattleState() != BattleStageStart {
+	if arena.CurrentBattleState() != BattlingState {
 		return nil
 	}
 
@@ -736,7 +736,7 @@ func (am *ArenaManager) MechMoveCommandSubscriber(ctx context.Context, user *boi
 		return err
 	}
 
-	if arena.currentBattleState() != BattleStageStart {
+	if arena.CurrentBattleState() != BattlingState {
 		return terror.Error(terror.ErrForbidden, "There is no current battle")
 	}
 
@@ -830,9 +830,9 @@ func (am *ArenaManager) MechAbilityTriggerHandler(ctx context.Context, user *boi
 		return err
 	}
 
-	// check battle stage
+	// check battle state
 	btl := arena.CurrentBattle()
-	if btl == nil || btl.stage.Load() == BattleStageEnd {
+	if btl == nil || btl.state.Load() != BattlingState {
 		return terror.Error(terror.ErrInvalidInput, "Current battle is ended.")
 	}
 
@@ -917,7 +917,7 @@ func (am *ArenaManager) MechAbilityTriggerHandler(ctx context.Context, user *boi
 	if ga.DisplayOnMiniMap {
 		go func(arena *Arena, gameAbility *boiler.GameAbility, mechID string) {
 			btl := arena.CurrentBattle()
-			if btl == nil || btl.stage.Load() == BattleStageEnd {
+			if btl == nil || btl.state.Load() != BattlingState {
 				return
 			}
 
@@ -1030,8 +1030,8 @@ type MechMoveCommandCreateRequest struct {
 
 // MechMoveCommandCreateHandler send mech move command to game client
 func (arena *Arena) MechMoveCommandCreateHandler(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
-	// check battle stage
-	if arena.currentBattleState() == BattleStageEnd {
+	// check battle state
+	if arena.CurrentBattleState() == EndState {
 		return terror.Error(terror.ErrInvalidInput, "Current battle is ended.")
 	}
 
@@ -1213,8 +1213,8 @@ func (am *ArenaManager) MechMoveCommandCancelHandler(ctx context.Context, user *
 		return err
 	}
 
-	// check battle stage
-	if arena.currentBattleState() == BattleStageEnd {
+	// check battle state
+	if arena.CurrentBattleState() == EndState {
 		return terror.Error(terror.ErrInvalidInput, "Current battle is ended.")
 	}
 

@@ -36,19 +36,17 @@ import (
 	"github.com/gofrs/uuid"
 )
 
-type BattleStage int32
-
 const (
-	BattleStagePreStart = 2
-	BattleStageStart    = 1
-	BattleStageEnd      = 0
+	EndState      = 0
+	SetupState    = 1
+	IntroState    = 2
+	BattlingState = 3
 )
 
 type Battle struct {
 	*boiler.Battle
 	arena *Arena
-	stage *atomic.Int32
-	//BattleID               string        `json:"battleID"`
+	state *atomic.Int32
 	MapName                string        `json:"mapName"`
 	WarMachines            []*WarMachine `json:"warMachines"`
 	spawnedAIMux           deadlock.RWMutex
@@ -335,6 +333,9 @@ func (btl *Battle) start() {
 	gamelog.L.Trace().Str("func", "start").Msg("start")
 
 	var err error
+
+	btl.state.Store(BattlingState)
+	ws.PublishMessage(fmt.Sprintf("/public/arena/%s/battle_state", btl.ArenaID), server.HubKeyBattleState, BattlingState)
 
 	// handle global announcements
 	ga, err := boiler.GlobalAnnouncements().One(gamedb.StdConn)
@@ -1270,25 +1271,25 @@ func GameSettingsPayload(btl *Battle) *GameSettingsResponse {
 	wms := []*WarMachine{}
 	for _, w := range btl.WarMachines {
 		wCopy := &WarMachine{
-			ID:                 w.ID,
-			Hash:               w.Hash,
-			OwnedByID:          w.OwnedByID,
-			OwnerUsername:      w.OwnerUsername,
-			Name:               w.Name,
-			Label:              w.Label,
-			ParticipantID:      w.ParticipantID,
-			FactionID:          w.FactionID,
-			MaxHealth:          w.MaxHealth,
-			MaxShield:          w.MaxShield,
-			Health:             w.Health,
-			AIType:             w.AIType,
-			ModelID:            w.ModelID,
-			Model:              w.Model,
-			Skin:               w.Skin,
-			Speed:              w.Speed,
-			Faction:            w.Faction,
-			Tier:               w.Tier,
-			PowerCore:          w.PowerCore,
+			ID:            w.ID,
+			Hash:          w.Hash,
+			OwnedByID:     w.OwnedByID,
+			OwnerUsername: w.OwnerUsername,
+			Name:          w.Name,
+			Label:         w.Label,
+			ParticipantID: w.ParticipantID,
+			FactionID:     w.FactionID,
+			MaxHealth:     w.MaxHealth,
+			MaxShield:     w.MaxShield,
+			Health:        w.Health,
+			AIType:        w.AIType,
+			ModelID:       w.ModelID,
+			Model:         w.Model,
+			Skin:          w.Skin,
+			Speed:         w.Speed,
+			Faction:       w.Faction,
+			Tier:          w.Tier,
+			PowerCore:     w.PowerCore,
 			//Abilities:          w.Abilities,
 			Weapons:            w.Weapons,
 			Utility:            w.Utility,
@@ -1324,25 +1325,25 @@ func GameSettingsPayload(btl *Battle) *GameSettingsResponse {
 	ais := []*WarMachine{}
 	for _, w := range btl.SpawnedAI {
 		wCopy := &WarMachine{
-			ID:                 w.ID,
-			Hash:               w.Hash,
-			OwnedByID:          w.OwnedByID,
-			OwnerUsername:      w.OwnerUsername,
-			Name:               w.Name,
-			Label:              w.Label,
-			ParticipantID:      w.ParticipantID,
-			FactionID:          w.FactionID,
-			MaxHealth:          w.MaxHealth,
-			MaxShield:          w.MaxShield,
-			Health:             w.Health,
-			AIType:             w.AIType,
-			ModelID:            w.ModelID,
-			Model:              w.Model,
-			Skin:               w.Skin,
-			Speed:              w.Speed,
-			Faction:            w.Faction,
-			Tier:               w.Tier,
-			PowerCore:          w.PowerCore,
+			ID:            w.ID,
+			Hash:          w.Hash,
+			OwnedByID:     w.OwnedByID,
+			OwnerUsername: w.OwnerUsername,
+			Name:          w.Name,
+			Label:         w.Label,
+			ParticipantID: w.ParticipantID,
+			FactionID:     w.FactionID,
+			MaxHealth:     w.MaxHealth,
+			MaxShield:     w.MaxShield,
+			Health:        w.Health,
+			AIType:        w.AIType,
+			ModelID:       w.ModelID,
+			Model:         w.Model,
+			Skin:          w.Skin,
+			Speed:         w.Speed,
+			Faction:       w.Faction,
+			Tier:          w.Tier,
+			PowerCore:     w.PowerCore,
 			//Abilities:          w.Abilities,
 			Weapons:            w.Weapons,
 			Utility:            w.Utility,
@@ -1405,7 +1406,7 @@ func (btl *Battle) Tick(payload []byte) {
 		return
 	}
 
-	if btl.stage.Load() == BattleStageEnd {
+	if btl.state.Load() != BattlingState {
 		return
 	}
 

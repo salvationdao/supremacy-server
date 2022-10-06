@@ -180,7 +180,7 @@ type ArenaBrief struct {
 	ID    string `json:"id"`
 	Gid   int    `json:"gid"`
 	Name  string `json:"name"`
-	Stage string `json:"stage"`
+	Stage string `json:"state"`
 }
 
 func (am *ArenaManager) AvailableBattleArenas() []*ArenaBrief {
@@ -378,7 +378,7 @@ func (am *ArenaManager) NewArena(battleArena *boiler.BattleArena, wsConn *websoc
 		// set connected flag of the prev arena to false
 		a.connected.Store(false)
 
-		// change arena stage to hijacked
+		// change arena state to hijacked
 		a.Stage.Store(ArenaStageHijacked)
 
 		// stop recording from previous arena
@@ -516,15 +516,15 @@ func (arena *Arena) storeCurrentBattle(btl *Battle) {
 	arena._currentBattle = btl
 }
 
-func (arena *Arena) currentBattleState() int32 {
+func (arena *Arena) CurrentBattleState() int32 {
 	arena.RLock()
 	defer arena.RUnlock()
 	if arena._currentBattle == nil {
-		return BattleStageEnd
+		return EndState
 	}
 
 	arena._currentBattle.RLock()
-	stage := arena._currentBattle.stage.Load()
+	stage := arena._currentBattle.state.Load()
 	arena._currentBattle.RUnlock()
 
 	return stage
@@ -823,7 +823,7 @@ func (am *ArenaManager) WarMachineAbilitiesUpdateSubscribeHandler(ctx context.Co
 		return err
 	}
 
-	if arena.currentBattleState() != BattleStageStart {
+	if arena.CurrentBattleState() != BattlingState {
 		return nil
 	}
 
@@ -871,7 +871,7 @@ func (am *ArenaManager) WarMachineAbilitySubscribe(ctx context.Context, user *bo
 	}
 
 	btl := arena.CurrentBattle()
-	if btl == nil || btl.stage.Load() != BattleStageStart {
+	if btl == nil || btl.state.Load() != BattlingState {
 		return nil
 	}
 
@@ -958,7 +958,7 @@ type WarMachineStat struct {
 
 const HubKeyWarMachineStatUpdated = "WAR:MACHINE:STAT:UPDATED"
 
-// WarMachineStatSubscribe subscribe on bribing stage change
+// WarMachineStatSubscribe subscribe on bribing state change
 func (am *ArenaManager) WarMachineStatSubscribe(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
 	arena, err := am.GetArenaFromContext(ctx)
 	if err != nil {
@@ -1191,15 +1191,16 @@ func (arena *Arena) start() {
 				continue
 			}
 
-			// set battle stage to end when receive "battle:end" message
+			// set battle state to end when receive "battle:end" message
 			btl := arena.CurrentBattle()
 			if btl != nil && msg.BattleCommand == "BATTLE:END" {
-				btl.stage.Store(BattleStageEnd)
+				btl.state.Store(EndState)
+				ws.PublishMessage(fmt.Sprintf("/public/arena/%s/battle_state", btl.ArenaID), server.HubKeyBattleState, EndState)
 			}
 			// handle message through channel
 			arena.gameClientJsonDataChan <- data
 		case Tick:
-			if btl := arena.CurrentBattle(); btl != nil && btl.stage.Load() == BattleStageStart {
+			if btl := arena.CurrentBattle(); btl != nil && btl.state.Load() == BattlingState {
 				btl.Tick(payload)
 			}
 
@@ -1306,7 +1307,7 @@ func (arena *Arena) GameClientJsonDataParser() {
 			btl.start()
 		case "BATTLE:WAR_MACHINE_DESTROYED":
 			// do not process, if battle already ended
-			if btl.stage.Load() == BattleStageEnd {
+			if btl.state.Load() != BattlingState {
 				continue
 			}
 
@@ -1356,7 +1357,7 @@ func (arena *Arena) GameClientJsonDataParser() {
 			}
 		case "BATTLE:WAR_MACHINE_PICKUP":
 			// do not process, if battle already ended
-			if btl.stage.Load() == BattleStageEnd {
+			if btl.state.Load() != BattlingState {
 				continue
 			}
 
@@ -1382,7 +1383,7 @@ func (arena *Arena) GameClientJsonDataParser() {
 
 		case "BATTLE:WAR_MACHINE_STATUS":
 			// do not process, if battle already ended
-			if btl.stage.Load() == BattleStageEnd {
+			if btl.state.Load() != BattlingState {
 				continue
 			}
 
@@ -1455,7 +1456,7 @@ func (arena *Arena) GameClientJsonDataParser() {
 			}
 		case "BATTLE:ABILITY_MOVE_COMMAND_RESPONSE":
 			// do not process, if battle already ended
-			if btl.stage.Load() == BattleStageEnd {
+			if btl.state.Load() != BattlingState {
 				continue
 			}
 
@@ -1470,7 +1471,7 @@ func (arena *Arena) GameClientJsonDataParser() {
 
 		case "BATTLE:ABILITY_COMPLETE":
 			// do not process, if battle already ended
-			if btl.stage.Load() == BattleStageEnd {
+			if btl.state.Load() != BattlingState {
 				continue
 			}
 
@@ -1604,13 +1605,13 @@ func (arena *Arena) getBattleState() int32 {
 	arena.RLock()
 	defer arena.RUnlock()
 	if arena._currentBattle != nil {
-		return arena._currentBattle.stage.Load()
+		return arena._currentBattle.state.Load()
 	}
-	return BattleStageEnd
+	return EndState
 }
 
 func (arena *Arena) GetLobbyDetails() *UpcomingBattleResponse {
-	if arena.getBattleState() != BattleStagePreStart {
+	if arena.getBattleState() != SetupState {
 		return &UpcomingBattleResponse{
 			IsPreBattle:    false,
 			UpcomingBattle: nil,
@@ -1864,7 +1865,7 @@ func (arena *Arena) BeginBattle() {
 	arena.assignBattleLobby()
 	arena.Manager.Unlock()
 
-	// return, if the stage of the arena is still idle
+	// return, if the state of the arena is still idle
 	if arena.Stage.Load() == ArenaStageIdle || arena.currentLobbyID.Load() == "" {
 		return
 	}
@@ -1975,7 +1976,7 @@ func (arena *Arena) BeginBattle() {
 			Name:          gameMap.Name,
 			BackgroundUrl: gameMap.BackgroundURL,
 		},
-		stage:                  atomic.NewInt32(BattleStagePreStart),
+		state:                  atomic.NewInt32(SetupState),
 		destroyedWarMachineMap: make(map[string]*WMDestroyedRecord),
 		MiniMapAbilityDisplayList: &MiniMapAbilityDisplayList{
 			m: make(map[string]*MiniMapAbilityContent),
@@ -1990,6 +1991,7 @@ func (arena *Arena) BeginBattle() {
 			Events: []*RecordingEvents{},
 		},
 	}
+	ws.PublishMessage(fmt.Sprintf("/public/arena/%s/battle_state", btl.ArenaID), server.HubKeyBattleState, SetupState)
 
 	// hold arena for the pre intro phase
 	prebattleTime := db.GetIntWithDefault(db.KeyPreBattleTimeSeconds, 20)
@@ -2005,13 +2007,14 @@ func (arena *Arena) BeginBattle() {
 	preBattleTimer = time.NewTimer(time.Second * time.Duration(float64(prebattleTime)*0.25))
 	// pause for time
 	<-preBattleTimer.C
-	// broadcast that pre battle stage is over
+	// broadcast that pre battle state is over
 	ws.PublishMessage(fmt.Sprintf("/public/arena/%s/upcoming_battle", arena.ID), server.HubKeyNextBattleDetails, &UpcomingBattleResponse{
 		IsPreBattle:    false,
 		UpcomingBattle: nil,
 	})
-	// set battle stage as started
-	btl.stage.Store(BattleStageStart)
+	// set battle state as started
+	btl.state.Store(IntroState)
+	ws.PublishMessage(fmt.Sprintf("/public/arena/%s/battle_state", btl.ArenaID), server.HubKeyBattleState, IntroState)
 
 	// load war machines
 	err = btl.Load(battleLobby)
@@ -2294,7 +2297,7 @@ func (btl *Battle) CompleteWarMachineMoveCommand(payload *AbilityMoveCommandComp
 	}
 
 	// check battle state
-	if btl.arena.currentBattleState() == BattleStageEnd {
+	if btl.arena.CurrentBattleState() == EndState {
 		return terror.Error(fmt.Errorf("current battle is ended"))
 	}
 

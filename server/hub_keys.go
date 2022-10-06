@@ -69,6 +69,8 @@ const HubKeyChallengeFundSubscribe = "CHALLENGE:FUND"
 const HubKeyBattleArenaListSubscribe = "BATTLE:ARENA:LIST"
 const HubKeyBattleArenaClosedSubscribe = "BATTLE:ARENA:CLOSED"
 const HubKeyNextBattleDetails = "NEXT:BATTLE:DETAILS"
+const HubKeyBattleState = "BATTLE:STATE"
+
 
 // store
 
