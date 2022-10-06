@@ -39,6 +39,7 @@ import (
 type BattleStage int32
 
 const (
+	BattleStagePreStart = 2
 	BattleStageStart = 1
 	BattleStageEnd   = 0
 )

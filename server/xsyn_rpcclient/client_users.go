@@ -157,14 +157,15 @@ type UserMarketingUpdateReq struct {
 	ApiKey           string
 	UserID           string `json:"userID"`
 	AcceptsMarketing bool   `json:"acceptsMarketing"`
+	NewEmail         string `json:"newEmail"`
 }
 
 type UserMarketingUpdateResp struct{}
 
 // UserMarketingUpdate updates user's marketing preferences
-func (pp *XsynXrpcClient) UserMarketingUpdate(userID string, acceptsMarketing bool) error {
+func (pp *XsynXrpcClient) UserMarketingUpdate(userID string, acceptsMarketing bool, newEmail string) error {
 	resp := &UserMarketingUpdateResp{}
-	err := pp.XrpcClient.Call("S.UserMarketingUpdateHandler", UserMarketingUpdateReq{pp.ApiKey, userID, acceptsMarketing}, resp)
+	err := pp.XrpcClient.Call("S.UserMarketingUpdateHandler", UserMarketingUpdateReq{pp.ApiKey, userID, acceptsMarketing, newEmail}, resp)
 	if err != nil {
 		gamelog.L.Err(err).Str("method", "UserMarketingUpdateHandler").Msg("rpc error")
 		return err

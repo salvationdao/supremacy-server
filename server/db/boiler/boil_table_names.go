@@ -23,6 +23,8 @@ var TableNames = struct {
 	BattleLobbies                                      string
 	BattleLobbiesMechs                                 string
 	BattleLobbyExtraSupsRewards                        string
+	BattleLobbySupporterOptIns                         string
+	BattleLobbySupporters                              string
 	BattleMapQueueOld                                  string
 	BattleMechs                                        string
 	BattleQueueFeesOld                                 string
@@ -185,6 +187,8 @@ var TableNames = struct {
 	BattleLobbies:                  "battle_lobbies",
 	BattleLobbiesMechs:             "battle_lobbies_mechs",
 	BattleLobbyExtraSupsRewards:    "battle_lobby_extra_sups_rewards",
+	BattleLobbySupporterOptIns:     "battle_lobby_supporter_opt_ins",
+	BattleLobbySupporters:          "battle_lobby_supporters",
 	BattleMapQueueOld:              "battle_map_queue_old",
 	BattleMechs:                    "battle_mechs",
 	BattleQueueFeesOld:             "battle_queue_fees_old",

@@ -21,6 +21,7 @@ import (
 	"server/gamedb"
 	"server/gamelog"
 	"server/xsyn_rpcclient"
+	"strings"
 	"time"
 )
 
@@ -32,6 +33,9 @@ func BattleQueueController(api *API) {
 	api.SecureUserFactionCommand(HubKeyMechStake, api.MechStake)
 	api.SecureUserFactionCommand(HubKeyMechUnstake, api.MechUnstake)
 
+
+	api.SecureUserFactionCommand(HubKeyBattleLobbySupporterJoin, api.BattleLobbySupporterJoin)
+	//api.SecureUserFactionCommand(HubKeyBattleLobbySupporterLeave, api.BattleLobbySupporterLeave)
 }
 
 type BattleLobbyCreateRequest struct {
@@ -1157,5 +1161,91 @@ func (api *API) MechUnstake(ctx context.Context, user *boiler.Player, factionID 
 		return err
 	}
 
+	return nil
+}
+
+
+func (api *API)  NextBattleDetails(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
+	arena, err := api.ArenaManager.GetArenaFromContext(ctx)
+	if err != nil {
+		return err
+	}
+
+	//ws.PublishMessage(fmt.Sprintf("/arena/%s/upcoming_battle", arena.ID), server.HubKeyNextBattleDetails, arena.GetLobbyDetails())
+	reply(arena.GetLobbyDetails())
+	return nil
+}
+
+type BattleLobbySupporterJoinRequest struct {
+	Payload struct {
+		BattleLobbyID string `json:"battle_lobby_id"`
+	} `json:"payload"`
+}
+
+const HubKeyBattleLobbySupporterJoin = "BATTLE:LOBBY:SUPPORTER:JOIN"
+
+func (api *API) BattleLobbySupporterJoin(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
+	L := gamelog.L.With().Str("func", "").Str("user id", user.ID).Logger()
+	req := &BattleLobbySupporterJoinRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return terror.Error(err, "Invalid request received.")
+	}
+
+	L = L.With().Interface("payload", req.Payload).Logger()
+
+	// add support to battle lobby
+	err = api.ArenaManager.SendBattleQueueFunc(func() error {
+		// todo, figure out rules for when they are allowed to join as a supporter
+		// check lobby exists
+		bl, err := boiler.BattleLobbies(
+			boiler.BattleLobbyWhere.ID.EQ(req.Payload.BattleLobbyID),
+			qm.Load(
+				boiler.BattleLobbyRels.BattleLobbySupporterOptIns,
+				boiler.BattleLobbySupporterOptInWhere.FactionID.EQ(factionID),
+				),
+			).One(gamedb.StdConn)
+		if err != nil {
+			return err
+		}
+
+		if bl == nil {
+			return fmt.Errorf("lobby id: %s does not exist", req.Payload.BattleLobbyID)
+		}
+		if !bl.AssignedToArenaID.Valid || bl.AssignedToArenaID.String == "" {
+			return fmt.Errorf("lobby id: %s does not have a arena id assigned", req.Payload.BattleLobbyID)
+		}
+
+		if bl.R != nil && bl.R.BattleLobbySupporterOptIns != nil {
+			for _, supper := range bl.R.BattleLobbySupporterOptIns {
+				if supper.SupporterID == user.ID {
+					return fmt.Errorf("already registered as a supporter")
+				}
+			}
+		}
+
+		// add them as a supporter
+		bls := &boiler.BattleLobbySupporterOptIn{
+			SupporterID:   user.ID,
+			BattleLobbyID: bl.ID,
+			FactionID: factionID,
+		}
+		err = bls.Insert(gamedb.StdConn, boil.Infer())
+		if err != nil {
+			return err
+		}
+
+		api.ArenaManager.BroadcastLobbyUpdate(bl.AssignedToArenaID.String)
+
+		return nil
+	})
+	if err != nil {
+		if !strings.Contains(err.Error(), "already registered as a supporter") {
+			L.Error().Err(err).Msg("failed to insert new battle lobby supporter")
+		}
+		return err
+	}
+
+	reply(true)
 	return nil
 }

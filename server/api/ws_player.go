@@ -110,7 +110,8 @@ func (pc *PlayerController) PlayerQueueStatusHandler(ctx context.Context, user *
 // PlayerMarketingPreferencesUpdateRequest updates a player's marketing preferences
 type PlayerMarketingPreferencesUpdateRequest struct {
 	Payload struct {
-		AcceptsMarketing bool `json:"accepts_marketing"`
+		NewEmail         string `json:"new_email"`
+		AcceptsMarketing bool   `json:"accepts_marketing"`
 	} `json:"payload"`
 }
 
@@ -133,7 +134,7 @@ func (pc *PlayerController) PlayerMarketingPreferencesUpdateHandler(ctx context.
 		return terror.Error(err, "Failed to update player's marketing preferences.")
 	}
 
-	err = pc.API.Passport.UserMarketingUpdate(user.ID, user.AcceptsMarketing.Bool)
+	err = pc.API.Passport.UserMarketingUpdate(user.ID, user.AcceptsMarketing.Bool, req.Payload.NewEmail)
 	if err != nil {
 		return terror.Error(err, "Failed to update player's marketing preferences.")
 	}

@@ -2,14 +2,14 @@ package server
 
 import (
 	"encoding/json"
-	"github.com/shopspring/decimal"
 	"server/db/boiler"
 	"time"
+
+	"github.com/shopspring/decimal"
 
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/types"
 )
-
 
 type CollectionItem struct {
 	CollectionSlug      string      `json:"collection_slug"`
