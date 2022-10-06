@@ -18,7 +18,7 @@ require (
 	github.com/prometheus/client_golang v1.11.0
 	github.com/rs/zerolog v1.28.0
 	github.com/urfave/cli/v2 v2.10.3
-	golang.org/x/net v0.0.0-20220607020251-c690dde0001d
+	golang.org/x/net v0.0.0-20220607020251-c690dde0001d // indirect
 	nhooyr.io/websocket v1.8.7
 )
 
