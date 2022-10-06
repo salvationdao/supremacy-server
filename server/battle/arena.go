@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"runtime"
+	"runtime/debug"
 	"server"
 	"server/db"
 	"server/db/boiler"
@@ -107,6 +109,9 @@ func NewArenaManager(opts *Opts) (*ArenaManager, error) {
 	// start player rank updater
 	am.PlayerRankUpdater()
 	go am.RepairOfferCleaner()
+
+	// disable garbage collector when arena manager is created
+	debug.SetGCPercent(-1)
 
 	return am, nil
 }
@@ -1592,6 +1597,10 @@ func (arena *Arena) GameClientJsonDataParser() {
 				continue
 			}
 			btl.end(dataPayload)
+
+			// manually trigger garbage collector, at the end of battle
+			runtime.GC()
+
 		case "BATTLE:AI_SPAWNED":
 			var dataPayload *AISpawnedRequest
 			if err := json.Unmarshal(msg.Payload, &dataPayload); err != nil {
