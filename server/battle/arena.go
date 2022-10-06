@@ -1194,7 +1194,7 @@ type WarMachineStat struct {
 	Health        uint32          `json:"health"`
 	Shield        uint32          `json:"shield"`
 	IsHidden      bool            `json:"is_hidden"`
-	TickOrder     int64           `json:"tick_count"`
+	TickOrder     int64           `json:"tick_order"`
 }
 
 const HubKeyWarMachineStatUpdated = "WAR:MACHINE:STAT:UPDATED"
