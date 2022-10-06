@@ -597,7 +597,7 @@ func WeaponList(opts *WeaponListOpts) (int64, []*PlayerAsset, error) {
 	}
 	defer rows.Close()
 
-	var weapons []*PlayerAsset
+	weapons := make([]*PlayerAsset, 0)
 	for rows.Next() {
 		w := &PlayerAsset{
 			CollectionItem: &server.CollectionItem{},
