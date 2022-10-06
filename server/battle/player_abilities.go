@@ -249,6 +249,348 @@ func (pam *PlayerAbilityManager) RemoveHiddenWarMachineHash(hash string) {
 	delete(pam.hiddenWarMachines, hash)
 }
 
+type PlayerSupportAbilityUseRequest struct {
+	Payload struct {
+		AbilityID          string               `json:"ability_id"`
+		ArenaID            string               `json:"arena_id"`
+		LocationSelectType string               `json:"location_select_type"`
+		StartCoords        *server.CellLocation `json:"start_coords"` // used for LINE_SELECT and LOCATION_SELECT abilities
+		EndCoords          *server.CellLocation `json:"end_coords"`   // used only for LINE_SELECT abilities
+		MechHash           string               `json:"mech_hash"`    // used only for MECH_SELECT abilities
+	} `json:"payload"`
+}
+
+const HubKeyPlayerSupportAbilityUse = "PLAYER:SUPPORT:ABILITY:USE"
+
+func (am *ArenaManager) PlayerSupportAbilityUse(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
+	req := &PlayerSupportAbilityUseRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		gamelog.L.Warn().Err(err).Str("func", "PlayerAbilityUse").Msg("invalid request received")
+		return terror.Error(err, "Invalid request received")
+	}
+
+	arena, err := am.GetArena(req.Payload.ArenaID)
+	if err != nil {
+		return err
+	}
+
+	// skip, if current not battle
+	if arena.CurrentBattleState() != BattlingState {
+		gamelog.L.Warn().Str("func", "PlayerAbilityUse").Msg("no current battle")
+		return terror.Error(fmt.Errorf("wrong battle state"), "There is no battle currently to use this ability on.")
+	}
+
+	pa, err := boiler.PlayerBattleAbilities(
+		boiler.PlayerBattleAbilityWhere.ID.EQ(req.Payload.AbilityID),
+		boiler.PlayerBattleAbilityWhere.PlayerID.EQ(user.ID),
+		boiler.PlayerBattleAbilityWhere.BattleID.EQ(arena.CurrentBattleID()),
+		qm.Load(boiler.PlayerBattleAbilityRels.GameAbility),
+	).One(gamedb.StdConn)
+	if err != nil {
+		return terror.Error(err, "Something went wrong while activating this ability. Please try again or contact support if this issue persists.")
+	}
+
+	// check if used
+	if pa.UsedAt.Valid {
+		return fmt.Errorf("ability already used")
+	}
+
+	// mark as used
+	pa.UsedAt = null.TimeFrom(time.Now())
+	_, err = pa.Update(gamedb.StdConn, boil.Infer())
+	if err != nil {
+		return terror.Error(err, "Failed to use ability, try again or contract support.")
+	}
+
+	refundAbility := func(){
+		pa.UsedAt = null.NewTime(time.Now(), false)
+		_, err = pa.Update(gamedb.StdConn, boil.Infer())
+		if err != nil {
+			return
+		}
+	}
+
+	offeringID := uuid.Must(uuid.NewV4())
+
+	userID := uuid.FromStringOrNil(user.ID)
+	var event *server.GameAbilityEvent
+	switch req.Payload.LocationSelectType {
+	case boiler.LocationSelectTypeEnumLINE_SELECT:
+		if req.Payload.StartCoords == nil || req.Payload.EndCoords == nil {
+			gamelog.L.Error().Str("log_name", "battle arena").Interface("request payload", req.Payload).Msgf("no start/end coords was provided for executing ability of type %s", boiler.LocationSelectTypeEnumLINE_SELECT)
+			refundAbility()
+			return terror.Error(terror.ErrInvalidInput, "Coordinates must be provided when executing this ability.")
+		}
+		if req.Payload.StartCoords.X.IsNegative() || req.Payload.StartCoords.Y.IsNegative() || req.Payload.EndCoords.X.IsNegative() || req.Payload.EndCoords.Y.IsNegative() {
+			gamelog.L.Error().Str("log_name", "battle arena").Interface("request payload", req.Payload).Msgf("invalid start/end coords were provided for executing %s ability", boiler.LocationSelectTypeEnumLINE_SELECT)
+			refundAbility()
+			return terror.Error(terror.ErrInvalidInput, "Invalid coordinates provided when executing this ability.")
+		}
+		event = &server.GameAbilityEvent{
+			IsTriggered:         true,
+			GameClientAbilityID: byte(pa.R.GameAbility.GameClientAbilityID),
+			TriggeredByUserID:   &userID,
+			TriggeredByUsername: &user.Username.String,
+			EventID:             offeringID,
+			FactionID:           &user.FactionID.String,
+			GameLocation:        arena.CurrentBattle().getGameWorldCoordinatesFromCellXY(req.Payload.StartCoords),
+			GameLocationEnd:     arena.CurrentBattle().getGameWorldCoordinatesFromCellXY(req.Payload.EndCoords),
+		}
+
+	case boiler.LocationSelectTypeEnumMECH_SELECT:
+		if req.Payload.MechHash == "" {
+			gamelog.L.Error().Str("log_name", "battle arena").Interface("request payload", req.Payload).Err(err).Msgf("no mech hash was provided for executing ability of type %s", boiler.LocationSelectTypeEnumMECH_SELECT)
+			refundAbility()
+			return terror.Error(terror.ErrInvalidInput, "Mech hash must be provided to execute this ability.")
+		}
+
+		// check the mech is in the battlefield
+		wm := arena.CurrentBattleWarMachineByHash(req.Payload.MechHash)
+		if wm == nil {
+			refundAbility()
+			return terror.Error(fmt.Errorf("mech not found"), "The mech is not in the battlefield.")
+		}
+
+		event = &server.GameAbilityEvent{
+			IsTriggered:         true,
+			GameClientAbilityID: byte(pa.R.GameAbility.GameClientAbilityID),
+			TriggeredByUserID:   &userID,
+			TriggeredByUsername: &user.Username.String,
+			EventID:             offeringID,
+			FactionID:           &user.FactionID.String,
+			WarMachineHash:      &req.Payload.MechHash,
+		}
+	case boiler.LocationSelectTypeEnumMECH_SELECT_ALLIED:
+		if req.Payload.MechHash == "" {
+			gamelog.L.Error().Str("log_name", "battle arena").Interface("request payload", req.Payload).Err(err).Msgf("no mech hash was provided for executing ability of type %s", boiler.LocationSelectTypeEnumMECH_SELECT)
+			refundAbility()
+			return terror.Error(terror.ErrInvalidInput, "Mech hash must be provided to execute this ability.")
+		}
+
+		// check the mech is in the battlefield
+		wm := arena.CurrentBattleWarMachineByHash(req.Payload.MechHash)
+		if wm == nil {
+			refundAbility()
+			return terror.Error(fmt.Errorf("mech not found"), "The mech is not in the battlefield.")
+		}
+
+		// check the mech is an ally mech
+		if wm.FactionID != factionID {
+			refundAbility()
+			return terror.Error(fmt.Errorf("not ally mech"), "Must select a ally mech.")
+		}
+
+		event = &server.GameAbilityEvent{
+			IsTriggered:         true,
+			GameClientAbilityID: byte(pa.R.GameAbility.GameClientAbilityID),
+			TriggeredByUserID:   &userID,
+			TriggeredByUsername: &user.Username.String,
+			EventID:             offeringID,
+			FactionID:           &user.FactionID.String,
+			WarMachineHash:      &req.Payload.MechHash,
+		}
+	case boiler.LocationSelectTypeEnumMECH_SELECT_OPPONENT:
+		if req.Payload.MechHash == "" {
+			gamelog.L.Error().Str("log_name", "battle arena").Interface("request payload", req.Payload).Err(err).Msgf("no mech hash was provided for executing ability of type %s", boiler.LocationSelectTypeEnumMECH_SELECT)
+			refundAbility()
+			return terror.Error(terror.ErrInvalidInput, "Mech hash must be provided to execute this ability.")
+		}
+
+		// check the mech is in the battlefield
+		wm := arena.CurrentBattleWarMachineByHash(req.Payload.MechHash)
+		if wm == nil {
+			refundAbility()
+			return terror.Error(fmt.Errorf("mech not found"), "The mech is not in the battlefield.")
+		}
+
+		// if hacker drone
+		if wm.Status.IsHacked && pa.R.GameAbility.GameClientAbilityID == 13 {
+			refundAbility()
+			return terror.Error(fmt.Errorf("already hacked"), "The mech is already hacked.")
+		}
+
+		// check the mech is in the
+		if wm.FactionID == factionID {
+			refundAbility()
+			return terror.Error(fmt.Errorf("not opponent mech"), "Must select an opponent mech.")
+		}
+
+		event = &server.GameAbilityEvent{
+			IsTriggered:         true,
+			GameClientAbilityID: byte(pa.R.GameAbility.GameClientAbilityID),
+			TriggeredByUserID:   &userID,
+			TriggeredByUsername: &user.Username.String,
+			EventID:             offeringID,
+			FactionID:           &user.FactionID.String,
+			WarMachineHash:      &req.Payload.MechHash,
+		}
+	case boiler.LocationSelectTypeEnumLOCATION_SELECT:
+		if req.Payload.StartCoords == nil {
+			gamelog.L.Error().Str("log_name", "battle arena").Interface("request payload", req.Payload).Msgf("no start coords was provided for executing ability of type %s", boiler.LocationSelectTypeEnumLOCATION_SELECT)
+			refundAbility()
+			return terror.Error(terror.ErrInvalidInput, "Coordinates must be provided when executing this ability.")
+		}
+		if req.Payload.StartCoords.X.IsNegative() || req.Payload.StartCoords.Y.IsNegative() {
+			gamelog.L.Error().Str("log_name", "battle arena").Interface("request payload", req.Payload).Msgf("invalid start coords were provided for executing %s ability", boiler.LocationSelectTypeEnumLOCATION_SELECT)
+			refundAbility()
+			return terror.Error(terror.ErrInvalidInput, "Invalid coordinates provided when executing this ability.")
+		}
+		event = &server.GameAbilityEvent{
+			IsTriggered:         true,
+			GameClientAbilityID: byte(pa.R.GameAbility.GameClientAbilityID),
+			TriggeredByUserID:   &userID,
+			TriggeredByUsername: &user.Username.String,
+			EventID:             offeringID,
+			FactionID:           &user.FactionID.String,
+			GameLocation:        arena.CurrentBattle().getGameWorldCoordinatesFromCellXY(req.Payload.StartCoords),
+		}
+	case boiler.LocationSelectTypeEnumGLOBAL:
+	default:
+		gamelog.L.Warn().Str("func", "PlayerAbilityUse").Interface("request payload", req.Payload).Msg("no location select type was provided when activating a player ability")
+		refundAbility()
+		return terror.Error(terror.ErrInvalidInput, "Something went wrong while activating this ability. Please try again, or contact support if this issue persists.")
+	}
+
+	if event == nil {
+		gamelog.L.Warn().Str("func", "PlayerAbilityUse").Interface("request payload", req.Payload).Msg("game ability event is nil for some reason")
+		refundAbility()
+		return terror.Error(terror.ErrInvalidInput, "Something went wrong while activating this ability. Please try again, or contact support if this issue persists.")
+	}
+
+	tx, err := gamedb.StdConn.Begin()
+	if err != nil {
+		gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("unable to begin tx")
+		refundAbility()
+		return terror.Error(err, "Issue purchasing player ability, please try again or contact support.")
+	}
+	defer tx.Rollback()
+
+	// check if using support war machine
+	if pa.R.GameAbility.GameClientAbilityID == SupportMechGameAbility {
+		btl := arena.CurrentBattle()
+
+		swm := 0
+		for _, wm := range btl.SpawnedAI {
+			// add if mini mech && alive && same faction as owner
+			isMiniMech := wm.AIType != nil && *wm.AIType == MiniMech
+			isAlive := wm.Health > 0
+			inOwnersFaction := pa.R != nil && user.FactionID == null.StringFrom(wm.FactionID)
+			if isMiniMech && isAlive && inOwnersFaction {
+				swm++
+			}
+		}
+
+		if swm >= 3 {
+			gamelog.L.Debug().Msg("too many support warmachines for this faction")
+			refundAbility()
+			return terror.Error(fmt.Errorf("too many support warmachines for this faction"), "Only 3 active support war machines allowed in battle at one time for your faction")
+		}
+	}
+
+
+
+
+	isIncognito := pa.R.GameAbility.GameClientAbilityID == IncognitoGameAbilityID
+	// If player ability is "Incognito"
+	if isIncognito {
+		wm, err := boiler.CollectionItems(boiler.CollectionItemWhere.Hash.EQ(req.Payload.MechHash)).One(gamedb.StdConn)
+		if err != nil {
+			gamelog.L.Error().Str("log_name", "battle arena").Interface("request payload", req.Payload).Err(err).Msgf("failed to execute INCOGNITO ability: could not get war machine from hash %s", req.Payload.MechHash)
+			refundAbility()
+			return terror.Error(err, "Failed to get war machine from hash")
+		}
+
+		incognitoDurationSeconds := db.GetIntWithDefault(db.KeyPlayerAbilityIncognitoDurationSeconds, 20) // default 20 seconds
+
+		err = arena.CurrentBattle().playerAbilityManager().AddHiddenWarMachineHash(wm.Hash, time.Second*time.Duration(incognitoDurationSeconds))
+		if err != nil {
+			gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("failed to execute Incognito player ability")
+			refundAbility()
+			return err
+		}
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("failed to commit transaction")
+		refundAbility()
+		return terror.Error(err, "Issue executing player ability, please try again or contact support.")
+	}
+	reply(true)
+
+	if btl := arena.CurrentBattle(); btl != nil && !isIncognito {
+		// record ability on display list if needed
+		if pa.R.GameAbility.DisplayOnMiniMap {
+			mma := &MiniMapAbilityContent{
+				OfferingID:               offeringID.String(),
+				LocationSelectType:       pa.R.GameAbility.LocationSelectType,
+				ImageUrl:                 pa.R.GameAbility.ImageURL,
+				Colour:                    pa.R.GameAbility.Colour,
+				MiniMapDisplayEffectType:  pa.R.GameAbility.MiniMapDisplayEffectType,
+				MechDisplayEffectType:     pa.R.GameAbility.MechDisplayEffectType,
+			}
+
+			switch mma.LocationSelectType {
+			case boiler.LocationSelectTypeEnumLINE_SELECT, boiler.LocationSelectTypeEnumLOCATION_SELECT:
+				mma.Location = *req.Payload.StartCoords
+			case boiler.LocationSelectTypeEnumMECH_SELECT, boiler.LocationSelectTypeEnumMECH_SELECT_OPPONENT, boiler.LocationSelectTypeEnumMECH_SELECT_ALLIED:
+				if wm := arena.CurrentBattleWarMachineByHash(req.Payload.MechHash); wm != nil {
+					mma.MechID = wm.ID
+				}
+			}
+
+			// set radius
+			if ability := btl.abilityDetails[ pa.R.GameAbility.GameClientAbilityID]; ability != nil && ability.Radius > 0 {
+				mma.Radius = null.IntFrom(ability.Radius)
+			}
+
+			// set delay seconds
+			if  pa.R.GameAbility.LaunchingDelaySeconds > 0 {
+				mma.LaunchingAt = null.TimeFrom(time.Now().Add(time.Duration(pa.R.GameAbility.LaunchingDelaySeconds) * time.Second))
+			}
+
+			ws.PublishMessage(
+				fmt.Sprintf("/public/arena/%s/mini_map_ability_display_list", arena.ID),
+				server.HubKeyMiniMapAbilityDisplayList,
+				btl.MiniMapAbilityDisplayList.Add(offeringID.String(), mma),
+			)
+
+			if pa.R.GameAbility.AnimationDurationSeconds > 0 {
+				go func(battle *Battle, bpa *boiler.GameAbility) {
+					time.Sleep(time.Duration(bpa.AnimationDurationSeconds) * time.Second)
+					if battle != nil && battle.state.Load() == BattlingState {
+						if ab := battle.MiniMapAbilityDisplayList.Get(offeringID.String()); ab != nil {
+							ws.PublishMessage(
+								fmt.Sprintf("/public/arena/%s/mini_map_ability_display_list", arena.ID),
+								server.HubKeyMiniMapAbilityDisplayList,
+								battle.MiniMapAbilityDisplayList.Remove(offeringID.String()),
+							)
+						}
+					}
+				}(btl,  pa.R.GameAbility)
+			}
+		}
+
+		// Tell game client to execute ability
+		btl.arena.Message("BATTLE:ABILITY", event)
+	}
+
+	BroadcastSupporterAbilities(user.ID, arena.CurrentBattleID())
+
+	if  pa.R.GameAbility.GameClientAbilityID == BlackoutGameAbilityID {
+		cellCoords := req.Payload.StartCoords
+		gameCoords := arena.CurrentBattle().getGameWorldCoordinatesFromCellXY(req.Payload.StartCoords)
+		err = arena.CurrentBattle().playerAbilityManager().AddBlackout(fmt.Sprintf("%d-%s-%s", time.Now().UnixNano(), pa.ID, pa.PlayerID), *cellCoords, *gameCoords)
+		if err != nil {
+			gamelog.L.Error().Err(err).Msg("failed to execute Incognito player ability")
+			return err
+		}
+	}
+
+	return nil
+}
+
 type PlayerAbilityUseRequest struct {
 	Payload struct {
 		ArenaID string `json:"arena_id"`

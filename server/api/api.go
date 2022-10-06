@@ -187,7 +187,7 @@ func NewAPI(
 	ssc := NewStoreController(api)
 	_ = NewBattleController(api)
 	mc := NewMarketplaceController(api)
-	pac := NewPlayerAbilitiesController(api)
+	pac := NewAbilitiesController(api)
 	pasc := NewPlayerAssetsController(api)
 	_ = NewPlayerDevicesController(api)
 	_ = NewHangarController(api)
@@ -314,6 +314,8 @@ func NewAPI(
 			r.Mount("/user/{user_id}", ws.NewServer(func(s *ws.Server) {
 				s.Use(api.AuthWS(true))
 				s.Mount("/user_commander", api.SecureUserCommander)
+
+				s.WS("/battle/{battle_id}/supporter_abilities", server.HubKeyPlayerSupportAbilities, server.MustSecure(pac.PlayerSupportAbilitiesHandler), MustMatchUserID)
 			}))
 
 			// secured faction route ws

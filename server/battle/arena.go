@@ -232,7 +232,7 @@ func (am *ArenaManager) Serve() {
 		gamelog.L.Fatal().Str("Addr", am.Addr).Err(err).Msg("unable to bind Arena to Battle Server address")
 	}
 	go func() {
-		gamelog.L.Info().Msgf("Starting Battle Arena Server on: %v", am.Addr)
+		//gamelog.L.Info().Msgf("Starting Battle Arena Server on: %v", am.Addr)
 
 		err := am.server.Serve(l)
 		if err != nil {
@@ -260,7 +260,7 @@ func (am *ArenaManager) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	gamelog.L.Info().Str("arena id", arenaID).Msg("New arena is connected.")
+	//gamelog.L.Info().Str("arena id", arenaID).Msg("New arena is connected.")
 
 	wsConn, err := websocket.Accept(w, r, nil)
 	if err != nil {
@@ -510,6 +510,12 @@ func (arena *Arena) CurrentBattle() *Battle {
 	return arena._currentBattle
 }
 
+func (arena *Arena) CurrentBattleID() string {
+	arena.RLock()
+	defer arena.RUnlock()
+	return arena._currentBattle.ID
+}
+
 func (arena *Arena) storeCurrentBattle(btl *Battle) {
 	arena.Lock()
 	defer arena.Unlock()
@@ -734,7 +740,7 @@ func (arena *Arena) Message(cmd string, payload interface{}) {
 		gamelog.L.Error().Str("log_name", "battle arena").Interface("payload", payload).Err(err).Msg("failed to write websocket message to game client")
 		return
 	}
-	gamelog.L.Info().RawJSON("message data", b).Msg("game client message sent")
+	//gamelog.L.Info().RawJSON("message data", b).Msg("game client message sent")
 }
 
 type LocationSelectRequest struct {
@@ -1232,7 +1238,7 @@ func (arena *Arena) GameClientJsonDataParser() {
 		}
 
 		L := gamelog.L.With().RawJSON("game_client_data", data).Int("message_type", int(JSON)).Str("battleCommand", msg.BattleCommand).Logger()
-		L.Info().Msg("game client message received")
+		//L.Info().Msg("game client message received")
 
 		command := strings.TrimSpace(msg.BattleCommand) // temp fix for issue on gameclient
 		switch command {
@@ -1497,7 +1503,7 @@ func (arena *Arena) GameClientJsonDataParser() {
 		default:
 			L.Warn().Err(err).Msg("Battle Arena WS: no command response")
 		}
-		L.Debug().Msg("game client message handled")
+		//L.Debug().Msg("game client message handled")
 	}
 }
 
@@ -1839,6 +1845,62 @@ func (arena *Arena) AssignSupporters() {
 	}
 
 	// TODO: broadcast users new abilities
+	for _, rmSupper := range resp[0].SelectedRedMountSupporters {
+		BroadcastSupporterAbilities(rmSupper.ID, resp[0].AssignedToBattleID.String)
+	}
+	for _, zaiSupper := range resp[0].SelectedZaiSupporters {
+		BroadcastSupporterAbilities(zaiSupper.ID, resp[0].AssignedToBattleID.String)
+	}
+	for _, bcSupper := range resp[0].SelectedBostonSupporters {
+		BroadcastSupporterAbilities(bcSupper.ID, resp[0].AssignedToBattleID.String)
+	}
+
+}
+
+type PlayerSupportAbilitiesResponse struct {
+	BattleID           string                    `json:"battle_id"`
+	SupporterAbilities []*PlayerSupporterAbility `json:"supporter_abilities"`
+}
+
+type PlayerSupporterAbility struct {
+	ID                 string `json:"id"`
+	Label              string `json:"label"`
+	Colour             string `json:"colour"`
+	ImageURL           string `json:"image_url"`
+	Description        string `json:"description"`
+	TextColour         string `json:"text_colour"`
+	LocationSelectType string `json:"location_select_type"`
+	GameClientAbilityID int `json:"game_client_ability_id"`
+}
+
+func BroadcastSupporterAbilities(userID, battleID string) {
+	resp := &PlayerSupportAbilitiesResponse{
+		BattleID: battleID,
+	}
+	supporterAbilities, err := boiler.PlayerBattleAbilities(
+		boiler.PlayerBattleAbilityWhere.PlayerID.EQ(userID),
+		boiler.PlayerBattleAbilityWhere.BattleID.EQ(battleID),
+		boiler.PlayerBattleAbilityWhere.UsedAt.IsNull(),
+		qm.Load(boiler.PlayerBattleAbilityRels.GameAbility),
+	).All(gamedb.StdConn)
+	if err != nil {
+		return
+	}
+
+	for _, ability := range supporterAbilities {
+		resp.SupporterAbilities = append(resp.SupporterAbilities, &PlayerSupporterAbility{
+			ID:                 ability.ID,
+			Label:              ability.R.GameAbility.Label,
+			Colour:             ability.R.GameAbility.Colour,
+			ImageURL:           ability.R.GameAbility.ImageURL,
+			Description:        ability.R.GameAbility.Description,
+			TextColour:         ability.R.GameAbility.TextColour,
+			LocationSelectType: ability.R.GameAbility.LocationSelectType,
+			GameClientAbilityID: ability.R.GameAbility.GameClientAbilityID,
+		})
+	}
+
+	ws.PublishMessage(fmt.Sprintf("/user/%s/battle/%s/supporter_abilities", userID, battleID), server.HubKeyPlayerSupportAbilities, resp)
 }
 
 func (arena *Arena) BeginBattle() {
@@ -2274,7 +2336,7 @@ func (btl *Battle) AISpawned(payload *AISpawnedRequest) error {
 		Status:        &Status{},
 	}
 
-	gamelog.L.Info().Msgf("Battle Update: %s - AI Spawned: %d", payload.BattleID, spawnedAI.ParticipantID)
+	//gamelog.L.Info().Msgf("Battle Update: %s - AI Spawned: %d", payload.BattleID, spawnedAI.ParticipantID)
 
 	btl.spawnedAIMux.Lock()
 	defer btl.spawnedAIMux.Unlock()

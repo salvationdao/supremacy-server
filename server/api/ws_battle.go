@@ -34,6 +34,7 @@ func NewBattleController(api *API) *BattleControllerWS {
 
 	// commands from battle
 	api.SecureUserFactionCommand(battle.HubKeyPlayerAbilityUse, api.ArenaManager.PlayerAbilityUse)
+	api.SecureUserFactionCommand(battle.HubKeyPlayerSupportAbilityUse, api.ArenaManager.PlayerSupportAbilityUse)
 
 	// mech move command related
 	api.SecureUserFactionCommand(battle.HubKeyMechMoveCommandCancel, api.ArenaManager.MechMoveCommandCancelHandler)

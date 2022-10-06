@@ -8,6 +8,7 @@ const HubKeyPlayerMarketingPreferencesUpdate = "PLAYER:MARKETING:UPDATE"
 
 const HubKeyPlayerQueueStatus = "PLAYER:QUEUE:STATUS"
 const HubKeyPlayerAbilitiesList = "PLAYER:ABILITIES:LIST:SUBSCRIBE"
+const HubKeyPlayerSupportAbilities = "PLAYER:SUPPORT:ABILITIES"
 const HubKeyMechMoveCommandSubscribe = "MECH:MOVE:COMMAND:SUBSCRIBE"
 
 const HubKeySaleAbilitiesPriceSubscribe = "SALE:ABILITIES:PRICE:SUBSCRIBE"
