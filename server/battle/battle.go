@@ -440,7 +440,7 @@ func (btl *Battle) handleBattleEnd(payload *BattleEndPayload) {
 	var winningFaction *Faction
 	winningFactionID := ""
 
-	//gamelog.L.Debug().Msgf("battle end: looping WinningWarMachines: %s", btl.ID)
+	gamelog.L.Debug().Msgf("battle end: looping WinningWarMachines: %s", btl.ID)
 	for _, wwm := range payload.WinningWarMachines {
 		idx := slices.IndexFunc(btl.WarMachines, func(wm *WarMachine) bool { return wm.Hash == wwm.Hash })
 		if idx == -1 {
@@ -600,13 +600,13 @@ func (btl *Battle) handleBattleEnd(payload *BattleEndPayload) {
 		gamelog.L.Panic().Str("Battle ID", btl.ID).Str("winning_faction_id", winningFactionID).Msg("Failed to update faction win/loss count")
 	}
 
-	//gamelog.L.Debug().Msgf("battle end: looping MostFrequentAbilityExecutors: %s", btl.ID)
+	gamelog.L.Debug().Msgf("battle end: looping MostFrequentAbilityExecutors: %s", btl.ID)
 	topPlayerExecutorsBoilers, err := db.MostFrequentAbilityExecutors(uuid.Must(uuid.FromString(payload.BattleID)))
 	if err != nil {
 		gamelog.L.Warn().Err(err).Str("battle_id", payload.BattleID).Msg("get top player executors")
 	}
 
-	//gamelog.L.Debug().Msgf("battle end: looping topPlayerExecutorsBoilers: %s", btl.ID)
+	gamelog.L.Debug().Msgf("battle end: looping topPlayerExecutorsBoilers: %s", btl.ID)
 	topPlayerExecutors := []*BattleUser{}
 	for _, p := range topPlayerExecutorsBoilers {
 		factionID := uuid.Must(uuid.FromString(winningWarMachines[0].FactionID))
@@ -1291,7 +1291,6 @@ func GameSettingsPayload(btl *Battle) *GameSettingsResponse {
 			Faction:       w.Faction,
 			Tier:          w.Tier,
 			PowerCore:     w.PowerCore,
-			//Abilities:          w.Abilities,
 			Weapons:            w.Weapons,
 			Utility:            w.Utility,
 			Image:              w.Image,
@@ -1345,7 +1344,6 @@ func GameSettingsPayload(btl *Battle) *GameSettingsResponse {
 			Faction:       w.Faction,
 			Tier:          w.Tier,
 			PowerCore:     w.PowerCore,
-			//Abilities:          w.Abilities,
 			Weapons:            w.Weapons,
 			Utility:            w.Utility,
 			Image:              w.Image,
@@ -1820,7 +1818,7 @@ func (btl *Battle) Destroyed(dp *BattleWMDestroyedPayload) {
 
 		}
 
-		//gamelog.L.Debug().Msgf("battle Update: %s - War Machine Destroyed: %s", btl.ID, dHash)
+		gamelog.L.Debug().Msgf("battle Update: %s - War Machine Destroyed: %s", btl.ID, dHash)
 
 		var warMachineID uuid.UUID
 		var killByWarMachineID uuid.UUID
@@ -2220,7 +2218,7 @@ func (btl *Battle) MechsToWarMachines(mechs []*server.Mech) []*WarMachine {
 		newWarMachine.SkinID = mech.ChassisSkinID
 
 		warMachines = append(warMachines, newWarMachine)
-		//gamelog.L.Debug().Interface("mech", mech).Interface("newWarMachine", newWarMachine).Msg("converted mech to warmachine")
+		gamelog.L.Debug().Interface("mech", mech).Interface("newWarMachine", newWarMachine).Msg("converted mech to warmachine")
 	}
 
 	sort.Slice(warMachines, func(i, k int) bool {

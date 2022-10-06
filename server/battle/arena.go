@@ -232,7 +232,7 @@ func (am *ArenaManager) Serve() {
 		gamelog.L.Fatal().Str("Addr", am.Addr).Err(err).Msg("unable to bind Arena to Battle Server address")
 	}
 	go func() {
-		//gamelog.L.Info().Msgf("Starting Battle Arena Server on: %v", am.Addr)
+		gamelog.L.Info().Msgf("Starting Battle Arena Server on: %v", am.Addr)
 
 		err := am.server.Serve(l)
 		if err != nil {
@@ -260,7 +260,7 @@ func (am *ArenaManager) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	//gamelog.L.Info().Str("arena id", arenaID).Msg("New arena is connected.")
+	gamelog.L.Info().Str("arena id", arenaID).Msg("New arena is connected.")
 
 	wsConn, err := websocket.Accept(w, r, nil)
 	if err != nil {
@@ -740,7 +740,7 @@ func (arena *Arena) Message(cmd string, payload interface{}) {
 		gamelog.L.Error().Str("log_name", "battle arena").Interface("payload", payload).Err(err).Msg("failed to write websocket message to game client")
 		return
 	}
-	//gamelog.L.Info().RawJSON("message data", b).Msg("game client message sent")
+	gamelog.L.Info().RawJSON("message data", b).Msg("game client message sent")
 }
 
 type LocationSelectRequest struct {
@@ -1739,9 +1739,11 @@ func (arena *Arena) AssignSupporters() {
 		boiler.GameAbilityWhere.CountPerBattle.GT(0),
 	).All(gamedb.StdConn)
 	if err != nil {
-		// handle
+		L.Error().Err(err).Msg("failed to get battle abilities")
+		return
 	}
 
+	// split the abilities into their factions (we can set factions to have different amounts of different abilities)
 	for _, ability := range battleAbilities {
 		switch ability.FactionID {
 		case server.BostonCyberneticsFactionID:
@@ -1759,7 +1761,7 @@ func (arena *Arena) AssignSupporters() {
 		}
 	}
 
-	// shuffle all the slices
+	// shuffle all the ability ID slices
 	rand.Seed(time.Now().UnixNano())
 	for i := range bcAbilityIDs {
 		j := rand.Intn(i + 1)
@@ -1788,6 +1790,7 @@ func (arena *Arena) AssignSupporters() {
 			// this is, i mod len(supporters)
 			// example, we are on the 8th ability with 6 supporters
 			// 8 mod 6 = 2, so we give this 8th ability to the 2nd supporter
+			// it should cycle everyone giving each person an ability until there are no more abilities in the slice
 			index := int(math.Mod(float64(i), float64(len(resp[0].SelectedZaiSupporters))))
 			userID := resp[0].SelectedZaiSupporters[index].ID
 
@@ -1807,6 +1810,7 @@ func (arena *Arena) AssignSupporters() {
 			// this is, i mod len(supporters)
 			// example, we are on the 8th ability with 6 supporters
 			// 8 mod 6 = 2, so we give this 8th ability to the 2nd supporter
+			// it should cycle everyone giving each person an ability until there are no more abilities in the slice
 			index := int(math.Mod(float64(i), float64(len(resp[0].SelectedRedMountSupporters))))
 			userID := resp[0].SelectedRedMountSupporters[index].ID
 
@@ -1826,6 +1830,7 @@ func (arena *Arena) AssignSupporters() {
 			// this is, i mod len(supporters)
 			// example, we are on the 8th ability with 6 supporters
 			// 8 mod 6 = 2, so we give this 8th ability to the 2nd supporter
+			// it should cycle everyone giving each person an ability until there are no more abilities in the slice
 			index := int(math.Mod(float64(i), float64(len(resp[0].SelectedBostonSupporters))))
 			userID := resp[0].SelectedBostonSupporters[index].ID
 
@@ -1844,7 +1849,7 @@ func (arena *Arena) AssignSupporters() {
 		}
 	}
 
-	// TODO: broadcast users new abilities
+	// here we just broadcast out the support abilities to the supporters
 	for _, rmSupper := range resp[0].SelectedRedMountSupporters {
 		BroadcastSupporterAbilities(rmSupper.ID, resp[0].AssignedToBattleID.String)
 	}
@@ -1854,7 +1859,6 @@ func (arena *Arena) AssignSupporters() {
 	for _, bcSupper := range resp[0].SelectedBostonSupporters {
 		BroadcastSupporterAbilities(bcSupper.ID, resp[0].AssignedToBattleID.String)
 	}
-
 }
 
 type PlayerSupportAbilitiesResponse struct {
@@ -2336,7 +2340,7 @@ func (btl *Battle) AISpawned(payload *AISpawnedRequest) error {
 		Status:        &Status{},
 	}
 
-	//gamelog.L.Info().Msgf("Battle Update: %s - AI Spawned: %d", payload.BattleID, spawnedAI.ParticipantID)
+	gamelog.L.Info().Msgf("Battle Update: %s - AI Spawned: %d", payload.BattleID, spawnedAI.ParticipantID)
 
 	btl.spawnedAIMux.Lock()
 	defer btl.spawnedAIMux.Unlock()

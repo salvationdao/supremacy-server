@@ -50,7 +50,7 @@ func (pac *AbilitiesControllerWS) PlayerSupportAbilitiesHandler(ctx context.Cont
 	// convert to uuid to see if its a uuid
 	_, err := uuid.FromString(battleID)
 	if err != nil {
-		return nil // don't need to return an error, likely undefined
+		return nil // don't need to return an error, frontend can send undefined annoyingly if no battle is active
 	}
 
 	L = L.With().Str("battleID", battleID).Logger()
@@ -65,8 +65,8 @@ func (pac *AbilitiesControllerWS) PlayerSupportAbilitiesHandler(ctx context.Cont
 		qm.Load(boiler.PlayerBattleAbilityRels.GameAbility),
 	).All(gamedb.StdConn)
 	if err != nil {
-		L.Debug().Msg("failed to get abilities")
-		return err
+		L.Error().Err(err).Msg("failed to load abilities")
+		return terror.Error(err, "failed to find supporter abilities, try again or contact support.")
 	}
 
 	for _, ability := range supporterAbilities {

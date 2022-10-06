@@ -353,16 +353,13 @@ func (api *API) ChallengeFundSubscribeHandler(ctx context.Context, key string, p
 	return nil
 }
 
-
 func (api *API) BattleState(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
 	arena, err := api.ArenaManager.GetArenaFromContext(ctx)
 	if err != nil {
-		reply(nil)
+		reply(battle.EndState)
 		return nil
 	}
 
-	state := arena.CurrentBattleState()
-
-	reply(state)
+	reply(arena.CurrentBattleState())
 	return nil
 }
