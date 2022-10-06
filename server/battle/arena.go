@@ -1194,6 +1194,7 @@ type WarMachineStat struct {
 	Health        uint32          `json:"health"`
 	Shield        uint32          `json:"shield"`
 	IsHidden      bool            `json:"is_hidden"`
+	TickOrder     int64           `json:"tick_count"`
 }
 
 const HubKeyWarMachineStatUpdated = "WAR:MACHINE:STAT:UPDATED"
@@ -1203,6 +1204,11 @@ func (am *ArenaManager) WarMachineStatSubscribe(ctx context.Context, key string,
 	arena, err := am.GetArenaFromContext(ctx)
 	if err != nil {
 		return err
+	}
+
+	battle := arena.CurrentBattle()
+	if battle == nil || battle.stage.Load() == BattleStageEnd {
+		return terror.Error(fmt.Errorf("battle not started yet"), "Battle is ended.")
 	}
 
 	slotNumber := chi.RouteContext(ctx).URLParam("slotNumber")
@@ -1225,6 +1231,7 @@ func (am *ArenaManager) WarMachineStatSubscribe(ctx context.Context, key string,
 			Rotation:      wm.Rotation,
 			IsHidden:      wm.IsHidden,
 			Shield:        wm.Shield,
+			TickOrder:     battle.MechTickOrder.Load(),
 		}
 
 		// Hidden/Incognito
@@ -1961,6 +1968,8 @@ func (arena *Arena) BeginBattle() {
 			},
 			Events: events,
 		},
+
+		MechTickOrder: atomic.NewInt64(0),
 	}
 
 	// load war machines first
