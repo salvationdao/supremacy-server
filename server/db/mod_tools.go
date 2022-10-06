@@ -23,11 +23,13 @@ type AdminToolResponse struct {
 }
 
 type AdminBanHistory struct {
-	CreatedAt time.Time     `json:"created_at"`
-	Reason    string        `json:"reason"`
-	EndAt     time.Time     `json:"end_at"`
-	BannedAt  time.Time     `json:"banned_at"`
-	BannedBy  server.Player `json:"banned_by"`
+	ID               string        `json:"id"`
+	CreatedAt        time.Time     `json:"created_at"`
+	Reason           string        `json:"reason"`
+	EndAt            time.Time     `json:"end_at"`
+	BannedAt         time.Time     `json:"banned_at"`
+	BannedBy         server.Player `json:"banned_by"`
+	ManuallyUnbanned bool          `json:"manually_unbanned"`
 }
 
 type AdminToolUserAsset struct {
@@ -43,6 +45,7 @@ func ModToolGetUserData(userID string, isAdmin bool, supsAmount decimal.Decimal)
 
 	playerBans, err := boiler.PlayerBans(
 		boiler.PlayerBanWhere.BannedPlayerID.EQ(userID),
+		qm.OrderBy(fmt.Sprintf("%s DESC", boiler.PlayerBanTableColumns.CreatedAt)),
 		qm.Load(boiler.PlayerBanRels.BannedBy),
 	).All(gamedb.StdConn)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
@@ -54,10 +57,12 @@ func ModToolGetUserData(userID string, isAdmin bool, supsAmount decimal.Decimal)
 	if len(playerBans) > 0 {
 		for _, pb := range playerBans {
 			adminBanHistory := &AdminBanHistory{
-				CreatedAt: pb.CreatedAt,
-				BannedAt:  pb.BannedAt,
-				Reason:    pb.Reason,
-				EndAt:     pb.EndAt,
+				ID:               pb.ID,
+				CreatedAt:        pb.CreatedAt,
+				BannedAt:         pb.BannedAt,
+				Reason:           pb.Reason,
+				EndAt:            pb.EndAt,
+				ManuallyUnbanned: pb.ManuallyUnbanByID.Valid,
 			}
 
 			if pb.R != nil && pb.R.BannedBy != nil {
