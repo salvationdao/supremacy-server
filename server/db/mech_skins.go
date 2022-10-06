@@ -135,7 +135,7 @@ type MechSkinListOpts struct {
 	FilterEquippedStatuses   []string `json:"equipped_statuses"`
 }
 
-func MechSkinList(opts *MechSkinListOpts) (int64, []*server.MechSkin, error) {
+func MechSkinListDetailed(opts *MechSkinListOpts) (int64, []*server.MechSkin, error) {
 	var mechSkins []*server.MechSkin
 
 	var queryMods []qm.QueryMod
