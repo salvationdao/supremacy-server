@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/friendsofgo/errors"
 	"github.com/ninja-software/terror/v2"
+	"github.com/shopspring/decimal"
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 	"golang.org/x/exp/slices"
@@ -28,17 +29,19 @@ type BattleLobby struct {
 }
 
 type BattleLobbiesMech struct {
+	*BlueprintMech
+
 	MechID        string `json:"mech_id" db:"mech_id"`
 	BattleLobbyID string `json:"battle_lobby_id" db:"battle_lobby_id"`
 	AvatarURL     string `json:"avatar_url" db:"avatar_url"`
 	Name          string `json:"name" db:"name"`
-	Label         string `json:"label" db:"label"`
 	Tier          string `json:"tier" db:"tier"`
 
 	IsDestroyed bool           `json:"is_destroyed"`
 	Owner       *boiler.Player `json:"owner"`
 	FactionID   null.String    `json:"faction_id"`
-	WeaponSlots []*WeaponSlot  `json:"weapon_slots"`
+
+	WeaponSlots []*WeaponSlot `json:"weapon_slots"`
 }
 
 type WeaponSlot struct {
@@ -231,7 +234,8 @@ func BattleLobbiesFromBoiler(bls []*boiler.BattleLobby) ([]*BattleLobby, error) 
 			fmt.Sprintf("_ci.%s AS mech_id", boiler.CollectionItemColumns.ItemID),
 			fmt.Sprintf("_ci.%s", boiler.BattleLobbiesMechColumns.BattleLobbyID),
 			boiler.MechTableColumns.Name,
-			boiler.BlueprintMechTableColumns.Label,
+			fmt.Sprintf("TO_JSON( %s.* ) AS bm", boiler.TableNames.BlueprintMechs),
+			boiler.MechSkinTableColumns.Level,
 			boiler.BlueprintMechSkinTableColumns.Tier,
 			fmt.Sprintf(
 				"(SELECT %s FROM %s WHERE %s = %s AND %s = %s) AS %s",
@@ -330,11 +334,15 @@ func BattleLobbiesFromBoiler(bls []*boiler.BattleLobby) ([]*BattleLobby, error) 
 		blm := &BattleLobbiesMech{
 			Owner: &boiler.Player{},
 		}
+
+		bm := &BlueprintMech{}
+		skinLevel := int64(0)
 		err = rows.Scan(
 			&blm.MechID,
 			&blm.BattleLobbyID,
 			&blm.Name,
-			&blm.Label,
+			&bm,
+			&skinLevel,
 			&blm.Tier,
 			&blm.AvatarURL,
 			&blm.Owner.ID,
@@ -348,15 +356,36 @@ func BattleLobbiesFromBoiler(bls []*boiler.BattleLobby) ([]*BattleLobby, error) 
 			return nil, terror.Error(err, "Failed to scan battle lobby mech")
 		}
 
-		if slices.Index(impactedMechIDs, blm.MechID) == -1 {
-			impactedMechIDs = append(impactedMechIDs, blm.MechID)
+		bm.BoostedSpeed = int64(bm.Speed)
+		bm.BoostedMaxHitpoints = int64(bm.MaxHitpoints)
+		bm.BoostedShieldRechargeRate = int64(bm.ShieldRechargeRate)
+
+		// mech boosted stat
+		if bm.BoostStat.Valid {
+			boostPercent := decimal.NewFromInt(skinLevel).Div(decimal.NewFromInt(100)).Add(decimal.NewFromInt(1))
+
+			switch bm.BoostStat.String {
+			case boiler.BoostStatMECH_SPEED:
+				bm.BoostedSpeed = decimal.NewFromInt(bm.BoostedSpeed).Mul(boostPercent).IntPart()
+			case boiler.BoostStatMECH_HEALTH:
+				bm.BoostedMaxHitpoints = decimal.NewFromInt(bm.BoostedMaxHitpoints).Mul(boostPercent).IntPart()
+			case boiler.BoostStatSHIELD_REGEN:
+				bm.BoostedShieldRechargeRate = decimal.NewFromInt(bm.BoostedShieldRechargeRate).Mul(boostPercent).IntPart()
+			}
 		}
+
+		blm.BlueprintMech = bm
 
 		// set is destroyed flag
 		blm.IsDestroyed = slices.Index(destroyedMechIDs, blm.MechID) != -1
 		blm.FactionID = blm.Owner.FactionID
 
 		blms = append(blms, blm)
+
+		// record mech id for weapon query
+		if slices.Index(impactedMechIDs, blm.MechID) == -1 {
+			impactedMechIDs = append(impactedMechIDs, blm.MechID)
+		}
 	}
 
 	// fill up mech weapon slots
@@ -489,7 +518,6 @@ func BattleLobbiesFactionFilter(bls []*BattleLobby, keepDataForFactionID string)
 				BattleLobbyID: blm.BattleLobbyID,
 				AvatarURL:     blm.AvatarURL,
 				Name:          blm.Name,
-				Label:         blm.Label,
 				Tier:          blm.Tier,
 				IsDestroyed:   blm.IsDestroyed,
 				FactionID:     blm.Owner.FactionID,
@@ -501,6 +529,8 @@ func BattleLobbiesFactionFilter(bls []*BattleLobby, keepDataForFactionID string)
 
 				// copy weapon slots
 				battleLobbyMech.WeaponSlots = blm.WeaponSlots
+
+				battleLobbyMech.BlueprintMech = blm.BlueprintMech
 			}
 
 			battleLobby.BattleLobbiesMechs = append(battleLobby.BattleLobbiesMechs, battleLobbyMech)

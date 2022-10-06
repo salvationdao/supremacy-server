@@ -91,22 +91,11 @@ type Mech struct {
 }
 
 type BlueprintMech struct {
-	ID                   string    `json:"id"`
-	Label                string    `json:"label"`
-	WeaponHardpoints     int       `json:"weapon_hardpoints"`
-	UtilitySlots         int       `json:"utility_slots"`
-	Speed                int       `json:"speed"`
-	MaxHitpoints         int       `json:"max_hitpoints"`
-	CreatedAt            time.Time `json:"created_at"`
-	PowerCoreSize        string    `json:"power_core_size,omitempty"`
-	DefaultChassisSkinID string    `json:"default_chassis_skin_id"`
-	Collection           string    `json:"collection"`
+	*boiler.BlueprintMech
 
-	BrandID        string      `json:"brand_id"`
-	MechType       string      `json:"mech_type"`
-	RepairBlocks   int         `json:"repair_blocks"`
-	BoostStat      string      `json:"boost_stat"`
-	AvailabilityID null.String `json:"availability_id"`
+	BoostedSpeed              int64 `json:"boosted_speed"`
+	BoostedMaxHitpoints       int64 `json:"boosted_max_hitpoints"`
+	BoostedShieldRechargeRate int64 `json:"boosted_shield_recharge_rate"`
 
 	// only used on inserting new mechs/items, since we are still giving away some limited released and genesis
 	GenesisTokenID        null.Int64 `json:"genesis_token_id,omitempty"`
@@ -123,15 +112,7 @@ func (b *BlueprintMech) Scan(value interface{}) error {
 
 func BlueprintMechFromBoiler(mech *boiler.BlueprintMech) *BlueprintMech {
 	return &BlueprintMech{
-		ID:               mech.ID,
-		Label:            mech.Label,
-		WeaponHardpoints: mech.WeaponHardpoints,
-		UtilitySlots:     mech.UtilitySlots,
-		Speed:            mech.Speed,
-		MaxHitpoints:     mech.MaxHitpoints,
-		CreatedAt:        mech.CreatedAt,
-		PowerCoreSize:    mech.PowerCoreSize,
-		Collection:       mech.Collection,
+		BlueprintMech: mech,
 	}
 }
 
