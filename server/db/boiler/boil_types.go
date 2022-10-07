@@ -78,12 +78,6 @@ const (
 	AbilityTriggerTypePLAYER_ABILITY = "PLAYER_ABILITY"
 )
 
-// Enum values for ArenaTypeEnum
-const (
-	ArenaTypeEnumSTORY      = "STORY"
-	ArenaTypeEnumEXPEDITION = "EXPEDITION"
-)
-
 // Enum values for BattleEvent
 const (
 	BattleEventKilled           = "killed"
@@ -250,6 +244,22 @@ const (
 	FeatureNamePROFILE_AVATAR  = "PROFILE_AVATAR"
 )
 
+// Enum values for FiatProductItemTypes
+const (
+	FiatProductItemTypesMechPackage   = "mech_package"
+	FiatProductItemTypesWeaponPackage = "weapon_package"
+	FiatProductItemTypesSingleItem    = "single_item"
+)
+
+// Enum values for FiatProductTypes
+const (
+	FiatProductTypesStarterPackage = "starter_package"
+	FiatProductTypesMysteryCrate   = "mystery_crate"
+	FiatProductTypesMechSkin       = "mech_skin"
+	FiatProductTypesWeaponSkin     = "weapon_skin"
+	FiatProductTypesMechAnimation  = "mech_animation"
+)
+
 // Enum values for AbilityLevel
 const (
 	AbilityLevelMECH    = "MECH"
@@ -306,6 +316,19 @@ const (
 	TemplateItemTypePOWER_CORE     = "POWER_CORE"
 	TemplateItemTypeWEAPON_SKIN    = "WEAPON_SKIN"
 	TemplateItemTypePLAYER_ABILITY = "PLAYER_ABILITY"
+)
+
+// Enum values for OrderStatuses
+const (
+	OrderStatusesPending   = "pending"
+	OrderStatusesCompleted = "completed"
+	OrderStatusesRefunded  = "refunded"
+)
+
+// Enum values for PaymentMethods
+const (
+	PaymentMethodsSups   = "sups"
+	PaymentMethodsStripe = "stripe"
 )
 
 // Enum values for BanFromType

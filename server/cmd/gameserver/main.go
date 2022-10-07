@@ -34,6 +34,7 @@ import (
 
 	"github.com/gofrs/uuid"
 	"github.com/pemistahl/lingua-go"
+	"github.com/stripe/stripe-go/v72/client"
 	"github.com/urfave/cli/v2"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 
@@ -139,6 +140,10 @@ func main() {
 					// telegram bot token
 					&cli.StringFlag{Name: "telegram_bot_token", Value: "", EnvVars: []string{envPrefix + "_TELEGRAM_BOT_TOKEN"}, Usage: "telegram bot token"},
 
+					// stripe stuff
+					&cli.StringFlag{Name: "stripe_webhook_secret", Value: "", EnvVars: []string{envPrefix + "_STRIPE_WEBHOOK_SECRET"}, Usage: "stripe payment webhook secret key"},
+					&cli.StringFlag{Name: "stripe_secret_key", Value: "", EnvVars: []string{envPrefix + "_STRIPE_SECRET_KEY"}, Usage: "stripe payment api secret key"},
+
 					// TODO: clear up token
 					&cli.BoolFlag{Name: "jwt_encrypt", Value: true, EnvVars: []string{envPrefix + "_JWT_ENCRYPT", "JWT_ENCRYPT"}, Usage: "set if to encrypt jwt tokens or not"},
 					&cli.StringFlag{Name: "jwt_encrypt_key", Value: "ITF1vauAxvJlF0PLNY9btOO9ZzbUmc6X", EnvVars: []string{envPrefix + "_JWT_KEY", "JWT_KEY"}, Usage: "supports key sizes of 16, 24 or 32 bytes"},
@@ -205,6 +210,8 @@ func main() {
 					zendeskUrl := c.String("zendesk_url")
 
 					telegramBotToken := c.String("telegram_bot_token")
+
+					stripeSecretKey := c.String("stripe_secret_key")
 
 					passportAddr := c.String("passport_addr")
 					passportClientToken := c.String("passport_server_token")
@@ -347,7 +354,10 @@ func main() {
 					}
 					gamelog.L.Info().Msgf("Telegram took %s", time.Since(start))
 					start = time.Now()
-					//initialize lingua language detector
+					// initialise stripe
+					stripeClient := &client.API{}
+					stripeClient.Init(stripeSecretKey, nil)
+					// initialise lingua language detector
 					languages := []lingua.Language{
 						lingua.English,
 						lingua.Tagalog,
@@ -423,7 +433,7 @@ func main() {
 					gamelog.L.Info().Msgf("Zendesk took %s", time.Since(start))
 
 					gamelog.L.Info().Msg("Setting up API")
-					api, err := SetupAPI(c, ctx, log_helpers.NamedLogger(gamelog.L, "API"), arenaManager, rpcClient, twilio, telebot, zendesk, detector, pm, staticDataURL, qm)
+					api, err := SetupAPI(c, ctx, log_helpers.NamedLogger(gamelog.L, "API"), arenaManager, rpcClient, twilio, telebot, zendesk, detector, pm, stripeClient, staticDataURL, qm)
 					if err != nil {
 						fmt.Println(err)
 						os.Exit(1)
@@ -461,7 +471,7 @@ func main() {
 						stop := make(chan os.Signal)
 						signal.Notify(stop, os.Interrupt)
 						<-stop
-						err := replay.StopAllActiveRecording()
+						err = replay.StopAllActiveRecording()
 						if err != nil {
 							gamelog.L.Error().Err(err).Msg("Failed to stop all active recordings")
 						}
@@ -705,7 +715,7 @@ func UpdateKeycard(api *api.API, pp *xsyn_rpcclient.XsynXrpcClient, filePath str
 				factionID = uuid.Must(uuid.FromString(resp.FactionID.String))
 			}
 
-			err = api.UpsertPlayer(resp.UserID, null.StringFrom(resp.Username), resp.PublicAddress, null.StringFrom(factionID.String()), nil)
+			err = api.UpsertPlayer(resp.UserID, null.StringFrom(resp.Username), resp.PublicAddress, null.StringFrom(factionID.String()), nil, null.Bool{})
 			if err != nil {
 				gamelog.L.Error().Err(err).Str("public_address", keycardAssets.PublicAddress).Str("factionID", factionID.String()).Str("resp.Username", resp.Username).Str("resp.UserID", resp.UserID).Msg("failed to register player")
 			}
@@ -783,6 +793,7 @@ func SetupAPI(
 	zendesk *zendesk.Zendesk,
 	languageDetector lingua.LanguageDetector,
 	pm *profanities.ProfanityManager,
+	stripeClient *client.API,
 	staticSyncURL string,
 	questManager *quest.System,
 ) (*api.API, error) {
@@ -791,6 +802,7 @@ func SetupAPI(
 	sentryServerName := ctxCLI.String("sentry_server_name")
 	sentryTraceRate := ctxCLI.Float64("sentry_sample_rate")
 	sentryRelease := fmt.Sprintf("%s@%s", SentryReleasePrefix, Version)
+	stripeWebhookSecret := ctxCLI.String("stripe_webhook_secret")
 	err := log_helpers.SentryInit(sentryDSNBackend, sentryServerName, sentryRelease, environment, sentryTraceRate, log)
 	switch errors.Unwrap(err) {
 	case log_helpers.ErrSentryInitEnvironment:
@@ -843,7 +855,7 @@ func SetupAPI(
 
 	// API Server
 	privateKeySignerHex := ctxCLI.String("private_key_signer_hex")
-	serverAPI, err := api.NewAPI(ctx, arenaManager, passport, HTMLSanitizePolicy, config, sms, telegram, zendesk, languageDetector, pm, syncConfig, questManager, privateKeySignerHex)
+	serverAPI, err := api.NewAPI(ctx, arenaManager, passport, HTMLSanitizePolicy, stripeClient, stripeWebhookSecret, config, sms, telegram, zendesk, languageDetector, pm, syncConfig, questManager, privateKeySignerHex)
 	if err != nil {
 		return nil, err
 	}

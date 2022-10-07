@@ -30,10 +30,8 @@ type GameAbility struct {
 	Label                        string      `boiler:"label" boil:"label" json:"label" toml:"label" yaml:"label"`
 	Colour                       string      `boiler:"colour" boil:"colour" json:"colour" toml:"colour" yaml:"colour"`
 	ImageURL                     string      `boiler:"image_url" boil:"image_url" json:"image_url" toml:"image_url" yaml:"image_url"`
-	SupsCost                     string      `boiler:"sups_cost" boil:"sups_cost" json:"sups_cost" toml:"sups_cost" yaml:"sups_cost"`
 	Description                  string      `boiler:"description" boil:"description" json:"description" toml:"description" yaml:"description"`
 	TextColour                   string      `boiler:"text_colour" boil:"text_colour" json:"text_colour" toml:"text_colour" yaml:"text_colour"`
-	CurrentSups                  string      `boiler:"current_sups" boil:"current_sups" json:"current_sups" toml:"current_sups" yaml:"current_sups"`
 	Level                        string      `boiler:"level" boil:"level" json:"level" toml:"level" yaml:"level"`
 	LocationSelectType           string      `boiler:"location_select_type" boil:"location_select_type" json:"location_select_type" toml:"location_select_type" yaml:"location_select_type"`
 	DeletedAt                    null.Time   `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
@@ -45,6 +43,7 @@ type GameAbility struct {
 	ShouldCheckTeamKill          bool        `boiler:"should_check_team_kill" boil:"should_check_team_kill" json:"should_check_team_kill" toml:"should_check_team_kill" yaml:"should_check_team_kill"`
 	MaximumTeamKillTolerantCount int         `boiler:"maximum_team_kill_tolerant_count" boil:"maximum_team_kill_tolerant_count" json:"maximum_team_kill_tolerant_count" toml:"maximum_team_kill_tolerant_count" yaml:"maximum_team_kill_tolerant_count"`
 	IgnoreSelfKill               bool        `boiler:"ignore_self_kill" boil:"ignore_self_kill" json:"ignore_self_kill" toml:"ignore_self_kill" yaml:"ignore_self_kill"`
+	CountPerBattle               int         `boiler:"count_per_battle" boil:"count_per_battle" json:"count_per_battle" toml:"count_per_battle" yaml:"count_per_battle"`
 
 	R *gameAbilityR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L gameAbilityL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -58,10 +57,8 @@ var GameAbilityColumns = struct {
 	Label                        string
 	Colour                       string
 	ImageURL                     string
-	SupsCost                     string
 	Description                  string
 	TextColour                   string
-	CurrentSups                  string
 	Level                        string
 	LocationSelectType           string
 	DeletedAt                    string
@@ -73,6 +70,7 @@ var GameAbilityColumns = struct {
 	ShouldCheckTeamKill          string
 	MaximumTeamKillTolerantCount string
 	IgnoreSelfKill               string
+	CountPerBattle               string
 }{
 	ID:                           "id",
 	GameClientAbilityID:          "game_client_ability_id",
@@ -81,10 +79,8 @@ var GameAbilityColumns = struct {
 	Label:                        "label",
 	Colour:                       "colour",
 	ImageURL:                     "image_url",
-	SupsCost:                     "sups_cost",
 	Description:                  "description",
 	TextColour:                   "text_colour",
-	CurrentSups:                  "current_sups",
 	Level:                        "level",
 	LocationSelectType:           "location_select_type",
 	DeletedAt:                    "deleted_at",
@@ -96,6 +92,7 @@ var GameAbilityColumns = struct {
 	ShouldCheckTeamKill:          "should_check_team_kill",
 	MaximumTeamKillTolerantCount: "maximum_team_kill_tolerant_count",
 	IgnoreSelfKill:               "ignore_self_kill",
+	CountPerBattle:               "count_per_battle",
 }
 
 var GameAbilityTableColumns = struct {
@@ -106,10 +103,8 @@ var GameAbilityTableColumns = struct {
 	Label                        string
 	Colour                       string
 	ImageURL                     string
-	SupsCost                     string
 	Description                  string
 	TextColour                   string
-	CurrentSups                  string
 	Level                        string
 	LocationSelectType           string
 	DeletedAt                    string
@@ -121,6 +116,7 @@ var GameAbilityTableColumns = struct {
 	ShouldCheckTeamKill          string
 	MaximumTeamKillTolerantCount string
 	IgnoreSelfKill               string
+	CountPerBattle               string
 }{
 	ID:                           "game_abilities.id",
 	GameClientAbilityID:          "game_abilities.game_client_ability_id",
@@ -129,10 +125,8 @@ var GameAbilityTableColumns = struct {
 	Label:                        "game_abilities.label",
 	Colour:                       "game_abilities.colour",
 	ImageURL:                     "game_abilities.image_url",
-	SupsCost:                     "game_abilities.sups_cost",
 	Description:                  "game_abilities.description",
 	TextColour:                   "game_abilities.text_colour",
-	CurrentSups:                  "game_abilities.current_sups",
 	Level:                        "game_abilities.level",
 	LocationSelectType:           "game_abilities.location_select_type",
 	DeletedAt:                    "game_abilities.deleted_at",
@@ -144,6 +138,7 @@ var GameAbilityTableColumns = struct {
 	ShouldCheckTeamKill:          "game_abilities.should_check_team_kill",
 	MaximumTeamKillTolerantCount: "game_abilities.maximum_team_kill_tolerant_count",
 	IgnoreSelfKill:               "game_abilities.ignore_self_kill",
+	CountPerBattle:               "game_abilities.count_per_battle",
 }
 
 // Generated where
@@ -156,10 +151,8 @@ var GameAbilityWhere = struct {
 	Label                        whereHelperstring
 	Colour                       whereHelperstring
 	ImageURL                     whereHelperstring
-	SupsCost                     whereHelperstring
 	Description                  whereHelperstring
 	TextColour                   whereHelperstring
-	CurrentSups                  whereHelperstring
 	Level                        whereHelperstring
 	LocationSelectType           whereHelperstring
 	DeletedAt                    whereHelpernull_Time
@@ -171,6 +164,7 @@ var GameAbilityWhere = struct {
 	ShouldCheckTeamKill          whereHelperbool
 	MaximumTeamKillTolerantCount whereHelperint
 	IgnoreSelfKill               whereHelperbool
+	CountPerBattle               whereHelperint
 }{
 	ID:                           whereHelperstring{field: "\"game_abilities\".\"id\""},
 	GameClientAbilityID:          whereHelperint{field: "\"game_abilities\".\"game_client_ability_id\""},
@@ -179,10 +173,8 @@ var GameAbilityWhere = struct {
 	Label:                        whereHelperstring{field: "\"game_abilities\".\"label\""},
 	Colour:                       whereHelperstring{field: "\"game_abilities\".\"colour\""},
 	ImageURL:                     whereHelperstring{field: "\"game_abilities\".\"image_url\""},
-	SupsCost:                     whereHelperstring{field: "\"game_abilities\".\"sups_cost\""},
 	Description:                  whereHelperstring{field: "\"game_abilities\".\"description\""},
 	TextColour:                   whereHelperstring{field: "\"game_abilities\".\"text_colour\""},
-	CurrentSups:                  whereHelperstring{field: "\"game_abilities\".\"current_sups\""},
 	Level:                        whereHelperstring{field: "\"game_abilities\".\"level\""},
 	LocationSelectType:           whereHelperstring{field: "\"game_abilities\".\"location_select_type\""},
 	DeletedAt:                    whereHelpernull_Time{field: "\"game_abilities\".\"deleted_at\""},
@@ -194,6 +186,7 @@ var GameAbilityWhere = struct {
 	ShouldCheckTeamKill:          whereHelperbool{field: "\"game_abilities\".\"should_check_team_kill\""},
 	MaximumTeamKillTolerantCount: whereHelperint{field: "\"game_abilities\".\"maximum_team_kill_tolerant_count\""},
 	IgnoreSelfKill:               whereHelperbool{field: "\"game_abilities\".\"ignore_self_kill\""},
+	CountPerBattle:               whereHelperint{field: "\"game_abilities\".\"count_per_battle\""},
 }
 
 // GameAbilityRels is where relationship names are stored.
@@ -203,6 +196,7 @@ var GameAbilityRels = struct {
 	BattleAbilityTriggers      string
 	BattleEventsGameAbilities  string
 	MechAbilityTriggerLogsOlds string
+	PlayerBattleAbilities      string
 	PlayerKillLogs             string
 }{
 	BattleAbility:              "BattleAbility",
@@ -210,6 +204,7 @@ var GameAbilityRels = struct {
 	BattleAbilityTriggers:      "BattleAbilityTriggers",
 	BattleEventsGameAbilities:  "BattleEventsGameAbilities",
 	MechAbilityTriggerLogsOlds: "MechAbilityTriggerLogsOlds",
+	PlayerBattleAbilities:      "PlayerBattleAbilities",
 	PlayerKillLogs:             "PlayerKillLogs",
 }
 
@@ -220,6 +215,7 @@ type gameAbilityR struct {
 	BattleAbilityTriggers      BattleAbilityTriggerSlice      `boiler:"BattleAbilityTriggers" boil:"BattleAbilityTriggers" json:"BattleAbilityTriggers" toml:"BattleAbilityTriggers" yaml:"BattleAbilityTriggers"`
 	BattleEventsGameAbilities  BattleEventsGameAbilitySlice   `boiler:"BattleEventsGameAbilities" boil:"BattleEventsGameAbilities" json:"BattleEventsGameAbilities" toml:"BattleEventsGameAbilities" yaml:"BattleEventsGameAbilities"`
 	MechAbilityTriggerLogsOlds MechAbilityTriggerLogsOldSlice `boiler:"MechAbilityTriggerLogsOlds" boil:"MechAbilityTriggerLogsOlds" json:"MechAbilityTriggerLogsOlds" toml:"MechAbilityTriggerLogsOlds" yaml:"MechAbilityTriggerLogsOlds"`
+	PlayerBattleAbilities      PlayerBattleAbilitySlice       `boiler:"PlayerBattleAbilities" boil:"PlayerBattleAbilities" json:"PlayerBattleAbilities" toml:"PlayerBattleAbilities" yaml:"PlayerBattleAbilities"`
 	PlayerKillLogs             PlayerKillLogSlice             `boiler:"PlayerKillLogs" boil:"PlayerKillLogs" json:"PlayerKillLogs" toml:"PlayerKillLogs" yaml:"PlayerKillLogs"`
 }
 
@@ -232,9 +228,9 @@ func (*gameAbilityR) NewStruct() *gameAbilityR {
 type gameAbilityL struct{}
 
 var (
-	gameAbilityAllColumns            = []string{"id", "game_client_ability_id", "faction_id", "battle_ability_id", "label", "colour", "image_url", "sups_cost", "description", "text_colour", "current_sups", "level", "location_select_type", "deleted_at", "launching_delay_seconds", "display_on_mini_map", "mini_map_display_effect_type", "mech_display_effect_type", "animation_duration_seconds", "should_check_team_kill", "maximum_team_kill_tolerant_count", "ignore_self_kill"}
+	gameAbilityAllColumns            = []string{"id", "game_client_ability_id", "faction_id", "battle_ability_id", "label", "colour", "image_url", "description", "text_colour", "level", "location_select_type", "deleted_at", "launching_delay_seconds", "display_on_mini_map", "mini_map_display_effect_type", "mech_display_effect_type", "animation_duration_seconds", "should_check_team_kill", "maximum_team_kill_tolerant_count", "ignore_self_kill", "count_per_battle"}
 	gameAbilityColumnsWithoutDefault = []string{"game_client_ability_id", "faction_id", "label", "colour", "image_url", "description", "text_colour"}
-	gameAbilityColumnsWithDefault    = []string{"id", "battle_ability_id", "sups_cost", "current_sups", "level", "location_select_type", "deleted_at", "launching_delay_seconds", "display_on_mini_map", "mini_map_display_effect_type", "mech_display_effect_type", "animation_duration_seconds", "should_check_team_kill", "maximum_team_kill_tolerant_count", "ignore_self_kill"}
+	gameAbilityColumnsWithDefault    = []string{"id", "battle_ability_id", "level", "location_select_type", "deleted_at", "launching_delay_seconds", "display_on_mini_map", "mini_map_display_effect_type", "mech_display_effect_type", "animation_duration_seconds", "should_check_team_kill", "maximum_team_kill_tolerant_count", "ignore_self_kill", "count_per_battle"}
 	gameAbilityPrimaryKeyColumns     = []string{"id"}
 	gameAbilityGeneratedColumns      = []string{}
 )
@@ -571,6 +567,28 @@ func (o *GameAbility) MechAbilityTriggerLogsOlds(mods ...qm.QueryMod) mechAbilit
 
 	if len(queries.GetSelect(query.Query)) == 0 {
 		queries.SetSelect(query.Query, []string{"\"mech_ability_trigger_logs_old\".*"})
+	}
+
+	return query
+}
+
+// PlayerBattleAbilities retrieves all the player_battle_ability's PlayerBattleAbilities with an executor.
+func (o *GameAbility) PlayerBattleAbilities(mods ...qm.QueryMod) playerBattleAbilityQuery {
+	var queryMods []qm.QueryMod
+	if len(mods) != 0 {
+		queryMods = append(queryMods, mods...)
+	}
+
+	queryMods = append(queryMods,
+		qm.Where("\"player_battle_abilities\".\"game_ability_id\"=?", o.ID),
+		qmhelper.WhereIsNull("\"player_battle_abilities\".\"deleted_at\""),
+	)
+
+	query := PlayerBattleAbilities(queryMods...)
+	queries.SetFrom(query.Query, "\"player_battle_abilities\"")
+
+	if len(queries.GetSelect(query.Query)) == 0 {
+		queries.SetSelect(query.Query, []string{"\"player_battle_abilities\".*"})
 	}
 
 	return query
@@ -1107,6 +1125,105 @@ func (gameAbilityL) LoadMechAbilityTriggerLogsOlds(e boil.Executor, singular boo
 	return nil
 }
 
+// LoadPlayerBattleAbilities allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for a 1-M or N-M relationship.
+func (gameAbilityL) LoadPlayerBattleAbilities(e boil.Executor, singular bool, maybeGameAbility interface{}, mods queries.Applicator) error {
+	var slice []*GameAbility
+	var object *GameAbility
+
+	if singular {
+		object = maybeGameAbility.(*GameAbility)
+	} else {
+		slice = *maybeGameAbility.(*[]*GameAbility)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &gameAbilityR{}
+		}
+		args = append(args, object.ID)
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &gameAbilityR{}
+			}
+
+			for _, a := range args {
+				if a == obj.ID {
+					continue Outer
+				}
+			}
+
+			args = append(args, obj.ID)
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`player_battle_abilities`),
+		qm.WhereIn(`player_battle_abilities.game_ability_id in ?`, args...),
+		qmhelper.WhereIsNull(`player_battle_abilities.deleted_at`),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load player_battle_abilities")
+	}
+
+	var resultSlice []*PlayerBattleAbility
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice player_battle_abilities")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results in eager load on player_battle_abilities")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for player_battle_abilities")
+	}
+
+	if len(playerBattleAbilityAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+	if singular {
+		object.R.PlayerBattleAbilities = resultSlice
+		for _, foreign := range resultSlice {
+			if foreign.R == nil {
+				foreign.R = &playerBattleAbilityR{}
+			}
+			foreign.R.GameAbility = object
+		}
+		return nil
+	}
+
+	for _, foreign := range resultSlice {
+		for _, local := range slice {
+			if local.ID == foreign.GameAbilityID {
+				local.R.PlayerBattleAbilities = append(local.R.PlayerBattleAbilities, foreign)
+				if foreign.R == nil {
+					foreign.R = &playerBattleAbilityR{}
+				}
+				foreign.R.GameAbility = local
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
 // LoadPlayerKillLogs allows an eager lookup of values, cached into the
 // loaded structs of the objects. This is for a 1-M or N-M relationship.
 func (gameAbilityL) LoadPlayerKillLogs(e boil.Executor, singular bool, maybeGameAbility interface{}, mods queries.Applicator) error {
@@ -1550,6 +1667,58 @@ func (o *GameAbility) AddMechAbilityTriggerLogsOlds(exec boil.Executor, insert b
 	for _, rel := range related {
 		if rel.R == nil {
 			rel.R = &mechAbilityTriggerLogsOldR{
+				GameAbility: o,
+			}
+		} else {
+			rel.R.GameAbility = o
+		}
+	}
+	return nil
+}
+
+// AddPlayerBattleAbilities adds the given related objects to the existing relationships
+// of the game_ability, optionally inserting them as new records.
+// Appends related to o.R.PlayerBattleAbilities.
+// Sets related.R.GameAbility appropriately.
+func (o *GameAbility) AddPlayerBattleAbilities(exec boil.Executor, insert bool, related ...*PlayerBattleAbility) error {
+	var err error
+	for _, rel := range related {
+		if insert {
+			rel.GameAbilityID = o.ID
+			if err = rel.Insert(exec, boil.Infer()); err != nil {
+				return errors.Wrap(err, "failed to insert into foreign table")
+			}
+		} else {
+			updateQuery := fmt.Sprintf(
+				"UPDATE \"player_battle_abilities\" SET %s WHERE %s",
+				strmangle.SetParamNames("\"", "\"", 1, []string{"game_ability_id"}),
+				strmangle.WhereClause("\"", "\"", 2, playerBattleAbilityPrimaryKeyColumns),
+			)
+			values := []interface{}{o.ID, rel.ID}
+
+			if boil.DebugMode {
+				fmt.Fprintln(boil.DebugWriter, updateQuery)
+				fmt.Fprintln(boil.DebugWriter, values)
+			}
+			if _, err = exec.Exec(updateQuery, values...); err != nil {
+				return errors.Wrap(err, "failed to update foreign table")
+			}
+
+			rel.GameAbilityID = o.ID
+		}
+	}
+
+	if o.R == nil {
+		o.R = &gameAbilityR{
+			PlayerBattleAbilities: related,
+		}
+	} else {
+		o.R.PlayerBattleAbilities = append(o.R.PlayerBattleAbilities, related...)
+	}
+
+	for _, rel := range related {
+		if rel.R == nil {
+			rel.R = &playerBattleAbilityR{
 				GameAbility: o,
 			}
 		} else {

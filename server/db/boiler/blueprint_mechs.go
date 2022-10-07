@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/friendsofgo/errors"
+	"github.com/shopspring/decimal"
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries"
@@ -23,25 +24,26 @@ import (
 
 // BlueprintMech is an object representing the database table.
 type BlueprintMech struct {
-	ID                      string      `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
-	Label                   string      `boiler:"label" boil:"label" json:"label" toml:"label" yaml:"label"`
-	CreatedAt               time.Time   `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
-	DefaultChassisSkinID    string      `boiler:"default_chassis_skin_id" boil:"default_chassis_skin_id" json:"default_chassis_skin_id" toml:"default_chassis_skin_id" yaml:"default_chassis_skin_id"`
-	BrandID                 string      `boiler:"brand_id" boil:"brand_id" json:"brand_id" toml:"brand_id" yaml:"brand_id"`
-	MechType                string      `boiler:"mech_type" boil:"mech_type" json:"mech_type" toml:"mech_type" yaml:"mech_type"`
-	RepairBlocks            int         `boiler:"repair_blocks" boil:"repair_blocks" json:"repair_blocks" toml:"repair_blocks" yaml:"repair_blocks"`
-	BoostStat               null.String `boiler:"boost_stat" boil:"boost_stat" json:"boost_stat,omitempty" toml:"boost_stat" yaml:"boost_stat,omitempty"`
-	WeaponHardpoints        int         `boiler:"weapon_hardpoints" boil:"weapon_hardpoints" json:"weapon_hardpoints" toml:"weapon_hardpoints" yaml:"weapon_hardpoints"`
-	PowerCoreSize           string      `boiler:"power_core_size" boil:"power_core_size" json:"power_core_size" toml:"power_core_size" yaml:"power_core_size"`
-	UtilitySlots            int         `boiler:"utility_slots" boil:"utility_slots" json:"utility_slots" toml:"utility_slots" yaml:"utility_slots"`
-	Speed                   int         `boiler:"speed" boil:"speed" json:"speed" toml:"speed" yaml:"speed"`
-	MaxHitpoints            int         `boiler:"max_hitpoints" boil:"max_hitpoints" json:"max_hitpoints" toml:"max_hitpoints" yaml:"max_hitpoints"`
-	Collection              string      `boiler:"collection" boil:"collection" json:"collection" toml:"collection" yaml:"collection"`
-	AvailabilityID          null.String `boiler:"availability_id" boil:"availability_id" json:"availability_id,omitempty" toml:"availability_id" yaml:"availability_id,omitempty"`
-	ShieldTypeID            string      `boiler:"shield_type_id" boil:"shield_type_id" json:"shield_type_id" toml:"shield_type_id" yaml:"shield_type_id"`
-	ShieldMax               int         `boiler:"shield_max" boil:"shield_max" json:"shield_max" toml:"shield_max" yaml:"shield_max"`
-	ShieldRechargeRate      int         `boiler:"shield_recharge_rate" boil:"shield_recharge_rate" json:"shield_recharge_rate" toml:"shield_recharge_rate" yaml:"shield_recharge_rate"`
-	ShieldRechargePowerCost int         `boiler:"shield_recharge_power_cost" boil:"shield_recharge_power_cost" json:"shield_recharge_power_cost" toml:"shield_recharge_power_cost" yaml:"shield_recharge_power_cost"`
+	ID                      string          `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
+	Label                   string          `boiler:"label" boil:"label" json:"label" toml:"label" yaml:"label"`
+	CreatedAt               time.Time       `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
+	DefaultChassisSkinID    string          `boiler:"default_chassis_skin_id" boil:"default_chassis_skin_id" json:"default_chassis_skin_id" toml:"default_chassis_skin_id" yaml:"default_chassis_skin_id"`
+	BrandID                 string          `boiler:"brand_id" boil:"brand_id" json:"brand_id" toml:"brand_id" yaml:"brand_id"`
+	MechType                string          `boiler:"mech_type" boil:"mech_type" json:"mech_type" toml:"mech_type" yaml:"mech_type"`
+	RepairBlocks            int             `boiler:"repair_blocks" boil:"repair_blocks" json:"repair_blocks" toml:"repair_blocks" yaml:"repair_blocks"`
+	BoostStat               null.String     `boiler:"boost_stat" boil:"boost_stat" json:"boost_stat,omitempty" toml:"boost_stat" yaml:"boost_stat,omitempty"`
+	WeaponHardpoints        int             `boiler:"weapon_hardpoints" boil:"weapon_hardpoints" json:"weapon_hardpoints" toml:"weapon_hardpoints" yaml:"weapon_hardpoints"`
+	PowerCoreSize           string          `boiler:"power_core_size" boil:"power_core_size" json:"power_core_size" toml:"power_core_size" yaml:"power_core_size"`
+	UtilitySlots            int             `boiler:"utility_slots" boil:"utility_slots" json:"utility_slots" toml:"utility_slots" yaml:"utility_slots"`
+	Speed                   int             `boiler:"speed" boil:"speed" json:"speed" toml:"speed" yaml:"speed"`
+	MaxHitpoints            int             `boiler:"max_hitpoints" boil:"max_hitpoints" json:"max_hitpoints" toml:"max_hitpoints" yaml:"max_hitpoints"`
+	Collection              string          `boiler:"collection" boil:"collection" json:"collection" toml:"collection" yaml:"collection"`
+	AvailabilityID          null.String     `boiler:"availability_id" boil:"availability_id" json:"availability_id,omitempty" toml:"availability_id" yaml:"availability_id,omitempty"`
+	ShieldTypeID            string          `boiler:"shield_type_id" boil:"shield_type_id" json:"shield_type_id" toml:"shield_type_id" yaml:"shield_type_id"`
+	ShieldMax               int             `boiler:"shield_max" boil:"shield_max" json:"shield_max" toml:"shield_max" yaml:"shield_max"`
+	ShieldRechargeRate      int             `boiler:"shield_recharge_rate" boil:"shield_recharge_rate" json:"shield_recharge_rate" toml:"shield_recharge_rate" yaml:"shield_recharge_rate"`
+	ShieldRechargePowerCost int             `boiler:"shield_recharge_power_cost" boil:"shield_recharge_power_cost" json:"shield_recharge_power_cost" toml:"shield_recharge_power_cost" yaml:"shield_recharge_power_cost"`
+	ShieldRechargeDelay     decimal.Decimal `boiler:"shield_recharge_delay" boil:"shield_recharge_delay" json:"shield_recharge_delay" toml:"shield_recharge_delay" yaml:"shield_recharge_delay"`
 
 	R *blueprintMechR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L blueprintMechL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -67,6 +69,7 @@ var BlueprintMechColumns = struct {
 	ShieldMax               string
 	ShieldRechargeRate      string
 	ShieldRechargePowerCost string
+	ShieldRechargeDelay     string
 }{
 	ID:                      "id",
 	Label:                   "label",
@@ -87,6 +90,7 @@ var BlueprintMechColumns = struct {
 	ShieldMax:               "shield_max",
 	ShieldRechargeRate:      "shield_recharge_rate",
 	ShieldRechargePowerCost: "shield_recharge_power_cost",
+	ShieldRechargeDelay:     "shield_recharge_delay",
 }
 
 var BlueprintMechTableColumns = struct {
@@ -109,6 +113,7 @@ var BlueprintMechTableColumns = struct {
 	ShieldMax               string
 	ShieldRechargeRate      string
 	ShieldRechargePowerCost string
+	ShieldRechargeDelay     string
 }{
 	ID:                      "blueprint_mechs.id",
 	Label:                   "blueprint_mechs.label",
@@ -129,6 +134,7 @@ var BlueprintMechTableColumns = struct {
 	ShieldMax:               "blueprint_mechs.shield_max",
 	ShieldRechargeRate:      "blueprint_mechs.shield_recharge_rate",
 	ShieldRechargePowerCost: "blueprint_mechs.shield_recharge_power_cost",
+	ShieldRechargeDelay:     "blueprint_mechs.shield_recharge_delay",
 }
 
 // Generated where
@@ -153,6 +159,7 @@ var BlueprintMechWhere = struct {
 	ShieldMax               whereHelperint
 	ShieldRechargeRate      whereHelperint
 	ShieldRechargePowerCost whereHelperint
+	ShieldRechargeDelay     whereHelperdecimal_Decimal
 }{
 	ID:                      whereHelperstring{field: "\"blueprint_mechs\".\"id\""},
 	Label:                   whereHelperstring{field: "\"blueprint_mechs\".\"label\""},
@@ -173,42 +180,46 @@ var BlueprintMechWhere = struct {
 	ShieldMax:               whereHelperint{field: "\"blueprint_mechs\".\"shield_max\""},
 	ShieldRechargeRate:      whereHelperint{field: "\"blueprint_mechs\".\"shield_recharge_rate\""},
 	ShieldRechargePowerCost: whereHelperint{field: "\"blueprint_mechs\".\"shield_recharge_power_cost\""},
+	ShieldRechargeDelay:     whereHelperdecimal_Decimal{field: "\"blueprint_mechs\".\"shield_recharge_delay\""},
 }
 
 // BlueprintMechRels is where relationship names are stored.
 var BlueprintMechRels = struct {
-	ShieldType                            string
-	Availability                          string
-	DefaultChassisSkin                    string
-	ModelBlueprintChasses                 string
-	MechModelBlueprintMechAnimations      string
-	ModelBlueprintMechsOlds               string
-	MechModelMechAnimations               string
-	MechModelMechModelSkinCompatibilities string
-	BlueprintMechs                        string
+	ShieldType                             string
+	Availability                           string
+	DefaultChassisSkin                     string
+	ModelBlueprintChasses                  string
+	MechModelBlueprintMechAnimations       string
+	ModelBlueprintMechsOlds                string
+	MechBlueprintFiatProductItemBlueprints string
+	MechModelMechAnimations                string
+	MechModelMechModelSkinCompatibilities  string
+	BlueprintMechs                         string
 }{
-	ShieldType:                            "ShieldType",
-	Availability:                          "Availability",
-	DefaultChassisSkin:                    "DefaultChassisSkin",
-	ModelBlueprintChasses:                 "ModelBlueprintChasses",
-	MechModelBlueprintMechAnimations:      "MechModelBlueprintMechAnimations",
-	ModelBlueprintMechsOlds:               "ModelBlueprintMechsOlds",
-	MechModelMechAnimations:               "MechModelMechAnimations",
-	MechModelMechModelSkinCompatibilities: "MechModelMechModelSkinCompatibilities",
-	BlueprintMechs:                        "BlueprintMechs",
+	ShieldType:                             "ShieldType",
+	Availability:                           "Availability",
+	DefaultChassisSkin:                     "DefaultChassisSkin",
+	ModelBlueprintChasses:                  "ModelBlueprintChasses",
+	MechModelBlueprintMechAnimations:       "MechModelBlueprintMechAnimations",
+	ModelBlueprintMechsOlds:                "ModelBlueprintMechsOlds",
+	MechBlueprintFiatProductItemBlueprints: "MechBlueprintFiatProductItemBlueprints",
+	MechModelMechAnimations:                "MechModelMechAnimations",
+	MechModelMechModelSkinCompatibilities:  "MechModelMechModelSkinCompatibilities",
+	BlueprintMechs:                         "BlueprintMechs",
 }
 
 // blueprintMechR is where relationships are stored.
 type blueprintMechR struct {
-	ShieldType                            *BlueprintShieldType            `boiler:"ShieldType" boil:"ShieldType" json:"ShieldType" toml:"ShieldType" yaml:"ShieldType"`
-	Availability                          *Availability                   `boiler:"Availability" boil:"Availability" json:"Availability" toml:"Availability" yaml:"Availability"`
-	DefaultChassisSkin                    *BlueprintMechSkin              `boiler:"DefaultChassisSkin" boil:"DefaultChassisSkin" json:"DefaultChassisSkin" toml:"DefaultChassisSkin" yaml:"DefaultChassisSkin"`
-	ModelBlueprintChasses                 BlueprintChassisSlice           `boiler:"ModelBlueprintChasses" boil:"ModelBlueprintChasses" json:"ModelBlueprintChasses" toml:"ModelBlueprintChasses" yaml:"ModelBlueprintChasses"`
-	MechModelBlueprintMechAnimations      BlueprintMechAnimationSlice     `boiler:"MechModelBlueprintMechAnimations" boil:"MechModelBlueprintMechAnimations" json:"MechModelBlueprintMechAnimations" toml:"MechModelBlueprintMechAnimations" yaml:"MechModelBlueprintMechAnimations"`
-	ModelBlueprintMechsOlds               BlueprintMechsOldSlice          `boiler:"ModelBlueprintMechsOlds" boil:"ModelBlueprintMechsOlds" json:"ModelBlueprintMechsOlds" toml:"ModelBlueprintMechsOlds" yaml:"ModelBlueprintMechsOlds"`
-	MechModelMechAnimations               MechAnimationSlice              `boiler:"MechModelMechAnimations" boil:"MechModelMechAnimations" json:"MechModelMechAnimations" toml:"MechModelMechAnimations" yaml:"MechModelMechAnimations"`
-	MechModelMechModelSkinCompatibilities MechModelSkinCompatibilitySlice `boiler:"MechModelMechModelSkinCompatibilities" boil:"MechModelMechModelSkinCompatibilities" json:"MechModelMechModelSkinCompatibilities" toml:"MechModelMechModelSkinCompatibilities" yaml:"MechModelMechModelSkinCompatibilities"`
-	BlueprintMechs                        MechSlice                       `boiler:"BlueprintMechs" boil:"BlueprintMechs" json:"BlueprintMechs" toml:"BlueprintMechs" yaml:"BlueprintMechs"`
+	ShieldType                             *BlueprintShieldType            `boiler:"ShieldType" boil:"ShieldType" json:"ShieldType" toml:"ShieldType" yaml:"ShieldType"`
+	Availability                           *Availability                   `boiler:"Availability" boil:"Availability" json:"Availability" toml:"Availability" yaml:"Availability"`
+	DefaultChassisSkin                     *BlueprintMechSkin              `boiler:"DefaultChassisSkin" boil:"DefaultChassisSkin" json:"DefaultChassisSkin" toml:"DefaultChassisSkin" yaml:"DefaultChassisSkin"`
+	ModelBlueprintChasses                  BlueprintChassisSlice           `boiler:"ModelBlueprintChasses" boil:"ModelBlueprintChasses" json:"ModelBlueprintChasses" toml:"ModelBlueprintChasses" yaml:"ModelBlueprintChasses"`
+	MechModelBlueprintMechAnimations       BlueprintMechAnimationSlice     `boiler:"MechModelBlueprintMechAnimations" boil:"MechModelBlueprintMechAnimations" json:"MechModelBlueprintMechAnimations" toml:"MechModelBlueprintMechAnimations" yaml:"MechModelBlueprintMechAnimations"`
+	ModelBlueprintMechsOlds                BlueprintMechsOldSlice          `boiler:"ModelBlueprintMechsOlds" boil:"ModelBlueprintMechsOlds" json:"ModelBlueprintMechsOlds" toml:"ModelBlueprintMechsOlds" yaml:"ModelBlueprintMechsOlds"`
+	MechBlueprintFiatProductItemBlueprints FiatProductItemBlueprintSlice   `boiler:"MechBlueprintFiatProductItemBlueprints" boil:"MechBlueprintFiatProductItemBlueprints" json:"MechBlueprintFiatProductItemBlueprints" toml:"MechBlueprintFiatProductItemBlueprints" yaml:"MechBlueprintFiatProductItemBlueprints"`
+	MechModelMechAnimations                MechAnimationSlice              `boiler:"MechModelMechAnimations" boil:"MechModelMechAnimations" json:"MechModelMechAnimations" toml:"MechModelMechAnimations" yaml:"MechModelMechAnimations"`
+	MechModelMechModelSkinCompatibilities  MechModelSkinCompatibilitySlice `boiler:"MechModelMechModelSkinCompatibilities" boil:"MechModelMechModelSkinCompatibilities" json:"MechModelMechModelSkinCompatibilities" toml:"MechModelMechModelSkinCompatibilities" yaml:"MechModelMechModelSkinCompatibilities"`
+	BlueprintMechs                         MechSlice                       `boiler:"BlueprintMechs" boil:"BlueprintMechs" json:"BlueprintMechs" toml:"BlueprintMechs" yaml:"BlueprintMechs"`
 }
 
 // NewStruct creates a new relationship struct
@@ -220,9 +231,9 @@ func (*blueprintMechR) NewStruct() *blueprintMechR {
 type blueprintMechL struct{}
 
 var (
-	blueprintMechAllColumns            = []string{"id", "label", "created_at", "default_chassis_skin_id", "brand_id", "mech_type", "repair_blocks", "boost_stat", "weapon_hardpoints", "power_core_size", "utility_slots", "speed", "max_hitpoints", "collection", "availability_id", "shield_type_id", "shield_max", "shield_recharge_rate", "shield_recharge_power_cost"}
+	blueprintMechAllColumns            = []string{"id", "label", "created_at", "default_chassis_skin_id", "brand_id", "mech_type", "repair_blocks", "boost_stat", "weapon_hardpoints", "power_core_size", "utility_slots", "speed", "max_hitpoints", "collection", "availability_id", "shield_type_id", "shield_max", "shield_recharge_rate", "shield_recharge_power_cost", "shield_recharge_delay"}
 	blueprintMechColumnsWithoutDefault = []string{"label", "default_chassis_skin_id", "brand_id", "mech_type", "shield_type_id"}
-	blueprintMechColumnsWithDefault    = []string{"id", "created_at", "repair_blocks", "boost_stat", "weapon_hardpoints", "power_core_size", "utility_slots", "speed", "max_hitpoints", "collection", "availability_id", "shield_max", "shield_recharge_rate", "shield_recharge_power_cost"}
+	blueprintMechColumnsWithDefault    = []string{"id", "created_at", "repair_blocks", "boost_stat", "weapon_hardpoints", "power_core_size", "utility_slots", "speed", "max_hitpoints", "collection", "availability_id", "shield_max", "shield_recharge_rate", "shield_recharge_power_cost", "shield_recharge_delay"}
 	blueprintMechPrimaryKeyColumns     = []string{"id"}
 	blueprintMechGeneratedColumns      = []string{}
 )
@@ -572,6 +583,27 @@ func (o *BlueprintMech) ModelBlueprintMechsOlds(mods ...qm.QueryMod) blueprintMe
 
 	if len(queries.GetSelect(query.Query)) == 0 {
 		queries.SetSelect(query.Query, []string{"\"blueprint_mechs_old\".*"})
+	}
+
+	return query
+}
+
+// MechBlueprintFiatProductItemBlueprints retrieves all the fiat_product_item_blueprint's FiatProductItemBlueprints with an executor via mech_blueprint_id column.
+func (o *BlueprintMech) MechBlueprintFiatProductItemBlueprints(mods ...qm.QueryMod) fiatProductItemBlueprintQuery {
+	var queryMods []qm.QueryMod
+	if len(mods) != 0 {
+		queryMods = append(queryMods, mods...)
+	}
+
+	queryMods = append(queryMods,
+		qm.Where("\"fiat_product_item_blueprints\".\"mech_blueprint_id\"=?", o.ID),
+	)
+
+	query := FiatProductItemBlueprints(queryMods...)
+	queries.SetFrom(query.Query, "\"fiat_product_item_blueprints\"")
+
+	if len(queries.GetSelect(query.Query)) == 0 {
+		queries.SetSelect(query.Query, []string{"\"fiat_product_item_blueprints\".*"})
 	}
 
 	return query
@@ -1255,6 +1287,104 @@ func (blueprintMechL) LoadModelBlueprintMechsOlds(e boil.Executor, singular bool
 	return nil
 }
 
+// LoadMechBlueprintFiatProductItemBlueprints allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for a 1-M or N-M relationship.
+func (blueprintMechL) LoadMechBlueprintFiatProductItemBlueprints(e boil.Executor, singular bool, maybeBlueprintMech interface{}, mods queries.Applicator) error {
+	var slice []*BlueprintMech
+	var object *BlueprintMech
+
+	if singular {
+		object = maybeBlueprintMech.(*BlueprintMech)
+	} else {
+		slice = *maybeBlueprintMech.(*[]*BlueprintMech)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &blueprintMechR{}
+		}
+		args = append(args, object.ID)
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &blueprintMechR{}
+			}
+
+			for _, a := range args {
+				if queries.Equal(a, obj.ID) {
+					continue Outer
+				}
+			}
+
+			args = append(args, obj.ID)
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`fiat_product_item_blueprints`),
+		qm.WhereIn(`fiat_product_item_blueprints.mech_blueprint_id in ?`, args...),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load fiat_product_item_blueprints")
+	}
+
+	var resultSlice []*FiatProductItemBlueprint
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice fiat_product_item_blueprints")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results in eager load on fiat_product_item_blueprints")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for fiat_product_item_blueprints")
+	}
+
+	if len(fiatProductItemBlueprintAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+	if singular {
+		object.R.MechBlueprintFiatProductItemBlueprints = resultSlice
+		for _, foreign := range resultSlice {
+			if foreign.R == nil {
+				foreign.R = &fiatProductItemBlueprintR{}
+			}
+			foreign.R.MechBlueprint = object
+		}
+		return nil
+	}
+
+	for _, foreign := range resultSlice {
+		for _, local := range slice {
+			if queries.Equal(local.ID, foreign.MechBlueprintID) {
+				local.R.MechBlueprintFiatProductItemBlueprints = append(local.R.MechBlueprintFiatProductItemBlueprints, foreign)
+				if foreign.R == nil {
+					foreign.R = &fiatProductItemBlueprintR{}
+				}
+				foreign.R.MechBlueprint = local
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
 // LoadMechModelMechAnimations allows an eager lookup of values, cached into the
 // loaded structs of the objects. This is for a 1-M or N-M relationship.
 func (blueprintMechL) LoadMechModelMechAnimations(e boil.Executor, singular bool, maybeBlueprintMech interface{}, mods queries.Applicator) error {
@@ -1875,6 +2005,131 @@ func (o *BlueprintMech) AddModelBlueprintMechsOlds(exec boil.Executor, insert bo
 			rel.R.Model = o
 		}
 	}
+	return nil
+}
+
+// AddMechBlueprintFiatProductItemBlueprints adds the given related objects to the existing relationships
+// of the blueprint_mech, optionally inserting them as new records.
+// Appends related to o.R.MechBlueprintFiatProductItemBlueprints.
+// Sets related.R.MechBlueprint appropriately.
+func (o *BlueprintMech) AddMechBlueprintFiatProductItemBlueprints(exec boil.Executor, insert bool, related ...*FiatProductItemBlueprint) error {
+	var err error
+	for _, rel := range related {
+		if insert {
+			queries.Assign(&rel.MechBlueprintID, o.ID)
+			if err = rel.Insert(exec, boil.Infer()); err != nil {
+				return errors.Wrap(err, "failed to insert into foreign table")
+			}
+		} else {
+			updateQuery := fmt.Sprintf(
+				"UPDATE \"fiat_product_item_blueprints\" SET %s WHERE %s",
+				strmangle.SetParamNames("\"", "\"", 1, []string{"mech_blueprint_id"}),
+				strmangle.WhereClause("\"", "\"", 2, fiatProductItemBlueprintPrimaryKeyColumns),
+			)
+			values := []interface{}{o.ID, rel.ID}
+
+			if boil.DebugMode {
+				fmt.Fprintln(boil.DebugWriter, updateQuery)
+				fmt.Fprintln(boil.DebugWriter, values)
+			}
+			if _, err = exec.Exec(updateQuery, values...); err != nil {
+				return errors.Wrap(err, "failed to update foreign table")
+			}
+
+			queries.Assign(&rel.MechBlueprintID, o.ID)
+		}
+	}
+
+	if o.R == nil {
+		o.R = &blueprintMechR{
+			MechBlueprintFiatProductItemBlueprints: related,
+		}
+	} else {
+		o.R.MechBlueprintFiatProductItemBlueprints = append(o.R.MechBlueprintFiatProductItemBlueprints, related...)
+	}
+
+	for _, rel := range related {
+		if rel.R == nil {
+			rel.R = &fiatProductItemBlueprintR{
+				MechBlueprint: o,
+			}
+		} else {
+			rel.R.MechBlueprint = o
+		}
+	}
+	return nil
+}
+
+// SetMechBlueprintFiatProductItemBlueprints removes all previously related items of the
+// blueprint_mech replacing them completely with the passed
+// in related items, optionally inserting them as new records.
+// Sets o.R.MechBlueprint's MechBlueprintFiatProductItemBlueprints accordingly.
+// Replaces o.R.MechBlueprintFiatProductItemBlueprints with related.
+// Sets related.R.MechBlueprint's MechBlueprintFiatProductItemBlueprints accordingly.
+func (o *BlueprintMech) SetMechBlueprintFiatProductItemBlueprints(exec boil.Executor, insert bool, related ...*FiatProductItemBlueprint) error {
+	query := "update \"fiat_product_item_blueprints\" set \"mech_blueprint_id\" = null where \"mech_blueprint_id\" = $1"
+	values := []interface{}{o.ID}
+	if boil.DebugMode {
+		fmt.Fprintln(boil.DebugWriter, query)
+		fmt.Fprintln(boil.DebugWriter, values)
+	}
+	_, err := exec.Exec(query, values...)
+	if err != nil {
+		return errors.Wrap(err, "failed to remove relationships before set")
+	}
+
+	if o.R != nil {
+		for _, rel := range o.R.MechBlueprintFiatProductItemBlueprints {
+			queries.SetScanner(&rel.MechBlueprintID, nil)
+			if rel.R == nil {
+				continue
+			}
+
+			rel.R.MechBlueprint = nil
+		}
+
+		o.R.MechBlueprintFiatProductItemBlueprints = nil
+	}
+	return o.AddMechBlueprintFiatProductItemBlueprints(exec, insert, related...)
+}
+
+// RemoveMechBlueprintFiatProductItemBlueprints relationships from objects passed in.
+// Removes related items from R.MechBlueprintFiatProductItemBlueprints (uses pointer comparison, removal does not keep order)
+// Sets related.R.MechBlueprint.
+func (o *BlueprintMech) RemoveMechBlueprintFiatProductItemBlueprints(exec boil.Executor, related ...*FiatProductItemBlueprint) error {
+	if len(related) == 0 {
+		return nil
+	}
+
+	var err error
+	for _, rel := range related {
+		queries.SetScanner(&rel.MechBlueprintID, nil)
+		if rel.R != nil {
+			rel.R.MechBlueprint = nil
+		}
+		if _, err = rel.Update(exec, boil.Whitelist("mech_blueprint_id")); err != nil {
+			return err
+		}
+	}
+	if o.R == nil {
+		return nil
+	}
+
+	for _, rel := range related {
+		for i, ri := range o.R.MechBlueprintFiatProductItemBlueprints {
+			if rel != ri {
+				continue
+			}
+
+			ln := len(o.R.MechBlueprintFiatProductItemBlueprints)
+			if ln > 1 && i < ln-1 {
+				o.R.MechBlueprintFiatProductItemBlueprints[i] = o.R.MechBlueprintFiatProductItemBlueprints[ln-1]
+			}
+			o.R.MechBlueprintFiatProductItemBlueprints = o.R.MechBlueprintFiatProductItemBlueprints[:ln-1]
+			break
+		}
+	}
+
 	return nil
 }
 

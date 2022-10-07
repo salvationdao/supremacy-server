@@ -27,7 +27,7 @@ type ItemKeycardSale struct {
 	ID             string              `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
 	FactionID      string              `boiler:"faction_id" boil:"faction_id" json:"faction_id" toml:"faction_id" yaml:"faction_id"`
 	ItemID         string              `boiler:"item_id" boil:"item_id" json:"item_id" toml:"item_id" yaml:"item_id"`
-	ListingFeeTXID string              `boiler:"listing_fee_tx_id" boil:"listing_fee_tx_id" json:"listing_fee_tx_id" toml:"listing_fee_tx_id" yaml:"listing_fee_tx_id"`
+	ListingFeeTXID null.String         `boiler:"listing_fee_tx_id" boil:"listing_fee_tx_id" json:"listing_fee_tx_id,omitempty" toml:"listing_fee_tx_id" yaml:"listing_fee_tx_id,omitempty"`
 	OwnerID        string              `boiler:"owner_id" boil:"owner_id" json:"owner_id" toml:"owner_id" yaml:"owner_id"`
 	BuyoutPrice    decimal.Decimal     `boiler:"buyout_price" boil:"buyout_price" json:"buyout_price" toml:"buyout_price" yaml:"buyout_price"`
 	EndAt          time.Time           `boiler:"end_at" boil:"end_at" json:"end_at" toml:"end_at" yaml:"end_at"`
@@ -118,7 +118,7 @@ var ItemKeycardSaleWhere = struct {
 	ID             whereHelperstring
 	FactionID      whereHelperstring
 	ItemID         whereHelperstring
-	ListingFeeTXID whereHelperstring
+	ListingFeeTXID whereHelpernull_String
 	OwnerID        whereHelperstring
 	BuyoutPrice    whereHelperdecimal_Decimal
 	EndAt          whereHelpertime_Time
@@ -134,7 +134,7 @@ var ItemKeycardSaleWhere = struct {
 	ID:             whereHelperstring{field: "\"item_keycard_sales\".\"id\""},
 	FactionID:      whereHelperstring{field: "\"item_keycard_sales\".\"faction_id\""},
 	ItemID:         whereHelperstring{field: "\"item_keycard_sales\".\"item_id\""},
-	ListingFeeTXID: whereHelperstring{field: "\"item_keycard_sales\".\"listing_fee_tx_id\""},
+	ListingFeeTXID: whereHelpernull_String{field: "\"item_keycard_sales\".\"listing_fee_tx_id\""},
 	OwnerID:        whereHelperstring{field: "\"item_keycard_sales\".\"owner_id\""},
 	BuyoutPrice:    whereHelperdecimal_Decimal{field: "\"item_keycard_sales\".\"buyout_price\""},
 	EndAt:          whereHelpertime_Time{field: "\"item_keycard_sales\".\"end_at\""},
@@ -182,8 +182,8 @@ type itemKeycardSaleL struct{}
 
 var (
 	itemKeycardSaleAllColumns            = []string{"id", "faction_id", "item_id", "listing_fee_tx_id", "owner_id", "buyout_price", "end_at", "sold_at", "sold_for", "sold_to", "sold_tx_id", "sold_fee_tx_id", "deleted_at", "updated_at", "created_at"}
-	itemKeycardSaleColumnsWithoutDefault = []string{"faction_id", "item_id", "listing_fee_tx_id", "owner_id", "buyout_price", "end_at"}
-	itemKeycardSaleColumnsWithDefault    = []string{"id", "sold_at", "sold_for", "sold_to", "sold_tx_id", "sold_fee_tx_id", "deleted_at", "updated_at", "created_at"}
+	itemKeycardSaleColumnsWithoutDefault = []string{"faction_id", "item_id", "owner_id", "buyout_price", "end_at"}
+	itemKeycardSaleColumnsWithDefault    = []string{"id", "listing_fee_tx_id", "sold_at", "sold_for", "sold_to", "sold_tx_id", "sold_fee_tx_id", "deleted_at", "updated_at", "created_at"}
 	itemKeycardSalePrimaryKeyColumns     = []string{"id"}
 	itemKeycardSaleGeneratedColumns      = []string{}
 )

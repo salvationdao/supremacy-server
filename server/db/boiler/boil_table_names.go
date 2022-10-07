@@ -20,14 +20,18 @@ var TableNames = struct {
 	BattleEventsWarMachineDestroyedAssistedWarMachines string
 	BattleHistory                                      string
 	BattleKills                                        string
-	BattleMapQueue                                     string
+	BattleLobbies                                      string
+	BattleLobbiesMechs                                 string
+	BattleLobbySupporterOptIns                         string
+	BattleLobbySupporters                              string
+	BattleMapQueueOld                                  string
 	BattleMechs                                        string
-	BattleQueue                                        string
-	BattleQueueFees                                    string
+	BattleQueueFeesOld                                 string
 	BattleQueueNotifications                           string
+	BattleQueueOld                                     string
 	BattleReplays                                      string
 	BattleViewers                                      string
-	BattleWarMachineQueues                             string
+	BattleWarMachineQueuesOld                          string
 	BattleWins                                         string
 	Battles                                            string
 	Blobs                                              string
@@ -61,6 +65,10 @@ var TableNames = struct {
 	Factions                                           string
 	FailedPlayerKeycardsSync                           string
 	Features                                           string
+	FiatProductItemBlueprints                          string
+	FiatProductItems                                   string
+	FiatProductPricings                                string
+	FiatProducts                                       string
 	FingerprintIps                                     string
 	Fingerprints                                       string
 	GameAbilities                                      string
@@ -86,10 +94,13 @@ var TableNames = struct {
 	Multipliers                                        string
 	MysteryCrate                                       string
 	MysteryCrateBlueprints                             string
+	OrderItems                                         string
+	Orders                                             string
 	OvenStreams                                        string
 	PlayerAbilities                                    string
 	PlayerActiveLogs                                   string
 	PlayerBans                                         string
+	PlayerBattleAbilities                              string
 	PlayerFingerprints                                 string
 	PlayerIps                                          string
 	PlayerKeycards                                     string
@@ -124,7 +135,11 @@ var TableNames = struct {
 	RepairOffers                                       string
 	SalePlayerAbilities                                string
 	SchemaMigrations                                   string
+	ShoppingCartItems                                  string
+	ShoppingCarts                                      string
 	SpoilsOfWar                                        string
+	StackedMechBattleLogs                              string
+	StakedMechs                                        string
 	StaticMigrations                                   string
 	StorePurchaseHistory                               string
 	StorefrontMysteryCrates                            string
@@ -170,14 +185,18 @@ var TableNames = struct {
 	BattleEventsWarMachineDestroyedAssistedWarMachines: "battle_events_war_machine_destroyed_assisted_war_machines",
 	BattleHistory:                  "battle_history",
 	BattleKills:                    "battle_kills",
-	BattleMapQueue:                 "battle_map_queue",
+	BattleLobbies:                  "battle_lobbies",
+	BattleLobbiesMechs:             "battle_lobbies_mechs",
+	BattleLobbySupporterOptIns:     "battle_lobby_supporter_opt_ins",
+	BattleLobbySupporters:          "battle_lobby_supporters",
+	BattleMapQueueOld:              "battle_map_queue_old",
 	BattleMechs:                    "battle_mechs",
-	BattleQueue:                    "battle_queue",
-	BattleQueueFees:                "battle_queue_fees",
+	BattleQueueFeesOld:             "battle_queue_fees_old",
 	BattleQueueNotifications:       "battle_queue_notifications",
+	BattleQueueOld:                 "battle_queue_old",
 	BattleReplays:                  "battle_replays",
 	BattleViewers:                  "battle_viewers",
-	BattleWarMachineQueues:         "battle_war_machine_queues",
+	BattleWarMachineQueuesOld:      "battle_war_machine_queues_old",
 	BattleWins:                     "battle_wins",
 	Battles:                        "battles",
 	Blobs:                          "blobs",
@@ -211,6 +230,10 @@ var TableNames = struct {
 	Factions:                       "factions",
 	FailedPlayerKeycardsSync:       "failed_player_keycards_sync",
 	Features:                       "features",
+	FiatProductItemBlueprints:      "fiat_product_item_blueprints",
+	FiatProductItems:               "fiat_product_items",
+	FiatProductPricings:            "fiat_product_pricings",
+	FiatProducts:                   "fiat_products",
 	FingerprintIps:                 "fingerprint_ips",
 	Fingerprints:                   "fingerprints",
 	GameAbilities:                  "game_abilities",
@@ -236,10 +259,13 @@ var TableNames = struct {
 	Multipliers:                    "multipliers",
 	MysteryCrate:                   "mystery_crate",
 	MysteryCrateBlueprints:         "mystery_crate_blueprints",
+	OrderItems:                     "order_items",
+	Orders:                         "orders",
 	OvenStreams:                    "oven_streams",
 	PlayerAbilities:                "player_abilities",
 	PlayerActiveLogs:               "player_active_logs",
 	PlayerBans:                     "player_bans",
+	PlayerBattleAbilities:          "player_battle_abilities",
 	PlayerFingerprints:             "player_fingerprints",
 	PlayerIps:                      "player_ips",
 	PlayerKeycards:                 "player_keycards",
@@ -274,7 +300,11 @@ var TableNames = struct {
 	RepairOffers:                   "repair_offers",
 	SalePlayerAbilities:            "sale_player_abilities",
 	SchemaMigrations:               "schema_migrations",
+	ShoppingCartItems:              "shopping_cart_items",
+	ShoppingCarts:                  "shopping_carts",
 	SpoilsOfWar:                    "spoils_of_war",
+	StackedMechBattleLogs:          "stacked_mech_battle_logs",
+	StakedMechs:                    "staked_mechs",
 	StaticMigrations:               "static_migrations",
 	StorePurchaseHistory:           "store_purchase_history",
 	StorefrontMysteryCrates:        "storefront_mystery_crates",

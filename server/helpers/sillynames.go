@@ -37,3 +37,10 @@ func GenerateStupidName() string {
 	adjective := lowercaseFirstLetter(randomAdjective())
 	return noun1 + adjective + " " + noun2
 }
+
+func GenerateAdjectiveName() string {
+	rand.Seed(time.Now().UnixNano())
+	noun1 := uppercaseFirstLetter(randomNoun())
+	adjective := lowercaseFirstLetter(randomAdjective())
+	return adjective + " " + noun1
+}

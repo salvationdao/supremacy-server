@@ -1,7 +1,14 @@
 package server
 
+// player
+
+const HubKeyPlayerMarketingPreferencesUpdate = "PLAYER:MARKETING:UPDATE"
+
 // player_abilities
+
+const HubKeyPlayerQueueStatus = "PLAYER:QUEUE:STATUS"
 const HubKeyPlayerAbilitiesList = "PLAYER:ABILITIES:LIST:SUBSCRIBE"
+const HubKeyPlayerSupportAbilities = "PLAYER:SUPPORT:ABILITIES"
 const HubKeyMechMoveCommandSubscribe = "MECH:MOVE:COMMAND:SUBSCRIBE"
 
 const HubKeySaleAbilitiesPriceSubscribe = "SALE:ABILITIES:PRICE:SUBSCRIBE"
@@ -11,8 +18,6 @@ const HubKeySaleAbilityClaim = "SALE:ABILITY:CLAIM"
 const HubKeySaleAbilityPurchase = "SALE:ABILITY:PURCHASE"
 
 const HubKeyGlobalAnnouncementSubscribe = "GLOBAL_ANNOUNCEMENT:SUBSCRIBE"
-
-const WarMachineRepairStatusSubscribe = "WAR:MACHINE:REPAIR:STATUS:SUBSCRIBE"
 
 const HubKeySyndicateGeneralDetailSubscribe = "SYNDICATE:GENERAL:DETAIL:SUBSCRIBE"
 const HubKeySyndicateDirectorsSubscribe = "SYNDICATE:DIRECTORS:SUBSCRIBE"
@@ -66,6 +71,17 @@ const HubKeyChallengeFundSubscribe = "CHALLENGE:FUND"
 
 const HubKeyBattleArenaListSubscribe = "BATTLE:ARENA:LIST"
 const HubKeyBattleArenaClosedSubscribe = "BATTLE:ARENA:CLOSED"
+const HubKeyNextBattleDetails = "NEXT:BATTLE:DETAILS"
+const HubKeyBattleState = "BATTLE:STATE"
+
+// store
+
+const HubKeyMysteryCrateSubscribe = "STORE:MYSTERY:CRATE:SUBSCRIBE"
+
+// fiat
+
+const HubKeyShoppingCartExpired = "FIAT:SHOPPING_CART:EXPIRED"
+const HubKeyShoppingCartUpdated = "FIAT:SHOPPING_CART:UPDATED"
 
 // battle abilities
 
@@ -76,3 +92,11 @@ const HubKeyMiniMapAbilityDisplayList = "MINI:MAP:ABILITY:DISPLAY:LIST"
 const HubKeyVoiceStreamJoinFactionCommander = "VOICE:JOIN:FACTION:COMMANDER"
 const HubKeyVoiceStreamLeaveFactionCommander = "VOICE:LEAVE:FACTION:COMMANDER"
 const HubKeyVoiceStreamVoteKick = "VOICE:VOTE:KICK"
+
+// battle queue
+
+const HubKeyPlayerMechsBrief = "PLAYER:MECHS:BRIEF"
+
+const HubKeyBattleLobbyListUpdate = "BATTLE:LOBBY:LIST:UPDATE"
+const HubKeyPlayerAssetMechQueueSubscribe = "PLAYER:ASSET:MECH:QUEUE:SUBSCRIBE"
+const HubKeyBattleETAUpdate = "BATTLE:ETA:UPDATE"

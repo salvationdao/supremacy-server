@@ -3,16 +3,8 @@ package voice_chat
 import (
 	"crypto/hmac"
 	"crypto/sha1"
-	"database/sql"
 	"encoding/base64"
 	"fmt"
-	"github.com/friendsofgo/errors"
-	"github.com/ninja-software/terror/v2"
-	"github.com/ninja-syndicate/ws"
-	"github.com/sasha-s/go-deadlock"
-	"github.com/volatiletech/sqlboiler/v4/boil"
-	"github.com/volatiletech/sqlboiler/v4/queries/qm"
-	"golang.org/x/exp/slices"
 	"net/url"
 	"server"
 	"server/db"
@@ -21,6 +13,13 @@ import (
 	"server/gamelog"
 	"strings"
 	"time"
+
+	"github.com/ninja-software/terror/v2"
+	"github.com/ninja-syndicate/ws"
+	"github.com/sasha-s/go-deadlock"
+	"github.com/volatiletech/sqlboiler/v4/boil"
+	"github.com/volatiletech/sqlboiler/v4/queries/qm"
+	"golang.org/x/exp/slices"
 )
 
 type VoiceChannel struct {
@@ -41,7 +40,7 @@ var VoiceChatSecretKey string
 
 func GetSignedPolicyURL(ownerID string) (*SignedPolicyURL, error) {
 	baseURL := fmt.Sprintf("%s/%s", db.GetStrWithDefault(db.KeyOvenmediaStreamURL, "wss://stream.supremacygame.io:3334/app"), ownerID)
-	urlExpiryTime := db.GetIntWithDefault(db.KeyVoiceExpiryTimeHours, 2)
+	urlExpiryTime := db.GetIntWithDefault(db.KeyVoiceExpiryTimeHours, 2000)
 	signedPolicyURL := &SignedPolicyURL{}
 
 	expiryTime := time.Now().Add(time.Hour * time.Duration(urlExpiryTime))
@@ -148,147 +147,32 @@ func (vc *VoiceChannel) UpdateAllVoiceChannel(warMachineIDs []string, arenaID st
 		vcs := []*server.VoiceStreamResp{}
 		switch p.FactionID.String {
 		case server.ZaibatsuFactionID:
-			for _, zc := range zaiChannel {
-				vc := &server.VoiceStreamResp{
-					ListenURL:          zc.ListenStreamURL,
-					IsFactionCommander: false,
-					Username:           p.Username,
-					UserGID:            p.Gid,
-				}
+			vcs, err = db.GetActiveVoiceChat(p.ID, p.FactionID.String, arenaID)
+			if err != nil {
+				return terror.Error(err, "Failed to get active voice chat")
 
-				if zc.OwnerID == p.ID {
-					vc.SendURL = zc.SendStreamURL
-				}
-
-				vcs = append(vcs, vc)
-			}
-
-			factionCommander, err := boiler.VoiceStreams(
-				boiler.VoiceStreamWhere.ArenaID.EQ(arenaID),
-				boiler.VoiceStreamWhere.IsActive.EQ(true),
-				boiler.VoiceStreamWhere.SenderType.EQ(boiler.VoiceSenderTypeFACTION_COMMANDER),
-				boiler.VoiceStreamWhere.FactionID.EQ(server.ZaibatsuFactionID),
-			).One(gamedb.StdConn)
-			if err != nil && !errors.Is(err, sql.ErrNoRows) {
-				gamelog.L.Error().Msg("Failed to find faction commander")
-				continue
-			}
-
-			if factionCommander != nil {
-				vc := &server.VoiceStreamResp{
-					IsFactionCommander: true,
-					Username:           p.Username,
-					UserGID:            p.Gid,
-				}
-
-				if factionCommander.OwnerID == p.ID {
-					vc.SendURL = factionCommander.SendStreamURL
-				} else {
-					vc.ListenURL = factionCommander.ListenStreamURL
-				}
-
-				vcs = append(vcs, vc)
 			}
 		case server.RedMountainFactionID:
-			for _, rc := range rmChannel {
-				vc := &server.VoiceStreamResp{
-					ListenURL: rc.ListenStreamURL,
-					Username:  p.Username,
-					UserGID:   p.Gid,
-				}
+			vcs, err = db.GetActiveVoiceChat(p.ID, p.FactionID.String, arenaID)
+			if err != nil {
+				return terror.Error(err, "Failed to get active voice chat")
 
-				if rc.OwnerID == p.ID {
-					vc.SendURL = rc.SendStreamURL
-				}
-
-				vcs = append(vcs, vc)
-			}
-
-			factionCommander, err := boiler.VoiceStreams(
-				boiler.VoiceStreamWhere.ArenaID.EQ(arenaID),
-				boiler.VoiceStreamWhere.IsActive.EQ(true),
-				boiler.VoiceStreamWhere.SenderType.EQ(boiler.VoiceSenderTypeFACTION_COMMANDER),
-				boiler.VoiceStreamWhere.FactionID.EQ(server.RedMountainFactionID),
-			).One(gamedb.StdConn)
-			if err != nil && !errors.Is(err, sql.ErrNoRows) {
-				gamelog.L.Error().Msg("Failed to find faction commander")
-				continue
-			}
-
-			if factionCommander != nil {
-				vc := &server.VoiceStreamResp{
-					IsFactionCommander: true,
-					Username:           p.Username,
-					UserGID:            p.Gid,
-				}
-
-				if factionCommander.OwnerID == p.ID {
-					vc.SendURL = factionCommander.SendStreamURL
-				} else {
-					vc.ListenURL = factionCommander.ListenStreamURL
-				}
-
-				vcs = append(vcs, vc)
 			}
 		case server.BostonCyberneticsFactionID:
-			for _, bc := range bostonChannel {
-				vc := &server.VoiceStreamResp{
-					ListenURL: bc.ListenStreamURL,
-					Username:  p.Username,
-					UserGID:   p.Gid,
-				}
+			vcs, err = db.GetActiveVoiceChat(p.ID, p.FactionID.String, arenaID)
+			if err != nil {
+				return terror.Error(err, "Failed to get active voice chat")
 
-				if bc.OwnerID == p.ID {
-					vc.SendURL = bc.SendStreamURL
-				}
-
-				vcs = append(vcs, vc)
-			}
-
-			factionCommander, err := boiler.VoiceStreams(
-				boiler.VoiceStreamWhere.ArenaID.EQ(arenaID),
-				boiler.VoiceStreamWhere.IsActive.EQ(true),
-				boiler.VoiceStreamWhere.SenderType.EQ(boiler.VoiceSenderTypeFACTION_COMMANDER),
-				boiler.VoiceStreamWhere.FactionID.EQ(server.BostonCyberneticsFactionID),
-			).One(gamedb.StdConn)
-			if err != nil && !errors.Is(err, sql.ErrNoRows) {
-				gamelog.L.Error().Msg("Failed to find faction commander")
-				continue
-			}
-
-			if factionCommander != nil {
-				vc := &server.VoiceStreamResp{
-					IsFactionCommander: true,
-					Username:           p.Username,
-					UserGID:            p.Gid,
-				}
-
-				if factionCommander.OwnerID == p.ID {
-					vc.SendURL = factionCommander.SendStreamURL
-				} else {
-					vc.ListenURL = factionCommander.ListenStreamURL
-				}
-
-				vcs = append(vcs, vc)
 			}
 		}
 
-		ws.PublishMessage(fmt.Sprintf("/secure/user/%s/arena/%s/faction_commander/%s", p.ID, arenaID, p.FactionID.String), server.HubKeyVoiceStreams, vcs)
+		ws.PublishMessage(fmt.Sprintf("/secure/user/%s/arena/%s", p.ID, arenaID), server.HubKeyVoiceStreams, vcs)
 	}
 
 	return nil
 }
 
 func UpdateFactionVoiceChannel(factionID, arenaID string) error {
-	allActiveFactionChannels, err := boiler.VoiceStreams(
-		boiler.VoiceStreamWhere.IsActive.EQ(true),
-		boiler.VoiceStreamWhere.ArenaID.EQ(arenaID),
-		boiler.VoiceStreamWhere.FactionID.EQ(factionID),
-	).All(gamedb.StdConn)
-	if err != nil {
-		return terror.Error(err, "Failed to get all active faction channels")
-	}
-
 	ps, err := boiler.Players(
 		qm.Select(boiler.PlayerColumns.ID, boiler.PlayerColumns.FactionID),
 		boiler.PlayerWhere.ID.IN(ws.TrackedIdents()),
@@ -299,28 +183,13 @@ func UpdateFactionVoiceChannel(factionID, arenaID string) error {
 	}
 
 	for _, p := range ps {
-		if p.FactionID.Valid || p.FactionID.String != factionID {
-			continue
+		vcs, err := db.GetActiveVoiceChat(p.ID, p.FactionID.String, arenaID)
+		if err != nil {
+			return terror.Error(err, "Failed to get active voice chat")
+
 		}
 
-		vcs := []*server.VoiceStreamResp{}
-		for _, channel := range allActiveFactionChannels {
-			vc := &server.VoiceStreamResp{
-				IsFactionCommander: channel.SenderType == boiler.VoiceSenderTypeFACTION_COMMANDER,
-				Username:           p.Username,
-				UserGID:            p.Gid,
-			}
-
-			if p.ID == channel.OwnerID {
-				vc.SendURL = channel.SendStreamURL
-			} else {
-				vc.ListenURL = channel.ListenStreamURL
-			}
-
-			vcs = append(vcs, vc)
-		}
-
-		ws.PublishMessage(fmt.Sprintf("/secure/user/%s/arena/%s/faction_commander/%s", p.ID, arenaID, p.FactionID.String), server.HubKeyVoiceStreams, vcs)
+		ws.PublishMessage(fmt.Sprintf("/secure/user/%s/arena/%s", p.ID, arenaID), server.HubKeyVoiceStreams, vcs)
 	}
 
 	return nil

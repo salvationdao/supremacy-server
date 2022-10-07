@@ -47,6 +47,7 @@ const KeyAdvanceBattleAbilityShowUpUntilSeconds KVKey = "advance_battle_ability_
 const KeyAdvanceBattleAbilityLabel KVKey = "advance_battle_ability_label"
 const KeyFirstBattleAbilityLabel KVKey = "first_battle_ability_label"
 const KeyPunishVoteCooldownHour KVKey = "punish_vote_cooldown_hour"
+const KeyPreBattleTimeSeconds KVKey = "pre_battle_time_seconds"
 
 const KeyLastTransferEventID KVKey = "last_transfer_event_id"
 
@@ -80,6 +81,12 @@ const KeyVoiceBanTimeHours KVKey = "voice_ban_time_hours"
 
 const KeyAutoRepairSlotCount KVKey = "auto_repair_slot_count"
 const KeyAutoRepairDurationSeconds KVKey = "auto_repair_duration_seconds"
+
+const KeyFiatToSUPCut KVKey = "fiat_to_sup_cut" // TODO: find better name to describe: "20% cheaper than fiat pricing"
+
+const KeyDefaultPublicLobbyCount KVKey = "default_public_lobby_count"
+const KeyScheduledLobbyPrepareDurationSeconds KVKey = "scheduled_lobby_prepare_duration_seconds"
+const KeyOpenNewArenaEveryXAmountOfBattleLobbies KVKey = "open_new_arena_after_x_amount_of_battle_lobbies"
 
 func get(key KVKey) string {
 	kv, err := boiler.KVS(boiler.KVWhere.Key.EQ(string(key))).One(gamedb.StdConn)

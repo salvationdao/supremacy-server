@@ -56,6 +56,7 @@ const HubKeyGetMysteryCrates = "STORE:MYSTERY:CRATES"
 func (sc *StoreController) GetMysteryCratesHandler(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
 	crates, err := boiler.StorefrontMysteryCrates(
 		boiler.StorefrontMysteryCrateWhere.FactionID.EQ(factionID),
+		qm.Load(qm.Rels(boiler.StorefrontMysteryCrateRels.FiatProduct, boiler.FiatProductRels.FiatProductPricings)),
 	).All(gamedb.StdConn)
 	if err != nil {
 		return terror.Error(err, "Failed to get mystery crate")
@@ -67,8 +68,6 @@ func (sc *StoreController) GetMysteryCratesHandler(ctx context.Context, user *bo
 	return nil
 }
 
-const HubKeyMysteryCrateSubscribe = "STORE:MYSTERY:CRATE:SUBSCRIBE"
-
 func (sc *StoreController) MysteryCrateSubscribeHandler(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
 	cctx := chi.RouteContext(ctx)
 	crateID := cctx.URLParam("crate_id")
@@ -76,6 +75,7 @@ func (sc *StoreController) MysteryCrateSubscribeHandler(ctx context.Context, use
 	crate, err := boiler.StorefrontMysteryCrates(
 		boiler.StorefrontMysteryCrateWhere.ID.EQ(crateID),
 		boiler.StorefrontMysteryCrateWhere.FactionID.EQ(factionID),
+		qm.Load(qm.Rels(boiler.StorefrontMysteryCrateRels.FiatProduct, boiler.FiatProductRels.FiatProductPricings)),
 	).One(gamedb.StdConn)
 	if err != nil {
 		return terror.Error(err, "Failed to get mystery crate")
@@ -113,6 +113,7 @@ func (sc *StoreController) PurchaseMysteryCrateHandler(ctx context.Context, user
 		boiler.StorefrontMysteryCrateWhere.MysteryCrateType.EQ(req.Payload.Type),
 		boiler.StorefrontMysteryCrateWhere.FactionID.EQ(factionID),
 		qm.Load(boiler.StorefrontMysteryCrateRels.Faction),
+		qm.Load(qm.Rels(boiler.StorefrontMysteryCrateRels.FiatProduct, boiler.FiatProductRels.FiatProductPricings)),
 	).One(gamedb.StdConn)
 	if err != nil {
 		return terror.Error(err, "Failed to get crate for purchase, please try again or contact support.")
@@ -121,11 +122,22 @@ func (sc *StoreController) PurchaseMysteryCrateHandler(ctx context.Context, user
 	if (storeCrate.AmountSold + req.Payload.Quantity) >= storeCrate.Amount {
 		return terror.Error(fmt.Errorf("player ID: %s, attempted to purchase sold out mystery crate", user.ID), "This mystery crate is sold out!")
 	}
+
 	//check user SUPS is more than crate.price
+	supPrice := decimal.Zero
+	for _, s := range storeCrate.R.FiatProduct.R.FiatProductPricings {
+		if s.CurrencyCode == server.FiatCurrencyCodeSUPS {
+			supPrice = s.Amount
+			break
+		}
+	}
+	if supPrice.LessThanOrEqual(decimal.Zero) {
+		return terror.Error(fmt.Errorf("unable to find correct pricing for crate"), "Failed to get crate for purchase, please try again or contact support.")
+	}
 
 	// -------------------------------------
 	supTransactionID, err := sc.API.Passport.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
-		Amount:               storeCrate.Price.Mul(decimal.NewFromInt(int64(req.Payload.Quantity))).String(),
+		Amount:               supPrice.Mul(decimal.NewFromInt(int64(req.Payload.Quantity))).String(),
 		FromUserID:           uuid.FromStringOrNil(user.ID),
 		ToUserID:             uuid.FromStringOrNil(server.SupremacyGameUserID),
 		TransactionReference: server.TransactionReference(fmt.Sprintf("player_mystery_crate_purchase|%s|%d", storeCrate.ID, time.Now().UnixNano())),
@@ -150,7 +162,7 @@ func (sc *StoreController) PurchaseMysteryCrateHandler(ctx context.Context, user
 
 		txItem := &boiler.StorePurchaseHistory{
 			PlayerID:    user.ID,
-			Amount:      storeCrate.Price.Mul(decimal.NewFromInt(int64(req.Payload.Quantity))),
+			Amount:      supPrice.Mul(decimal.NewFromInt(int64(req.Payload.Quantity))),
 			ItemType:    "mystery_crate",
 			ItemID:      storeCrate.ID,
 			Description: "refunding mystery crate due to failed transaction",
@@ -185,7 +197,7 @@ func (sc *StoreController) PurchaseMysteryCrateHandler(ctx context.Context, user
 
 		txItem := &boiler.StorePurchaseHistory{
 			PlayerID:    user.ID,
-			Amount:      storeCrate.Price,
+			Amount:      supPrice,
 			ItemType:    "mystery_crate",
 			ItemID:      assignedCrate.ID,
 			Description: "purchased mystery crate",
@@ -226,7 +238,7 @@ func (sc *StoreController) PurchaseMysteryCrateHandler(ctx context.Context, user
 	}
 
 	//update mysterycrate subscribers and update player
-	ws.PublishMessage(fmt.Sprintf("/faction/%s/crate/%s", factionID, storeCrate.ID), HubKeyMysteryCrateSubscribe, serverStoreCrate)
+	ws.PublishMessage(fmt.Sprintf("/faction/%s/crate/%s", factionID, storeCrate.ID), server.HubKeyMysteryCrateSubscribe, serverStoreCrate)
 
 	reply(resp)
 	return nil

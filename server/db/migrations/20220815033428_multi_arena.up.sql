@@ -1,27 +1,3 @@
-DROP TYPE IF EXISTS ARENA_TYPE_ENUM;
-CREATE TYPE ARENA_TYPE_ENUM AS ENUM ('STORY','EXPEDITION');
-
-CREATE SEQUENCE IF NOT EXISTS battle_arena_gid_seq
-    INCREMENT 1
-    MINVALUE 0
-    MAXVALUE 9223372036854775807
-    START 0
-    CACHE 1;
-
-CREATE TABLE battle_arena
-(
-    ID         uuid PRIMARY KEY         DEFAULT gen_random_uuid(),
-    type       ARENA_TYPE_ENUM NOT NULL,
-    gid        integer                  DEFAULT nextval('battle_arena_gid_seq'),
-    created_at timestamptz     NOT NULL DEFAULT NOW(),
-    updated_at timestamptz     NOT NULL DEFAULT NOW(),
-    deleted_at timestamptz
-);
-
--- insert default story and expedition battle arena
-INSERT INTO battle_arena (id, type)
-VALUES ('95774a8a-6b9c-411c-a298-20824d0f00ba', 'STORY'), ('60008739-348e-4cf0-8cca-663685e30142', 'EXPEDITION');
-
 -- add arena id to battle table
 ALTER TABLE battles
     ADD COLUMN IF NOT EXISTS arena_id uuid NOT NULL REFERENCES battle_arena (id) DEFAULT '95774a8a-6b9c-411c-a298-20824d0f00ba';

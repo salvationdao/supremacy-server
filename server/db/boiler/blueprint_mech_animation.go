@@ -149,17 +149,20 @@ var BlueprintMechAnimationWhere = struct {
 
 // BlueprintMechAnimationRels is where relationship names are stored.
 var BlueprintMechAnimationRels = struct {
-	MechModelBlueprintMech  string
-	BlueprintMechAnimations string
+	MechModelBlueprintMech                          string
+	MechAnimationBlueprintFiatProductItemBlueprints string
+	BlueprintMechAnimations                         string
 }{
-	MechModelBlueprintMech:  "MechModelBlueprintMech",
-	BlueprintMechAnimations: "BlueprintMechAnimations",
+	MechModelBlueprintMech:                          "MechModelBlueprintMech",
+	MechAnimationBlueprintFiatProductItemBlueprints: "MechAnimationBlueprintFiatProductItemBlueprints",
+	BlueprintMechAnimations:                         "BlueprintMechAnimations",
 }
 
 // blueprintMechAnimationR is where relationships are stored.
 type blueprintMechAnimationR struct {
-	MechModelBlueprintMech  *BlueprintMech     `boiler:"MechModelBlueprintMech" boil:"MechModelBlueprintMech" json:"MechModelBlueprintMech" toml:"MechModelBlueprintMech" yaml:"MechModelBlueprintMech"`
-	BlueprintMechAnimations MechAnimationSlice `boiler:"BlueprintMechAnimations" boil:"BlueprintMechAnimations" json:"BlueprintMechAnimations" toml:"BlueprintMechAnimations" yaml:"BlueprintMechAnimations"`
+	MechModelBlueprintMech                          *BlueprintMech                `boiler:"MechModelBlueprintMech" boil:"MechModelBlueprintMech" json:"MechModelBlueprintMech" toml:"MechModelBlueprintMech" yaml:"MechModelBlueprintMech"`
+	MechAnimationBlueprintFiatProductItemBlueprints FiatProductItemBlueprintSlice `boiler:"MechAnimationBlueprintFiatProductItemBlueprints" boil:"MechAnimationBlueprintFiatProductItemBlueprints" json:"MechAnimationBlueprintFiatProductItemBlueprints" toml:"MechAnimationBlueprintFiatProductItemBlueprints" yaml:"MechAnimationBlueprintFiatProductItemBlueprints"`
+	BlueprintMechAnimations                         MechAnimationSlice            `boiler:"BlueprintMechAnimations" boil:"BlueprintMechAnimations" json:"BlueprintMechAnimations" toml:"BlueprintMechAnimations" yaml:"BlueprintMechAnimations"`
 }
 
 // NewStruct creates a new relationship struct
@@ -434,6 +437,27 @@ func (o *BlueprintMechAnimation) MechModelBlueprintMech(mods ...qm.QueryMod) blu
 	return query
 }
 
+// MechAnimationBlueprintFiatProductItemBlueprints retrieves all the fiat_product_item_blueprint's FiatProductItemBlueprints with an executor via mech_animation_blueprint_id column.
+func (o *BlueprintMechAnimation) MechAnimationBlueprintFiatProductItemBlueprints(mods ...qm.QueryMod) fiatProductItemBlueprintQuery {
+	var queryMods []qm.QueryMod
+	if len(mods) != 0 {
+		queryMods = append(queryMods, mods...)
+	}
+
+	queryMods = append(queryMods,
+		qm.Where("\"fiat_product_item_blueprints\".\"mech_animation_blueprint_id\"=?", o.ID),
+	)
+
+	query := FiatProductItemBlueprints(queryMods...)
+	queries.SetFrom(query.Query, "\"fiat_product_item_blueprints\"")
+
+	if len(queries.GetSelect(query.Query)) == 0 {
+		queries.SetSelect(query.Query, []string{"\"fiat_product_item_blueprints\".*"})
+	}
+
+	return query
+}
+
 // BlueprintMechAnimations retrieves all the mech_animation's MechAnimations with an executor via blueprint_id column.
 func (o *BlueprintMechAnimation) BlueprintMechAnimations(mods ...qm.QueryMod) mechAnimationQuery {
 	var queryMods []qm.QueryMod
@@ -551,6 +575,104 @@ func (blueprintMechAnimationL) LoadMechModelBlueprintMech(e boil.Executor, singu
 					foreign.R = &blueprintMechR{}
 				}
 				foreign.R.MechModelBlueprintMechAnimations = append(foreign.R.MechModelBlueprintMechAnimations, local)
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
+// LoadMechAnimationBlueprintFiatProductItemBlueprints allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for a 1-M or N-M relationship.
+func (blueprintMechAnimationL) LoadMechAnimationBlueprintFiatProductItemBlueprints(e boil.Executor, singular bool, maybeBlueprintMechAnimation interface{}, mods queries.Applicator) error {
+	var slice []*BlueprintMechAnimation
+	var object *BlueprintMechAnimation
+
+	if singular {
+		object = maybeBlueprintMechAnimation.(*BlueprintMechAnimation)
+	} else {
+		slice = *maybeBlueprintMechAnimation.(*[]*BlueprintMechAnimation)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &blueprintMechAnimationR{}
+		}
+		args = append(args, object.ID)
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &blueprintMechAnimationR{}
+			}
+
+			for _, a := range args {
+				if queries.Equal(a, obj.ID) {
+					continue Outer
+				}
+			}
+
+			args = append(args, obj.ID)
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`fiat_product_item_blueprints`),
+		qm.WhereIn(`fiat_product_item_blueprints.mech_animation_blueprint_id in ?`, args...),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load fiat_product_item_blueprints")
+	}
+
+	var resultSlice []*FiatProductItemBlueprint
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice fiat_product_item_blueprints")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results in eager load on fiat_product_item_blueprints")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for fiat_product_item_blueprints")
+	}
+
+	if len(fiatProductItemBlueprintAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+	if singular {
+		object.R.MechAnimationBlueprintFiatProductItemBlueprints = resultSlice
+		for _, foreign := range resultSlice {
+			if foreign.R == nil {
+				foreign.R = &fiatProductItemBlueprintR{}
+			}
+			foreign.R.MechAnimationBlueprint = object
+		}
+		return nil
+	}
+
+	for _, foreign := range resultSlice {
+		for _, local := range slice {
+			if queries.Equal(local.ID, foreign.MechAnimationBlueprintID) {
+				local.R.MechAnimationBlueprintFiatProductItemBlueprints = append(local.R.MechAnimationBlueprintFiatProductItemBlueprints, foreign)
+				if foreign.R == nil {
+					foreign.R = &fiatProductItemBlueprintR{}
+				}
+				foreign.R.MechAnimationBlueprint = local
 				break
 			}
 		}
@@ -698,6 +820,131 @@ func (o *BlueprintMechAnimation) SetMechModelBlueprintMech(exec boil.Executor, i
 		}
 	} else {
 		related.R.MechModelBlueprintMechAnimations = append(related.R.MechModelBlueprintMechAnimations, o)
+	}
+
+	return nil
+}
+
+// AddMechAnimationBlueprintFiatProductItemBlueprints adds the given related objects to the existing relationships
+// of the blueprint_mech_animation, optionally inserting them as new records.
+// Appends related to o.R.MechAnimationBlueprintFiatProductItemBlueprints.
+// Sets related.R.MechAnimationBlueprint appropriately.
+func (o *BlueprintMechAnimation) AddMechAnimationBlueprintFiatProductItemBlueprints(exec boil.Executor, insert bool, related ...*FiatProductItemBlueprint) error {
+	var err error
+	for _, rel := range related {
+		if insert {
+			queries.Assign(&rel.MechAnimationBlueprintID, o.ID)
+			if err = rel.Insert(exec, boil.Infer()); err != nil {
+				return errors.Wrap(err, "failed to insert into foreign table")
+			}
+		} else {
+			updateQuery := fmt.Sprintf(
+				"UPDATE \"fiat_product_item_blueprints\" SET %s WHERE %s",
+				strmangle.SetParamNames("\"", "\"", 1, []string{"mech_animation_blueprint_id"}),
+				strmangle.WhereClause("\"", "\"", 2, fiatProductItemBlueprintPrimaryKeyColumns),
+			)
+			values := []interface{}{o.ID, rel.ID}
+
+			if boil.DebugMode {
+				fmt.Fprintln(boil.DebugWriter, updateQuery)
+				fmt.Fprintln(boil.DebugWriter, values)
+			}
+			if _, err = exec.Exec(updateQuery, values...); err != nil {
+				return errors.Wrap(err, "failed to update foreign table")
+			}
+
+			queries.Assign(&rel.MechAnimationBlueprintID, o.ID)
+		}
+	}
+
+	if o.R == nil {
+		o.R = &blueprintMechAnimationR{
+			MechAnimationBlueprintFiatProductItemBlueprints: related,
+		}
+	} else {
+		o.R.MechAnimationBlueprintFiatProductItemBlueprints = append(o.R.MechAnimationBlueprintFiatProductItemBlueprints, related...)
+	}
+
+	for _, rel := range related {
+		if rel.R == nil {
+			rel.R = &fiatProductItemBlueprintR{
+				MechAnimationBlueprint: o,
+			}
+		} else {
+			rel.R.MechAnimationBlueprint = o
+		}
+	}
+	return nil
+}
+
+// SetMechAnimationBlueprintFiatProductItemBlueprints removes all previously related items of the
+// blueprint_mech_animation replacing them completely with the passed
+// in related items, optionally inserting them as new records.
+// Sets o.R.MechAnimationBlueprint's MechAnimationBlueprintFiatProductItemBlueprints accordingly.
+// Replaces o.R.MechAnimationBlueprintFiatProductItemBlueprints with related.
+// Sets related.R.MechAnimationBlueprint's MechAnimationBlueprintFiatProductItemBlueprints accordingly.
+func (o *BlueprintMechAnimation) SetMechAnimationBlueprintFiatProductItemBlueprints(exec boil.Executor, insert bool, related ...*FiatProductItemBlueprint) error {
+	query := "update \"fiat_product_item_blueprints\" set \"mech_animation_blueprint_id\" = null where \"mech_animation_blueprint_id\" = $1"
+	values := []interface{}{o.ID}
+	if boil.DebugMode {
+		fmt.Fprintln(boil.DebugWriter, query)
+		fmt.Fprintln(boil.DebugWriter, values)
+	}
+	_, err := exec.Exec(query, values...)
+	if err != nil {
+		return errors.Wrap(err, "failed to remove relationships before set")
+	}
+
+	if o.R != nil {
+		for _, rel := range o.R.MechAnimationBlueprintFiatProductItemBlueprints {
+			queries.SetScanner(&rel.MechAnimationBlueprintID, nil)
+			if rel.R == nil {
+				continue
+			}
+
+			rel.R.MechAnimationBlueprint = nil
+		}
+
+		o.R.MechAnimationBlueprintFiatProductItemBlueprints = nil
+	}
+	return o.AddMechAnimationBlueprintFiatProductItemBlueprints(exec, insert, related...)
+}
+
+// RemoveMechAnimationBlueprintFiatProductItemBlueprints relationships from objects passed in.
+// Removes related items from R.MechAnimationBlueprintFiatProductItemBlueprints (uses pointer comparison, removal does not keep order)
+// Sets related.R.MechAnimationBlueprint.
+func (o *BlueprintMechAnimation) RemoveMechAnimationBlueprintFiatProductItemBlueprints(exec boil.Executor, related ...*FiatProductItemBlueprint) error {
+	if len(related) == 0 {
+		return nil
+	}
+
+	var err error
+	for _, rel := range related {
+		queries.SetScanner(&rel.MechAnimationBlueprintID, nil)
+		if rel.R != nil {
+			rel.R.MechAnimationBlueprint = nil
+		}
+		if _, err = rel.Update(exec, boil.Whitelist("mech_animation_blueprint_id")); err != nil {
+			return err
+		}
+	}
+	if o.R == nil {
+		return nil
+	}
+
+	for _, rel := range related {
+		for i, ri := range o.R.MechAnimationBlueprintFiatProductItemBlueprints {
+			if rel != ri {
+				continue
+			}
+
+			ln := len(o.R.MechAnimationBlueprintFiatProductItemBlueprints)
+			if ln > 1 && i < ln-1 {
+				o.R.MechAnimationBlueprintFiatProductItemBlueprints[i] = o.R.MechAnimationBlueprintFiatProductItemBlueprints[ln-1]
+			}
+			o.R.MechAnimationBlueprintFiatProductItemBlueprints = o.R.MechAnimationBlueprintFiatProductItemBlueprints[:ln-1]
+			break
+		}
 	}
 
 	return nil

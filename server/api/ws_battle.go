@@ -12,11 +12,7 @@ import (
 	"server/gamedb"
 	"server/gamelog"
 
-	"github.com/volatiletech/null/v8"
-
 	"github.com/go-chi/chi/v5"
-	"github.com/shopspring/decimal"
-
 	"github.com/ninja-syndicate/ws"
 
 	"github.com/ninja-software/terror/v2"
@@ -37,19 +33,11 @@ func NewBattleController(api *API) *BattleControllerWS {
 	api.Command(HubKeyBattleMechStats, bc.BattleMechStatsHandler)
 
 	// commands from battle
-
-	// faction queue
-	api.SecureUserFactionCommand(battle.WSQueueJoin, api.ArenaManager.QueueJoinHandler)
-	api.SecureUserFactionCommand(battle.WSQueueLeave, api.ArenaManager.QueueLeaveHandler)
-	api.SecureUserFactionCommand(battle.WSMechArenaStatusUpdate, api.ArenaManager.AssetUpdateRequest)
-
 	api.SecureUserFactionCommand(battle.HubKeyPlayerAbilityUse, api.ArenaManager.PlayerAbilityUse)
+	api.SecureUserFactionCommand(battle.HubKeyPlayerSupportAbilityUse, api.ArenaManager.PlayerSupportAbilityUse)
 
 	// mech move command related
 	api.SecureUserFactionCommand(battle.HubKeyMechMoveCommandCancel, api.ArenaManager.MechMoveCommandCancelHandler)
-	// battle ability related (bribing)
-	api.SecureUserFactionCommand(battle.HubKeyAbilityLocationSelect, api.ArenaManager.AbilityLocationSelect)
-
 	return bc
 }
 
@@ -63,7 +51,7 @@ type BattleDetailed struct {
 	*boiler.Battle `json:"battle"`
 	GameMap        *boiler.GameMap `json:"game_map"`
 	BattleReplayID *string         `json:"battle_replay,omitempty"`
-	ArenaGID       null.Int        `json:"arena_gid,omitempty"`
+	ArenaGID       int             `json:"arena_gid"`
 }
 
 type BattleMechDetailed struct {
@@ -295,22 +283,6 @@ func (bc *BattleControllerWS) BattleMechStatsHandler(ctx context.Context, key st
 	return nil
 }
 
-func (api *API) QueueStatusSubscribeHandler(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
-	l := gamelog.L.With().Str("func", "QueueStatusSubscribeHandler").Str("factionID", factionID).Logger()
-
-	pos, err := db.GetFactionQueueLength(factionID)
-	if err != nil {
-		l.Error().Err(err).Msg("unable to retrieve faction queue length")
-		return terror.Error(err, "Could not get faction queue length.")
-	}
-
-	reply(battle.QueueStatusResponse{
-		QueuePosition: pos + 1,
-		QueueCost:     db.GetDecimalWithDefault(db.KeyBattleQueueFee, decimal.New(100, 18)),
-	})
-	return nil
-}
-
 func (api *API) PlayerAssetMechQueueSubscribeHandler(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
 	mechID := chi.RouteContext(ctx).URLParam("mech_id")
 
@@ -360,18 +332,6 @@ func (api *API) BattleEndDetail(ctx context.Context, key string, payload []byte,
 	reply(arena.LastBattleResult)
 	return nil
 }
-func (api *API) NextBattleDetails(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
-
-	// details
-	resp, err := db.GetNextBattle(ctx)
-	if err != nil {
-		return terror.Error(err, "failed getting uppcoming battle details")
-	}
-
-	reply(resp)
-
-	return nil
-}
 
 func (api *API) MiniMapAbilityDisplayList(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
 	arena, err := api.ArenaManager.GetArenaFromContext(ctx)
@@ -390,5 +350,16 @@ func (api *API) MiniMapAbilityDisplayList(ctx context.Context, key string, paylo
 
 func (api *API) ChallengeFundSubscribeHandler(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
 	reply(api.ChallengeFund)
+	return nil
+}
+
+func (api *API) BattleState(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
+	arena, err := api.ArenaManager.GetArenaFromContext(ctx)
+	if err != nil {
+		reply(battle.EndState)
+		return nil
+	}
+
+	reply(arena.CurrentBattleState())
 	return nil
 }

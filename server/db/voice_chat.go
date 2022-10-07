@@ -1,12 +1,13 @@
 package db
 
 import (
-	"github.com/ninja-software/terror/v2"
-	"github.com/volatiletech/sqlboiler/v4/queries/qm"
-	"golang.org/x/exp/slices"
 	"server"
 	"server/db/boiler"
 	"server/gamedb"
+
+	"github.com/ninja-software/terror/v2"
+	"github.com/volatiletech/sqlboiler/v4/queries/qm"
+	"golang.org/x/exp/slices"
 )
 
 func GetActiveVoiceChat(userID, factionID, arenaID string) ([]*server.VoiceStreamResp, error) {
@@ -17,6 +18,7 @@ func GetActiveVoiceChat(userID, factionID, arenaID string) ([]*server.VoiceStrea
 		boiler.VoiceStreamWhere.IsActive.EQ(true),
 		boiler.VoiceStreamWhere.ArenaID.EQ(arenaID),
 		qm.Load(boiler.VoiceStreamRels.Owner),
+		qm.OrderBy("voice_streams.sender_type = 'FACTION_COMMANDER' desc"),
 	).All(gamedb.StdConn)
 	if err != nil {
 		return nil, terror.Error(err, "Failed to get active voice streams")
@@ -33,6 +35,7 @@ func GetActiveVoiceChat(userID, factionID, arenaID string) ([]*server.VoiceStrea
 
 		rvs := &server.VoiceStreamResp{
 			IsFactionCommander: stream.SenderType == boiler.VoiceSenderTypeFACTION_COMMANDER,
+			CurrentKickVote:    stream.CurrentKickVote,
 		}
 
 		if stream.R.Owner != nil {

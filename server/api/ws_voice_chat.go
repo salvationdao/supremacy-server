@@ -5,8 +5,6 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
-	"github.com/volatiletech/null/v8"
-	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 	"server"
 	"server/db"
 	"server/db/boiler"
@@ -14,6 +12,9 @@ import (
 	"server/gamelog"
 	"server/voice_chat"
 	"time"
+
+	"github.com/volatiletech/null/v8"
+	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 
 	"github.com/friendsofgo/errors"
 	"github.com/go-chi/chi/v5"
@@ -101,6 +102,20 @@ func (api *API) JoinFactionCommander(ctx context.Context, user *boiler.Player, f
 		}
 	}
 
+	// check if already a faction commander
+	currentFactionCommander, err := boiler.VoiceStreams(
+		boiler.VoiceStreamWhere.KickedAt.IsNull(),
+		boiler.VoiceStreamWhere.SenderType.EQ(boiler.VoiceSenderTypeFACTION_COMMANDER),
+		boiler.VoiceStreamWhere.IsActive.EQ(true),
+	).One(gamedb.StdConn)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return terror.Error(err, "failed to get faction commander")
+	}
+
+	if currentFactionCommander != nil {
+		return terror.Error(fmt.Errorf("there is already an active faction commmander."), "there is already an active faction commmander.")
+	}
+
 	signedURL, err := voice_chat.GetSignedPolicyURL(user.ID)
 	if err != nil {
 		return terror.Error(err, "Failed to get signed policy url")
@@ -113,7 +128,7 @@ func (api *API) JoinFactionCommander(ctx context.Context, user *boiler.Player, f
 		FactionID:       factionID,
 		ListenStreamURL: signedURL.ListenURL,
 		SendStreamURL:   signedURL.SendURL,
-		IsActive:        false,
+		IsActive:        true,
 		SenderType:      boiler.VoiceSenderTypeFACTION_COMMANDER,
 		SessionExpireAt: signedURL.ExpiredAt,
 	}
@@ -185,10 +200,14 @@ func (api *API) VoteKickFactionCommander(ctx context.Context, user *boiler.Playe
 		boiler.VoiceStreamWhere.OwnerID.EQ(user.ID),
 		boiler.VoiceStreamWhere.IsActive.EQ(true),
 		boiler.VoiceStreamWhere.SenderType.EQ(boiler.VoiceSenderTypeMECH_OWNER),
-		boiler.VoiceStreamWhere.HasVoted.EQ(false),
 	).One(gamedb.StdConn)
 	if err != nil {
 		return terror.Error(err, "failed to get active user")
+	}
+
+	// if user already voted
+	if activeUser != nil && activeUser.HasVoted {
+		return terror.Error(fmt.Errorf("cannot vote to kick faction commander multiple times"), "cannot vote to kick faction commander multiple times")
 	}
 
 	factionCommander, err := boiler.VoiceStreams(
@@ -201,18 +220,37 @@ func (api *API) VoteKickFactionCommander(ctx context.Context, user *boiler.Playe
 		return terror.Error(err, "failed to find faction commander")
 	}
 
+	// active voice streams excluding faction commander
 	count, err := boiler.VoiceStreams(
 		boiler.VoiceStreamWhere.IsActive.EQ(true),
 		boiler.VoiceStreamWhere.FactionID.EQ(factionID),
 		boiler.VoiceStreamWhere.KickedAt.IsNull(),
+		boiler.VoiceStreamWhere.SenderType.NEQ(boiler.VoiceSenderTypeFACTION_COMMANDER),
+		qm.GroupBy(boiler.VoiceStreamColumns.OwnerID),
 	).Count(gamedb.StdConn)
 	if err != nil {
 		return terror.Error(err, "failed to get voice stream count")
 	}
+
+	arena, err := api.ArenaManager.GetArena(req.Payload.ArenaID)
+	if err != nil {
+		return err
+	}
+
 	factionCommander.CurrentKickVote += 1
 	if factionCommander.CurrentKickVote >= int(count) {
 		factionCommander.KickedAt = null.TimeFrom(time.Now())
 		factionCommander.IsActive = false
+
+		// reset has voted
+		_, err := boiler.VoiceStreams(
+			boiler.VoiceStreamWhere.FactionID.EQ(factionID),
+			boiler.VoiceStreamWhere.IsActive.EQ(true),
+			boiler.VoiceStreamWhere.ArenaID.EQ(arena.ID),
+		).UpdateAll(gamedb.StdConn, boiler.M{boiler.VoiceStreamColumns.HasVoted: false})
+		if err != nil {
+			return terror.Error(err, "Failed to update active voice streams has_voted status")
+		}
 	}
 
 	_, err = factionCommander.Update(gamedb.StdConn, boil.Infer())
@@ -225,11 +263,6 @@ func (api *API) VoteKickFactionCommander(ctx context.Context, user *boiler.Playe
 	_, err = activeUser.Update(gamedb.StdConn, boil.Infer())
 	if err != nil {
 		return terror.Error(err, "failed to update active user")
-	}
-
-	arena, err := api.ArenaManager.GetArena(req.Payload.ArenaID)
-	if err != nil {
-		return err
 	}
 
 	err = voice_chat.UpdateFactionVoiceChannel(factionID, arena.ID)

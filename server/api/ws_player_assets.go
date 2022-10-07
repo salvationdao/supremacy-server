@@ -29,6 +29,7 @@ import (
 	"github.com/gofrs/uuid"
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/ninja-software/terror/v2"
+	"github.com/ninja-syndicate/hub"
 	"github.com/ninja-syndicate/ws"
 	"github.com/rs/zerolog"
 	"github.com/volatiletech/null/v8"
@@ -46,18 +47,21 @@ func NewPlayerAssetsController(api *API) *PlayerAssetsControllerWS {
 		API: api,
 	}
 
+	api.SecureUserCommand(HubKeyPlayerAssetMechEquip, pac.PlayerAssetMechEquipHandler)
 	api.SecureUserCommand(HubKeyPlayerAssetMechList, pac.PlayerAssetMechListHandler)
-
 	api.SecureUserCommand(HubKeyPlayerAssetWeaponList, pac.PlayerAssetWeaponListHandler)
+	api.SecureUserCommand(HubKeyPlayerAssetWeaponListDetailed, pac.PlayerAssetWeaponListDetailedHandler)
+	api.SecureUserCommand(HubKeyPlayerAssetPowerCoreList, pac.PlayerAssetPowerCoreListHandler)
+	api.SecureUserCommand(HubKeyPlayerAssetUtilityList, pac.PlayerAssetUtilityListHandler)
 	api.SecureUserCommand(HubKeyPlayerAssetMysteryCrateList, pac.PlayerAssetMysteryCrateListHandler)
 	api.SecureUserCommand(HubKeyPlayerAssetMysteryCrateGet, pac.PlayerAssetMysteryCrateGetHandler)
 	api.SecureUserCommand(HubKeyPlayerAssetKeycardList, pac.PlayerAssetKeycardListHandler)
 	api.SecureUserCommand(HubKeyPlayerAssetKeycardGet, pac.PlayerAssetKeycardGetHandler)
 	api.SecureUserCommand(HubKeyPlayerAssetRename, pac.PlayerMechRenameHandler)
-	api.SecureUserCommand(HubKeyplayerAssetMechSubmodelList, pac.playerAssetMechSubmodelListHandler)
-	api.SecureUserCommand(HubKeyPlayerMechBlueprintList, pac.playerMechBlueprintListHandler)
-	api.SecureUserCommand(HubKeyplayerAssetWeaponSubmodelList, pac.playerAssetWeaponSubmodelListHandler)
-	api.SecureUserCommand(HubKeyPlayerWeaponBlueprintList, pac.playerWeaponBlueprintListHandler)
+	api.SecureUserCommand(HubKeyplayerAssetMechSubmodelList, pac.PlayerAssetMechSubmodelListDetailedHandler)
+	api.SecureUserCommand(HubKeyPlayerMechBlueprintList, pac.PlayerMechBlueprintListDetailedHandler)
+	api.SecureUserCommand(HubKeyplayerAssetWeaponSubmodelList, pac.PlayerAssetWeaponSubmodelListDetailedHandler)
+	api.SecureUserCommand(HubKeyPlayerWeaponBlueprintList, pac.PlayerWeaponBlueprintListDetailedHandler)
 	api.SecureUserFactionCommand(HubKeyOpenCrate, pac.OpenCrateHandler)
 	// public profile
 	api.Command(HubKeyPlayerAssetMechListPublic, pac.PlayerAssetMechListPublicHandler)
@@ -349,10 +353,6 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetMechDetail(ctx context.Context, 
 		return terror.Error(err, "Failed to find mech from db")
 	}
 
-	if mech.ChassisSkin.Images == nil {
-		mech.ChassisSkin.Images = mech.Images
-	}
-
 	reply(mech)
 	return nil
 }
@@ -440,7 +440,6 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetMechDetailPublic(ctx context.Con
 	if err != nil {
 		return terror.Error(err, "Failed to find mech from db")
 	}
-	mech.ChassisSkin.Images = mech.Images
 
 	reply(mech)
 	return nil
@@ -479,6 +478,42 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetWeaponDetail(ctx context.Context
 	}
 
 	reply(weapon)
+	return nil
+}
+
+const HubKeyPlayerAssetUtilityDetail = "PLAYER:ASSET:UTILITY:DETAIL"
+
+func (pac *PlayerAssetsControllerWS) PlayerAssetUtilityDetail(ctx context.Context, user *boiler.Player, fID string, key string, payload []byte, reply ws.ReplyFunc) error {
+	cctx := chi.RouteContext(ctx)
+	utilityID := cctx.URLParam("utility_id")
+	if utilityID == "" {
+		return terror.Error(fmt.Errorf("missing utility id"), "Missing utility id.")
+	}
+	// get collection and check ownership
+	collectionItem, err := boiler.CollectionItems(
+		boiler.CollectionItemWhere.ItemType.EQ(boiler.ItemTypeUtility),
+		boiler.CollectionItemWhere.ItemID.EQ(utilityID),
+		qm.InnerJoin(
+			fmt.Sprintf(
+				"%s on %s = %s",
+				boiler.TableNames.Players,
+				qm.Rels(boiler.TableNames.Players, boiler.PlayerColumns.ID),
+				qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.OwnerID),
+			),
+		),
+		boiler.PlayerWhere.FactionID.EQ(null.StringFrom(fID)),
+	).One(gamedb.StdConn)
+	if err != nil {
+		return terror.Error(err, "Failed to find utility from the collection")
+	}
+
+	// get utility
+	utility, err := db.Utility(gamedb.StdConn, collectionItem.ItemID)
+	if err != nil {
+		return terror.Error(err, "Failed to find utility from db")
+	}
+
+	reply(utility)
 	return nil
 }
 
@@ -1141,20 +1176,751 @@ func (pac *PlayerAssetsControllerWS) OpenCrateHandler(ctx context.Context, user 
 	return nil
 }
 
-const HubKeyPlayerAssetWeaponList = "PLAYER:ASSET:WEAPON:LIST"
+type PlayerAssetMechEquipRequest struct {
+	*hub.HubCommandRequest
+	Payload struct {
+		MechID         string         `json:"mech_id"`
+		EquipUtility   []EquipUtility `json:"equip_utility"`
+		EquipWeapons   []EquipWeapon  `json:"equip_weapons"`
+		EquipPowerCore EquipPowerCore `json:"equip_power_core"`
+		EquipMechSkin  EquipMechSkin  `json:"equip_mech_skin"`
+	} `json:"payload"`
+}
+
+type EquipWeapon struct {
+	WeaponID    string `json:"weapon_id"`
+	SlotNumber  int    `json:"slot_number"`
+	InheritSkin bool   `json:"inherit_skin"`
+	Unequip     bool   `json:"unequip"`
+}
+
+type EquipUtility struct {
+	UtilityID  string `json:"utility_id"`
+	SlotNumber int    `json:"slot_number"`
+	Unequip    bool   `json:"unequip"`
+}
+
+type EquipMechSkin struct {
+	MechSkinID string `json:"mech_skin_id"`
+}
+
+type EquipPowerCore struct {
+	PowerCoreID string `json:"power_core_id"`
+	Unequip     bool   `json:"unequip"`
+}
+
+const HubKeyPlayerAssetMechEquip = "PLAYER:ASSET:MECH:EQUIP"
+
+func (pac *PlayerAssetsControllerWS) PlayerAssetMechEquipHandler(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
+	l := gamelog.L.With().Str("func", "PlayerAssetMechEquipHandler").Str("userID", user.ID).Logger()
+
+	errorMsg := "Something happened while trying to save your changes. Please try again or contact support if this problem persists."
+	req := &PlayerAssetMechEquipRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		l.Error().Err(err).Msg("failed to unmarshal payload")
+		return terror.Error(err, "Invalid request received.")
+	}
+	l = l.With().Interface("payload", req.Payload).Logger()
+
+	if req.Payload.MechID == "" {
+		l.Error().Msg("empty mech ID provided")
+		return terror.Error(terror.ErrInvalidInput, errorMsg)
+	}
+
+	mech, err := db.Mech(gamedb.StdConn, req.Payload.MechID)
+	if err != nil {
+		l.Error().Err(err).Msg("failed to get mech (db.Mech)")
+		return terror.Error(err, errorMsg)
+	}
+	l = l.With().Interface("mech", mech).Logger()
+
+	// Check if mech can be modified
+	canModify, reason, err := db.CanAssetBeModifiedOrMoved(gamedb.StdConn, mech.ID, boiler.ItemTypeMech, user.ID)
+	if err != nil {
+		l.Error().Err(err).Msg("failed to check if mech can be modified or moved (db.CanAssetBeModifiedOrMoved)")
+		return terror.Error(err, errorMsg)
+	}
+	if !canModify {
+		l.Error().Msg(fmt.Sprintf("cannot modify mech: %s", reason.String()))
+		return terror.Error(terror.ErrForbidden, fmt.Sprintf("This mech cannot be modified: %s", reason.String()))
+	}
+
+	tx, err := gamedb.StdConn.Begin()
+	if err != nil {
+		l.Error().Err(err).Msg("failed to begin tx")
+		return terror.Error(err, errorMsg)
+	}
+	defer tx.Rollback()
+
+	if req.Payload.EquipPowerCore.Unequip {
+		// Power core unequip
+		if !mech.PowerCoreID.Valid {
+			l.Error().Msg("attempted to unequip power core that does not exist")
+			return terror.Error(fmt.Errorf("attempted to unequip power core that does not exist"), errorMsg)
+		}
+
+		// Check if power core can be removed
+		canRemove, reason, err := db.CanAssetBeModifiedOrMoved(tx, mech.PowerCoreID.String, boiler.ItemTypePowerCore, user.ID)
+		if err != nil {
+			l.Error().Err(err).Msg("failed to check if power core can be removed (db.CanAssetBeModifiedOrMoved)")
+			return terror.Error(err, errorMsg)
+		}
+		if !canRemove {
+			l.Error().Msg(fmt.Sprintf("cannot unequip power core: %s", reason.String()))
+			return terror.Error(terror.ErrForbidden, fmt.Sprintf("The selected power core cannot be unequipped: %s", reason.String()))
+		}
+
+		// Unlink power core from mech
+		unequipMech, err := boiler.FindMech(tx, mech.ID)
+		if err != nil {
+			l.Error().Err(err).Msg("failed to get mech to unequip power core from")
+			return terror.Error(err, errorMsg)
+		}
+		l = l.With().Interface("unequipMech", unequipMech).Logger()
+
+		unequipMech.PowerCoreID = null.String{}
+		_, err = unequipMech.Update(tx, boil.Infer())
+		if err != nil {
+			l.Error().Err(err).Msg("failed to unequip power core from mech")
+			return terror.Error(err, errorMsg)
+		}
+
+		// Get equipped power core
+		removePowerCore, err := boiler.FindPowerCore(tx, mech.PowerCoreID.String)
+		if err != nil {
+			l.Error().Msg("failed to get power core to unequip")
+			return terror.Error(err, errorMsg)
+		}
+		l = l.With().Interface("removePowerCore", removePowerCore).Logger()
+
+		// Remove power core from mech
+		removePowerCore.EquippedOn = null.String{}
+		_, err = removePowerCore.Update(tx, boil.Infer())
+		if err != nil {
+			l.Error().Err(err).Msg("failed to unequip power core from its mech")
+			return terror.Error(err, errorMsg)
+		}
+	} else if req.Payload.EquipPowerCore.PowerCoreID != "" {
+		// Power core equip
+		// Check if power core can be modified
+		canEquip, reason, err := db.CanAssetBeModifiedOrMoved(tx, req.Payload.EquipPowerCore.PowerCoreID, boiler.ItemTypePowerCore, user.ID)
+		if err != nil {
+			l.Error().Err(err).Msg("failed to check if power core can be modified or moved (db.CanAssetBeModifiedOrMoved)")
+			return terror.Error(err, errorMsg)
+		}
+		if !canEquip {
+			l.Error().Msg(fmt.Sprintf("cannot equip power core: %s", reason.String()))
+			return terror.Error(terror.ErrForbidden, fmt.Sprintf("The selected power core cannot be equipped: %s", reason.String()))
+		}
+
+		// Check if specified power core exists
+		powerCore, err := boiler.PowerCores(
+			boiler.PowerCoreWhere.ID.EQ(req.Payload.EquipPowerCore.PowerCoreID),
+		).One(tx)
+		if err != nil {
+			l.Error().Err(err).Msg("failed to get power core")
+			return terror.Error(err, errorMsg)
+		}
+
+		if powerCore.EquippedOn.Valid {
+			// If power core is equipped on another mech, remove it from that mech
+			unequipMech, err := boiler.FindMech(tx, powerCore.EquippedOn.String)
+			if err != nil {
+				l.Error().Err(err).Msg("failed to get mech to unequip selected power core from")
+				return terror.Error(err, errorMsg)
+			}
+			l = l.With().Interface("unequipMech", unequipMech).Logger()
+
+			unequipMech.PowerCoreID = null.String{}
+			_, err = unequipMech.Update(tx, boil.Infer())
+			if err != nil {
+				l.Error().Err(err).Msg("failed to unequip selected power core from its mech")
+				return terror.Error(err, errorMsg)
+			}
+		}
+
+		if mech.PowerCoreID.Valid {
+			// Remove previous power core
+			canRemove, reason, err := db.CanAssetBeModifiedOrMoved(tx, mech.PowerCore.ID, boiler.ItemTypePowerCore, user.ID)
+			if err != nil {
+				l.Error().Err(err).Msg("failed to check if previous power core can be removed (db.CanAssetBeModifiedOrMoved)")
+				return terror.Error(err, errorMsg)
+			}
+			if !canRemove {
+				l.Error().Msg(fmt.Sprintf("cannot remove previous power core: %s", reason.String()))
+				return terror.Error(terror.ErrForbidden, fmt.Sprintf("The previous power core cannot be removed: %s", reason.String()))
+			}
+
+			previousPowerCore, err := boiler.FindPowerCore(tx, mech.PowerCoreID.String)
+			if err != nil {
+				l.Error().Err(err).Msg("failed to get previous power core to replace")
+				return terror.Error(err, errorMsg)
+			}
+			l = l.With().Interface("previousPowerCore", previousPowerCore).Logger()
+
+			previousPowerCore.EquippedOn = null.String{}
+			_, err = previousPowerCore.Update(tx, boil.Infer())
+			if err != nil {
+				l.Error().Err(err).Msg("failed to unequip previous power core from its mech")
+				return terror.Error(err, errorMsg)
+			}
+		}
+
+		// Equip power core to mech
+		equipMech, err := boiler.FindMech(tx, mech.ID)
+		if err != nil {
+			l.Error().Err(err).Msg("failed to get mech to equip on")
+			return terror.Error(err, errorMsg)
+		}
+		l = l.With().Interface("equipMech", equipMech).Logger()
+
+		equipMech.PowerCoreID = null.StringFrom(powerCore.ID)
+		_, err = equipMech.Update(tx, boil.Infer())
+		if err != nil {
+			l.Error().Err(err).Msg("failed to update mech with new power core")
+			return terror.Error(err, errorMsg)
+		}
+
+		powerCore.EquippedOn = null.StringFrom(mech.ID)
+		_, err = powerCore.Update(tx, boil.Infer())
+		if err != nil {
+			l.Error().Err(err).Msg("failed to update power core with new mech")
+			return terror.Error(err, errorMsg)
+		}
+	}
+	if len(req.Payload.EquipUtility) != 0 {
+		for _, eu := range req.Payload.EquipUtility {
+			if eu.SlotNumber < 0 {
+				l.Error().Msg(fmt.Sprintf("invalid utility slot number specified: %d", eu.SlotNumber))
+				return terror.Error(terror.ErrInvalidInput, "This mech does not have the utility slot specified to modify.")
+			}
+
+			// Slot number specified does not exist on mech
+			if eu.SlotNumber > mech.UtilitySlots-1 {
+				l.Error().Msg(fmt.Sprintf("utility slot number specified (%d) exceeds mech utility slot limit (%d)", eu.SlotNumber, mech.UtilitySlots))
+				return terror.Error(terror.ErrForbidden, "The specified utility slot on the mech cannot be modified as it does not exist.")
+			}
+
+			if eu.Unequip {
+				// Unequip utility
+				// Check if mech utility exists
+				removeMechUtility, err := boiler.MechUtilities(
+					boiler.MechUtilityWhere.ChassisID.EQ(mech.ID),
+					boiler.MechUtilityWhere.SlotNumber.EQ(eu.SlotNumber),
+				).One(tx)
+				if err != nil {
+					l.Error().Err(err).Msg("failed to get mech utility to unequip utility from")
+					return terror.Error(err, errorMsg)
+				}
+				if !removeMechUtility.UtilityID.Valid {
+					l.Error().Msg("attempted to unequip utility that does not exist")
+					return terror.Error(fmt.Errorf("attempted to unequip utility that does not exist"), errorMsg)
+				}
+
+				// Check if utility can be removed
+				canRemove, reason, err := db.CanAssetBeModifiedOrMoved(tx, removeMechUtility.UtilityID.String, boiler.ItemTypeUtility, user.ID)
+				if err != nil {
+					l.Error().Err(err).Msg("failed to check if utility can be removed (db.CanAssetBeModifiedOrMoved)")
+					return terror.Error(err, errorMsg)
+				}
+				if !canRemove {
+					l.Error().Msg(fmt.Sprintf("cannot unequip utility in slot %d: %s", eu.SlotNumber, reason.String()))
+					return terror.Error(terror.ErrForbidden, fmt.Sprintf("The selected utility in slot %d cannot be unequipped: %s", eu.SlotNumber, reason.String()))
+				}
+
+				// Get equipped utility
+				removeUtility, err := boiler.FindUtility(tx, removeMechUtility.UtilityID.String)
+				if err != nil {
+					l.Error().Msg("failed to get utility to unequip")
+					return terror.Error(err, errorMsg)
+				}
+				l = l.With().Interface("removeUtility", removeUtility).Logger()
+
+				// Remove utility from mech
+				removeUtility.EquippedOn = null.String{}
+				_, err = removeUtility.Update(tx, boil.Infer())
+				if err != nil {
+					l.Error().Err(err).Msg("failed to unequip utility from its mech")
+					return terror.Error(err, errorMsg)
+				}
+
+				// Unlink utility from mech
+				removeMechUtility.UtilityID = null.String{}
+				_, err = removeMechUtility.Update(tx, boil.Infer())
+				if err != nil {
+					l.Error().Err(err).Msg("failed to unlink utility from mech")
+					return terror.Error(err, errorMsg)
+				}
+			} else if eu.UtilityID != "" {
+				// Equip utility
+				// Check if utility can be modified
+				canEquip, reason, err := db.CanAssetBeModifiedOrMoved(tx, eu.UtilityID, boiler.ItemTypeUtility, user.ID)
+				if err != nil {
+					l.Error().Err(err).Msg("failed to check if utility can be modified or moved (db.CanAssetBeModifiedOrMoved)")
+					return terror.Error(err, errorMsg)
+				}
+				if !canEquip {
+					l.Error().Msg(fmt.Sprintf("utility in slot %d cannot be equipped: %s", eu.SlotNumber, reason.String()))
+					return terror.Error(terror.ErrForbidden, fmt.Sprintf("The selected utility in slot %d cannot be equipped: %s", eu.SlotNumber, reason.String()))
+				}
+
+				utility, err := boiler.FindUtility(tx, eu.UtilityID)
+				if err != nil {
+					l.Error().Err(err).Msg("failed to get utility")
+					return terror.Error(err, errorMsg)
+				}
+
+				if utility.EquippedOn.Valid {
+					// If utility is equipped on another mech, remove it from that mech
+					unequipMechUtility, err := boiler.MechUtilities(
+						boiler.MechUtilityWhere.ChassisID.EQ(utility.EquippedOn.String),
+						boiler.MechUtilityWhere.UtilityID.EQ(null.StringFrom(utility.ID)),
+					).One(tx)
+					if err != nil {
+						l.Error().Err(err).Msg("failed to get mech utility to unequip from")
+						return terror.Error(err, errorMsg)
+					}
+
+					unequipMechUtility.UtilityID = null.String{}
+					updated, err := unequipMechUtility.Update(tx, boil.Infer())
+					if err != nil {
+						l.Error().Err(err).Msg("failed to remove utility from mech")
+						return terror.Error(err, errorMsg)
+					}
+					if updated < 1 {
+						l.Error().Msg("failed to remove utility from mech 2")
+						return terror.Error(fmt.Errorf("failed to remove selected utility from mech"), errorMsg)
+					}
+				}
+
+				mu, err := boiler.FindMechUtility(tx, mech.ID, eu.SlotNumber)
+				if errors.Is(err, sql.ErrNoRows) {
+					// Create mech_utility entry
+					mu = &boiler.MechUtility{
+						ChassisID:  mech.ID,
+						SlotNumber: eu.SlotNumber,
+					}
+
+					err := mu.Insert(tx, boil.Infer())
+					if err != nil {
+						l.Error().Err(err).Msg("failed to create new mech utility slot")
+						return terror.Error(err, errorMsg)
+					}
+				} else if err != nil {
+					l.Error().Err(err).Msg("failed to get mech utility slot")
+					return terror.Error(err, errorMsg)
+				}
+
+				if mu.UtilityID.Valid {
+					// Remove previous utility from mech
+					canRemove, reason, err := db.CanAssetBeModifiedOrMoved(tx, mu.UtilityID.String, boiler.ItemTypeUtility, user.ID)
+					if err != nil {
+						l.Error().Err(err).Msg(fmt.Sprintf("failed to check if previous utility, %s, can be removed (db.CanAssetBeModifiedOrMoved)", mu.UtilityID.String))
+						return terror.Error(err, errorMsg)
+					}
+					if !canRemove {
+						l.Error().Msg(fmt.Sprintf("cannot remove previous utility: %s", reason.String()))
+						return terror.Error(terror.ErrForbidden, fmt.Sprintf("The existing utility in slot %d cannot be removed: %s", eu.SlotNumber, reason.String()))
+					}
+
+					previousUtility, err := boiler.FindUtility(tx, mu.UtilityID.String)
+					if err != nil {
+						l.Error().Err(err).Msg("failed to get previous utility")
+						return terror.Error(err, errorMsg)
+					}
+
+					previousUtility.EquippedOn = null.String{}
+					updated, err := previousUtility.Update(tx, boil.Infer())
+					if err != nil {
+						l.Error().Err(err).Msg("failed to remove previous utility from mech")
+						return terror.Error(err, errorMsg)
+					}
+					if updated < 1 {
+						l.Error().Msg("failed to remove previous utility from mech 2")
+						return terror.Error(fmt.Errorf("failed to remove previous utility from mech"))
+					}
+				}
+
+				utility.EquippedOn = null.StringFrom(mech.ID)
+				_, err = utility.Update(tx, boil.Infer())
+				if err != nil {
+					l.Error().Err(err).Msg("failed to equip utility to mech")
+					return terror.Error(err, errorMsg)
+				}
+
+				mu.UtilityID = null.StringFrom(eu.UtilityID)
+				_, err = mu.Update(tx, boil.Infer())
+				if err != nil {
+					l.Error().Err(err).Msg("failed to update mech utility")
+					return terror.Error(err, errorMsg)
+				}
+			}
+		}
+	}
+	if len(req.Payload.EquipWeapons) != 0 {
+		for _, ew := range req.Payload.EquipWeapons {
+			if ew.SlotNumber < 0 {
+				l.Error().Msg(fmt.Sprintf("invalid weapon slot number specified: %d", ew.SlotNumber))
+				return terror.Error(terror.ErrInvalidInput, "This mech does not have the weapon slot specified to modify.")
+			}
+
+			// Slot number specified does not exist on mech
+			if ew.SlotNumber > mech.WeaponHardpoints-1 {
+				l.Error().Msg(fmt.Sprintf("wepaon slot number specified (%d) exceeds mech weapon slot limit (%d)", ew.SlotNumber, mech.WeaponHardpoints))
+				return terror.Error(terror.ErrForbidden, "You cannot modify the specified weapon slot on the mech as it does not exist.")
+			}
+
+			if ew.Unequip {
+				// Unequip weapon
+				// Check if mech weapon exists
+				removeMechWeapon, err := boiler.MechWeapons(
+					boiler.MechWeaponWhere.ChassisID.EQ(mech.ID),
+					boiler.MechWeaponWhere.SlotNumber.EQ(ew.SlotNumber),
+				).One(tx)
+				if err != nil {
+					l.Error().Err(err).Msg("failed to get mech weapon to unequip weapon from")
+					return terror.Error(err, errorMsg)
+				}
+				if !removeMechWeapon.WeaponID.Valid {
+					l.Error().Msg("attempted to unequip weapon that does not exist")
+					return terror.Error(fmt.Errorf("attempted to unequip weapon that does not exist"), errorMsg)
+				}
+
+				// Check if weapon can be removed
+				canRemove, reason, err := db.CanAssetBeModifiedOrMoved(tx, removeMechWeapon.WeaponID.String, boiler.ItemTypeWeapon, user.ID)
+				if err != nil {
+					l.Error().Err(err).Msg("failed to check if weapon can be removed (db.CanAssetBeModifiedOrMoved)")
+					return terror.Error(err, errorMsg)
+				}
+				if !canRemove {
+					l.Error().Msg(fmt.Sprintf("cannot unequip weapon in slot %d: %s", ew.SlotNumber, reason.String()))
+					return terror.Error(terror.ErrForbidden, fmt.Sprintf("The selected weapon in slot %d cannot be unequipped: %s", ew.SlotNumber, reason.String()))
+				}
+
+				// Get equipped weapon
+				removeWeapon, err := boiler.FindWeapon(tx, removeMechWeapon.WeaponID.String)
+				if err != nil {
+					l.Error().Msg("failed to get weapon to unequip")
+					return terror.Error(err, errorMsg)
+				}
+				l = l.With().Interface("removeWeapon", removeWeapon).Logger()
+
+				// Remove weapon from mech
+				removeWeapon.EquippedOn = null.String{}
+				_, err = removeWeapon.Update(tx, boil.Infer())
+				if err != nil {
+					l.Error().Err(err).Msg("failed to unequip weapon from its mech")
+					return terror.Error(err, errorMsg)
+				}
+
+				// Unlink weapon from mech
+				removeMechWeapon.WeaponID = null.String{}
+				_, err = removeMechWeapon.Update(tx, boil.Infer())
+				if err != nil {
+					l.Error().Err(err).Msg("failed to unlink weapon from mech")
+					return terror.Error(err, errorMsg)
+				}
+			} else if ew.WeaponID != "" {
+				// Check if weapon can be modified
+				canEquip, reason, err := db.CanAssetBeModifiedOrMoved(tx, ew.WeaponID, boiler.ItemTypeWeapon, user.ID)
+				if err != nil {
+					l.Error().Err(err).Msg("failed to check if weapon can be modified or moved (db.CanAssetBeModifiedOrMoved)")
+					return terror.Error(err, errorMsg)
+				}
+				if !canEquip {
+					l.Error().Msg(fmt.Sprintf("weapon in slot %d cannot be equipped: %s", ew.SlotNumber, reason.String()))
+					return terror.Error(terror.ErrForbidden, fmt.Sprintf("The selected weapon in slot %d cannot be equipped: %s", ew.SlotNumber, reason.String()))
+				}
+
+				weapon, err := boiler.Weapons(
+					boiler.WeaponWhere.ID.EQ(ew.WeaponID),
+					qm.Load(boiler.WeaponRels.Blueprint),
+				).One(tx)
+				if err != nil {
+					l.Error().Err(err).Msg("failed to get weapon")
+					return terror.Error(err, errorMsg)
+				}
+
+				if weapon.R.Blueprint.IsMelee && mech.MechType != boiler.MechTypeHUMANOID {
+					l.Error().Msg(fmt.Sprintf("weapon in slot %d cannot be equipped because this mech does not support melee weapons", ew.SlotNumber))
+					return terror.Error(terror.ErrForbidden, fmt.Sprintf("The selected weapon in slot %d cannot be equipped: Mech does not support melee weapons", ew.SlotNumber))
+				}
+
+				if weapon.EquippedOn.Valid {
+					// If weapon is equipped on another mech, remove it from that mech
+					unequipMechWeapon, err := boiler.MechWeapons(
+						boiler.MechWeaponWhere.ChassisID.EQ(weapon.EquippedOn.String),
+						boiler.MechWeaponWhere.WeaponID.EQ(null.StringFrom(weapon.ID)),
+					).One(tx)
+					if err != nil {
+						l.Error().Err(err).Msg("failed to get mech weapon to unequip from")
+						return terror.Error(err, errorMsg)
+					}
+
+					unequipMechWeapon.WeaponID = null.String{}
+					updated, err := unequipMechWeapon.Update(tx, boil.Infer())
+					if err != nil {
+						l.Error().Err(err).Msg("failed to remove weapon from mech")
+						return terror.Error(err, errorMsg)
+					}
+					if updated < 1 {
+						l.Error().Msg("failed to remove weapon from mech 2")
+						return terror.Error(fmt.Errorf("failed to remove selected weapon from mech"), errorMsg)
+					}
+				}
+
+				mw, err := boiler.FindMechWeapon(tx, mech.ID, ew.SlotNumber)
+				if errors.Is(err, sql.ErrNoRows) {
+					// Create mech_weapon entry
+					mw = &boiler.MechWeapon{
+						ChassisID:  mech.ID,
+						SlotNumber: ew.SlotNumber,
+					}
+
+					err := mw.Insert(tx, boil.Infer())
+					if err != nil {
+						l.Error().Err(err).Msg("failed to create new mech weapon slot")
+						return terror.Error(err, errorMsg)
+					}
+				} else if err != nil {
+					l.Error().Err(err).Msg("failed to get mech weapon slot")
+					return terror.Error(err, errorMsg)
+				}
+
+				if mw.WeaponID.Valid {
+					// Remove previous weapon from mech
+					canRemove, reason, err := db.CanAssetBeModifiedOrMoved(tx, mw.WeaponID.String, boiler.ItemTypeWeapon, user.ID)
+					if err != nil {
+						l.Error().Err(err).Msg(fmt.Sprintf("failed to check if previous weapon, %s, can be removed (db.CanAssetBeModifiedOrMoved)", mw.WeaponID.String))
+						return terror.Error(err, errorMsg)
+					}
+					if !canRemove {
+						l.Error().Msg(fmt.Sprintf("cannot remove previous utility: %s", reason.String()))
+						return terror.Error(terror.ErrForbidden, fmt.Sprintf("The existing weapon in slot %d cannot be removed: %s", ew.SlotNumber, reason.String()))
+					}
+
+					previousWeapon, err := boiler.FindWeapon(tx, mw.WeaponID.String)
+					if err != nil {
+						l.Error().Err(err).Msg("failed to get previous weapon")
+						return terror.Error(err, errorMsg)
+					}
+
+					previousWeapon.EquippedOn = null.String{}
+					updated, err := previousWeapon.Update(tx, boil.Infer())
+					if err != nil {
+						l.Error().Err(err).Msg("failed to remove previous weapon from mech")
+						return terror.Error(err, errorMsg)
+					}
+					if updated < 1 {
+						l.Error().Msg("failed to remove previous weapon from mech 2")
+						return terror.Error(fmt.Errorf("failed to remove previous weapon from mech"))
+					}
+				}
+
+				weapon.EquippedOn = null.StringFrom(mech.ID)
+				_, err = weapon.Update(tx, boil.Infer())
+				if err != nil {
+					l.Error().Err(err).Msg("failed to equip weapon to mech")
+					return terror.Error(err, errorMsg)
+				}
+
+				mw.WeaponID = null.StringFrom(ew.WeaponID)
+				mw.IsSkinInherited = ew.InheritSkin
+				mw.AllowMelee = weapon.R.Blueprint.IsMelee
+				_, err = mw.Update(tx, boil.Infer())
+				if err != nil {
+					l.Error().Err(err).Msg("failed to update mech weapon")
+					return terror.Error(err, errorMsg)
+				}
+			}
+		}
+	}
+	if req.Payload.EquipMechSkin.MechSkinID != "" {
+		// Check if mech skin can be equipped
+		canEquip, reason, err := db.CanAssetBeModifiedOrMoved(tx, req.Payload.EquipMechSkin.MechSkinID, boiler.ItemTypeMechSkin, user.ID)
+		if err != nil {
+			l.Error().Err(err).Msg("failed to check if mech skin can be modified or moved (db.CanAssetBeModifiedOrMoved)")
+			return terror.Error(err, errorMsg)
+		}
+		if !canEquip {
+			l.Error().Msg(fmt.Sprintf("cannot equip mech skin: %s", reason.String()))
+			return terror.Error(terror.ErrForbidden, fmt.Sprintf("The selected submodel cannot be equipped: %s", reason.String()))
+		}
+
+		// Check if previous skin can be removed
+		canRemove, reason, err := db.CanAssetBeModifiedOrMoved(tx, mech.ChassisSkinID, boiler.ItemTypeMechSkin, user.ID)
+		if err != nil {
+			l.Error().Err(err).Msg("failed to check if previous mech skin can be removed (db.CanAssetBeModifiedOrMoved)")
+			return terror.Error(err, errorMsg)
+		}
+		if !canRemove {
+			l.Error().Msg(fmt.Sprintf("cannot remove previous mech skin: %s", reason.String()))
+			return terror.Error(terror.ErrForbidden, fmt.Sprintf("The previous mech skin cannot be removed: %s", reason.String()))
+		}
+
+		// Get previous skin
+		previousSkin, err := boiler.MechSkins(
+			boiler.MechSkinWhere.ID.EQ(mech.ChassisSkinID),
+		).One(tx)
+		if err != nil {
+			l.Error().Err(err).Msg("failed to get previous mech skin")
+			return terror.Error(err, errorMsg)
+		}
+
+		// Check if specified mech skin exists
+		mechSkin, err := boiler.MechSkins(
+			boiler.MechSkinWhere.ID.EQ(req.Payload.EquipMechSkin.MechSkinID),
+		).One(tx)
+		if err != nil {
+			l.Error().Err(err).Msg("failed to get mech skin")
+			return terror.Error(err, errorMsg)
+		}
+
+		if mechSkin.EquippedOn.Valid {
+			// If mech skin is equipped on another mech, swap skin with that mech
+			unequipMech, err := boiler.FindMech(tx, mechSkin.EquippedOn.String)
+			if err != nil {
+				l.Error().Err(err).Msg("failed to unequip selected mech skin from its mech")
+				return terror.Error(err, errorMsg)
+			}
+			l = l.With().Interface("unequipMech", unequipMech).Logger()
+
+			compatibleSkins, err := db.GetCompatibleBlueprintMechSkinIDsFromMechID(tx, unequipMech.ID)
+			if err != nil {
+				l.Error().Err(err).Msg("failed to get compatible skins for unequip mech")
+				return terror.Error(err, errorMsg)
+			}
+
+			compatible := false
+			for _, cs := range compatibleSkins {
+				if cs == previousSkin.BlueprintID {
+					compatible = true
+					break
+				}
+			}
+			if !compatible {
+				return terror.Error(fmt.Errorf("previous skin is not compatible with unequip mech"), "The selected skin cannot be swapped with its mech.")
+			}
+
+			unequipMech.ChassisSkinID = previousSkin.ID
+			updated, err := unequipMech.Update(tx, boil.Infer())
+			if err != nil {
+				l.Error().Err(err).Msg("failed to unequip selected mech skin from its mech")
+				return terror.Error(err, errorMsg)
+			}
+			if updated < 1 {
+				l.Error().Msg("failed to unequip selected mech skin from its mech 2")
+				return terror.Error(fmt.Errorf("failed to unequip selected mech skin from mech"), errorMsg)
+			}
+
+			previousSkin.EquippedOn = null.StringFrom(unequipMech.ID)
+		} else {
+			// Else, just unlink the previous skin from the mech
+			previousSkin.EquippedOn = null.String{}
+		}
+
+		updated, err := previousSkin.Update(tx, boil.Infer())
+		if err != nil {
+			l.Error().Err(err).Msg("failed to update previous mech skin")
+			return terror.Error(err, errorMsg)
+		}
+		if updated < 1 {
+			l.Error().Msg("failed to update previous mech skin 2")
+			return terror.Error(fmt.Errorf("failed to update previous mech skin"), errorMsg)
+		}
+
+		// Equip mech skin to mech
+		equipMech, err := boiler.FindMech(tx, mech.ID)
+		if err != nil {
+			l.Error().Err(err).Msg("failed to get mech to equip skin on")
+			return terror.Error(err, errorMsg)
+		}
+		l = l.With().Interface("equipMech", equipMech).Logger()
+
+		compatibleSkins, err := db.GetCompatibleBlueprintMechSkinIDsFromMechID(tx, equipMech.ID)
+		if err != nil {
+			l.Error().Err(err).Msg("failed to get compatible skins for equip mech")
+			return terror.Error(err, errorMsg)
+		}
+
+		compatible := false
+		for _, cs := range compatibleSkins {
+			if cs == mechSkin.BlueprintID {
+				compatible = true
+				break
+			}
+		}
+		if !compatible {
+			return terror.Error(fmt.Errorf("selected skin is not compatible with mech"), "The selected skin is not compatible with this mech.")
+		}
+
+		equipMech.ChassisSkinID = mechSkin.ID
+		updated2, err := equipMech.Update(tx, boil.Infer())
+		if err != nil {
+			l.Error().Err(err).Msg("failed to update mech with new mech skin")
+			return terror.Error(err, errorMsg)
+		}
+		if updated2 < 1 {
+			l.Error().Msg("failed to update mech with new mech skin 2")
+			return terror.Error(fmt.Errorf("failed to update mech with new mech skin"), errorMsg)
+		}
+
+		mechSkin.EquippedOn = null.StringFrom(mech.ID)
+		updated3, err := mechSkin.Update(tx, boil.Infer())
+		if err != nil {
+			l.Error().Err(err).Msg("failed to update mech skin with new mech")
+			return terror.Error(err, errorMsg)
+		}
+		if updated3 < 1 {
+			l.Error().Msg("failed to update mech skin with new mech 2")
+			return terror.Error(fmt.Errorf("failed to update mech skin with new mech"), errorMsg)
+		}
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		return terror.Error(err, errorMsg)
+	}
+
+	updatedMech, err := db.Mech(gamedb.StdConn, req.Payload.MechID)
+	if err != nil {
+		return terror.Error(err, errorMsg)
+	}
+
+	reply(updatedMech)
+	return nil
+}
+
+func (api *API) GetMaxWeaponStats(w http.ResponseWriter, r *http.Request) (int, error) {
+	userID := r.URL.Query().Get("user_id") // the stat identifier e.g. speed
+
+	output, err := db.GetWeaponMaxStats(gamedb.StdConn, userID)
+	if err != nil {
+		return http.StatusInternalServerError, terror.Error(err, "Something went wrong with fetching max weapon stats.")
+	}
+
+	// Don't put quote values in for decimal stat values
+	decimal.MarshalJSONWithoutQuotes = true
+	status, resp := helpers.EncodeJSON(w, output)
+	decimal.MarshalJSONWithoutQuotes = false
+
+	return status, resp
+}
 
 type PlayerAssetWeaponListRequest struct {
 	Payload struct {
 		Search                        string                    `json:"search"`
-		Filter                        *db.ListFilterRequest     `json:"filter"`
-		Sort                          *db.ListSortRequest       `json:"sort"`
 		SortBy                        string                    `json:"sort_by"`
 		SortDir                       db.SortByDir              `json:"sort_dir"`
 		PageSize                      int                       `json:"page_size"`
 		Page                          int                       `json:"page"`
 		DisplayXsynMechs              bool                      `json:"display_xsyn_mechs"`
+		DisplayGenesisAndLimited      bool                      `json:"display_genesis_and_limited"`
 		ExcludeMarketLocked           bool                      `json:"exclude_market_locked"`
 		IncludeMarketListed           bool                      `json:"include_market_listed"`
+		ExcludeMechLocked             bool                      `json:"exclude_mech_locked"`
+		ExcludeIDs                    []string                  `json:"exclude_ids"`
 		FilterRarities                []string                  `json:"rarities"`
 		FilterWeaponTypes             []string                  `json:"weapon_types"`
 		FilterEquippedStatuses        []string                  `json:"equipped_statuses"`
@@ -1171,28 +1937,12 @@ type PlayerAssetWeaponListRequest struct {
 	} `json:"payload"`
 }
 
-type PlayerAssetWeaponListResp struct {
-	Total   int64                `json:"total"`
-	Weapons []*PlayerAssetWeapon `json:"weapons"`
+type PlayerAssetWeaponListResponse struct {
+	Total   int64             `json:"total"`
+	Weapons []*db.PlayerAsset `json:"weapons"`
 }
 
-type PlayerAssetWeapon struct {
-	CollectionSlug      string `json:"collection_slug"`
-	Hash                string `json:"hash"`
-	TokenID             int64  `json:"token_id"`
-	Tier                string `json:"tier"`
-	OwnerID             string `json:"owner_id"`
-	MarketLocked        bool   `json:"market_locked"`
-	XsynLocked          bool   `json:"xsyn_locked"`
-	LockedToMarketplace bool   `json:"locked_to_marketplace"`
-
-	ID    string `json:"id"`
-	Label string `json:"label"`
-	Name  string `json:"name"`
-
-	UpdatedAt time.Time `json:"updated_at"`
-	CreatedAt time.Time `json:"created_at"`
-}
+const HubKeyPlayerAssetWeaponList = "PLAYER:ASSET:WEAPON:LIST"
 
 func (pac *PlayerAssetsControllerWS) PlayerAssetWeaponListHandler(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
 	req := &PlayerAssetWeaponListRequest{}
@@ -1207,14 +1957,15 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetWeaponListHandler(ctx context.Co
 
 	listOpts := &db.WeaponListOpts{
 		Search:                        req.Payload.Search,
-		Filter:                        req.Payload.Filter,
-		Sort:                          req.Payload.Sort,
 		PageSize:                      req.Payload.PageSize,
 		Page:                          req.Payload.Page,
 		OwnerID:                       user.ID,
 		DisplayXsynMechs:              req.Payload.DisplayXsynMechs,
+		DisplayGenesisAndLimited:      req.Payload.DisplayGenesisAndLimited,
 		ExcludeMarketLocked:           req.Payload.ExcludeMarketLocked,
 		IncludeMarketListed:           req.Payload.IncludeMarketListed,
+		ExcludeMechLocked:             req.Payload.ExcludeMechLocked,
+		ExcludeIDs:                    req.Payload.ExcludeIDs,
 		FilterRarities:                req.Payload.FilterRarities,
 		FilterWeaponTypes:             req.Payload.FilterWeaponTypes,
 		FilterEquippedStatuses:        req.Payload.FilterEquippedStatuses,
@@ -1236,53 +1987,79 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetWeaponListHandler(ctx context.Co
 
 	total, weapons, err := db.WeaponList(listOpts)
 	if err != nil {
-		gamelog.L.Error().Interface("req.Payload", req.Payload).Err(err).Msg("issue getting mechs")
+		gamelog.L.Error().Interface("req.Payload", req.Payload).Err(err).Msg("issue getting weapons")
 		return terror.Error(err, "Failed to find your War Machine assets, please try again or contact support.")
 	}
 
-	playerAssWeapons := []*PlayerAssetWeapon{}
-
-	for _, m := range weapons {
-		playerAssWeapons = append(playerAssWeapons, &PlayerAssetWeapon{
-			ID:                  m.ID,
-			Label:               m.Label,
-			UpdatedAt:           m.UpdatedAt,
-			CreatedAt:           m.CreatedAt,
-			CollectionSlug:      m.CollectionItem.CollectionSlug,
-			Hash:                m.CollectionItem.Hash,
-			TokenID:             m.CollectionItem.TokenID,
-			Tier:                m.CollectionItem.Tier,
-			OwnerID:             m.CollectionItem.OwnerID,
-			XsynLocked:          m.CollectionItem.XsynLocked,
-			MarketLocked:        m.CollectionItem.MarketLocked,
-			LockedToMarketplace: m.CollectionItem.LockedToMarketplace,
-		})
-	}
-
-	reply(&PlayerAssetWeaponListResp{
+	reply(&PlayerAssetWeaponListResponse{
 		Total:   total,
-		Weapons: playerAssWeapons,
+		Weapons: weapons,
 	})
 	return nil
 }
 
-func (api *API) GetMaxWeaponStats(w http.ResponseWriter, r *http.Request) (int, error) {
-	userID := r.URL.Query().Get("user_id") // the stat identifier e.g. speed
-
-	output, err := db.GetWeaponMaxStats(gamedb.StdConn, userID)
-	if err != nil {
-		return http.StatusInternalServerError, terror.Error(err, "Something went wrong with fetching max weapon stats.")
-	}
-
-	// Don't put quote values in for decimal stat values
-	decimal.MarshalJSONWithoutQuotes = true
-	status, resp := helpers.EncodeJSON(w, output)
-	decimal.MarshalJSONWithoutQuotes = false
-
-	return status, resp
+type PlayerAssetWeaponListDetailedResponse struct {
+	Total   int64            `json:"total"`
+	Weapons []*server.Weapon `json:"weapons"`
 }
 
-const HubKeyplayerAssetMechSubmodelList = "PLAYER:ASSET:MECH:SUBMODEL:LIST"
+const HubKeyPlayerAssetWeaponListDetailed = "PLAYER:ASSET:WEAPON:DETAIL:LIST"
+
+func (pac *PlayerAssetsControllerWS) PlayerAssetWeaponListDetailedHandler(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
+	req := &PlayerAssetWeaponListRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return terror.Error(err, "Invalid request received.")
+	}
+
+	if !user.FactionID.Valid {
+		return terror.Error(fmt.Errorf("user has no faction"), "You need a faction to see assets.")
+	}
+
+	listOpts := &db.WeaponListOpts{
+		Search:                        req.Payload.Search,
+		PageSize:                      req.Payload.PageSize,
+		Page:                          req.Payload.Page,
+		OwnerID:                       user.ID,
+		DisplayXsynMechs:              req.Payload.DisplayXsynMechs,
+		DisplayGenesisAndLimited:      req.Payload.DisplayGenesisAndLimited,
+		ExcludeMarketLocked:           req.Payload.ExcludeMarketLocked,
+		IncludeMarketListed:           req.Payload.IncludeMarketListed,
+		ExcludeMechLocked:             req.Payload.ExcludeMechLocked,
+		ExcludeIDs:                    req.Payload.ExcludeIDs,
+		FilterRarities:                req.Payload.FilterRarities,
+		FilterWeaponTypes:             req.Payload.FilterWeaponTypes,
+		FilterEquippedStatuses:        req.Payload.FilterEquippedStatuses,
+		FilterStatAmmo:                req.Payload.FilterStatAmmo,
+		FilterStatDamage:              req.Payload.FilterStatDamage,
+		FilterStatDamageFalloff:       req.Payload.FilterStatDamageFalloff,
+		FilterStatDamageFalloffRate:   req.Payload.FilterStatDamageFalloffRate,
+		FilterStatRadius:              req.Payload.FilterStatRadius,
+		FilterStatRadiusDamageFalloff: req.Payload.FilterStatRadiusDamageFalloff,
+		FilterStatRateOfFire:          req.Payload.FilterStatRateOfFire,
+		FilterStatEnergyCosts:         req.Payload.FilterStatEnergyCosts,
+		FilterStatProjectileSpeed:     req.Payload.FilterStatProjectileSpeed,
+		FilterStatSpread:              req.Payload.FilterStatSpread,
+	}
+	if req.Payload.SortBy != "" && req.Payload.SortDir.IsValid() {
+		listOpts.SortBy = req.Payload.SortBy
+		listOpts.SortDir = req.Payload.SortDir
+	}
+
+	total, weapons, err := db.WeaponListDetailed(listOpts)
+	if err != nil {
+		gamelog.L.Error().Interface("req.Payload", req.Payload).Err(err).Msg("issue getting mechs")
+		return terror.Error(err, "Failed to find your War Machine assets, please try again or contact support.")
+	}
+
+	reply(&PlayerAssetWeaponListDetailedResponse{
+		Total:   total,
+		Weapons: weapons,
+	})
+	return nil
+}
+
+const HubKeyplayerAssetMechSubmodelList = "PLAYER:ASSET:MECH:SUBMODEL:DETAIL:LIST"
 
 type PlayerAssetMechSubmodelListRequest struct {
 	Payload struct {
@@ -1297,39 +2074,21 @@ type PlayerAssetMechSubmodelListRequest struct {
 		ExcludeMarketLocked      bool                  `json:"exclude_market_locked"`
 		IncludeMarketListed      bool                  `json:"include_market_listed"`
 		DisplayGenesisAndLimited bool                  `json:"display_genesis_and_limited"`
+		ExcludeIDs               []string              `json:"exclude_ids"`
+		IncludeIDs               []string              `json:"include_ids"`
 		FilterRarities           []string              `json:"rarities"`
 		FilterSkinCompatibility  []string              `json:"skin_compatibility"`
 		FilterEquippedStatuses   []string              `json:"equipped_statuses"`
 	} `json:"payload"`
 }
 
-type PlayerAssetMechSubmodelListResp struct {
-	Total     int64                      `json:"total"`
-	Submodels []*PlayerAssetMechSubmodel `json:"submodels"`
+type PlayerAssetMechSubmodelListDetailedResponse struct {
+	Total     int64              `json:"total"`
+	Submodels []*server.MechSkin `json:"submodels"`
 }
 
-type PlayerAssetMechSubmodel struct {
-	Images              *server.Images `json:"images"`
-	CollectionSlug      string         `json:"collection_slug"`
-	Hash                string         `json:"hash"`
-	TokenID             int64          `json:"token_id"`
-	Tier                string         `json:"tier"`
-	OwnerID             string         `json:"owner_id"`
-	MarketLocked        bool           `json:"market_locked"`
-	XsynLocked          bool           `json:"xsyn_locked"`
-	LockedToMarketplace bool           `json:"locked_to_marketplace"`
-	Level               int            `json:"level"`
-
-	EquippedOn string `json:"equipped_on"`
-	ID         string `json:"id"`
-	Label      string `json:"label"`
-
-	UpdatedAt time.Time `json:"updated_at"`
-	CreatedAt time.Time `json:"created_at"`
-}
-
-func (pac *PlayerAssetsControllerWS) playerAssetMechSubmodelListHandler(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
-	l := gamelog.L.With().Str("func", "playerAssetMechSubmodelListHandler").Str("user_id", user.ID).Logger()
+func (pac *PlayerAssetsControllerWS) PlayerAssetMechSubmodelListDetailedHandler(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
+	l := gamelog.L.With().Str("func", "PlayerAssetMechSubmodelListDetailedHandler").Str("user_id", user.ID).Logger()
 
 	req := &PlayerAssetMechSubmodelListRequest{}
 	err := json.Unmarshal(payload, req)
@@ -1352,6 +2111,8 @@ func (pac *PlayerAssetsControllerWS) playerAssetMechSubmodelListHandler(ctx cont
 		DisplayXsyn:              req.Payload.DisplayXsyn,
 		ExcludeMarketLocked:      req.Payload.ExcludeMarketLocked,
 		IncludeMarketListed:      req.Payload.IncludeMarketListed,
+		ExcludeIDs:               req.Payload.ExcludeIDs,
+		IncludeIDs:               req.Payload.IncludeIDs,
 		FilterRarities:           req.Payload.FilterRarities,
 		FilterEquippedStatuses:   req.Payload.FilterEquippedStatuses,
 		SortBy:                   req.Payload.SortBy,
@@ -1365,65 +2126,99 @@ func (pac *PlayerAssetsControllerWS) playerAssetMechSubmodelListHandler(ctx cont
 		listOpts.SortDir = req.Payload.SortDir
 	}
 
-	total, submodels, err := db.MechSkinList(listOpts)
+	total, submodels, err := db.MechSkinListDetailed(listOpts)
 	if err != nil {
 		l.Error().Interface("req.Payload", req.Payload).Err(err).Msg("issue getting war machine skin list")
 		return terror.Error(err, "Failed to find your war machine skin assets, please try again or contact support.")
 	}
 
-	playerAssetMechSubmodel := []*PlayerAssetMechSubmodel{}
-
-	for _, s := range submodels {
-		pams := &PlayerAssetMechSubmodel{
-			Images: &server.Images{
-				ImageURL:         s.SkinSwatch.ImageURL,
-				CardAnimationURL: s.SkinSwatch.CardAnimationURL,
-				AvatarURL:        s.SkinSwatch.AvatarURL,
-				AnimationURL:     s.SkinSwatch.AnimationURL,
-				BackgroundColor:  s.SkinSwatch.BackgroundColor,
-				YoutubeURL:       s.SkinSwatch.YoutubeURL,
-				LargeImageURL:    s.SkinSwatch.LargeImageURL,
-			},
-			ID:                  s.ID,
-			Label:               s.Label,
-			EquippedOn:          s.EquippedOn.String,
-			CreatedAt:           s.CreatedAt,
-			CollectionSlug:      s.CollectionItem.CollectionSlug,
-			Hash:                s.CollectionItem.Hash,
-			TokenID:             s.CollectionItem.TokenID,
-			Tier:                s.Tier,
-			OwnerID:             s.CollectionItem.OwnerID,
-			XsynLocked:          s.CollectionItem.XsynLocked,
-			MarketLocked:        s.CollectionItem.MarketLocked,
-			LockedToMarketplace: s.CollectionItem.LockedToMarketplace,
-			Level:               s.Level,
-		}
-
-		//if there isnt any image url (which skin swatch should have) return image from weapon model compatibility tables
-		if !pams.Images.ImageURL.Valid || pams.Images.ImageURL.String == "" {
-			pams.Images.ImageURL = s.Images.ImageURL
-			pams.Images.CardAnimationURL = s.Images.CardAnimationURL
-			pams.Images.AvatarURL = s.Images.AvatarURL
-			pams.Images.AnimationURL = s.Images.AnimationURL
-			pams.Images.BackgroundColor = s.Images.BackgroundColor
-			pams.Images.YoutubeURL = s.Images.YoutubeURL
-			pams.Images.LargeImageURL = s.Images.LargeImageURL
-		}
-
-		playerAssetMechSubmodel = append(playerAssetMechSubmodel, pams)
-	}
-
-	reply(&PlayerAssetMechSubmodelListResp{
+	reply(&PlayerAssetMechSubmodelListDetailedResponse{
 		Total:     total,
-		Submodels: playerAssetMechSubmodel,
+		Submodels: submodels,
 	})
 	return nil
 }
 
-const HubKeyPlayerMechBlueprintList = "PLAYER:MECH:BLUEPRINT:LIST"
+const HubKeyplayerAssetWeaponSubmodelList = "PLAYER:ASSET:WEAPON:SUBMODEL:DETAIL:LIST"
 
-func (pac *PlayerAssetsControllerWS) playerMechBlueprintListHandler(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
-	l := gamelog.L.With().Str("func", "playerMechBlueprintListHandler").Str("user_id", user.ID).Logger()
+type PlayerAssetWeaponSubmodelListRequest struct {
+	Payload struct {
+		Search                   string                `json:"search"`
+		Filter                   *db.ListFilterRequest `json:"filter"`
+		Sort                     *db.ListSortRequest   `json:"sort"`
+		SortBy                   string                `json:"sort_by"`
+		SortDir                  db.SortByDir          `json:"sort_dir"`
+		PageSize                 int                   `json:"page_size"`
+		Page                     int                   `json:"page"`
+		DisplayXsyn              bool                  `json:"display_xsyn"`
+		ExcludeMarketLocked      bool                  `json:"exclude_market_locked"`
+		IncludeMarketListed      bool                  `json:"include_market_listed"`
+		DisplayGenesisAndLimited bool                  `json:"display_genesis_and_limited"`
+		FilterRarities           []string              `json:"rarities"`
+		FilterSkinCompatibility  []string              `json:"skin_compatibility"`
+		FilterEquippedStatuses   []string              `json:"equipped_statuses"`
+	} `json:"payload"`
+}
+
+type PlayerAssetWeaponSubmodelListDetailedResponse struct {
+	Total     int64                `json:"total"`
+	Submodels []*server.WeaponSkin `json:"submodels"`
+}
+
+func (pac *PlayerAssetsControllerWS) PlayerAssetWeaponSubmodelListDetailedHandler(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
+	l := gamelog.L.With().Str("func", "PlayerAssetWeaponSubmodelListDetailedHandler").Str("user_id", user.ID).Logger()
+
+	req := &PlayerAssetWeaponSubmodelListRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		l.Error().Err(err).Msg("json unmarshal error")
+		return terror.Error(err, "Invalid request received.")
+	}
+
+	if !user.FactionID.Valid {
+		return terror.Error(fmt.Errorf("user has no faction"), "You need a faction to see assets.")
+	}
+
+	listOpts := &db.WeaponSkinListOpts{
+		Search:                   req.Payload.Search,
+		Filter:                   req.Payload.Filter,
+		Sort:                     req.Payload.Sort,
+		PageSize:                 req.Payload.PageSize,
+		Page:                     req.Payload.Page,
+		OwnerID:                  user.ID,
+		DisplayXsyn:              req.Payload.DisplayXsyn,
+		ExcludeMarketLocked:      req.Payload.ExcludeMarketLocked,
+		IncludeMarketListed:      req.Payload.IncludeMarketListed,
+		FilterRarities:           req.Payload.FilterRarities,
+		FilterEquippedStatuses:   req.Payload.FilterEquippedStatuses,
+		SortBy:                   req.Payload.SortBy,
+		SortDir:                  req.Payload.SortDir,
+		DisplayGenesisAndLimited: req.Payload.DisplayGenesisAndLimited,
+		FilterSkinCompatibility:  req.Payload.FilterSkinCompatibility,
+	}
+
+	if req.Payload.SortBy != "" && req.Payload.SortDir.IsValid() {
+		listOpts.SortBy = req.Payload.SortBy
+		listOpts.SortDir = req.Payload.SortDir
+	}
+
+	total, submodels, err := db.WeaponSkinListDetailed(listOpts)
+	if err != nil {
+		l.Error().Interface("req.Payload", req.Payload).Err(err).Msg("issue getting weapon skin list")
+		return terror.Error(err, "Failed to find your weapon skin assets, please try again or contact support.")
+	}
+
+	reply(&PlayerAssetWeaponSubmodelListDetailedResponse{
+		Total:     total,
+		Submodels: submodels,
+	})
+	return nil
+}
+
+const HubKeyPlayerMechBlueprintList = "PLAYER:MECH:BLUEPRINT:DETAIL:LIST"
+
+func (pac *PlayerAssetsControllerWS) PlayerMechBlueprintListDetailedHandler(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
+	l := gamelog.L.With().Str("func", "PlayerMechBlueprintListDetailedHandler").Str("user_id", user.ID).Logger()
 
 	if !user.FactionID.Valid {
 		return terror.Error(fmt.Errorf("user has no faction"), "You need a faction to see assets.")
@@ -1499,147 +2294,10 @@ func (pac *PlayerAssetsControllerWS) playerMechBlueprintListHandler(ctx context.
 	return nil
 }
 
-const HubKeyplayerAssetWeaponSubmodelList = "PLAYER:ASSET:WEAPON:SUBMODEL:LIST"
+const HubKeyPlayerWeaponBlueprintList = "PLAYER:WEAPON:BLUEPRINT:DETAIL:LIST"
 
-type PlayerAssetWeaponSubmodelListRequest struct {
-	Payload struct {
-		Search                   string                `json:"search"`
-		Filter                   *db.ListFilterRequest `json:"filter"`
-		Sort                     *db.ListSortRequest   `json:"sort"`
-		SortBy                   string                `json:"sort_by"`
-		SortDir                  db.SortByDir          `json:"sort_dir"`
-		PageSize                 int                   `json:"page_size"`
-		Page                     int                   `json:"page"`
-		DisplayXsyn              bool                  `json:"display_xsyn"`
-		ExcludeMarketLocked      bool                  `json:"exclude_market_locked"`
-		IncludeMarketListed      bool                  `json:"include_market_listed"`
-		DisplayGenesisAndLimited bool                  `json:"display_genesis_and_limited"`
-		FilterRarities           []string              `json:"rarities"`
-		FilterSkinCompatibility  []string              `json:"skin_compatibility"`
-		FilterEquippedStatuses   []string              `json:"equipped_statuses"`
-	} `json:"payload"`
-}
-
-type PlayerAssetWeaponSubmodelListResp struct {
-	Total     int64                        `json:"total"`
-	Submodels []*PlayerAssetWeaponSubmodel `json:"submodels"`
-}
-
-type PlayerAssetWeaponSubmodel struct {
-	Images              *server.Images `json:"images"`
-	CollectionSlug      string         `json:"collection_slug"`
-	Hash                string         `json:"hash"`
-	TokenID             int64          `json:"token_id"`
-	Tier                string         `json:"tier"`
-	OwnerID             string         `json:"owner_id"`
-	MarketLocked        bool           `json:"market_locked"`
-	XsynLocked          bool           `json:"xsyn_locked"`
-	LockedToMarketplace bool           `json:"locked_to_marketplace"`
-
-	EquippedOn string `json:"equipped_on"`
-	ID         string `json:"id"`
-	Label      string `json:"label"`
-
-	UpdatedAt time.Time `json:"updated_at"`
-	CreatedAt time.Time `json:"created_at"`
-}
-
-func (pac *PlayerAssetsControllerWS) playerAssetWeaponSubmodelListHandler(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
-	l := gamelog.L.With().Str("func", "playerAssetWeaponSubmodelListHandler").Str("user_id", user.ID).Logger()
-
-	req := &PlayerAssetWeaponSubmodelListRequest{}
-	err := json.Unmarshal(payload, req)
-	if err != nil {
-		l.Error().Err(err).Msg("json unmarshal error")
-		return terror.Error(err, "Invalid request received.")
-	}
-
-	if !user.FactionID.Valid {
-		return terror.Error(fmt.Errorf("user has no faction"), "You need a faction to see assets.")
-	}
-
-	listOpts := &db.WeaponSkinListOpts{
-		Search:                   req.Payload.Search,
-		Filter:                   req.Payload.Filter,
-		Sort:                     req.Payload.Sort,
-		PageSize:                 req.Payload.PageSize,
-		Page:                     req.Payload.Page,
-		OwnerID:                  user.ID,
-		DisplayXsyn:              req.Payload.DisplayXsyn,
-		ExcludeMarketLocked:      req.Payload.ExcludeMarketLocked,
-		IncludeMarketListed:      req.Payload.IncludeMarketListed,
-		FilterRarities:           req.Payload.FilterRarities,
-		FilterEquippedStatuses:   req.Payload.FilterEquippedStatuses,
-		SortBy:                   req.Payload.SortBy,
-		SortDir:                  req.Payload.SortDir,
-		DisplayGenesisAndLimited: req.Payload.DisplayGenesisAndLimited,
-		FilterSkinCompatibility:  req.Payload.FilterSkinCompatibility,
-	}
-
-	if req.Payload.SortBy != "" && req.Payload.SortDir.IsValid() {
-		listOpts.SortBy = req.Payload.SortBy
-		listOpts.SortDir = req.Payload.SortDir
-	}
-
-	total, submodels, err := db.WeaponSkinList(listOpts)
-	if err != nil {
-		l.Error().Interface("req.Payload", req.Payload).Err(err).Msg("issue getting weapon skin list")
-		return terror.Error(err, "Failed to find your weapon skin assets, please try again or contact support.")
-	}
-
-	playerAssetWeaponSubmodel := []*PlayerAssetWeaponSubmodel{}
-
-	for _, s := range submodels {
-
-		paws := &PlayerAssetWeaponSubmodel{
-			Images: &server.Images{
-				ImageURL:         s.SkinSwatch.ImageURL,
-				CardAnimationURL: s.SkinSwatch.CardAnimationURL,
-				AvatarURL:        s.SkinSwatch.AvatarURL,
-				AnimationURL:     s.SkinSwatch.AnimationURL,
-				BackgroundColor:  s.SkinSwatch.BackgroundColor,
-				YoutubeURL:       s.SkinSwatch.YoutubeURL,
-				LargeImageURL:    s.SkinSwatch.LargeImageURL,
-			},
-			ID:                  s.ID,
-			Label:               s.Label,
-			EquippedOn:          s.EquippedOn.String,
-			CreatedAt:           s.CreatedAt,
-			CollectionSlug:      s.CollectionItem.CollectionSlug,
-			Hash:                s.CollectionItem.Hash,
-			TokenID:             s.CollectionItem.TokenID,
-			Tier:                s.Tier,
-			OwnerID:             s.CollectionItem.OwnerID,
-			XsynLocked:          s.CollectionItem.XsynLocked,
-			MarketLocked:        s.CollectionItem.MarketLocked,
-			LockedToMarketplace: s.CollectionItem.LockedToMarketplace,
-		}
-
-		//if there isnt an image url (which skin swatch should have) return image from weapon model compatibility tables
-		if !paws.Images.ImageURL.Valid || paws.Images.ImageURL.String == "" {
-			paws.Images.ImageURL = s.Images.ImageURL
-			paws.Images.CardAnimationURL = s.Images.CardAnimationURL
-			paws.Images.AvatarURL = s.Images.AvatarURL
-			paws.Images.AnimationURL = s.Images.AnimationURL
-			paws.Images.BackgroundColor = s.Images.BackgroundColor
-			paws.Images.YoutubeURL = s.Images.YoutubeURL
-			paws.Images.LargeImageURL = s.Images.LargeImageURL
-		}
-
-		playerAssetWeaponSubmodel = append(playerAssetWeaponSubmodel, paws)
-	}
-
-	reply(&PlayerAssetWeaponSubmodelListResp{
-		Total:     total,
-		Submodels: playerAssetWeaponSubmodel,
-	})
-	return nil
-}
-
-const HubKeyPlayerWeaponBlueprintList = "PLAYER:WEAPON:BLUEPRINT:LIST"
-
-func (pac *PlayerAssetsControllerWS) playerWeaponBlueprintListHandler(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
-	l := gamelog.L.With().Str("func", "playerWeaponBlueprintListHandler").Str("user_id", user.ID).Logger()
+func (pac *PlayerAssetsControllerWS) PlayerWeaponBlueprintListDetailedHandler(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
+	l := gamelog.L.With().Str("func", "PlayerWeaponBlueprintListDetailedHandler").Str("user_id", user.ID).Logger()
 
 	if !user.FactionID.Valid {
 		return terror.Error(fmt.Errorf("user has no faction"), "You need a faction to see assets.")
@@ -1733,5 +2391,200 @@ func (pac *PlayerAssetsControllerWS) playerWeaponBlueprintListHandler(ctx contex
 	}
 
 	reply(results)
+	return nil
+}
+
+type PlayerAssetPowerCoreListRequest struct {
+	Payload struct {
+		Search                 string                       `json:"search"`
+		Filter                 *db.ListFilterRequest        `json:"filter"`
+		SortBy                 string                       `json:"sort_by"`
+		SortDir                db.SortByDir                 `json:"sort_dir"`
+		PageSize               int                          `json:"page_size"`
+		Page                   int                          `json:"page"`
+		DisplayXsynLocked      bool                         `json:"display_xsyn_locked"`
+		ExcludeMarketLocked    bool                         `json:"exclude_market_locked"`
+		IncludeMarketListed    bool                         `json:"include_market_listed"`
+		ExcludeIDs             []string                     `json:"exclude_ids"`
+		FilterRarities         []string                     `json:"rarities"`
+		FilterSizes            []string                     `json:"sizes"`
+		FilterEquippedStatuses []string                     `json:"equipped_statuses"`
+		FilterStatCapacity     *db.PowerCoreStatFilterRange `json:"stat_capacity"`
+		FilterStatMaxDrawRate  *db.PowerCoreStatFilterRange `json:"stat_max_draw_rate"`
+		FilterStatRechargeRate *db.PowerCoreStatFilterRange `json:"stat_recharge_rate"`
+		FilterStatArmour       *db.PowerCoreStatFilterRange `json:"stat_armour"`
+		FilterStatMaxHitpoints *db.PowerCoreStatFilterRange `json:"stat_max_hitpoints"`
+	} `json:"payload"`
+}
+
+type PlayerAssetPowerCoreListResp struct {
+	Total      int64             `json:"total"`
+	PowerCores []*db.PlayerAsset `json:"power_cores"`
+}
+
+const HubKeyPlayerAssetPowerCoreList = "PLAYER:ASSET:POWER_CORE:LIST"
+
+func (pac *PlayerAssetsControllerWS) PlayerAssetPowerCoreListHandler(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
+	req := &PlayerAssetPowerCoreListRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return terror.Error(err, "Invalid request received.")
+	}
+
+	if !user.FactionID.Valid {
+		return terror.Error(fmt.Errorf("user has no faction"), "You need a faction to see assets.")
+	}
+
+	listOpts := &db.PowerCoreListOpts{
+		Search:                 req.Payload.Search,
+		Filter:                 req.Payload.Filter,
+		PageSize:               req.Payload.PageSize,
+		Page:                   req.Payload.Page,
+		OwnerID:                user.ID,
+		DisplayXsynLocked:      req.Payload.DisplayXsynLocked,
+		ExcludeMarketLocked:    req.Payload.ExcludeMarketLocked,
+		IncludeMarketListed:    req.Payload.IncludeMarketListed,
+		ExcludeIDs:             req.Payload.ExcludeIDs,
+		FilterRarities:         req.Payload.FilterRarities,
+		FilterSizes:            req.Payload.FilterSizes,
+		FilterEquippedStatuses: req.Payload.FilterEquippedStatuses,
+		FilterStatCapacity:     req.Payload.FilterStatCapacity,
+		FilterStatMaxDrawRate:  req.Payload.FilterStatMaxDrawRate,
+		FilterStatRechargeRate: req.Payload.FilterStatRechargeRate,
+		FilterStatArmour:       req.Payload.FilterStatArmour,
+		FilterStatMaxHitpoints: req.Payload.FilterStatMaxHitpoints,
+	}
+	if req.Payload.SortBy != "" && req.Payload.SortDir.IsValid() {
+		listOpts.SortBy = req.Payload.SortBy
+		listOpts.SortDir = req.Payload.SortDir
+	}
+
+	total, powerCores, err := db.PowerCoreList(listOpts)
+	if err != nil {
+		gamelog.L.Error().Interface("req.Payload", req.Payload).Err(err).Msg("issue getting mechs")
+		return terror.Error(err, "Failed to find your War Machine assets, please try again or contact support.")
+	}
+
+	reply(&PlayerAssetPowerCoreListResp{
+		Total:      total,
+		PowerCores: powerCores,
+	})
+	return nil
+}
+
+const HubKeyPlayerAssetPowerCoreDetail = "PLAYER:ASSET:POWER_CORE:DETAIL"
+
+func (pac *PlayerAssetsControllerWS) PlayerAssetPowerCoreDetail(ctx context.Context, user *boiler.Player, fID string, key string, payload []byte, reply ws.ReplyFunc) error {
+	cctx := chi.RouteContext(ctx)
+	powerCoreID := cctx.URLParam("power_core_id")
+	if powerCoreID == "" {
+		return terror.Error(fmt.Errorf("missing power core id"), "Missing power core id.")
+	}
+	// get collection and check ownership
+	collectionItem, err := boiler.CollectionItems(
+		boiler.CollectionItemWhere.ItemType.EQ(boiler.ItemTypePowerCore),
+		boiler.CollectionItemWhere.ItemID.EQ(powerCoreID),
+		qm.InnerJoin(
+			fmt.Sprintf(
+				"%s on %s = %s",
+				boiler.TableNames.Players,
+				qm.Rels(boiler.TableNames.Players, boiler.PlayerColumns.ID),
+				qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.OwnerID),
+			),
+		),
+		boiler.PlayerWhere.FactionID.EQ(null.StringFrom(fID)),
+	).One(gamedb.StdConn)
+	if err != nil {
+		return terror.Error(err, "Failed to find power core from the collection")
+	}
+
+	// get power core
+	powerCore, err := db.PowerCore(gamedb.StdConn, collectionItem.ItemID)
+	if err != nil {
+		return terror.Error(err, "Failed to find power core from db")
+	}
+
+	reply(powerCore)
+	return nil
+}
+
+type PlayerAssetUtilityListRequest struct {
+	Payload struct {
+		Search                 string                `json:"search"`
+		Filter                 *db.ListFilterRequest `json:"filter"`
+		Sort                   *db.ListSortRequest   `json:"sort"`
+		SortBy                 string                `json:"sort_by"`
+		SortDir                db.SortByDir          `json:"sort_dir"`
+		PageSize               int                   `json:"page_size"`
+		Page                   int                   `json:"page"`
+		DisplayXsynLocked      bool                  `json:"display_xsyn_locked"`
+		ExcludeMarketLocked    bool                  `json:"exclude_market_locked"`
+		IncludeMarketListed    bool                  `json:"include_market_listed"`
+		ExcludeMechLocked      bool                  `json:"exclude_mech_locked"`
+		ExcludeIDs             []string              `json:"exclude_ids"`
+		FilterRarities         []string              `json:"rarities"`
+		FilterTypes            []string              `json:"sizes"`
+		FilterEquippedStatuses []string              `json:"equipped_statuses"`
+	} `json:"payload"`
+}
+
+type PlayerAssetUtilityListResp struct {
+	Total     int64             `json:"total"`
+	Utilities []*db.PlayerAsset `json:"utilities"`
+}
+
+const HubKeyPlayerAssetUtilityList = "PLAYER:ASSET:UTILITY:LIST"
+
+func (pac *PlayerAssetsControllerWS) PlayerAssetUtilityListHandler(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
+	req := &PlayerAssetUtilityListRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return terror.Error(err, "Invalid request received.")
+	}
+
+	if !user.FactionID.Valid {
+		return terror.Error(fmt.Errorf("user has no faction"), "You need a faction to see assets.")
+	}
+
+	listOpts := &db.UtilityListOpts{
+		Search:                 req.Payload.Search,
+		Filter:                 req.Payload.Filter,
+		Sort:                   req.Payload.Sort,
+		PageSize:               req.Payload.PageSize,
+		Page:                   req.Payload.Page,
+		OwnerID:                user.ID,
+		DisplayXsynLocked:      req.Payload.DisplayXsynLocked,
+		ExcludeMarketLocked:    req.Payload.ExcludeMarketLocked,
+		IncludeMarketListed:    req.Payload.IncludeMarketListed,
+		ExcludeMechLocked:      req.Payload.ExcludeMechLocked,
+		ExcludeIDs:             req.Payload.ExcludeIDs,
+		FilterRarities:         req.Payload.FilterRarities,
+		FilterTypes:            req.Payload.FilterTypes,
+		FilterEquippedStatuses: req.Payload.FilterEquippedStatuses,
+	}
+	if req.Payload.SortBy != "" && req.Payload.SortDir.IsValid() {
+		listOpts.SortBy = req.Payload.SortBy
+		listOpts.SortDir = req.Payload.SortDir
+	}
+
+	total, utilities, err := db.UtilityList(listOpts)
+	if err != nil {
+		gamelog.L.Error().Interface("req.Payload", req.Payload).Err(err).Msg("issue getting mechs")
+		return terror.Error(err, "Failed to find your War Machine assets, please try again or contact support.")
+	}
+
+	reply(&PlayerAssetUtilityListResp{
+		Total:     total,
+		Utilities: utilities,
+	})
+	return nil
+}
+
+func (api *API) PlayerMechs(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
+	resp, err := db.OwnedMechsBrief(user.ID)
+	if err != nil {
+		return err
+	}
+	reply(resp)
 	return nil
 }
