@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"github.com/go-chi/chi/v5"
 	"server"
 	"server/battle"
 	"server/db"
@@ -26,12 +27,12 @@ import (
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 )
 
-type PlayerAbilitiesControllerWS struct {
+type AbilitiesControllerWS struct {
 	API *API
 }
 
-func NewPlayerAbilitiesController(api *API) *PlayerAbilitiesControllerWS {
-	pac := &PlayerAbilitiesControllerWS{
+func NewAbilitiesController(api *API) *AbilitiesControllerWS {
+	pac := &AbilitiesControllerWS{
 		API: api,
 	}
 
@@ -40,9 +41,49 @@ func NewPlayerAbilitiesController(api *API) *PlayerAbilitiesControllerWS {
 	api.SecureUserCommand(server.HubKeySaleAbilityPurchase, pac.SaleAbilityPurchaseHandler)
 
 	api.SecureUserFactionCommand(battle.HubKeyWarMachineAbilityTrigger, api.ArenaManager.MechAbilityTriggerHandler)
-	api.SecureUserFactionCommand(battle.HubKeyBattleAbilityOptIn, api.ArenaManager.BattleAbilityOptIn)
-
 	return pac
+}
+
+func (pac *AbilitiesControllerWS) PlayerSupportAbilitiesHandler(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
+	L := gamelog.L.With().Str("func", "PlayerSupportAbilitiesHandler").Str("user id", user.ID).Logger()
+	battleID := chi.RouteContext(ctx).URLParam("battle_id")
+	// convert to uuid to see if its a uuid
+	_, err := uuid.FromString(battleID)
+	if err != nil {
+		return nil // don't need to return an error, frontend can send undefined annoyingly if no battle is active
+	}
+
+	L = L.With().Str("battleID", battleID).Logger()
+
+	resp := &battle.PlayerSupportAbilitiesResponse{
+		BattleID: battleID,
+	}
+	supporterAbilities, err := boiler.PlayerBattleAbilities(
+		boiler.PlayerBattleAbilityWhere.PlayerID.EQ(user.ID),
+		boiler.PlayerBattleAbilityWhere.BattleID.EQ(battleID),
+		boiler.PlayerBattleAbilityWhere.UsedAt.IsNull(),
+		qm.Load(boiler.PlayerBattleAbilityRels.GameAbility),
+	).All(gamedb.StdConn)
+	if err != nil {
+		L.Error().Err(err).Msg("failed to load abilities")
+		return terror.Error(err, "failed to find supporter abilities, try again or contact support.")
+	}
+
+	for _, ability := range supporterAbilities {
+		resp.SupporterAbilities = append(resp.SupporterAbilities, &battle.PlayerSupporterAbility{
+			ID:                 ability.ID,
+			Label:              ability.R.GameAbility.Label,
+			Colour:             ability.R.GameAbility.Colour,
+			ImageURL:           ability.R.GameAbility.ImageURL,
+			Description:        ability.R.GameAbility.Description,
+			TextColour:         ability.R.GameAbility.TextColour,
+			LocationSelectType: ability.R.GameAbility.LocationSelectType,
+			GameClientAbilityID: ability.R.GameAbility.GameClientAbilityID,
+		})
+	}
+
+	reply(resp)
+	return nil
 }
 
 type PlayerAbilitySubscribeRequest struct {
@@ -51,7 +92,7 @@ type PlayerAbilitySubscribeRequest struct {
 	} `json:"payload"`
 }
 
-func (pac *PlayerAbilitiesControllerWS) PlayerAbilitiesListHandler(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
+func (pac *AbilitiesControllerWS) PlayerAbilitiesListHandler(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
 	pas, err := db.PlayerAbilitiesList(user.ID)
 	if err != nil {
 		gamelog.L.Error().Str("db func", "TalliedPlayerAbilitiesList").Str("userID", user.ID).Err(err).Msg("unable to get player abilities")
@@ -68,7 +109,7 @@ type SaleAbilitiesListResponse struct {
 	SaleAbilities   []*db.SaleAbilityDetailed `json:"sale_abilities"`
 }
 
-func (pac *PlayerAbilitiesControllerWS) SaleAbilitiesListHandler(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
+func (pac *AbilitiesControllerWS) SaleAbilitiesListHandler(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
 	dpas := pac.API.SalePlayerAbilityManager.CurrentSaleList()
 
 	nextRefresh := pac.API.SalePlayerAbilityManager.NextRefresh().Client
@@ -81,7 +122,7 @@ func (pac *PlayerAbilitiesControllerWS) SaleAbilitiesListHandler(ctx context.Con
 	return nil
 }
 
-func (pac *PlayerAbilitiesControllerWS) SaleAbilitiesListSubscribeHandler(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
+func (pac *AbilitiesControllerWS) SaleAbilitiesListSubscribeHandler(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
 	dpas := pac.API.SalePlayerAbilityManager.CurrentSaleList()
 
 	nextRefresh := pac.API.SalePlayerAbilityManager.NextRefresh().Client
@@ -99,7 +140,7 @@ type SaleAbilityClaimRequest struct {
 	} `json:"payload"`
 }
 
-func (pac *PlayerAbilitiesControllerWS) SaleAbilityClaimHandler(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
+func (pac *AbilitiesControllerWS) SaleAbilityClaimHandler(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
 	l := gamelog.L.With().Str("func", "SaleAbilityClaimHandler").Str("userID", user.ID).Logger()
 
 	req := &SaleAbilityClaimRequest{}
@@ -223,7 +264,7 @@ type SaleAbilityPurchaseRequest struct {
 	} `json:"payload"`
 }
 
-func (pac *PlayerAbilitiesControllerWS) SaleAbilityPurchaseHandler(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
+func (pac *AbilitiesControllerWS) SaleAbilityPurchaseHandler(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
 	l := gamelog.L.With().Str("func", "SaleAbilityPurchaseHandler").Str("userID", user.ID).Logger()
 	req := &SaleAbilityPurchaseRequest{}
 	err := json.Unmarshal(payload, req)

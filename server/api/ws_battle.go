@@ -34,12 +34,10 @@ func NewBattleController(api *API) *BattleControllerWS {
 
 	// commands from battle
 	api.SecureUserFactionCommand(battle.HubKeyPlayerAbilityUse, api.ArenaManager.PlayerAbilityUse)
+	api.SecureUserFactionCommand(battle.HubKeyPlayerSupportAbilityUse, api.ArenaManager.PlayerSupportAbilityUse)
 
 	// mech move command related
 	api.SecureUserFactionCommand(battle.HubKeyMechMoveCommandCancel, api.ArenaManager.MechMoveCommandCancelHandler)
-	// battle ability related (bribing)
-	api.SecureUserFactionCommand(battle.HubKeyAbilityLocationSelect, api.ArenaManager.AbilityLocationSelect)
-
 	return bc
 }
 
@@ -373,5 +371,16 @@ func (api *API) MiniMapAbilityDisplayList(ctx context.Context, key string, paylo
 
 func (api *API) ChallengeFundSubscribeHandler(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
 	reply(api.ChallengeFund)
+	return nil
+}
+
+func (api *API) BattleState(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
+	arena, err := api.ArenaManager.GetArenaFromContext(ctx)
+	if err != nil {
+		reply(battle.EndState)
+		return nil
+	}
+
+	reply(arena.CurrentBattleState())
 	return nil
 }
