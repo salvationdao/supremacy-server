@@ -47,6 +47,7 @@ const KeyAdvanceBattleAbilityShowUpUntilSeconds KVKey = "advance_battle_ability_
 const KeyAdvanceBattleAbilityLabel KVKey = "advance_battle_ability_label"
 const KeyFirstBattleAbilityLabel KVKey = "first_battle_ability_label"
 const KeyPunishVoteCooldownHour KVKey = "punish_vote_cooldown_hour"
+const KeyPreBattleTimeSeconds KVKey = "pre_battle_time_seconds"
 
 const KeyLastTransferEventID KVKey = "last_transfer_event_id"
 

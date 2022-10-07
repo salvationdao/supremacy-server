@@ -36,18 +36,17 @@ import (
 	"github.com/gofrs/uuid"
 )
 
-type BattleStage int32
-
 const (
-	BattleStageStart = 1
-	BattleStageEnd   = 0
+	EndState      = 0
+	SetupState    = 1
+	IntroState    = 2
+	BattlingState = 3
 )
 
 type Battle struct {
 	*boiler.Battle
-	arena *Arena
-	stage *atomic.Int32
-	//BattleID               string        `json:"battleID"`
+	arena                  *Arena
+	state                  *atomic.Int32
 	MapName                string        `json:"mapName"`
 	WarMachines            []*WarMachine `json:"warMachines"`
 	spawnedAIMux           deadlock.RWMutex
@@ -59,7 +58,6 @@ type Battle struct {
 	battleZones            []server.BattleZone
 	currentBattleZoneIndex int
 	nextMapID              null.String
-	_abilities             *AbilitiesSystem
 	rpcClient              *xsyn_rpcclient.XrpcClient
 	startedAt              time.Time
 	replaySession          *RecordingSession
@@ -189,22 +187,10 @@ type RecordingEvents struct {
 	Notification GameNotification `json:"notification"`
 }
 
-func (btl *Battle) AbilitySystem() *AbilitiesSystem {
-	btl.RLock()
-	defer btl.RUnlock()
-	return btl._abilities
-}
-
 func (btl *Battle) playerAbilityManager() *PlayerAbilityManager {
 	btl.RLock()
 	defer btl.RUnlock()
 	return btl._playerAbilityManager
-}
-
-func (btl *Battle) storeAbilities(as *AbilitiesSystem) {
-	btl.Lock()
-	defer btl.Unlock()
-	btl._abilities = as
 }
 
 // storeGameMap set the game map detail from game client
@@ -348,8 +334,8 @@ func (btl *Battle) start() {
 
 	var err error
 
-	gamelog.L.Debug().Int("battle_number", btl.BattleNumber).Str("battle_id", btl.ID).Msg("Spinning up battle AbilitySystem()")
-	btl.storeAbilities(NewAbilitiesSystem(btl))
+	btl.state.Store(BattlingState)
+	ws.PublishMessage(fmt.Sprintf("/public/arena/%s/battle_state", btl.ArenaID), server.HubKeyBattleState, BattlingState)
 
 	// handle global announcements
 	ga, err := boiler.GlobalAnnouncements().One(gamedb.StdConn)
@@ -403,25 +389,6 @@ func (btl *Battle) getCellCoordinatesFromGameWorldXY(location *server.GameLocati
 type WarMachinePosition struct {
 	X int
 	Y int
-}
-
-func (btl *Battle) endAbilities() {
-	defer func() {
-		if r := recover(); r != nil {
-			gamelog.LogPanicRecovery("panic! panic! panic! Panic at the battle AbilitySystem() end!", r)
-		}
-	}()
-
-	gamelog.L.Debug().Msgf("cleaning up AbilitySystem(): %s", btl.ID)
-
-	if btl.AbilitySystem() == nil {
-		gamelog.L.Error().Str("log_name", "battle arena").Msg("battle did not have AbilitySystem()!")
-		return
-	}
-
-	btl.AbilitySystem().End()
-	btl.AbilitySystem().storeBattle(nil)
-	btl.storeAbilities(nil)
 }
 
 func (btl *Battle) handleBattleEnd(payload *BattleEndPayload) {
@@ -1260,7 +1227,6 @@ func (btl *Battle) end(payload *BattleEndPayload) {
 	btl.arena.beginBattleMux.Lock()
 	defer btl.arena.beginBattleMux.Unlock()
 
-	btl.endAbilities()
 	btl.processWarMachineRepair()
 
 	// clean up current battle
@@ -1278,6 +1244,7 @@ type GameSettingsResponse struct {
 	SpawnedAI          []*WarMachine      `json:"spawned_ai"`
 	WarMachineLocation []byte             `json:"war_machine_location"`
 	BattleIdentifier   int                `json:"battle_identifier"`
+	BattleID           string             `json:"battle_id"`
 	AbilityDetails     []*AbilityDetail   `json:"ability_details"`
 
 	ServerTime      time.Time `json:"server_time"` // time for frontend to adjust the different
@@ -1305,26 +1272,25 @@ func GameSettingsPayload(btl *Battle) *GameSettingsResponse {
 	wms := []*WarMachine{}
 	for _, w := range btl.WarMachines {
 		wCopy := &WarMachine{
-			ID:                 w.ID,
-			Hash:               w.Hash,
-			OwnedByID:          w.OwnedByID,
-			OwnerUsername:      w.OwnerUsername,
-			Name:               w.Name,
-			Label:              w.Label,
-			ParticipantID:      w.ParticipantID,
-			FactionID:          w.FactionID,
-			MaxHealth:          w.MaxHealth,
-			MaxShield:          w.MaxShield,
-			Health:             w.Health,
-			AIType:             w.AIType,
-			ModelID:            w.ModelID,
-			Model:              w.Model,
-			Skin:               w.Skin,
-			Speed:              w.Speed,
-			Faction:            w.Faction,
-			Tier:               w.Tier,
-			PowerCore:          w.PowerCore,
-			Abilities:          w.Abilities,
+			ID:            w.ID,
+			Hash:          w.Hash,
+			OwnedByID:     w.OwnedByID,
+			OwnerUsername: w.OwnerUsername,
+			Name:          w.Name,
+			Label:         w.Label,
+			ParticipantID: w.ParticipantID,
+			FactionID:     w.FactionID,
+			MaxHealth:     w.MaxHealth,
+			MaxShield:     w.MaxShield,
+			Health:        w.Health,
+			AIType:        w.AIType,
+			ModelID:       w.ModelID,
+			Model:         w.Model,
+			Skin:          w.Skin,
+			Speed:         w.Speed,
+			Faction:       w.Faction,
+			Tier:          w.Tier,
+			PowerCore:     w.PowerCore,
 			Weapons:            w.Weapons,
 			Utility:            w.Utility,
 			Image:              w.Image,
@@ -1359,26 +1325,25 @@ func GameSettingsPayload(btl *Battle) *GameSettingsResponse {
 	ais := []*WarMachine{}
 	for _, w := range btl.SpawnedAI {
 		wCopy := &WarMachine{
-			ID:                 w.ID,
-			Hash:               w.Hash,
-			OwnedByID:          w.OwnedByID,
-			OwnerUsername:      w.OwnerUsername,
-			Name:               w.Name,
-			Label:              w.Label,
-			ParticipantID:      w.ParticipantID,
-			FactionID:          w.FactionID,
-			MaxHealth:          w.MaxHealth,
-			MaxShield:          w.MaxShield,
-			Health:             w.Health,
-			AIType:             w.AIType,
-			ModelID:            w.ModelID,
-			Model:              w.Model,
-			Skin:               w.Skin,
-			Speed:              w.Speed,
-			Faction:            w.Faction,
-			Tier:               w.Tier,
-			PowerCore:          w.PowerCore,
-			Abilities:          w.Abilities,
+			ID:            w.ID,
+			Hash:          w.Hash,
+			OwnedByID:     w.OwnedByID,
+			OwnerUsername: w.OwnerUsername,
+			Name:          w.Name,
+			Label:         w.Label,
+			ParticipantID: w.ParticipantID,
+			FactionID:     w.FactionID,
+			MaxHealth:     w.MaxHealth,
+			MaxShield:     w.MaxShield,
+			Health:        w.Health,
+			AIType:        w.AIType,
+			ModelID:       w.ModelID,
+			Model:         w.Model,
+			Skin:          w.Skin,
+			Speed:         w.Speed,
+			Faction:       w.Faction,
+			Tier:          w.Tier,
+			PowerCore:     w.PowerCore,
 			Weapons:            w.Weapons,
 			Utility:            w.Utility,
 			Image:              w.Image,
@@ -1421,6 +1386,7 @@ func GameSettingsPayload(btl *Battle) *GameSettingsResponse {
 		AbilityDetails:     btl.abilityDetails,
 		ServerTime:         time.Now(),
 		IsAIDrivenMatch:    btl.lobby.IsAiDrivenMatch,
+		BattleID:           btl.ID,
 	}
 }
 
@@ -1440,7 +1406,7 @@ func (btl *Battle) Tick(payload []byte) {
 		return
 	}
 
-	if btl.stage.Load() == BattleStageEnd {
+	if btl.state.Load() != BattlingState {
 		return
 	}
 
@@ -2295,4 +2261,47 @@ var ModelMap = map[string]string{
 	"BXSD":                "BXSD",
 	"XFVS":                "XFVS",
 	"WREX":                "WREX",
+}
+
+func BuildUserDetailWithFaction(userID uuid.UUID) (*UserBrief, error) {
+	defer func() {
+		if r := recover(); r != nil {
+			gamelog.LogPanicRecovery("panic! panic! panic! Panic at the BuildUserDetailWithFaction!", r)
+		}
+	}()
+	userBrief := &UserBrief{}
+
+	user, err := boiler.FindPlayer(gamedb.StdConn, userID.String())
+	if err != nil {
+		gamelog.L.Error().Str("log_name", "battle arena").Str("player_id", userID.String()).Err(err).Msg("failed to get player from db")
+		return nil, err
+	}
+
+	userBrief.ID = userID
+	userBrief.Username = user.Username.String
+	userBrief.Gid = user.Gid
+
+	if !user.FactionID.Valid {
+		return userBrief, nil
+	}
+
+	userBrief.FactionID = user.FactionID.String
+
+	faction, err := boiler.Factions(boiler.FactionWhere.ID.EQ(user.FactionID.String)).One(gamedb.StdConn)
+	if err != nil {
+		gamelog.L.Error().Str("log_name", "battle arena").Str("player_id", userID.String()).Str("faction_id", user.FactionID.String).Err(err).Msg("failed to get player faction from db")
+		return userBrief, nil
+	}
+
+	userBrief.Faction = &Faction{
+		ID:    faction.ID,
+		Label: faction.Label,
+		Theme: &Theme{
+			PrimaryColor:    faction.PrimaryColor,
+			SecondaryColor:  faction.SecondaryColor,
+			BackgroundColor: faction.BackgroundColor,
+		},
+	}
+
+	return userBrief, nil
 }
