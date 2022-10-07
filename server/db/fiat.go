@@ -98,9 +98,8 @@ func FiatProduct(conn boil.Executor, id string) (*server.FiatProduct, error) {
 
 // FiatProducts gets a list of available fiat products to purchase by faction.
 func FiatProducts(conn boil.Executor, factionID *string, productType string, search string, offset int, pageSize int) (int64, []*server.FiatProduct, error) {
-	queryMods := []qm.QueryMod{
-		boiler.FiatProductWhere.ProductType.EQ(productType),
-	}
+	queryMods := []qm.QueryMod{}
+
 	// Filters
 	if factionID != nil {
 		queryMods = append(queryMods, boiler.FiatProductWhere.FactionID.EQ(*factionID))
@@ -122,9 +121,9 @@ func FiatProducts(conn boil.Executor, factionID *string, productType string, sea
 			qm.And(
 				fmt.Sprintf(
 					`(
-						(to_tsvector('english', %s) && to_tsquery(?)),
-						OR (to_tsvector('english', %s) && to_tsquery(?)),
-						OR (to_tsvector('english', %s) && to_tsquery(?))
+						(to_tsvector('english', %s) @@ to_tsquery(?))
+						OR (to_tsvector('english', %s) @@ to_tsquery(?))
+						OR (to_tsvector('english', %s) @@ to_tsquery(?))
 					)`,
 					boiler.FiatProductTableColumns.Name,
 					boiler.FiatProductTableColumns.Description,
