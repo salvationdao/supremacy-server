@@ -14,9 +14,8 @@ func GetBattleLobby(lobbyID string) (*boiler.BattleLobby, error) {
 	// get next lobby
 	bl, err := boiler.BattleLobbies(
 		boiler.BattleLobbyWhere.ID.EQ(lobbyID),
-		qm.Load(
-			qm.Rels(boiler.BattleLobbyRels.GameMap),
-			),
+		qm.Load(boiler.BattleLobbyRels.GameMap),
+		qm.Load(boiler.BattleLobbyRels.BattleLobbiesMechs),
 		qm.Load(
 			qm.Rels(
 				boiler.BattleLobbyRels.BattleLobbySupporters,
