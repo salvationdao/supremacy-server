@@ -121,13 +121,32 @@ func (api *API) JoinFactionCommander(ctx context.Context, user *boiler.Player, f
 		return terror.Error(err, "Failed to get signed policy url")
 	}
 
+	// if user is a mech owner
+	mechOwner, err := boiler.VoiceStreams(
+		boiler.VoiceStreamWhere.OwnerID.EQ(user.ID),
+		boiler.VoiceStreamWhere.KickedAt.IsNull(),
+		boiler.VoiceStreamWhere.SenderType.EQ(boiler.VoiceSenderTypeMECH_OWNER),
+	).One(gamedb.StdConn)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return terror.Error(err, "failed to get faction commander with user id")
+	}
+
+	listenURL := signedURL.ListenURL
+	sendURL := signedURL.SendURL
+	if mechOwner != nil {
+
+		listenURL = mechOwner.ListenStreamURL
+		sendURL = mechOwner.SendStreamURL
+
+	}
+
 	// create one if there is no faction commander
 	newFactionCommander := &boiler.VoiceStream{
 		ArenaID:         arena.ID,
 		OwnerID:         user.ID,
 		FactionID:       factionID,
-		ListenStreamURL: signedURL.ListenURL,
-		SendStreamURL:   signedURL.SendURL,
+		ListenStreamURL: listenURL,
+		SendStreamURL:   sendURL,
 		IsActive:        true,
 		SenderType:      boiler.VoiceSenderTypeFACTION_COMMANDER,
 		SessionExpireAt: signedURL.ExpiredAt,
