@@ -83,9 +83,6 @@ func BattleLobbiesFromBoiler(bls []*boiler.BattleLobby) ([]*BattleLobby, error) 
 			SelectedBostonSupporters:   []*BattleLobbySupporter{},
 		}
 
-		// omit password
-		sbl.AccessCode = null.StringFromPtr(nil)
-
 		if bl.R != nil {
 			if bl.R.HostBy != nil {
 				host := bl.R.HostBy
@@ -502,42 +499,47 @@ func BattleLobbiesFactionFilter(bls []*BattleLobby, keepDataForFactionID string)
 	battleLobbies := []*BattleLobby{}
 
 	for _, bl := range bls {
-
-		// copy lobby data
-		battleLobby := &BattleLobby{
-			BattleLobby:        bl.BattleLobby,
-			HostBy:             bl.HostBy,
-			GameMap:            bl.GameMap,
-			BattleLobbiesMechs: []*BattleLobbiesMech{},
-			IsPrivate:          bl.IsPrivate,
-		}
-
-		for _, blm := range bl.BattleLobbiesMechs {
-			battleLobbyMech := &BattleLobbiesMech{
-				MechID:        blm.MechID,
-				BattleLobbyID: blm.BattleLobbyID,
-				AvatarURL:     blm.AvatarURL,
-				Name:          blm.Name,
-				Tier:          blm.Tier,
-				IsDestroyed:   blm.IsDestroyed,
-				FactionID:     blm.Owner.FactionID,
-			}
-
-			if blm.Owner != nil && blm.Owner.FactionID.String == keepDataForFactionID {
-				// copy owner detail
-				battleLobbyMech.Owner = blm.Owner
-
-				// copy weapon slots
-				battleLobbyMech.WeaponSlots = blm.WeaponSlots
-
-				battleLobbyMech.BlueprintMech = blm.BlueprintMech
-			}
-
-			battleLobby.BattleLobbiesMechs = append(battleLobby.BattleLobbiesMechs, battleLobbyMech)
-		}
-
-		battleLobbies = append(battleLobbies, battleLobby)
+		battleLobbies = append(battleLobbies, BattleLobbyInfoFilter(bl, keepDataForFactionID))
 	}
 
 	return battleLobbies
+}
+
+// BattleLobbyInfoFilter filter single lobby at a time
+func BattleLobbyInfoFilter(bl *BattleLobby, keepDataForFactionID string) *BattleLobby {
+	// copy lobby data,
+	// important: access code must be omitted
+	battleLobby := &BattleLobby{
+		BattleLobby:        bl.BattleLobby,
+		HostBy:             bl.HostBy,
+		GameMap:            bl.GameMap,
+		BattleLobbiesMechs: []*BattleLobbiesMech{},
+		IsPrivate:          bl.IsPrivate,
+	}
+
+	for _, blm := range bl.BattleLobbiesMechs {
+		battleLobbyMech := &BattleLobbiesMech{
+			MechID:        blm.MechID,
+			BattleLobbyID: blm.BattleLobbyID,
+			AvatarURL:     blm.AvatarURL,
+			Name:          blm.Name,
+			Tier:          blm.Tier,
+			IsDestroyed:   blm.IsDestroyed,
+			FactionID:     blm.Owner.FactionID,
+		}
+
+		if blm.Owner != nil && blm.Owner.FactionID.String == keepDataForFactionID {
+			// copy owner detail
+			battleLobbyMech.Owner = blm.Owner
+
+			// copy weapon slots
+			battleLobbyMech.WeaponSlots = blm.WeaponSlots
+
+			battleLobbyMech.BlueprintMech = blm.BlueprintMech
+		}
+
+		battleLobby.BattleLobbiesMechs = append(battleLobby.BattleLobbiesMechs, battleLobbyMech)
+	}
+
+	return battleLobby
 }

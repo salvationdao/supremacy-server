@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/friendsofgo/errors"
+	"github.com/go-chi/chi/v5"
 	"github.com/gofrs/uuid"
 	"github.com/ninja-software/terror/v2"
 	"github.com/ninja-syndicate/ws"
@@ -32,7 +33,6 @@ func BattleQueueController(api *API) {
 
 	api.SecureUserFactionCommand(HubKeyMechStake, api.MechStake)
 	api.SecureUserFactionCommand(HubKeyMechUnstake, api.MechUnstake)
-
 
 	api.SecureUserFactionCommand(HubKeyBattleLobbySupporterJoin, api.BattleLobbySupporterJoin)
 	//api.SecureUserFactionCommand(HubKeyBattleLobbySupporterLeave, api.BattleLobbySupporterLeave)
@@ -129,8 +129,11 @@ func (api *API) BattleLobbyCreate(ctx context.Context, user *boiler.Player, fact
 			ThirdFactionCut:       req.Payload.ThirdFactionCut.Div(decimal.NewFromInt(100)),
 			EachFactionMechAmount: db.FACTION_MECH_LIMIT,
 			MaxDeployPerPlayer:    req.Payload.MaxDeployNumber,
-			AccessCode:            req.Payload.AccessCode,
 			WillNotStartUntil:     req.Payload.WillNotStartUntil,
+		}
+
+		if req.Payload.AccessCode.Valid && req.Payload.AccessCode.String != "" {
+			bl.AccessCode = req.Payload.AccessCode
 		}
 
 		err = bl.Insert(tx, boil.Infer())
@@ -483,7 +486,8 @@ func (api *API) BattleLobbyJoin(ctx context.Context, user *boiler.Player, factio
 		// mark battle lobby to ready
 		if lobbyReady {
 			bl.ReadyAt = null.TimeFrom(now)
-			_, err = bl.Update(tx, boil.Whitelist(boiler.BattleLobbyColumns.ReadyAt))
+			bl.AccessCode = null.StringFromPtr(nil)
+			_, err = bl.Update(tx, boil.Whitelist(boiler.BattleLobbyColumns.ReadyAt, boiler.BattleLobbyColumns.AccessCode))
 			if err != nil {
 				refund(refundFns)
 				gamelog.L.Error().Interface("battle lobby", bl).Err(err).Msg("Failed to update battle lobby.")
@@ -923,6 +927,7 @@ func (api *API) BattleLobbyListUpdate(ctx context.Context, user *boiler.Player, 
 	// return all the unfinished lobbies
 	bls, err := boiler.BattleLobbies(
 		boiler.BattleLobbyWhere.EndedAt.IsNull(),
+		boiler.BattleLobbyWhere.AccessCode.IsNull(),
 		qm.Load(boiler.BattleLobbyRels.HostBy),
 		qm.Load(boiler.BattleLobbyRels.GameMap),
 	).All(gamedb.StdConn)
@@ -937,6 +942,33 @@ func (api *API) BattleLobbyListUpdate(ctx context.Context, user *boiler.Player, 
 	}
 
 	reply(server.BattleLobbiesFactionFilter(resp, factionID))
+
+	return nil
+}
+
+func (api *API) PrivateBattleLobbyUpdate(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
+	accessCode := chi.RouteContext(ctx).URLParam("access_code")
+	if accessCode == "" {
+		return nil
+	}
+
+	bl, err := boiler.BattleLobbies(
+		boiler.BattleLobbyWhere.AccessCode.EQ(null.StringFrom(accessCode)),
+		qm.Load(boiler.BattleLobbyRels.HostBy),
+		qm.Load(boiler.BattleLobbyRels.GameMap),
+	).One(gamedb.StdConn)
+	if err != nil {
+		return terror.Error(err, "Failed to load battle lobby")
+	}
+
+	filteredBattleLobbies, err := server.BattleLobbiesFromBoiler([]*boiler.BattleLobby{bl})
+	if err != nil {
+		return err
+	}
+
+	if len(filteredBattleLobbies) > 0 {
+		reply(server.BattleLobbyInfoFilter(filteredBattleLobbies[0], factionID))
+	}
 
 	return nil
 }
@@ -1164,8 +1196,7 @@ func (api *API) MechUnstake(ctx context.Context, user *boiler.Player, factionID 
 	return nil
 }
 
-
-func (api *API)  NextBattleDetails(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
+func (api *API) NextBattleDetails(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
 	arena, err := api.ArenaManager.GetArenaFromContext(ctx)
 	if err != nil {
 		return err
@@ -1203,8 +1234,8 @@ func (api *API) BattleLobbySupporterJoin(ctx context.Context, user *boiler.Playe
 			qm.Load(
 				boiler.BattleLobbyRels.BattleLobbySupporterOptIns,
 				boiler.BattleLobbySupporterOptInWhere.FactionID.EQ(factionID),
-				),
-			).One(gamedb.StdConn)
+			),
+		).One(gamedb.StdConn)
 		if err != nil {
 			return err
 		}
@@ -1228,7 +1259,7 @@ func (api *API) BattleLobbySupporterJoin(ctx context.Context, user *boiler.Playe
 		bls := &boiler.BattleLobbySupporterOptIn{
 			SupporterID:   user.ID,
 			BattleLobbyID: bl.ID,
-			FactionID: factionID,
+			FactionID:     factionID,
 		}
 		err = bls.Insert(gamedb.StdConn, boil.Infer())
 		if err != nil {

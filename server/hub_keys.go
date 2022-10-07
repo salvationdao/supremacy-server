@@ -72,7 +72,6 @@ const HubKeyBattleArenaClosedSubscribe = "BATTLE:ARENA:CLOSED"
 const HubKeyNextBattleDetails = "NEXT:BATTLE:DETAILS"
 const HubKeyBattleState = "BATTLE:STATE"
 
-
 // store
 
 const HubKeyMysteryCrateSubscribe = "STORE:MYSTERY:CRATE:SUBSCRIBE"
@@ -91,5 +90,6 @@ const HubKeyMiniMapAbilityDisplayList = "MINI:MAP:ABILITY:DISPLAY:LIST"
 const HubKeyPlayerMechsBrief = "PLAYER:MECHS:BRIEF"
 
 const HubKeyBattleLobbyListUpdate = "BATTLE:LOBBY:LIST:UPDATE"
+const HubKeyPrivateBattleLobbyUpdate = "PRIVATE:BATTLE:LOBBY:UPDATE"
 const HubKeyPlayerAssetMechQueueSubscribe = "PLAYER:ASSET:MECH:QUEUE:SUBSCRIBE"
 const HubKeyBattleETAUpdate = "BATTLE:ETA:UPDATE"

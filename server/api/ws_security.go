@@ -72,6 +72,16 @@ func MustMatchSyndicate(ctx context.Context) bool {
 	return true
 }
 
+func MustHaveUrlParam(paramKey string) func(ctx context.Context) bool {
+	return func(ctx context.Context) bool {
+		if chi.RouteContext(ctx).URLParam(paramKey) == "" {
+			return false
+		}
+
+		return true
+	}
+}
+
 func (api *API) SecureUserFeatureCheckCommand(featureType string, key string, fn server.SecureCommandFunc) {
 	api.SecureUserCommander.Command(key, server.MustSecureWithFeature(featureType, server.SecureUserTracer(fn, api.Config.Environment)))
 }
