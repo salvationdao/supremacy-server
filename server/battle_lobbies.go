@@ -106,7 +106,7 @@ func BattleLobbiesFromBoiler(bls []*boiler.BattleLobby) ([]*BattleLobby, error) 
 					switch sup.FactionID {
 					case RedMountainFactionID:
 						supper := &BattleLobbySupporter{
-							ID:             sup.ID,
+							ID:             sup.SupporterID,
 							Username:       sup.R.Supporter.Username.String,
 							FactionID:      sup.R.Supporter.FactionID.String,
 							CustomAvatarID: sup.R.Supporter.CustomAvatarID.String,
@@ -118,7 +118,7 @@ func BattleLobbiesFromBoiler(bls []*boiler.BattleLobby) ([]*BattleLobby, error) 
 						sbl.OptedInRedMountSupporters = append(sbl.OptedInRedMountSupporters, supper)
 					case BostonCyberneticsFactionID:
 						supper := &BattleLobbySupporter{
-							ID:             sup.ID,
+							ID:             sup.SupporterID,
 							Username:       sup.R.Supporter.Username.String,
 							FactionID:      sup.R.Supporter.FactionID.String,
 							CustomAvatarID: sup.R.Supporter.CustomAvatarID.String,
@@ -130,7 +130,7 @@ func BattleLobbiesFromBoiler(bls []*boiler.BattleLobby) ([]*BattleLobby, error) 
 						sbl.OptedInBostonSupporters = append(sbl.OptedInBostonSupporters, supper)
 					case ZaibatsuFactionID:
 						supper := &BattleLobbySupporter{
-							ID:             sup.ID,
+							ID:             sup.SupporterID,
 							Username:       sup.R.Supporter.Username.String,
 							FactionID:      sup.R.Supporter.FactionID.String,
 							CustomAvatarID: sup.R.Supporter.CustomAvatarID.String,
@@ -150,7 +150,7 @@ func BattleLobbiesFromBoiler(bls []*boiler.BattleLobby) ([]*BattleLobby, error) 
 					switch sup.FactionID {
 					case RedMountainFactionID:
 						supper := &BattleLobbySupporter{
-							ID:             sup.ID,
+							ID:             sup.SupporterID,
 							Username:       sup.R.Supporter.Username.String,
 							FactionID:      sup.R.Supporter.FactionID.String,
 							CustomAvatarID: sup.R.Supporter.CustomAvatarID.String,
@@ -162,7 +162,7 @@ func BattleLobbiesFromBoiler(bls []*boiler.BattleLobby) ([]*BattleLobby, error) 
 						sbl.SelectedRedMountSupporters = append(sbl.SelectedRedMountSupporters, supper)
 					case BostonCyberneticsFactionID:
 						supper := &BattleLobbySupporter{
-							ID:             sup.ID,
+							ID:             sup.SupporterID,
 							Username:       sup.R.Supporter.Username.String,
 							FactionID:      sup.R.Supporter.FactionID.String,
 							CustomAvatarID: sup.R.Supporter.CustomAvatarID.String,
@@ -174,7 +174,7 @@ func BattleLobbiesFromBoiler(bls []*boiler.BattleLobby) ([]*BattleLobby, error) 
 						sbl.SelectedBostonSupporters = append(sbl.SelectedBostonSupporters, supper)
 					case ZaibatsuFactionID:
 						supper := &BattleLobbySupporter{
-							ID:             sup.ID,
+							ID:             sup.SupporterID,
 							Username:       sup.R.Supporter.Username.String,
 							FactionID:      sup.R.Supporter.FactionID.String,
 							CustomAvatarID: sup.R.Supporter.CustomAvatarID.String,
