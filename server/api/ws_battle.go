@@ -261,12 +261,12 @@ func (bc *BattleControllerWS) BattleMechStatsHandler(ctx context.Context, key st
 	var minSurvives int
 	err = gamedb.StdConn.QueryRow(fmt.Sprintf(`
 				SELECT
-					COUNT(%[1]S),
-					MAX(%[2]S),
-					MIN(%[2]S),
-					MAX(%[3]S),
-					MIN(%[3]S)
-				FROM %[4]S
+					COUNT(%[1]s),
+					MAX(%[2]s),
+					MIN(%[2]s),
+					MAX(%[3]s),
+					MIN(%[3]s)
+				FROM %[4]s
 			`,
 		boiler.MechStatColumns.MechID,
 		boiler.MechStatColumns.TotalKills,
