@@ -97,12 +97,44 @@ func FiatProduct(conn boil.Executor, id string) (*server.FiatProduct, error) {
 }
 
 // FiatProducts gets a list of available fiat products to purchase by faction.
-func FiatProducts(conn boil.Executor, factionID *string, productType string, offset int, pageSize int) (int64, []*server.FiatProduct, error) {
+func FiatProducts(conn boil.Executor, factionID *string, productType string, search string, offset int, pageSize int) (int64, []*server.FiatProduct, error) {
 	queryMods := []qm.QueryMod{
 		boiler.FiatProductWhere.ProductType.EQ(productType),
 	}
+	// Filters
 	if factionID != nil {
 		queryMods = append(queryMods, boiler.FiatProductWhere.FactionID.EQ(*factionID))
+	}
+	if productType != "" {
+		queryMods = append(queryMods, boiler.FiatProductWhere.ProductType.EQ(productType))
+	}
+	if search != "" {
+		xsearch := ParseQueryText(search, true)
+		queryMods = append(queryMods,
+			qm.InnerJoin(
+				fmt.Sprintf(
+					"%s ON %s = %s",
+					boiler.TableNames.Factions,
+					boiler.FactionTableColumns.ID,
+					boiler.FiatProductTableColumns.FactionID,
+				),
+			),
+			qm.And(
+				fmt.Sprintf(
+					`(
+						(to_tsvector('english', %s) && to_tsquery(?)),
+						OR (to_tsvector('english', %s) && to_tsquery(?)),
+						OR (to_tsvector('english', %s) && to_tsquery(?))
+					)`,
+					boiler.FiatProductTableColumns.Name,
+					boiler.FiatProductTableColumns.Description,
+					boiler.FactionTableColumns.Label,
+				),
+				xsearch,
+				xsearch,
+				xsearch,
+			),
+		)
 	}
 
 	// Get total rows

@@ -56,7 +56,7 @@ func (ac *AdminController) FiatProductList(ctx context.Context, user *boiler.Pla
 		offset = req.Payload.Page * req.Payload.PageSize
 	}
 
-	total, storePackages, err := db.FiatProducts(gamedb.StdConn, nil, req.Payload.ProductType, offset, req.Payload.PageSize)
+	total, storePackages, err := db.FiatProducts(gamedb.StdConn, nil, req.Payload.ProductType, req.Payload.Search, offset, req.Payload.PageSize)
 	if err != nil {
 		return terror.Error(err, errMsg)
 	}
