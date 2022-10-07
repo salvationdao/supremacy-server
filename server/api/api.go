@@ -303,6 +303,8 @@ func NewAPI(
 				s.WS("/user/{user_id}/quest_progression", server.HubKeyPlayerQuestProgressions, server.MustSecure(pc.PlayerQuestProgressions), MustMatchUserID)
 				s.WS("/user/{user_id}/queue_status", server.HubKeyPlayerQueueStatus, server.MustSecure(pc.PlayerQueueStatusHandler), MustMatchUserID)
 
+				s.WS("/user/{user_id}/involved_battle_lobbies", server.HubKeyInvolvedBattleLobbyListUpdate, server.MustSecureFaction(api.PlayerInvolvedBattleLobbies))
+
 				// fiat related
 				s.WS("/user/{user_id}/shopping_cart_updated", server.HubKeyShoppingCartUpdated, server.MustSecure(fc.ShoppingCartUpdatedSubscriber), MustMatchUserID)
 				s.WS("/user/{user_id}/shopping_cart_expired", server.HubKeyShoppingCartExpired, nil, MustMatchUserID)

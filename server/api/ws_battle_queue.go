@@ -1280,3 +1280,47 @@ func (api *API) BattleLobbySupporterJoin(ctx context.Context, user *boiler.Playe
 	reply(true)
 	return nil
 }
+
+func (api *API) PlayerInvolvedBattleLobbies(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
+
+	// load involved battle lobby
+	bls, err := boiler.BattleLobbies(
+		qm.Where(fmt.Sprintf(
+			`
+				%[1]s IN (
+					SELECT DISTINCT (%[1]s) FROM (
+						SELECT %[1]s FROM %[2]s WHERE %[3]s = '%[4]s' AND %[5]s ISNULL AND %[6]s ISNULL
+						UNION
+						SELECT %[7]s AS id FROM %[8]s WHERE %[9]s = '%[4]s' AND %[10]s ISNULL AND %[11]s IS NULL AND %[12]s ISNULL
+					) %[2]s
+				)
+			`,
+			boiler.BattleLobbyTableColumns.ID,                  // 1
+			boiler.TableNames.BattleLobbies,                    // 2
+			boiler.BattleLobbyTableColumns.HostByID,            // 3
+			user.ID,                                            // 4
+			boiler.BattleLobbyTableColumns.EndedAt,             // 5
+			boiler.BattleLobbyTableColumns.DeletedAt,           // 6
+			boiler.BattleLobbiesMechTableColumns.BattleLobbyID, // 7
+			boiler.TableNames.BattleLobbiesMechs,               // 8
+			boiler.BattleLobbiesMechTableColumns.OwnerID,       // 9
+			boiler.BattleLobbiesMechTableColumns.EndedAt,       // 10
+			boiler.BattleLobbiesMechTableColumns.RefundTXID,    // 11
+			boiler.BattleLobbiesMechTableColumns.DeletedAt,     // 12
+		)),
+		qm.Load(boiler.BattleLobbyRels.HostBy),
+		qm.Load(boiler.BattleLobbyRels.GameMap),
+	).All(gamedb.StdConn)
+	if err != nil {
+		return terror.Error(err, "Failed to load battle lobby")
+	}
+
+	resp, err := server.BattleLobbiesFromBoiler(bls)
+	if err != nil {
+		return err
+	}
+
+	reply(server.BattleLobbiesFactionFilter(resp, factionID))
+
+	return nil
+}
