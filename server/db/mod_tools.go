@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"github.com/volatiletech/null/v8"
 	"server"
 	"server/db/boiler"
 	"server/gamedb"
@@ -23,13 +24,14 @@ type AdminToolResponse struct {
 }
 
 type AdminBanHistory struct {
-	ID               string        `json:"id"`
-	CreatedAt        time.Time     `json:"created_at"`
-	Reason           string        `json:"reason"`
-	EndAt            time.Time     `json:"end_at"`
-	BannedAt         time.Time     `json:"banned_at"`
-	BannedBy         server.Player `json:"banned_by"`
-	ManuallyUnbanned bool          `json:"manually_unbanned"`
+	ID                     string        `json:"id"`
+	CreatedAt              time.Time     `json:"created_at"`
+	Reason                 string        `json:"reason"`
+	EndAt                  time.Time     `json:"end_at"`
+	BannedAt               time.Time     `json:"banned_at"`
+	BannedBy               server.Player `json:"banned_by"`
+	ManuallyUnbanned       bool          `json:"manually_unbanned"`
+	ManuallyUnbannedReason null.String   `json:"manually_unbanned_reason"`
 }
 
 type AdminToolUserAsset struct {
@@ -57,12 +59,13 @@ func ModToolGetUserData(userID string, isAdmin bool, supsAmount decimal.Decimal)
 	if len(playerBans) > 0 {
 		for _, pb := range playerBans {
 			adminBanHistory := &AdminBanHistory{
-				ID:               pb.ID,
-				CreatedAt:        pb.CreatedAt,
-				BannedAt:         pb.BannedAt,
-				Reason:           pb.Reason,
-				EndAt:            pb.EndAt,
-				ManuallyUnbanned: pb.ManuallyUnbanByID.Valid,
+				ID:                     pb.ID,
+				CreatedAt:              pb.CreatedAt,
+				BannedAt:               pb.BannedAt,
+				Reason:                 pb.Reason,
+				EndAt:                  pb.EndAt,
+				ManuallyUnbanned:       pb.ManuallyUnbanByID.Valid,
+				ManuallyUnbannedReason: pb.ManuallyUnbanReason,
 			}
 
 			if pb.R != nil && pb.R.BannedBy != nil {

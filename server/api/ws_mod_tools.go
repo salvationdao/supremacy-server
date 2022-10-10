@@ -189,7 +189,7 @@ func (api *API) ModToolUnbanUser(ctx context.Context, user *boiler.Player, key s
 		PlayerID: playerBan.BannedPlayerID,
 		SenderID: user.ID,
 		Title:    "You've been unbanned by a Moderator",
-		Message:  fmt.Sprintf("You've been unbanned by moderator %s for the following reasons: %s", user.Username, req.Payload.UnbanReason),
+		Message:  fmt.Sprintf("You've been unbanned by moderator for the following reasons: %s", req.Payload.UnbanReason),
 	}
 	err = msg.Insert(gamedb.StdConn, boil.Infer())
 	if err != nil {
