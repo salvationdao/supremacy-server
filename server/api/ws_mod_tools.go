@@ -2,9 +2,7 @@ package api
 
 import (
 	"context"
-	"database/sql"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"server"
 	"server/db"
@@ -63,13 +61,14 @@ const HubKeyModToolsBanUser = "MOD:BAN:USER"
 
 type ModToolBanUserReq struct {
 	Payload struct {
-		GID               int    `json:"gid"`
+		GID               []int  `json:"gid"`
 		ChatBan           bool   `json:"chat_ban"`
 		LocationSelectBan bool   `json:"location_select_ban"`
 		SupContributeBan  bool   `json:"sup_contribute_ban"`
 		BanDurationHours  int    `json:"ban_duration_hours"`
 		BanDurationDays   int    `json:"ban_duration_days"`
 		BanReason         string `json:"ban_reason"`
+		IsShadowBan       bool   `json:"is_shadow_ban"`
 	} `json:"payload"`
 }
 
@@ -80,21 +79,9 @@ func (api *API) ModToolBanUser(ctx context.Context, user *boiler.Player, key str
 		return terror.Error(err, "Invalid request received.")
 	}
 
-	_, err = boiler.PlayerBans(
-		boiler.PlayerBanWhere.BannedPlayerID.EQ(user.ID),
-		boiler.PlayerBanWhere.BanSendChat.EQ(req.Payload.ChatBan),
-		boiler.PlayerBanWhere.BanLocationSelect.EQ(req.Payload.LocationSelectBan),
-		boiler.PlayerBanWhere.BanSupsContribute.EQ(req.Payload.LocationSelectBan),
-		boiler.PlayerBanWhere.ManuallyUnbanByID.IsNull(),
-		boiler.PlayerBanWhere.EndAt.GT(time.Now()),
-	).One(gamedb.StdConn)
-	if err != nil && !errors.Is(err, sql.ErrNoRows) {
-		return terror.Error(err, "Player already banned")
-	}
-
-	bannedPlayer, err := boiler.Players(
-		boiler.PlayerWhere.Gid.EQ(req.Payload.GID),
-	).One(gamedb.StdConn)
+	bannedPlayers, err := boiler.Players(
+		boiler.PlayerWhere.Gid.IN(req.Payload.GID),
+	).All(gamedb.StdConn)
 	if err != nil {
 		return terror.Error(err, "Failed to find player")
 	}
@@ -102,62 +89,69 @@ func (api *API) ModToolBanUser(ctx context.Context, user *boiler.Player, key str
 	startedAt := time.Now()
 	banEndAt := startedAt.Add(time.Hour*time.Duration(req.Payload.BanDurationHours)).AddDate(0, 0, req.Payload.BanDurationDays)
 
-	playerBan := &boiler.PlayerBan{
-		BanFrom:           boiler.BanFromTypeADMIN,
-		BannedPlayerID:    bannedPlayer.ID,
-		BannedByID:        user.ID,
-		Reason:            req.Payload.BanReason,
-		BannedAt:          startedAt,
-		EndAt:             banEndAt,
-		BanSupsContribute: req.Payload.SupContributeBan,
-		BanLocationSelect: req.Payload.LocationSelectBan,
-		BanSendChat:       req.Payload.ChatBan,
-	}
+	for _, bannedPlayer := range bannedPlayers {
+		playerBan := &boiler.PlayerBan{
+			BanFrom:           boiler.BanFromTypeADMIN,
+			BannedPlayerID:    bannedPlayer.ID,
+			BannedByID:        user.ID,
+			Reason:            req.Payload.BanReason,
+			BannedAt:          startedAt,
+			EndAt:             banEndAt,
+			BanSupsContribute: req.Payload.SupContributeBan,
+			BanLocationSelect: req.Payload.LocationSelectBan,
+			BanSendChat:       req.Payload.ChatBan,
+		}
 
-	err = playerBan.Insert(gamedb.StdConn, boil.Infer())
-	if err != nil {
-		return terror.Error(err, "Failed to insert ban player")
-	}
+		err = playerBan.Insert(gamedb.StdConn, boil.Infer())
+		if err != nil {
+			return terror.Error(err, "Failed to insert ban player")
+		}
 
-	banMessage := &MessageSystemBan{
-		ID:             uuid.Must(uuid.NewV4()).String(),
-		BannedByUser:   user,
-		BannedUser:     bannedPlayer,
-		FactionID:      bannedPlayer.FactionID,
-		Reason:         req.Payload.BanReason,
-		BanDuration:    fmt.Sprintf("Banned for %d days and %d hours", req.Payload.BanDurationDays, req.Payload.BanDurationHours),
-		IsPermanentBan: false,
-		Restrictions:   PlayerBanRestrictions(playerBan),
-	}
+		msg := &boiler.SystemMessage{
+			PlayerID: bannedPlayer.ID,
+			SenderID: user.ID,
+			Title:    "You've been banned by a Moderator",
+			Message:  fmt.Sprintf("You've been banned by moderator for the following reasons: %s \n If you think you've been wrongly banned please put a ticket through our support team.", req.Payload.BanReason),
+		}
+		err = msg.Insert(gamedb.StdConn, boil.Infer())
+		if err != nil {
+			return err
+		}
 
-	cm := &ChatMessage{
-		ID:     banMessage.ID,
-		Type:   ChatMessageTypeSystemBan,
-		SentAt: time.Now(),
-		Data:   banMessage,
-	}
+		ws.PublishMessage(fmt.Sprintf("/secure/user/%s/system_messages", bannedPlayer.ID), server.HubKeySystemMessageListUpdatedSubscribe, true)
 
-	msg := &boiler.SystemMessage{
-		PlayerID: bannedPlayer.ID,
-		SenderID: user.ID,
-		Title:    "You've been banned by a Moderator",
-		Message:  fmt.Sprintf("You've been banned by moderator %s for the following reasons: %s \n If you think you've been wrongly banned please put a ticket through our support team.", user.Username, req.Payload.BanReason),
-	}
-	err = msg.Insert(gamedb.StdConn, boil.Infer())
-	if err != nil {
-		return err
-	}
+		if !req.Payload.IsShadowBan {
+			banMessage := &MessageSystemBan{
+				ID:             uuid.Must(uuid.NewV4()).String(),
+				BannedByUser:   user,
+				BannedUser:     bannedPlayer,
+				FactionID:      bannedPlayer.FactionID,
+				Reason:         req.Payload.BanReason,
+				BanDuration:    fmt.Sprintf("Banned for %d days and %d hours", req.Payload.BanDurationDays, req.Payload.BanDurationHours),
+				IsPermanentBan: false,
+				Restrictions:   PlayerBanRestrictions(playerBan),
+			}
 
-	api.GlobalChat.AddMessage(cm)
-	ws.PublishMessage(fmt.Sprintf("/secure/user/%s/system_messages", bannedPlayer.ID), server.HubKeySystemMessageListUpdatedSubscribe, true)
-	ws.PublishMessage("/public/global_chat", HubKeyGlobalChatSubscribe, []*ChatMessage{cm})
+			cm := &ChatMessage{
+				ID:     banMessage.ID,
+				Type:   ChatMessageTypeSystemBan,
+				SentAt: time.Now(),
+				Data:   banMessage,
+			}
+
+			api.GlobalChat.AddMessage(cm)
+
+			ws.PublishMessage("/public/global_chat", HubKeyGlobalChatSubscribe, []*ChatMessage{cm})
+		}
+
+	}
 
 	reply(true)
 
 	return nil
 }
 
-const HubKeyModToolsUnbanUser = "MOD:BAN:USER"
+const HubKeyModToolsUnbanUser = "MOD:UNBAN:USER"
 
 type ModToolUnbanUserReq struct {
 	Payload struct {
@@ -195,7 +189,7 @@ func (api *API) ModToolUnbanUser(ctx context.Context, user *boiler.Player, key s
 		PlayerID: playerBan.BannedPlayerID,
 		SenderID: user.ID,
 		Title:    "You've been unbanned by a Moderator",
-		Message:  fmt.Sprintf("You've been unbanned by moderator %s for the following reasons: %s", user.Username, req.Payload.UnbanReason),
+		Message:  fmt.Sprintf("You've been unbanned by moderator for the following reasons: %s", req.Payload.UnbanReason),
 	}
 	err = msg.Insert(gamedb.StdConn, boil.Infer())
 	if err != nil {
