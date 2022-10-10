@@ -34,7 +34,8 @@ type Mech struct {
 	LimitedReleaseTokenID null.Int64 `json:"limited_release_token_id,omitempty"`
 	CollectionItemID      string     `json:"-"`
 
-	MechType string `json:"mech_type"`
+	MechType     string          `json:"mech_type"`
+	HeightMeters decimal.Decimal `json:"height_meters"`
 
 	//// stats
 	// speed

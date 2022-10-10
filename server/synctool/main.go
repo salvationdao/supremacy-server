@@ -342,6 +342,7 @@ func SyncMechModels(f io.Reader, db *sql.DB) error {
 			ShieldRechargePowerCost: record[16],
 			ShieldTypeID:            record[17],
 			ShieldRechargeDelay:     record[18],
+			HeightMeters:            record[19],
 		}
 
 		MechModels = append(MechModels, *mechModel)
@@ -369,9 +370,10 @@ func SyncMechModels(f io.Reader, db *sql.DB) error {
 												shield_recharge_rate,
 												shield_recharge_power_cost,
 			                             		shield_type_id,
-			                             		shield_recharge_delay
+			                             		shield_recharge_delay,
+			                             		height_meters
 			                                   )
-			VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18)
+			VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19)
 			ON CONFLICT (id)
 			DO
 				UPDATE SET 
@@ -392,7 +394,8 @@ func SyncMechModels(f io.Reader, db *sql.DB) error {
 							shield_recharge_rate=$15,
 							shield_recharge_power_cost=$16,
 							shield_type_id=$17,
-							shield_recharge_delay=$18;
+							shield_recharge_delay=$18,
+							height_meters=$19;
 		`,
 			mechModel.ID,
 			mechModel.Label,
@@ -412,6 +415,7 @@ func SyncMechModels(f io.Reader, db *sql.DB) error {
 			mechModel.ShieldRechargePowerCost,
 			mechModel.ShieldTypeID,
 			mechModel.ShieldRechargeDelay,
+			mechModel.HeightMeters,
 		)
 		if err != nil {
 			fmt.Println("ERROR: " + err.Error())
@@ -1140,7 +1144,7 @@ func SyncWeaponModelSkinCompatibilities(f io.Reader, db *sql.DB) error {
 			null.NewString(weaponModelSkinCompat.YoutubeUrl, weaponModelSkinCompat.YoutubeUrl != ""),
 		)
 		if err != nil {
-			fmt.Printf("ERROR WITH %s - %s: %s\n", weaponModelSkinCompat.WeaponSkinID, weaponModelSkinCompat.WeaponModelID,err.Error())
+			fmt.Printf("ERROR WITH %s - %s: %s\n", weaponModelSkinCompat.WeaponSkinID, weaponModelSkinCompat.WeaponModelID, err.Error())
 			return err
 		}
 		count++
