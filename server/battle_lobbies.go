@@ -538,6 +538,9 @@ func BattleLobbyInfoFilter(bl *BattleLobby, keepDataForFactionID string) *Battle
 			battleLobbyMech.BlueprintMech = blm.BlueprintMech
 		}
 
+
+
+
 		battleLobby.BattleLobbiesMechs = append(battleLobby.BattleLobbiesMechs, battleLobbyMech)
 	}
 
