@@ -96,16 +96,23 @@ func FiatProduct(conn boil.Executor, id string) (*server.FiatProduct, error) {
 	return output, nil
 }
 
+type FiatProductFilter struct {
+	FactionID   []string `json:"faction_id"`
+	ProductType []string `json:"product_type"`
+}
+
 // FiatProducts gets a list of available fiat products to purchase by faction.
-func FiatProducts(conn boil.Executor, factionID *string, productType string, search string, offset int, pageSize int) (int64, []*server.FiatProduct, error) {
+func FiatProducts(conn boil.Executor, filters *FiatProductFilter, search string, offset int, pageSize int) (int64, []*server.FiatProduct, error) {
 	queryMods := []qm.QueryMod{}
 
 	// Filters
-	if factionID != nil {
-		queryMods = append(queryMods, boiler.FiatProductWhere.FactionID.EQ(*factionID))
-	}
-	if productType != "" {
-		queryMods = append(queryMods, boiler.FiatProductWhere.ProductType.EQ(productType))
+	if filters != nil {
+		if len(filters.FactionID) > 0 {
+			queryMods = append(queryMods, boiler.FiatProductWhere.FactionID.IN(filters.FactionID))
+		}
+		if len(filters.ProductType) > 0 {
+			queryMods = append(queryMods, boiler.FiatProductWhere.ProductType.IN(filters.ProductType))
+		}
 	}
 	if search != "" {
 		xsearch := ParseQueryText(search, true)

@@ -28,10 +28,10 @@ func NewAdminController(api *API) *AdminController {
 
 type AdminFiatProductListRequest struct {
 	Payload struct {
-		ProductType string `json:"product_type"`
-		Search      string `json:"search"`
-		PageSize    int    `json:"page_size"`
-		Page        int    `json:"page"`
+		Filters  *db.FiatProductFilter `json:"filters"`
+		Search   string                `json:"search"`
+		PageSize int                   `json:"page_size"`
+		Page     int                   `json:"page"`
 	} `json:"payload"`
 }
 
@@ -45,7 +45,7 @@ const HubKeyAdminFiatProductList = "ADMIN:FIAT:PRODUCT:LIST"
 func (ac *AdminController) FiatProductList(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
 	errMsg := "Failed to get packages, please try again."
 
-	req := &FiatProductListRequest{}
+	req := &AdminFiatProductListRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
 		return terror.Error(err, "Invalid request received.")
@@ -56,7 +56,7 @@ func (ac *AdminController) FiatProductList(ctx context.Context, user *boiler.Pla
 		offset = req.Payload.Page * req.Payload.PageSize
 	}
 
-	total, storePackages, err := db.FiatProducts(gamedb.StdConn, nil, req.Payload.ProductType, req.Payload.Search, offset, req.Payload.PageSize)
+	total, storePackages, err := db.FiatProducts(gamedb.StdConn, req.Payload.Filters, req.Payload.Search, offset, req.Payload.PageSize)
 	if err != nil {
 		return terror.Error(err, errMsg)
 	}

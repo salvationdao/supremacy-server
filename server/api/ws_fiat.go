@@ -107,7 +107,12 @@ func (f *FiatController) ProductListHandler(ctx context.Context, user *boiler.Pl
 		offset = req.Payload.Page * req.Payload.PageSize
 	}
 
-	total, storePackages, err := db.FiatProducts(gamedb.StdConn, &factionID, req.Payload.ProductType, req.Payload.Search, offset, req.Payload.PageSize)
+	filters := &db.FiatProductFilter{
+		ProductType: []string{req.Payload.ProductType},
+		FactionID:   []string{factionID},
+	}
+
+	total, storePackages, err := db.FiatProducts(gamedb.StdConn, filters, req.Payload.Search, offset, req.Payload.PageSize)
 	if err != nil {
 		return terror.Error(err, errMsg)
 	}
