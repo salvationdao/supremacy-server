@@ -119,21 +119,6 @@ func NewArenaManager(opts *Opts) (*ArenaManager, error) {
 		return nil, terror.Error(err, "Failed to delete unfinished AI battles.")
 	}
 
-	// start player rank updater
-	am.PlayerRankUpdater()
-
-	// check default battle lobbies
-	err = am.SetDefaultPublicBattleLobbies()
-	if err != nil {
-		return nil, err
-	}
-
-	// start repair offer cleaner
-	go am.RepairOfferCleaner()
-
-	// start debounce lobby update sender
-	go am.debounceSendBattleLobbiesUpdate()
-
 	return am, nil
 }
 
@@ -1656,8 +1641,8 @@ func (arena *Arena) GetLobbyDetails() *UpcomingBattleResponse {
 	}
 }
 
-func (arena *Arena) AssignSupporters() {
-	L := gamelog.L.With().Str("func", "AssignSupporters").Logger()
+func (arena *Arena) assignSupporters() {
+	L := gamelog.L.With().Str("func", "assignSupporters").Logger()
 	blID := arena.currentLobbyID.Load()
 	if blID == "" {
 		L.Error().Err(fmt.Errorf("no battle lobby id while trying to assign supporters")).Msg("missing battle lobby id")
@@ -1675,45 +1660,98 @@ func (arena *Arena) AssignSupporters() {
 
 	L = L.With().Interface("bl", bl).Logger()
 
-	if (bl.R == nil || bl.R.BattleLobbySupporterOptIns == nil) && len(bl.R.BattleLobbySupporters) == 0 {
-		L.Error().Err(fmt.Errorf("BattleLobbySupporterOptIns is nil")).Msg("failed to find supporters")
-		return
-	}
-	if len(bl.R.BattleLobbySupporters) > 0 {
-		L.Warn().Err(fmt.Errorf("unable to assign lobby supporters")).Msg("already have supporters")
-		resp, err := server.BattleLobbiesFromBoiler([]*boiler.BattleLobby{bl})
-		if err != nil {
-			L.Error().Err(err).Msg("failed to convert to lobby object")
-			return
-		}
-		ws.PublishMessage(fmt.Sprintf("/public/arena/%s/upcoming_battle", arena.ID), server.HubKeyNextBattleDetails, &UpcomingBattleResponse{
-			IsPreBattle:    true,
-			UpcomingBattle: resp[0],
-		})
-		return
-	}
+	// if we don't already have supporters, do this (this bit will be skipped when it is a battle being restart)
+	// so apparently on battle restarts battle lobby will get assigned a new battle id
+	// this causes issues because player_battle_abilities are linked to a battle, NOT a battle lobby id.
+	// meaning we need to either update the battle id on the player_battle_abilities table or insert new ones (or refactor)
+	// since we don't know the old battle id, it is easier to just insert them again.
+	if len(bl.R.BattleLobbySupporters) == 0 {
+		// we need to split them up via faction
+		rmSupporterCount := 0
+		bcSupporterCount := 0
+		zaiSupporterCount := 0
 
-	// shuffle the slice
-	rand.Seed(time.Now().UnixNano())
-	for i := range bl.R.BattleLobbySupporterOptIns {
-		j := rand.Intn(i + 1)
-		bl.R.BattleLobbySupporterOptIns[i], bl.R.BattleLobbySupporterOptIns[j] = bl.R.BattleLobbySupporterOptIns[j], bl.R.BattleLobbySupporterOptIns[i]
-	}
-	for i, optIn := range bl.R.BattleLobbySupporterOptIns {
-		if i >= 5 {
-			break
+		// shuffle the slice of opted in supporters
+		rand.Seed(time.Now().UnixNano())
+		for i := range bl.R.BattleLobbySupporterOptIns {
+			j := rand.Intn(i + 1)
+			bl.R.BattleLobbySupporterOptIns[i], bl.R.BattleLobbySupporterOptIns[j] = bl.R.BattleLobbySupporterOptIns[j], bl.R.BattleLobbySupporterOptIns[i]
 		}
-		selectedSupporter := &boiler.BattleLobbySupporter{
-			SupporterID:   optIn.SupporterID,
-			FactionID:     optIn.FactionID,
-			BattleLobbyID: optIn.BattleLobbyID,
-		}
-		err := selectedSupporter.Insert(gamedb.StdConn, boil.Infer())
-		if err != nil {
-			L.Error().Err(err).Interface("optIn", optIn).Msg("failed to insert new supporter")
-		}
-	}
+		// insert the supporters
+		for _, optIn := range bl.R.BattleLobbySupporterOptIns {
+			// increase supporter / faction count
+			switch optIn.FactionID {
+			case server.BostonCyberneticsFactionID:
+				if bcSupporterCount >= 5 {
+					continue
+				}
+				bcSupporterCount = bcSupporterCount + 1
+			case server.RedMountainFactionID:
+				if rmSupporterCount >= 5 {
+					continue
+				}
+				rmSupporterCount = rmSupporterCount + 1
+			case server.ZaibatsuFactionID:
+				if zaiSupporterCount >= 5 {
+					continue
+				}
+				zaiSupporterCount = zaiSupporterCount + 1
+			}
+			// break if we have all our supporters
+			if rmSupporterCount == 5 && zaiSupporterCount == 5 && bcSupporterCount == 5 {
+				break
+			}
 
+			selectedSupporter := &boiler.BattleLobbySupporter{
+				SupporterID:   optIn.SupporterID,
+				FactionID:     optIn.FactionID,
+				BattleLobbyID: optIn.BattleLobbyID,
+			}
+			err := selectedSupporter.Insert(gamedb.StdConn, boil.Infer())
+			if err != nil {
+				L.Error().Err(err).Interface("optIn", optIn).Msg("failed to insert new supporter")
+			}
+		}
+
+		// now loop over the mechs and if a faction has no supporters, add the mech owners as supporters.
+		for _, mech := range bl.R.BattleLobbiesMechs {
+			var selectedSupporter *boiler.BattleLobbySupporter
+			switch mech.FactionID {
+			case server.BostonCyberneticsFactionID:
+				if bcSupporterCount == 0 {
+					selectedSupporter = &boiler.BattleLobbySupporter{
+						SupporterID:   mech.OwnerID,
+						FactionID:     mech.FactionID,
+						BattleLobbyID: mech.BattleLobbyID,
+					}
+				}
+			case server.RedMountainFactionID:
+				if rmSupporterCount == 0 {
+					selectedSupporter = &boiler.BattleLobbySupporter{
+						SupporterID:   mech.OwnerID,
+						FactionID:     mech.FactionID,
+						BattleLobbyID: mech.BattleLobbyID,
+					}
+				}
+			case server.ZaibatsuFactionID:
+				if zaiSupporterCount == 0 {
+					selectedSupporter = &boiler.BattleLobbySupporter{
+						SupporterID:   mech.OwnerID,
+						FactionID:     mech.FactionID,
+						BattleLobbyID: mech.BattleLobbyID,
+					}
+				}
+			}
+			if selectedSupporter != nil {
+				err := selectedSupporter.Insert(gamedb.StdConn, boil.Infer())
+				if err != nil {
+					if !strings.Contains(err.Error(), "battle_lobby_supporters_supporter_id_battle_lobby_id_key") {
+						L.Error().Err(err).Interface("mech", mech).Msg("failed to insert new mech owner supporter")
+					}
+				}
+			}
+		}
+	}
 	// get all opted in supporters
 	bl, err = db.GetBattleLobby(blID)
 	if err != nil {
@@ -1867,14 +1905,14 @@ type PlayerSupportAbilitiesResponse struct {
 }
 
 type PlayerSupporterAbility struct {
-	ID                 string `json:"id"`
-	Label              string `json:"label"`
-	Colour             string `json:"colour"`
-	ImageURL           string `json:"image_url"`
-	Description        string `json:"description"`
-	TextColour         string `json:"text_colour"`
-	LocationSelectType string `json:"location_select_type"`
-	GameClientAbilityID int `json:"game_client_ability_id"`
+	ID                  string `json:"id"`
+	Label               string `json:"label"`
+	Colour              string `json:"colour"`
+	ImageURL            string `json:"image_url"`
+	Description         string `json:"description"`
+	TextColour          string `json:"text_colour"`
+	LocationSelectType  string `json:"location_select_type"`
+	GameClientAbilityID int    `json:"game_client_ability_id"`
 }
 
 func BroadcastSupporterAbilities(userID, battleID string) {
@@ -1893,13 +1931,13 @@ func BroadcastSupporterAbilities(userID, battleID string) {
 
 	for _, ability := range supporterAbilities {
 		resp.SupporterAbilities = append(resp.SupporterAbilities, &PlayerSupporterAbility{
-			ID:                 ability.ID,
-			Label:              ability.R.GameAbility.Label,
-			Colour:             ability.R.GameAbility.Colour,
-			ImageURL:           ability.R.GameAbility.ImageURL,
-			Description:        ability.R.GameAbility.Description,
-			TextColour:         ability.R.GameAbility.TextColour,
-			LocationSelectType: ability.R.GameAbility.LocationSelectType,
+			ID:                  ability.ID,
+			Label:               ability.R.GameAbility.Label,
+			Colour:              ability.R.GameAbility.Colour,
+			ImageURL:            ability.R.GameAbility.ImageURL,
+			Description:         ability.R.GameAbility.Description,
+			TextColour:          ability.R.GameAbility.TextColour,
+			LocationSelectType:  ability.R.GameAbility.LocationSelectType,
 			GameClientAbilityID: ability.R.GameAbility.GameClientAbilityID,
 		})
 	}
@@ -2068,7 +2106,7 @@ func (arena *Arena) BeginBattle() {
 	// pause for time
 	<-preBattleTimer.C
 	// assign supporters
-	arena.AssignSupporters()
+	arena.assignSupporters()
 	// 25% of pre battle time is just because
 	preBattleTimer = time.NewTimer(time.Second * time.Duration(float64(prebattleTime)*0.25))
 	// pause for time

@@ -24,8 +24,8 @@ func (am *ArenaManager) SendBattleQueueFunc(fn func() error) error {
 	return fn()
 }
 
-// debounceSendBattleLobbiesUpdate debounce the lobby update sending
-func (am *ArenaManager) debounceSendBattleLobbiesUpdate() {
+// DebounceSendBattleLobbiesUpdate debounce the lobby update sending
+func (am *ArenaManager) DebounceSendBattleLobbiesUpdate() {
 	duration := 250 * time.Millisecond
 
 	timer := time.NewTimer(duration)

@@ -1160,10 +1160,10 @@ func (api *API) BattleLobbySupporterJoin(ctx context.Context, user *boiler.Playe
 
 	// add support to battle lobby
 	err = api.ArenaManager.SendBattleQueueFunc(func() error {
-		// todo, figure out rules for when they are allowed to join as a supporter
 		// check lobby exists
 		bl, err := boiler.BattleLobbies(
 			boiler.BattleLobbyWhere.ID.EQ(req.Payload.BattleLobbyID),
+			qm.Load(boiler.BattleLobbyRels.BattleLobbiesMechs),
 			qm.Load(
 				boiler.BattleLobbyRels.BattleLobbySupporterOptIns,
 				boiler.BattleLobbySupporterOptInWhere.FactionID.EQ(factionID),
@@ -1180,6 +1180,16 @@ func (api *API) BattleLobbySupporterJoin(ctx context.Context, user *boiler.Playe
 			return fmt.Errorf("lobby id: %s does not have a arena id assigned", req.Payload.BattleLobbyID)
 		}
 
+		// check if they have a mech in the battle
+		if bl.R != nil && bl.R.BattleLobbiesMechs != nil {
+			for _, mech := range bl.R.BattleLobbiesMechs {
+				if mech.OwnerID == user.ID {
+					return fmt.Errorf("cannot opt in to support your own war machine")
+				}
+			}
+		}
+
+		// check if already registered
 		if bl.R != nil && bl.R.BattleLobbySupporterOptIns != nil {
 			for _, supper := range bl.R.BattleLobbySupporterOptIns {
 				if supper.SupporterID == user.ID {
