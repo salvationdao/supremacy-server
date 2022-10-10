@@ -1285,18 +1285,18 @@ func GameSettingsPayload(btl *Battle) *GameSettingsResponse {
 			Health:        w.Health,
 			AIType:        w.AIType,
 			ModelID:       w.ModelID,
-			Model:         w.Model,
-			Skin:          w.Skin,
+			ModelName:     w.ModelName,
+			SkinName:      w.SkinName,
 			Speed:         w.Speed,
 			Faction:       w.Faction,
 			Tier:          w.Tier,
 			PowerCore:     w.PowerCore,
-			Weapons:            w.Weapons,
-			Utility:            w.Utility,
-			Image:              w.Image,
-			ImageAvatar:        w.ImageAvatar,
-			Position:           w.Position,
-			Rotation:           w.Rotation,
+			Weapons:       w.Weapons,
+			Utility:       w.Utility,
+			Image:         w.Image,
+			ImageAvatar:   w.ImageAvatar,
+			Position:      w.Position,
+			Rotation:      w.Rotation,
 			IsHidden:           w.IsHidden,
 			Shield:             w.Shield,
 			ShieldRechargeRate: w.ShieldRechargeRate,
@@ -1338,18 +1338,18 @@ func GameSettingsPayload(btl *Battle) *GameSettingsResponse {
 			Health:        w.Health,
 			AIType:        w.AIType,
 			ModelID:       w.ModelID,
-			Model:         w.Model,
-			Skin:          w.Skin,
+			ModelName:     w.ModelName,
+			SkinName:      w.SkinName,
 			Speed:         w.Speed,
 			Faction:       w.Faction,
 			Tier:          w.Tier,
 			PowerCore:     w.PowerCore,
-			Weapons:            w.Weapons,
-			Utility:            w.Utility,
-			Image:              w.Image,
-			ImageAvatar:        w.ImageAvatar,
-			Position:           w.Position,
-			Rotation:           w.Rotation,
+			Weapons:       w.Weapons,
+			Utility:       w.Utility,
+			Image:         w.Image,
+			ImageAvatar:   w.ImageAvatar,
+			Position:      w.Position,
+			Rotation:      w.Rotation,
 			IsHidden:           w.IsHidden,
 			Shield:             w.Shield,
 			ShieldRechargeRate: w.ShieldRechargeRate,
@@ -2200,22 +2200,16 @@ func (btl *Battle) MechsToWarMachines(mechs []*server.Mech) []*WarMachine {
 			newWarMachine.OwnerUsername = fmt.Sprintf("%s#%d", mech.Owner.Username, mech.Owner.Gid)
 		}
 
-		// check model
-		model, ok := ModelMap[mech.Label]
-		if !ok {
-			model = "WREX"
-		}
-		newWarMachine.Model = model
+		newWarMachine.ModelName = mech.Label
 		newWarMachine.ModelID = mech.BlueprintID
 
 		// check model skin
 		if mech.ChassisSkin != nil {
-			mappedSkin, ok := SubmodelSkinMap[mech.ChassisSkin.Label]
-			if ok {
-				newWarMachine.Skin = mappedSkin
-			}
+			newWarMachine.SkinName = mech.ChassisSkin.Label
+			newWarMachine.SkinID = mech.ChassisSkin.BlueprintID
 		}
-		newWarMachine.SkinID = mech.ChassisSkinID
+
+
 
 		warMachines = append(warMachines, newWarMachine)
 		gamelog.L.Debug().Interface("mech", mech).Interface("newWarMachine", newWarMachine).Msg("converted mech to warmachine")

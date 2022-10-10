@@ -34,19 +34,19 @@ type WarMachine struct {
 	ShieldTypeLabel         string  `json:"shieldTypeLabel"`
 	ShieldTypeDescription   string  `json:"shieldTypeDescription"`
 
-	ModelID string `json:"modelID"`
-	Model   string `json:"model"`
-	Skin    string `json:"skin"`
-	SkinID  string `json:"skinID"`
-	Speed   int    `json:"speed"`
+	ModelID   string `json:"modelID"`
+	ModelName string `json:"model_name"`
+	SkinName  string `json:"skin_name"`
+	SkinID    string `json:"skinID"`
+	Speed     int    `json:"speed"`
 
 	Faction   *Faction `json:"faction"`
 	FactionID string   `json:"factionID"`
 	Tier      string   `json:"tier"`
 
-	PowerCore *PowerCore     `json:"power_core,omitempty"`
-	Weapons   []*Weapon      `json:"weapons"`
-	Utility   []*Utility     `json:"utility"`
+	PowerCore *PowerCore `json:"power_core,omitempty"`
+	Weapons   []*Weapon  `json:"weapons"`
+	Utility   []*Utility `json:"utility"`
 
 	// these objects below are used by us and not game client
 	Image       string          `json:"image"`
@@ -76,9 +76,9 @@ type WarMachineGameClient struct {
 	OwnerName string   `json:"owner_name"`
 	Faction   *Faction `json:"faction"` // will be deprecated soon
 	FactionID string   `json:"faction_id"`
-	Model     string   `json:"model"` // will be deprecated soon
+	ModelName string   `json:"model_name"` // will be deprecated soon
 	ModelID   string   `json:"model_id"`
-	Skin      string   `json:"skin"` // will be deprecated soon
+	SkinName  string   `json:"skin_name"` // will be deprecated soon
 	SkinID    string   `json:"skin_id"`
 	Tier      string   `json:"tier"`
 
@@ -167,10 +167,10 @@ func DamageTypeFromString(dt string) DamageType {
 }
 
 type Weapon struct {
-	ID                  string     `json:"id"`    // UUID that client uses to apply weapon stats to the correct weapons (unique per model/blueprint)
-	Hash                string     `json:"hash"`  // Unique hash of a user's weapon
-	Model               string     `json:"model"` // Unused for built-in mech weapons
-	Skin                string     `json:"skin"`  // Unused for built-in mech weapons
+	ID                  string     `json:"id"`       // UUID that client uses to apply weapon stats to the correct weapons (unique per model/blueprint)
+	Hash                string     `json:"hash"`     // Unique hash of a user's weapon
+	ModelID             string     `json:"model_id"` // Unused for built-in mech weapons
+	SkinID              string     `json:"skin_id"`  // Unused for built-in mech weapons
 	Name                string     `json:"name"`
 	Damage              int        `json:"damage"`
 	DamageFalloff       int        `json:"damage_falloff"`        // Distance at which damage starts decreasing
@@ -247,9 +247,9 @@ func WarMachineToClient(wm *WarMachine) *WarMachineGameClient {
 		OwnerName: wm.OwnerUsername,
 		Faction:   wm.Faction,
 		FactionID: wm.FactionID,
-		Model:     wm.Model,
+		ModelName: wm.ModelName,
 		ModelID:   wm.ModelID,
-		Skin:      wm.Skin,
+		SkinName:  wm.SkinName,
 		SkinID:    wm.SkinID,
 		Tier:      wm.Tier,
 
@@ -281,11 +281,11 @@ func WeaponsFromServer(wpns []*server.Weapon) []*Weapon {
 
 func WeaponFromServer(weapon *server.Weapon) *Weapon {
 	return &Weapon{
-		ID:    weapon.ID,
-		Hash:  weapon.Hash,
-		Name:  weapon.Label,
-		Model: weapon.BlueprintID,
-		Skin:  weapon.WeaponSkin.BlueprintID,
+		ID:      weapon.ID,
+		Hash:    weapon.Hash,
+		Name:    weapon.Label,
+		ModelID: weapon.BlueprintID,
+		SkinID:  weapon.WeaponSkin.BlueprintID,
 		//stats
 		Damage:              weapon.Damage,
 		DamageFalloff:       weapon.DamageFalloff.Int,
