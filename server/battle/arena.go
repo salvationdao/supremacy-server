@@ -1565,7 +1565,7 @@ func (arena *Arena) BroadcastLobbyUpdate() {
 			return
 		}
 
-		bl, err := db.GetBattleLobby(blID)
+		bl, err := db.GetBattleLobbyViaID(blID)
 		if err != nil {
 			gamelog.L.Error().Err(err).Str("blID", blID).Msg("failed to find battle lobby")
 			ws.PublishMessage(fmt.Sprintf("/public/arena/%s/upcoming_battle", arena.ID), server.HubKeyNextBattleDetails, &UpcomingBattleResponse{
@@ -1617,7 +1617,7 @@ func (arena *Arena) GetLobbyDetails() *UpcomingBattleResponse {
 		}
 	}
 
-	bl, err := db.GetBattleLobby(blID)
+	bl, err := db.GetBattleLobbyViaID(blID)
 	if err != nil {
 		gamelog.L.Error().Err(err).Str("blID", blID).Msg("failed to find battle lobby")
 		return &UpcomingBattleResponse{
@@ -1652,7 +1652,7 @@ func (arena *Arena) assignSupporters() {
 	L = L.With().Str("blID", blID).Logger()
 
 	// get all opted in supporters
-	bl, err := db.GetBattleLobby(blID)
+	bl, err := db.GetBattleLobbyViaID(blID)
 	if err != nil {
 		L.Error().Err(err).Msg("failed to get battle lobby")
 		return
@@ -1753,7 +1753,7 @@ func (arena *Arena) assignSupporters() {
 		}
 	}
 	// get all opted in supporters
-	bl, err = db.GetBattleLobby(blID)
+	bl, err = db.GetBattleLobbyViaID(blID)
 	if err != nil {
 		L.Error().Err(err).Msg("failed to get battle lobby")
 		return
