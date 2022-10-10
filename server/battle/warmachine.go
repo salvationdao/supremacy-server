@@ -12,16 +12,17 @@ import (
 )
 
 type WarMachine struct {
-	ID            string `json:"id"`
-	Hash          string `json:"hash"`
-	OwnedByID     string `json:"ownedByID"`
-	OwnerUsername string `json:"ownerUsername"`
-	Name          string `json:"name"`
-	Label         string `json:"label"`
-	ParticipantID byte   `json:"participantID"`
-	MaxHealth     uint32 `json:"maxHealth"`
-	MaxShield     uint32 `json:"maxShield"`
-	Health        uint32 `json:"health"`
+	ID            string  `json:"id"`
+	Hash          string  `json:"hash"`
+	OwnedByID     string  `json:"ownedByID"`
+	OwnerUsername string  `json:"ownerUsername"`
+	Name          string  `json:"name"`
+	Label         string  `json:"label"`
+	ParticipantID byte    `json:"participantID"`
+	MaxHealth     uint32  `json:"maxHealth"`
+	MaxShield     uint32  `json:"maxShield"`
+	Health        uint32  `json:"health"`
+	HeightMeters  float64 `json:"height"`
 
 	AIType *AIType `json:"aiType"`
 
@@ -71,16 +72,17 @@ type Status struct {
 }
 
 type WarMachineGameClient struct {
-	Hash      string   `json:"hash"`
-	Name      string   `json:"name"`
-	OwnerName string   `json:"owner_name"`
-	Faction   *Faction `json:"faction"` // will be deprecated soon
-	FactionID string   `json:"faction_id"`
-	ModelName string   `json:"model_name"` // will be deprecated soon
-	ModelID   string   `json:"model_id"`
-	SkinName  string   `json:"skin_name"` // will be deprecated soon
-	SkinID    string   `json:"skin_id"`
-	Tier      string   `json:"tier"`
+	Hash         string   `json:"hash"`
+	Name         string   `json:"name"`
+	OwnerName    string   `json:"owner_name"`
+	Faction      *Faction `json:"faction"` // will be deprecated soon
+	FactionID    string   `json:"faction_id"`
+	ModelName    string   `json:"model_name"` // will be deprecated soon
+	ModelID      string   `json:"model_id"`
+	SkinName     string   `json:"skin_name"` // will be deprecated soon
+	SkinID       string   `json:"skin_id"`
+	Tier         string   `json:"tier"`
+	HeightMeters float64  `json:"height"`
 
 	Weapons       []*Weapon               `json:"weapons"`
 	Customisation WarMachineCustomisation `json:"customisation"`
@@ -252,6 +254,8 @@ func WarMachineToClient(wm *WarMachine) *WarMachineGameClient {
 		SkinName:  wm.SkinName,
 		SkinID:    wm.SkinID,
 		Tier:      wm.Tier,
+
+		HeightMeters: wm.HeightMeters,
 
 		Weapons: wm.Weapons,
 
