@@ -200,6 +200,7 @@ var PlayerRels = struct {
 	BattleContributions                      string
 	HostByBattleLobbies                      string
 	OwnerBattleLobbiesMechs                  string
+	OfferedByBattleLobbyExtraSupsRewards     string
 	SupporterBattleLobbySupporterOptIns      string
 	SupporterBattleLobbySupporters           string
 	OwnerBattleMechs                         string
@@ -281,6 +282,7 @@ var PlayerRels = struct {
 	BattleContributions:                      "BattleContributions",
 	HostByBattleLobbies:                      "HostByBattleLobbies",
 	OwnerBattleLobbiesMechs:                  "OwnerBattleLobbiesMechs",
+	OfferedByBattleLobbyExtraSupsRewards:     "OfferedByBattleLobbyExtraSupsRewards",
 	SupporterBattleLobbySupporterOptIns:      "SupporterBattleLobbySupporterOptIns",
 	SupporterBattleLobbySupporters:           "SupporterBattleLobbySupporters",
 	OwnerBattleMechs:                         "OwnerBattleMechs",
@@ -365,6 +367,7 @@ type playerR struct {
 	BattleContributions                      BattleContributionSlice          `boiler:"BattleContributions" boil:"BattleContributions" json:"BattleContributions" toml:"BattleContributions" yaml:"BattleContributions"`
 	HostByBattleLobbies                      BattleLobbySlice                 `boiler:"HostByBattleLobbies" boil:"HostByBattleLobbies" json:"HostByBattleLobbies" toml:"HostByBattleLobbies" yaml:"HostByBattleLobbies"`
 	OwnerBattleLobbiesMechs                  BattleLobbiesMechSlice           `boiler:"OwnerBattleLobbiesMechs" boil:"OwnerBattleLobbiesMechs" json:"OwnerBattleLobbiesMechs" toml:"OwnerBattleLobbiesMechs" yaml:"OwnerBattleLobbiesMechs"`
+	OfferedByBattleLobbyExtraSupsRewards     BattleLobbyExtraSupsRewardSlice  `boiler:"OfferedByBattleLobbyExtraSupsRewards" boil:"OfferedByBattleLobbyExtraSupsRewards" json:"OfferedByBattleLobbyExtraSupsRewards" toml:"OfferedByBattleLobbyExtraSupsRewards" yaml:"OfferedByBattleLobbyExtraSupsRewards"`
 	SupporterBattleLobbySupporterOptIns      BattleLobbySupporterOptInSlice   `boiler:"SupporterBattleLobbySupporterOptIns" boil:"SupporterBattleLobbySupporterOptIns" json:"SupporterBattleLobbySupporterOptIns" toml:"SupporterBattleLobbySupporterOptIns" yaml:"SupporterBattleLobbySupporterOptIns"`
 	SupporterBattleLobbySupporters           BattleLobbySupporterSlice        `boiler:"SupporterBattleLobbySupporters" boil:"SupporterBattleLobbySupporters" json:"SupporterBattleLobbySupporters" toml:"SupporterBattleLobbySupporters" yaml:"SupporterBattleLobbySupporters"`
 	OwnerBattleMechs                         BattleMechSlice                  `boiler:"OwnerBattleMechs" boil:"OwnerBattleMechs" json:"OwnerBattleMechs" toml:"OwnerBattleMechs" yaml:"OwnerBattleMechs"`
@@ -960,6 +963,28 @@ func (o *Player) OwnerBattleLobbiesMechs(mods ...qm.QueryMod) battleLobbiesMechQ
 
 	if len(queries.GetSelect(query.Query)) == 0 {
 		queries.SetSelect(query.Query, []string{"\"battle_lobbies_mechs\".*"})
+	}
+
+	return query
+}
+
+// OfferedByBattleLobbyExtraSupsRewards retrieves all the battle_lobby_extra_sups_reward's BattleLobbyExtraSupsRewards with an executor via offered_by_id column.
+func (o *Player) OfferedByBattleLobbyExtraSupsRewards(mods ...qm.QueryMod) battleLobbyExtraSupsRewardQuery {
+	var queryMods []qm.QueryMod
+	if len(mods) != 0 {
+		queryMods = append(queryMods, mods...)
+	}
+
+	queryMods = append(queryMods,
+		qm.Where("\"battle_lobby_extra_sups_rewards\".\"offered_by_id\"=?", o.ID),
+		qmhelper.WhereIsNull("\"battle_lobby_extra_sups_rewards\".\"deleted_at\""),
+	)
+
+	query := BattleLobbyExtraSupsRewards(queryMods...)
+	queries.SetFrom(query.Query, "\"battle_lobby_extra_sups_rewards\"")
+
+	if len(queries.GetSelect(query.Query)) == 0 {
+		queries.SetSelect(query.Query, []string{"\"battle_lobby_extra_sups_rewards\".*"})
 	}
 
 	return query
@@ -3891,6 +3916,105 @@ func (playerL) LoadOwnerBattleLobbiesMechs(e boil.Executor, singular bool, maybe
 					foreign.R = &battleLobbiesMechR{}
 				}
 				foreign.R.Owner = local
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
+// LoadOfferedByBattleLobbyExtraSupsRewards allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for a 1-M or N-M relationship.
+func (playerL) LoadOfferedByBattleLobbyExtraSupsRewards(e boil.Executor, singular bool, maybePlayer interface{}, mods queries.Applicator) error {
+	var slice []*Player
+	var object *Player
+
+	if singular {
+		object = maybePlayer.(*Player)
+	} else {
+		slice = *maybePlayer.(*[]*Player)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &playerR{}
+		}
+		args = append(args, object.ID)
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &playerR{}
+			}
+
+			for _, a := range args {
+				if a == obj.ID {
+					continue Outer
+				}
+			}
+
+			args = append(args, obj.ID)
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`battle_lobby_extra_sups_rewards`),
+		qm.WhereIn(`battle_lobby_extra_sups_rewards.offered_by_id in ?`, args...),
+		qmhelper.WhereIsNull(`battle_lobby_extra_sups_rewards.deleted_at`),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load battle_lobby_extra_sups_rewards")
+	}
+
+	var resultSlice []*BattleLobbyExtraSupsReward
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice battle_lobby_extra_sups_rewards")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results in eager load on battle_lobby_extra_sups_rewards")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for battle_lobby_extra_sups_rewards")
+	}
+
+	if len(battleLobbyExtraSupsRewardAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+	if singular {
+		object.R.OfferedByBattleLobbyExtraSupsRewards = resultSlice
+		for _, foreign := range resultSlice {
+			if foreign.R == nil {
+				foreign.R = &battleLobbyExtraSupsRewardR{}
+			}
+			foreign.R.OfferedBy = object
+		}
+		return nil
+	}
+
+	for _, foreign := range resultSlice {
+		for _, local := range slice {
+			if local.ID == foreign.OfferedByID {
+				local.R.OfferedByBattleLobbyExtraSupsRewards = append(local.R.OfferedByBattleLobbyExtraSupsRewards, foreign)
+				if foreign.R == nil {
+					foreign.R = &battleLobbyExtraSupsRewardR{}
+				}
+				foreign.R.OfferedBy = local
 				break
 			}
 		}
@@ -11276,6 +11400,58 @@ func (o *Player) AddOwnerBattleLobbiesMechs(exec boil.Executor, insert bool, rel
 			}
 		} else {
 			rel.R.Owner = o
+		}
+	}
+	return nil
+}
+
+// AddOfferedByBattleLobbyExtraSupsRewards adds the given related objects to the existing relationships
+// of the player, optionally inserting them as new records.
+// Appends related to o.R.OfferedByBattleLobbyExtraSupsRewards.
+// Sets related.R.OfferedBy appropriately.
+func (o *Player) AddOfferedByBattleLobbyExtraSupsRewards(exec boil.Executor, insert bool, related ...*BattleLobbyExtraSupsReward) error {
+	var err error
+	for _, rel := range related {
+		if insert {
+			rel.OfferedByID = o.ID
+			if err = rel.Insert(exec, boil.Infer()); err != nil {
+				return errors.Wrap(err, "failed to insert into foreign table")
+			}
+		} else {
+			updateQuery := fmt.Sprintf(
+				"UPDATE \"battle_lobby_extra_sups_rewards\" SET %s WHERE %s",
+				strmangle.SetParamNames("\"", "\"", 1, []string{"offered_by_id"}),
+				strmangle.WhereClause("\"", "\"", 2, battleLobbyExtraSupsRewardPrimaryKeyColumns),
+			)
+			values := []interface{}{o.ID, rel.ID}
+
+			if boil.DebugMode {
+				fmt.Fprintln(boil.DebugWriter, updateQuery)
+				fmt.Fprintln(boil.DebugWriter, values)
+			}
+			if _, err = exec.Exec(updateQuery, values...); err != nil {
+				return errors.Wrap(err, "failed to update foreign table")
+			}
+
+			rel.OfferedByID = o.ID
+		}
+	}
+
+	if o.R == nil {
+		o.R = &playerR{
+			OfferedByBattleLobbyExtraSupsRewards: related,
+		}
+	} else {
+		o.R.OfferedByBattleLobbyExtraSupsRewards = append(o.R.OfferedByBattleLobbyExtraSupsRewards, related...)
+	}
+
+	for _, rel := range related {
+		if rel.R == nil {
+			rel.R = &battleLobbyExtraSupsRewardR{
+				OfferedBy: o,
+			}
+		} else {
+			rel.R.OfferedBy = o
 		}
 	}
 	return nil

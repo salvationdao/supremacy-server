@@ -1996,7 +1996,9 @@ func (arena *Arena) BeginBattle() {
 	// generate game map for the lobby, if there isn't one
 	if !battleLobby.GameMapID.Valid {
 		var gms []*boiler.GameMap
-		gms, err = boiler.GameMaps().All(gamedb.StdConn)
+		gms, err = boiler.GameMaps(
+			boiler.GameMapWhere.DisabledAt.IsNull(),
+		).All(gamedb.StdConn)
 		if err != nil {
 			gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("Failed to load game maps.")
 			arena.Stage.Store(ArenaStageIdle)

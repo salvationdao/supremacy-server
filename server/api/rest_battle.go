@@ -200,6 +200,7 @@ func (api *API) FillUpIncompleteLobbies(w http.ResponseWriter, r *http.Request) 
 
 			if bl.GeneratedBySystem {
 				newLobby := &boiler.BattleLobby{
+					Name:                  helpers.GenerateAdjectiveName(),
 					HostByID:              server.SupremacyBattleUserID,
 					EntryFee:              decimal.Zero, // free to join
 					FirstFactionCut:       decimal.NewFromFloat(0.75),

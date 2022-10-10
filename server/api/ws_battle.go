@@ -41,6 +41,27 @@ func NewBattleController(api *API) *BattleControllerWS {
 	return bc
 }
 
+const HubKeyGameMapList = "GAME:MAP:LIST"
+
+func (api *API) GameMapListSubscribeHandler(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
+	gameMap, err := boiler.GameMaps(
+		boiler.GameMapWhere.DisabledAt.IsNull(),
+	).All(gamedb.StdConn)
+	if err != nil {
+		gamelog.L.Error().Str("func", "GameMapListSubscribeHandler").Msg("Failed to load game maps.")
+		return terror.Error(err, "Failed to load game maps.")
+	}
+
+	if gameMap == nil {
+		reply([]*boiler.GameMap{})
+		return nil
+	}
+
+	reply(gameMap)
+
+	return nil
+}
+
 type BattleMechHistoryRequest struct {
 	Payload struct {
 		MechID string `json:"mech_id"`
