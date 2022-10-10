@@ -163,9 +163,6 @@ func NewAPI(
 		ViewerUpdateChan: make(chan bool),
 	}
 
-	// set user online debounce
-	go api.debounceSendingViewerCount()
-
 	api.Commander = ws.NewCommander(func(c *ws.Commander) {
 		c.RestBridge("/rest")
 	})
@@ -398,6 +395,9 @@ func NewAPI(
 
 	api.FactionActivePlayerSetup()
 	go api.ChallengeFundDebounceBroadcast()
+
+	// set user online debounce
+	go api.debounceSendingViewerCount()
 
 	return api, nil
 }
