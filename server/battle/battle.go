@@ -1272,25 +1272,25 @@ func GameSettingsPayload(btl *Battle) *GameSettingsResponse {
 	wms := []*WarMachine{}
 	for _, w := range btl.WarMachines {
 		wCopy := &WarMachine{
-			ID:            w.ID,
-			Hash:          w.Hash,
-			OwnedByID:     w.OwnedByID,
-			OwnerUsername: w.OwnerUsername,
-			Name:          w.Name,
-			Label:         w.Label,
-			ParticipantID: w.ParticipantID,
-			FactionID:     w.FactionID,
-			MaxHealth:     w.MaxHealth,
-			MaxShield:     w.MaxShield,
-			Health:        w.Health,
-			AIType:        w.AIType,
-			ModelID:       w.ModelID,
-			Model:         w.Model,
-			Skin:          w.Skin,
-			Speed:         w.Speed,
-			Faction:       w.Faction,
-			Tier:          w.Tier,
-			PowerCore:     w.PowerCore,
+			ID:                 w.ID,
+			Hash:               w.Hash,
+			OwnedByID:          w.OwnedByID,
+			OwnerUsername:      w.OwnerUsername,
+			Name:               w.Name,
+			Label:              w.Label,
+			ParticipantID:      w.ParticipantID,
+			FactionID:          w.FactionID,
+			MaxHealth:          w.MaxHealth,
+			MaxShield:          w.MaxShield,
+			Health:             w.Health,
+			AIType:             w.AIType,
+			ModelID:            w.ModelID,
+			ModelName:          w.ModelName,
+			SkinName:           w.SkinName,
+			Speed:              w.Speed,
+			Faction:            w.Faction,
+			Tier:               w.Tier,
+			PowerCore:          w.PowerCore,
 			Weapons:            w.Weapons,
 			Utility:            w.Utility,
 			Image:              w.Image,
@@ -1325,25 +1325,25 @@ func GameSettingsPayload(btl *Battle) *GameSettingsResponse {
 	ais := []*WarMachine{}
 	for _, w := range btl.SpawnedAI {
 		wCopy := &WarMachine{
-			ID:            w.ID,
-			Hash:          w.Hash,
-			OwnedByID:     w.OwnedByID,
-			OwnerUsername: w.OwnerUsername,
-			Name:          w.Name,
-			Label:         w.Label,
-			ParticipantID: w.ParticipantID,
-			FactionID:     w.FactionID,
-			MaxHealth:     w.MaxHealth,
-			MaxShield:     w.MaxShield,
-			Health:        w.Health,
-			AIType:        w.AIType,
-			ModelID:       w.ModelID,
-			Model:         w.Model,
-			Skin:          w.Skin,
-			Speed:         w.Speed,
-			Faction:       w.Faction,
-			Tier:          w.Tier,
-			PowerCore:     w.PowerCore,
+			ID:                 w.ID,
+			Hash:               w.Hash,
+			OwnedByID:          w.OwnedByID,
+			OwnerUsername:      w.OwnerUsername,
+			Name:               w.Name,
+			Label:              w.Label,
+			ParticipantID:      w.ParticipantID,
+			FactionID:          w.FactionID,
+			MaxHealth:          w.MaxHealth,
+			MaxShield:          w.MaxShield,
+			Health:             w.Health,
+			AIType:             w.AIType,
+			ModelID:            w.ModelID,
+			ModelName:          w.ModelName,
+			SkinName:           w.SkinName,
+			Speed:              w.Speed,
+			Faction:            w.Faction,
+			Tier:               w.Tier,
+			PowerCore:          w.PowerCore,
 			Weapons:            w.Weapons,
 			Utility:            w.Utility,
 			Image:              w.Image,
@@ -2170,6 +2170,7 @@ func (btl *Battle) MechsToWarMachines(mechs []*server.Mech) []*WarMachine {
 			ShieldTypeID:            mech.ShieldTypeID,
 			ShieldTypeLabel:         mech.ShieldTypeLabel,
 			ShieldTypeDescription:   mech.ShieldTypeDescription,
+			HeightMeters:            mech.HeightMeters.InexactFloat64(),
 
 			Faction: &Faction{
 				ID:    mech.Faction.ID,
@@ -2200,22 +2201,14 @@ func (btl *Battle) MechsToWarMachines(mechs []*server.Mech) []*WarMachine {
 			newWarMachine.OwnerUsername = fmt.Sprintf("%s#%d", mech.Owner.Username, mech.Owner.Gid)
 		}
 
-		// check model
-		model, ok := ModelMap[mech.Label]
-		if !ok {
-			model = "WREX"
-		}
-		newWarMachine.Model = model
+		newWarMachine.ModelName = mech.Label
 		newWarMachine.ModelID = mech.BlueprintID
 
 		// check model skin
 		if mech.ChassisSkin != nil {
-			mappedSkin, ok := SubmodelSkinMap[mech.ChassisSkin.Label]
-			if ok {
-				newWarMachine.Skin = mappedSkin
-			}
+			newWarMachine.SkinName = mech.ChassisSkin.Label
+			newWarMachine.SkinID = mech.ChassisSkin.BlueprintID
 		}
-		newWarMachine.SkinID = mech.ChassisSkinID
 
 		warMachines = append(warMachines, newWarMachine)
 		gamelog.L.Debug().Interface("mech", mech).Interface("newWarMachine", newWarMachine).Msg("converted mech to warmachine")
