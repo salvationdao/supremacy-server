@@ -213,7 +213,7 @@ func WeaponSkinListDetailed(opts *WeaponSkinListOpts) (int64, []*server.WeaponSk
 		queryMods = append(queryMods, qm.AndIn(fmt.Sprintf("%s IN ?", qm.Rels(boiler.TableNames.BlueprintWeaponSkin, boiler.BlueprintWeaponSkinColumns.Tier)), vals...))
 	}
 	if len(opts.FilterEquippedStatuses) == 1 {
-		if opts.FilterEquippedStatuses[0] == "UNEQUIPPED" {
+		if opts.FilterEquippedStatuses[0] == "unequipped" {
 			queryMods = append(queryMods, GenerateListFilterQueryMod(ListFilterRequestItem{
 				Table:    boiler.TableNames.WeaponSkin,
 				Column:   boiler.WeaponSkinColumns.EquippedOn,

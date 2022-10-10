@@ -253,7 +253,7 @@ func MechSkinListDetailed(opts *MechSkinListOpts) (int64, []*server.MechSkin, er
 		queryMods = append(queryMods, qm.AndIn(fmt.Sprintf("%s IN ?", qm.Rels(boiler.TableNames.BlueprintMechSkin, boiler.BlueprintMechSkinColumns.Tier)), vals...))
 	}
 	if len(opts.FilterEquippedStatuses) == 1 {
-		if opts.FilterEquippedStatuses[0] == "UNEQUIPPED" {
+		if opts.FilterEquippedStatuses[0] == "unequipped" {
 			queryMods = append(queryMods, GenerateListFilterQueryMod(ListFilterRequestItem{
 				Table:    boiler.TableNames.MechSkin,
 				Column:   boiler.MechSkinColumns.EquippedOn,
