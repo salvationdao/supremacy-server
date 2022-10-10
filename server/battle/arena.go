@@ -119,21 +119,6 @@ func NewArenaManager(opts *Opts) (*ArenaManager, error) {
 		return nil, terror.Error(err, "Failed to delete unfinished AI battles.")
 	}
 
-	// start player rank updater
-	am.PlayerRankUpdater()
-
-	// check default battle lobbies
-	err = am.SetDefaultPublicBattleLobbies()
-	if err != nil {
-		return nil, err
-	}
-
-	// start repair offer cleaner
-	go am.RepairOfferCleaner()
-
-	// start debounce lobby update sender
-	go am.debounceSendBattleLobbiesUpdate()
-
 	return am, nil
 }
 
