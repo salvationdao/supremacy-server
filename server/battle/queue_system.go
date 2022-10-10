@@ -60,11 +60,7 @@ func broadcastBattleLobbyUpdate(battleLobbyIDs ...string) {
 		return
 	}
 
-	bls, err := boiler.BattleLobbies(
-		boiler.BattleLobbyWhere.ID.IN(battleLobbyIDs),
-		qm.Load(boiler.BattleLobbyRels.HostBy),
-		qm.Load(boiler.BattleLobbyRels.GameMap),
-	).All(gamedb.StdConn)
+	bls, err := db.GetBattleLobbyViaIDs(battleLobbyIDs)
 	if err != nil {
 		gamelog.L.Error().Err(err).Strs("battle lobby id list", battleLobbyIDs).Msg("Failed to query battle lobby")
 		return
