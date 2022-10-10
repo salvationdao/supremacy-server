@@ -135,7 +135,7 @@ type MechSkinListOpts struct {
 	FilterEquippedStatuses   []string `json:"equipped_statuses"`
 }
 
-func MechSkinList(opts *MechSkinListOpts) (int64, []*server.MechSkin, error) {
+func MechSkinListDetailed(opts *MechSkinListOpts) (int64, []*server.MechSkin, error) {
 	var mechSkins []*server.MechSkin
 
 	var queryMods []qm.QueryMod
@@ -148,7 +148,7 @@ func MechSkinList(opts *MechSkinListOpts) (int64, []*server.MechSkin, error) {
 			Operator: OperatorValueTypeEquals,
 			Value:    opts.OwnerID,
 		}, 0, ""),
-		// and item type = mech Skin
+		// and item type = mech SkinID
 		GenerateListFilterQueryMod(ListFilterRequestItem{
 			Table:    boiler.TableNames.CollectionItems,
 			Column:   boiler.CollectionItemColumns.ItemType,

@@ -23,6 +23,7 @@ type MechSkin struct {
 	EquippedOn            null.String `json:"equipped_on,omitempty"`
 	LockedToMech          bool        `json:"locked_to_mech"`
 	CreatedAt             time.Time   `json:"created_at"`
+	BlueprintWeaponSkinID null.String `json:"blueprint_weapon_skin_id,omitempty"`
 
 	EquippedOnDetails *EquippedOnDetails
 }

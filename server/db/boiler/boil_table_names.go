@@ -22,6 +22,9 @@ var TableNames = struct {
 	BattleKills                                        string
 	BattleLobbies                                      string
 	BattleLobbiesMechs                                 string
+	BattleLobbyExtraSupsRewards                        string
+	BattleLobbySupporterOptIns                         string
+	BattleLobbySupporters                              string
 	BattleMapQueueOld                                  string
 	BattleMechs                                        string
 	BattleQueueFeesOld                                 string
@@ -98,6 +101,7 @@ var TableNames = struct {
 	PlayerAbilities                                    string
 	PlayerActiveLogs                                   string
 	PlayerBans                                         string
+	PlayerBattleAbilities                              string
 	PlayerFingerprints                                 string
 	PlayerIps                                          string
 	PlayerKeycards                                     string
@@ -184,6 +188,9 @@ var TableNames = struct {
 	BattleKills:                    "battle_kills",
 	BattleLobbies:                  "battle_lobbies",
 	BattleLobbiesMechs:             "battle_lobbies_mechs",
+	BattleLobbyExtraSupsRewards:    "battle_lobby_extra_sups_rewards",
+	BattleLobbySupporterOptIns:     "battle_lobby_supporter_opt_ins",
+	BattleLobbySupporters:          "battle_lobby_supporters",
 	BattleMapQueueOld:              "battle_map_queue_old",
 	BattleMechs:                    "battle_mechs",
 	BattleQueueFeesOld:             "battle_queue_fees_old",
@@ -260,6 +267,7 @@ var TableNames = struct {
 	PlayerAbilities:                "player_abilities",
 	PlayerActiveLogs:               "player_active_logs",
 	PlayerBans:                     "player_bans",
+	PlayerBattleAbilities:          "player_battle_abilities",
 	PlayerFingerprints:             "player_fingerprints",
 	PlayerIps:                      "player_ips",
 	PlayerKeycards:                 "player_keycards",

@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"math"
 	"math/rand"
 	"net"
 	"net/http"
@@ -37,7 +38,6 @@ import (
 	"go.uber.org/atomic"
 
 	"github.com/gofrs/uuid"
-	leakybucket "github.com/kevinms/leakybucket-go"
 	"github.com/pkg/errors"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 	"nhooyr.io/websocket"
@@ -119,21 +119,6 @@ func NewArenaManager(opts *Opts) (*ArenaManager, error) {
 		return nil, terror.Error(err, "Failed to delete unfinished AI battles.")
 	}
 
-	// start player rank updater
-	am.PlayerRankUpdater()
-
-	// check default battle lobbies
-	err = am.SetDefaultPublicBattleLobbies()
-	if err != nil {
-		return nil, err
-	}
-
-	// start repair offer cleaner
-	go am.RepairOfferCleaner()
-
-	// start debounce lobby update sender
-	go am.debounceSendBattleLobbiesUpdate()
-
 	return am, nil
 }
 
@@ -180,7 +165,7 @@ type ArenaBrief struct {
 	ID    string `json:"id"`
 	Gid   int    `json:"gid"`
 	Name  string `json:"name"`
-	Stage string `json:"stage"`
+	Stage string `json:"state"`
 }
 
 func (am *ArenaManager) AvailableBattleArenas() []*ArenaBrief {
@@ -199,6 +184,31 @@ func (am *ArenaManager) AvailableBattleArenas() []*ArenaBrief {
 		}
 	}
 	return resp
+}
+
+func (am *ArenaManager) GetCurrentBattleLobbyIDs() []string {
+	var battleLobbyIDs []string
+	for _, a := range am.arenas {
+		lobbyID := a.currentLobbyID.Load()
+		if lobbyID == "" || a.Stage.Load() == ArenaStageHijacked || !a.connected.Load() {
+			continue
+		}
+
+		battleLobbyIDs = append(battleLobbyIDs, lobbyID)
+	}
+
+	return battleLobbyIDs
+}
+
+func (am *ArenaManager) BroadcastLobbyUpdate(arenaID string) {
+	am.RLock()
+	defer am.RUnlock()
+	for _, arena := range am.arenas {
+		if arena.ID == arenaID {
+			arena.BroadcastLobbyUpdate()
+			return
+		}
+	}
 }
 
 func (am *ArenaManager) Serve() {
@@ -302,8 +312,6 @@ func (am *ArenaManager) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 		// clean up current battle, if exists
 		if btl := arena.CurrentBattle(); btl != nil {
-			btl.endAbilities()
-
 			if btl.replaySession.ReplaySession != nil {
 				battle := *btl.Battle
 				go func(battle boiler.Battle, replayID string) {
@@ -355,7 +363,7 @@ func (am *ArenaManager) NewArena(battleArena *boiler.BattleArena, wsConn *websoc
 		// set connected flag of the prev arena to false
 		a.connected.Store(false)
 
-		// change arena stage to hijacked
+		// change arena state to hijacked
 		a.Stage.Store(ArenaStageHijacked)
 
 		// stop recording from previous arena
@@ -487,21 +495,27 @@ func (arena *Arena) CurrentBattle() *Battle {
 	return arena._currentBattle
 }
 
+func (arena *Arena) CurrentBattleID() string {
+	arena.RLock()
+	defer arena.RUnlock()
+	return arena._currentBattle.ID
+}
+
 func (arena *Arena) storeCurrentBattle(btl *Battle) {
 	arena.Lock()
 	defer arena.Unlock()
 	arena._currentBattle = btl
 }
 
-func (arena *Arena) currentBattleState() int32 {
+func (arena *Arena) CurrentBattleState() int32 {
 	arena.RLock()
 	defer arena.RUnlock()
 	if arena._currentBattle == nil {
-		return BattleStageEnd
+		return EndState
 	}
 
 	arena._currentBattle.RLock()
-	stage := arena._currentBattle.stage.Load()
+	stage := arena._currentBattle.state.Load()
 	arena._currentBattle.RUnlock()
 
 	return stage
@@ -723,55 +737,6 @@ type LocationSelectRequest struct {
 	} `json:"payload"`
 }
 
-const HubKeyAbilityLocationSelect = "ABILITY:LOCATION:SELECT"
-
-var locationSelectBucket = leakybucket.NewCollector(1, 1, true)
-
-func (am *ArenaManager) AbilityLocationSelect(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
-	if locationSelectBucket.Add(user.ID, 1) == 0 {
-		return terror.Error(fmt.Errorf("too many requests"), "Too many Requests")
-	}
-
-	req := &LocationSelectRequest{}
-	err := json.Unmarshal(payload, req)
-	if err != nil {
-		gamelog.L.Warn().Err(err).Msg("invalid request received")
-		return terror.Error(err, "Invalid request received")
-	}
-
-	arena, err := am.GetArena(req.Payload.ArenaID)
-	if err != nil {
-		return err
-	}
-
-	btl := arena.CurrentBattle()
-	// skip, if current not battle
-	if btl == nil {
-		gamelog.L.Debug().Msg("no current battle")
-		return terror.Error(fmt.Errorf("no battle running"), "No battle running at the moment.")
-	}
-
-	if arena.IsRunningAIDrivenMatch() {
-		return terror.Error(fmt.Errorf("no ability is allowed for AI driven match"), "Battle abilities are not allowed during AI driven match.")
-	}
-
-	as := btl.AbilitySystem()
-
-	if !AbilitySystemIsAvailable(as) {
-		gamelog.L.Debug().Str("log_name", "battle arena").Msg("AbilitySystem is not available")
-		return terror.Error(fmt.Errorf("ability system is closed"), "Ability system is closed")
-	}
-
-	err = as.LocationSelect(user.ID, factionID, req.Payload.StartCoords, req.Payload.EndCoords)
-	if err != nil {
-		gamelog.L.Warn().Err(err).Msgf("Unable to select location")
-		return terror.Error(err, "Unable to select location")
-	}
-
-	reply(true)
-	return nil
-}
-
 type MinimapEvent struct {
 	ID            string              `json:"id"`
 	GameAbilityID int                 `json:"game_ability_id"`
@@ -835,71 +800,6 @@ func (am *ArenaManager) MinimapEventsSubscribeHandler(ctx context.Context, key s
 	return nil
 }
 
-const HubKeyBattleAbilityUpdated = "BATTLE:ABILITY:UPDATED"
-
-// PublicBattleAbilityUpdateSubscribeHandler return battle ability for non login player
-func (am *ArenaManager) PublicBattleAbilityUpdateSubscribeHandler(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
-	arena, err := am.GetArenaFromContext(ctx)
-	if err != nil {
-		return err
-	}
-
-	// get a random faction id
-	if arena.CurrentBattle() != nil {
-		as := arena.CurrentBattle().AbilitySystem()
-		if AbilitySystemIsAvailable(as) {
-			ba := as.BattleAbilityPool.BattleAbility.LoadBattleAbility()
-			ga, err := boiler.GameAbilities(
-				boiler.GameAbilityWhere.BattleAbilityID.EQ(null.StringFrom(ba.ID)),
-			).One(gamedb.StdConn)
-			if err != nil {
-				return terror.Error(err, "Failed to get battle ability")
-			}
-			reply(GameAbility{
-				ID:                     ga.ID,
-				GameClientAbilityID:    byte(ga.GameClientAbilityID),
-				ImageUrl:               ga.ImageURL,
-				Description:            ba.Description,
-				FactionID:              ga.FactionID,
-				Label:                  ga.Label,
-				Colour:                 ga.Colour,
-				TextColour:             ga.TextColour,
-				CooldownDurationSecond: ba.CooldownDurationSecond,
-			})
-		}
-	}
-	return nil
-}
-
-const HubKeyBattleAbilityOptInCheck = "BATTLE:ABILITY:OPT:IN:CHECK"
-
-// BattleAbilityOptInSubscribeHandler return battle ability for non login player
-func (am *ArenaManager) BattleAbilityOptInSubscribeHandler(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
-	arena, err := am.GetArenaFromContext(ctx)
-	if err != nil {
-		return err
-	}
-
-	// get a random faction id
-	if arena.CurrentBattle() != nil {
-		as := arena.CurrentBattle().AbilitySystem()
-		if AbilitySystemIsAvailable(as) {
-			offeringID := as.BattleAbilityPool.BattleAbility.LoadOfferingID()
-
-			isOptedIn, err := boiler.BattleAbilityOptInLogs(
-				boiler.BattleAbilityOptInLogWhere.BattleAbilityOfferingID.EQ(offeringID),
-				boiler.BattleAbilityOptInLogWhere.PlayerID.EQ(user.ID),
-			).Exists(gamedb.StdConn)
-			if err != nil {
-				return terror.Error(err, "Failed to check opt in stat")
-			}
-
-			reply(isOptedIn)
-		}
-	}
-	return nil
-}
-
 const HubKeyWarMachineAbilitiesUpdated = "WAR:MACHINE:ABILITIES:UPDATED"
 
 type MechGameAbility struct {
@@ -914,7 +814,7 @@ func (am *ArenaManager) WarMachineAbilitiesUpdateSubscribeHandler(ctx context.Co
 		return err
 	}
 
-	if arena.currentBattleState() != BattleStageStart {
+	if arena.CurrentBattleState() != BattlingState {
 		return nil
 	}
 
@@ -962,7 +862,7 @@ func (am *ArenaManager) WarMachineAbilitySubscribe(ctx context.Context, user *bo
 	}
 
 	btl := arena.CurrentBattle()
-	if btl == nil || btl.stage.Load() != BattleStageStart {
+	if btl == nil || btl.state.Load() != BattlingState {
 		return nil
 	}
 
@@ -1049,7 +949,7 @@ type WarMachineStat struct {
 
 const HubKeyWarMachineStatUpdated = "WAR:MACHINE:STAT:UPDATED"
 
-// WarMachineStatSubscribe subscribe on bribing stage change
+// WarMachineStatSubscribe subscribe on bribing state change
 func (am *ArenaManager) WarMachineStatSubscribe(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
 	arena, err := am.GetArenaFromContext(ctx)
 	if err != nil {
@@ -1096,24 +996,6 @@ func (am *ArenaManager) WarMachineStatSubscribe(ctx context.Context, key string,
 		}
 
 		reply(wStat)
-	}
-	return nil
-}
-
-const HubKeyBribeStageUpdateSubscribe = "BRIBE:STAGE:UPDATED:SUBSCRIBE"
-
-// BribeStageSubscribe subscribe on bribing stage change
-func (am *ArenaManager) BribeStageSubscribe(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
-	arena, err := am.GetArenaFromContext(ctx)
-	if err != nil {
-		return err
-	}
-	// return data if, current battle is not null
-	if arena.CurrentBattle() != nil {
-		btl := arena.CurrentBattle()
-		if AbilitySystemIsAvailable(btl.AbilitySystem()) {
-			reply(btl.AbilitySystem().BribeStageGet())
-		}
 	}
 	return nil
 }
@@ -1273,7 +1155,6 @@ func (arena *Arena) start() {
 		if !arena.connected.Load() {
 			btl := arena.CurrentBattle()
 			if btl != nil {
-				btl.endAbilities()
 				arena.storeCurrentBattle(nil)
 			}
 			// TODO: send shutdown command to the game client to prevent it from reconnecting again.
@@ -1301,15 +1182,16 @@ func (arena *Arena) start() {
 				continue
 			}
 
-			// set battle stage to end when receive "battle:end" message
+			// set battle state to end when receive "battle:end" message
 			btl := arena.CurrentBattle()
 			if btl != nil && msg.BattleCommand == "BATTLE:END" {
-				btl.stage.Store(BattleStageEnd)
+				btl.state.Store(EndState)
+				ws.PublishMessage(fmt.Sprintf("/public/arena/%s/battle_state", btl.ArenaID), server.HubKeyBattleState, EndState)
 			}
 			// handle message through channel
 			arena.gameClientJsonDataChan <- data
 		case Tick:
-			if btl := arena.CurrentBattle(); btl != nil && btl.stage.Load() == BattleStageStart {
+			if btl := arena.CurrentBattle(); btl != nil && btl.state.Load() == BattlingState {
 				btl.Tick(payload)
 			}
 
@@ -1341,7 +1223,7 @@ func (arena *Arena) GameClientJsonDataParser() {
 		}
 
 		L := gamelog.L.With().RawJSON("game_client_data", data).Int("message_type", int(JSON)).Str("battleCommand", msg.BattleCommand).Logger()
-		L.Info().Msg("game client message received")
+		//L.Info().Msg("game client message received")
 
 		command := strings.TrimSpace(msg.BattleCommand) // temp fix for issue on gameclient
 		switch command {
@@ -1416,7 +1298,7 @@ func (arena *Arena) GameClientJsonDataParser() {
 			btl.start()
 		case "BATTLE:WAR_MACHINE_DESTROYED":
 			// do not process, if battle already ended
-			if btl.stage.Load() == BattleStageEnd {
+			if btl.state.Load() != BattlingState {
 				continue
 			}
 
@@ -1466,7 +1348,7 @@ func (arena *Arena) GameClientJsonDataParser() {
 			}
 		case "BATTLE:WAR_MACHINE_PICKUP":
 			// do not process, if battle already ended
-			if btl.stage.Load() == BattleStageEnd {
+			if btl.state.Load() != BattlingState {
 				continue
 			}
 
@@ -1492,7 +1374,7 @@ func (arena *Arena) GameClientJsonDataParser() {
 
 		case "BATTLE:WAR_MACHINE_STATUS":
 			// do not process, if battle already ended
-			if btl.stage.Load() == BattleStageEnd {
+			if btl.state.Load() != BattlingState {
 				continue
 			}
 
@@ -1565,7 +1447,7 @@ func (arena *Arena) GameClientJsonDataParser() {
 			}
 		case "BATTLE:ABILITY_MOVE_COMMAND_RESPONSE":
 			// do not process, if battle already ended
-			if btl.stage.Load() == BattleStageEnd {
+			if btl.state.Load() != BattlingState {
 				continue
 			}
 
@@ -1580,7 +1462,7 @@ func (arena *Arena) GameClientJsonDataParser() {
 
 		case "BATTLE:ABILITY_COMPLETE":
 			// do not process, if battle already ended
-			if btl.stage.Load() == BattleStageEnd {
+			if btl.state.Load() != BattlingState {
 				continue
 			}
 
@@ -1606,13 +1488,14 @@ func (arena *Arena) GameClientJsonDataParser() {
 		default:
 			L.Warn().Err(err).Msg("Battle Arena WS: no command response")
 		}
-		L.Debug().Msg("game client message handled")
+		//L.Debug().Msg("game client message handled")
 	}
 }
 
 // assignBattleLobby assign the next
 // skipLobbyCheck ONLY happen on the battle end
 func (arena *Arena) assignBattleLobby() {
+	L := gamelog.L.With().Str("func", "assignBattleLobby").Str("arena id", arena.ID).Logger()
 	battleLobbyID := arena.currentLobbyID.Load()
 
 	//  check current lobby is valid
@@ -1623,7 +1506,7 @@ func (arena *Arena) assignBattleLobby() {
 			boiler.BattleLobbyWhere.EndedAt.IsNull(),
 		).One(gamedb.StdConn)
 		if err != nil && !errors.Is(err, sql.ErrNoRows) {
-			gamelog.L.Error().Err(err).Msg("Failed to load battle lobby")
+			L.Error().Err(err).Msg("Failed to load battle lobby")
 		}
 
 		// if assigned lobby is valid
@@ -1637,129 +1520,24 @@ func (arena *Arena) assignBattleLobby() {
 	arena.currentLobbyID.Store("")
 
 	// collect active battle lobbies' id
-	var battleLobbyIDs []string
-	for _, a := range arena.Manager.arenas {
-		lobbyID := a.currentLobbyID.Load()
-		if lobbyID == "" || a.Stage.Load() == ArenaStageHijacked || !a.connected.Load() {
-			continue
-		}
+	battleLobbyIDs := arena.Manager.GetCurrentBattleLobbyIDs()
 
-		battleLobbyIDs = append(battleLobbyIDs, lobbyID)
+	L = L.With().Strs("battleLobbyIDs", battleLobbyIDs).Logger()
+
+	// get the next valid battle lobby
+	bl, err := db.GetNextBattleLobby(battleLobbyIDs)
+	if err != nil {
+		L.Error().Err(err).Msg("failed to get .")
 	}
 
-	var excludingPlayerIDs []string
-
-	// load excluding players id, if there are active battle
-	if battleLobbyIDs != nil && len(battleLobbyIDs) > 0 {
-		battleLobbyQuery := ""
-		if battleLobbyIDs != nil && len(battleLobbyIDs) > 0 {
-			battleLobbyQuery += fmt.Sprintf("AND %s IN(", boiler.BattleLobbyColumns.ID)
-			for i, id := range battleLobbyIDs {
-				battleLobbyQuery += "'" + id + "'"
-
-				if i < len(battleLobbyIDs)-1 {
-					battleLobbyQuery += ","
-					continue
-				}
-
-				battleLobbyQuery += ")"
-			}
-		}
-
-		rows, err := boiler.NewQuery(
-			qm.Select(fmt.Sprintf(
-				"DISTINCT(_blm.%s)",
-				boiler.BattleLobbiesMechColumns.OwnerID,
-			)),
-			qm.From(fmt.Sprintf(
-				"(SELECT %s FROM %s WHERE %s NOTNULL AND %s ISNULL AND %s ISNULL %s) _bl",
-				boiler.BattleLobbyColumns.ID,
-				boiler.TableNames.BattleLobbies,
-				boiler.BattleLobbyColumns.ReadyAt,
-				boiler.BattleLobbyColumns.EndedAt,
-				boiler.BattleLobbyColumns.DeletedAt,
-				battleLobbyQuery,
-			)),
-			qm.InnerJoin(fmt.Sprintf(
-				"(SELECT %s, %s FROM %s WHERE %s ISNULL AND %s ISNULL) _blm ON _blm.%s = _bl.%s",
-				boiler.BattleLobbiesMechColumns.BattleLobbyID,
-				boiler.BattleLobbiesMechColumns.OwnerID,
-				boiler.TableNames.BattleLobbiesMechs,
-				boiler.BattleLobbiesMechColumns.RefundTXID,
-				boiler.BattleLobbiesMechColumns.DeletedAt,
-				boiler.BattleLobbiesMechColumns.BattleLobbyID,
-				boiler.BattleLobbyColumns.ID,
-			)),
-		).Query(gamedb.StdConn)
-		if err != nil && !errors.Is(err, sql.ErrNoRows) {
-			gamelog.L.Error().Err(err).Msg("Failed to load battle lobby")
-			return
-		}
-
-		for rows.Next() {
-			playerID := ""
-			err = rows.Scan(&playerID)
-			if err != nil {
-				gamelog.L.Error().Err(err).Msg("Failed to scan existing player id")
-				return
-			}
-
-			excludingPlayerIDs = append(excludingPlayerIDs, playerID)
-		}
-	}
-
-	// build excluding player query
-	excludingPlayerQuery := ""
-	if excludingPlayerIDs != nil && len(excludingPlayerIDs) > 0 {
-		excludingPlayerQuery += fmt.Sprintf("AND %s NOT IN(", boiler.BattleLobbiesMechTableColumns.OwnerID)
-		for i, id := range excludingPlayerIDs {
-			excludingPlayerQuery += "'" + id + "'"
-
-			if i < len(excludingPlayerIDs)-1 {
-				excludingPlayerQuery += ","
-				continue
-			}
-
-			excludingPlayerQuery += ")"
-		}
-	}
-
-	// get next lobby
-	bl, err := boiler.BattleLobbies(
-		qm.Where(fmt.Sprintf(
-			"(SELECT COUNT(%s) FROM %s WHERE %s = %s AND %s NOTNULL AND %s ISNULL AND %s ISNULL AND %s ISNULL %s) = 9",
-			boiler.BattleLobbiesMechTableColumns.ID,
-			boiler.TableNames.BattleLobbiesMechs,
-			boiler.BattleLobbiesMechTableColumns.BattleLobbyID,
-			boiler.BattleLobbyTableColumns.ID,
-			boiler.BattleLobbiesMechTableColumns.LockedAt,
-			boiler.BattleLobbiesMechTableColumns.EndedAt,
-			boiler.BattleLobbiesMechTableColumns.RefundTXID,
-			boiler.BattleLobbiesMechTableColumns.DeletedAt,
-			excludingPlayerQuery,
-		)),
-		boiler.BattleLobbyWhere.ReadyAt.IsNotNull(),
-		qm.Where(fmt.Sprintf(
-			"(%[1]s ISNULL OR %[1]s <= NOW())",
-			boiler.BattleLobbyTableColumns.WillNotStartUntil,
-		)),
-		qm.OrderBy(fmt.Sprintf(
-			"%s NULLS LAST, %s",
-			boiler.BattleLobbyTableColumns.WillNotStartUntil,
-			boiler.BattleLobbyTableColumns.ReadyAt,
-		)),
-	).One(gamedb.StdConn)
-	if err != nil && !errors.Is(err, sql.ErrNoRows) {
-		gamelog.L.Error().Err(err).Msg("Failed to load battle lobby")
-		return
-	}
+	L = L.With().Interface("bl", bl).Logger()
 
 	// if no available lobby
 	if bl == nil {
-		gamelog.L.Debug().Str("battle arena id", arena.ID).Msg("no lobby is available")
+		L.Debug().Str("battle arena id", arena.ID).Msg("no lobby is available")
 		bl, err = GenerateAIDrivenBattle()
 		if err != nil {
-			gamelog.L.Error().Err(err).Msg("Failed to generate AI driven match.")
+			L.Error().Err(err).Msg("Failed to generate AI driven match.")
 			return
 		}
 	}
@@ -1767,6 +1545,404 @@ func (arena *Arena) assignBattleLobby() {
 	// assign battle lobby
 	arena.currentLobbyID.Store(bl.ID)
 	arena.Stage.Store(ArenaStageProcessing)
+}
+
+type UpcomingBattleResponse struct {
+	IsPreBattle    bool                `json:"is_pre_battle"`
+	UpcomingBattle *server.BattleLobby `json:"upcoming_battle"`
+}
+
+func (arena *Arena) BroadcastLobbyUpdate() {
+	//broadcast next lobby
+	go func() {
+		blID := arena.currentLobbyID.Load()
+		if blID == "" {
+			gamelog.L.Error().Err(fmt.Errorf("no battle id")).Msg("failed to find battle lobby")
+			ws.PublishMessage(fmt.Sprintf("/public/arena/%s/upcoming_battle", arena.ID), server.HubKeyNextBattleDetails, &UpcomingBattleResponse{
+				IsPreBattle:    false,
+				UpcomingBattle: nil,
+			})
+			return
+		}
+
+		bl, err := db.GetBattleLobby(blID)
+		if err != nil {
+			gamelog.L.Error().Err(err).Str("blID", blID).Msg("failed to find battle lobby")
+			ws.PublishMessage(fmt.Sprintf("/public/arena/%s/upcoming_battle", arena.ID), server.HubKeyNextBattleDetails, &UpcomingBattleResponse{
+				IsPreBattle:    false,
+				UpcomingBattle: nil,
+			})
+			return
+		}
+
+		resp, err := server.BattleLobbiesFromBoiler([]*boiler.BattleLobby{bl})
+		if err != nil {
+			gamelog.L.Error().Err(err).Interface("battle lobby", bl).Msg("failed to parse battle lobby")
+			ws.PublishMessage(fmt.Sprintf("/public/arena/%s/upcoming_battle", arena.ID), server.HubKeyNextBattleDetails, &UpcomingBattleResponse{
+				IsPreBattle:    false,
+				UpcomingBattle: nil,
+			})
+			return
+		}
+
+		ws.PublishMessage(fmt.Sprintf("/public/arena/%s/upcoming_battle", arena.ID), server.HubKeyNextBattleDetails, &UpcomingBattleResponse{
+			IsPreBattle:    true,
+			UpcomingBattle: resp[0],
+		})
+	}()
+}
+
+func (arena *Arena) getBattleState() int32 {
+	arena.RLock()
+	defer arena.RUnlock()
+	if arena._currentBattle != nil {
+		return arena._currentBattle.state.Load()
+	}
+	return EndState
+}
+
+func (arena *Arena) GetLobbyDetails() *UpcomingBattleResponse {
+	if arena.getBattleState() != SetupState {
+		return &UpcomingBattleResponse{
+			IsPreBattle:    false,
+			UpcomingBattle: nil,
+		}
+	}
+
+	blID := arena.currentLobbyID.Load()
+	if blID == "" {
+		return &UpcomingBattleResponse{
+			IsPreBattle:    false,
+			UpcomingBattle: nil,
+		}
+	}
+
+	bl, err := db.GetBattleLobby(blID)
+	if err != nil {
+		gamelog.L.Error().Err(err).Str("blID", blID).Msg("failed to find battle lobby")
+		return &UpcomingBattleResponse{
+			IsPreBattle:    false,
+			UpcomingBattle: nil,
+		}
+	}
+
+	resp, err := server.BattleLobbiesFromBoiler([]*boiler.BattleLobby{bl})
+	if err != nil {
+		gamelog.L.Error().Err(err).Msg("failed to find parse battle lobby")
+		return &UpcomingBattleResponse{
+			IsPreBattle:    false,
+			UpcomingBattle: nil,
+		}
+	}
+
+	return &UpcomingBattleResponse{
+		IsPreBattle:    true,
+		UpcomingBattle: resp[0],
+	}
+}
+
+func (arena *Arena) assignSupporters() {
+	L := gamelog.L.With().Str("func", "assignSupporters").Logger()
+	blID := arena.currentLobbyID.Load()
+	if blID == "" {
+		L.Error().Err(fmt.Errorf("no battle lobby id while trying to assign supporters")).Msg("missing battle lobby id")
+		return
+	}
+
+	L = L.With().Str("blID", blID).Logger()
+
+	// get all opted in supporters
+	bl, err := db.GetBattleLobby(blID)
+	if err != nil {
+		L.Error().Err(err).Msg("failed to get battle lobby")
+		return
+	}
+
+	L = L.With().Interface("bl", bl).Logger()
+
+	// if we don't already have supporters, do this (this bit will be skipped when it is a battle being restart)
+	// so apparently on battle restarts battle lobby will get assigned a new battle id
+	// this causes issues because player_battle_abilities are linked to a battle, NOT a battle lobby id.
+	// meaning we need to either update the battle id on the player_battle_abilities table or insert new ones (or refactor)
+	// since we don't know the old battle id, it is easier to just insert them again.
+	if len(bl.R.BattleLobbySupporters) == 0 {
+		// we need to split them up via faction
+		rmSupporterCount := 0
+		bcSupporterCount := 0
+		zaiSupporterCount := 0
+
+		// shuffle the slice of opted in supporters
+		rand.Seed(time.Now().UnixNano())
+		for i := range bl.R.BattleLobbySupporterOptIns {
+			j := rand.Intn(i + 1)
+			bl.R.BattleLobbySupporterOptIns[i], bl.R.BattleLobbySupporterOptIns[j] = bl.R.BattleLobbySupporterOptIns[j], bl.R.BattleLobbySupporterOptIns[i]
+		}
+		// insert the supporters
+		for _, optIn := range bl.R.BattleLobbySupporterOptIns {
+			// increase supporter / faction count
+			switch optIn.FactionID {
+			case server.BostonCyberneticsFactionID:
+				if bcSupporterCount >= 5 {
+					continue
+				}
+				bcSupporterCount = bcSupporterCount + 1
+			case server.RedMountainFactionID:
+				if rmSupporterCount >= 5 {
+					continue
+				}
+				rmSupporterCount = rmSupporterCount + 1
+			case server.ZaibatsuFactionID:
+				if zaiSupporterCount >= 5 {
+					continue
+				}
+				zaiSupporterCount = zaiSupporterCount + 1
+			}
+			// break if we have all our supporters
+			if rmSupporterCount == 5 && zaiSupporterCount == 5 && bcSupporterCount == 5 {
+				break
+			}
+
+			selectedSupporter := &boiler.BattleLobbySupporter{
+				SupporterID:   optIn.SupporterID,
+				FactionID:     optIn.FactionID,
+				BattleLobbyID: optIn.BattleLobbyID,
+			}
+			err := selectedSupporter.Insert(gamedb.StdConn, boil.Infer())
+			if err != nil {
+				L.Error().Err(err).Interface("optIn", optIn).Msg("failed to insert new supporter")
+			}
+		}
+
+		// now loop over the mechs and if a faction has no supporters, add the mech owners as supporters.
+		for _, mech := range bl.R.BattleLobbiesMechs {
+			var selectedSupporter *boiler.BattleLobbySupporter
+			switch mech.FactionID {
+			case server.BostonCyberneticsFactionID:
+				if bcSupporterCount == 0 {
+					selectedSupporter = &boiler.BattleLobbySupporter{
+						SupporterID:   mech.OwnerID,
+						FactionID:     mech.FactionID,
+						BattleLobbyID: mech.BattleLobbyID,
+					}
+				}
+			case server.RedMountainFactionID:
+				if rmSupporterCount == 0 {
+					selectedSupporter = &boiler.BattleLobbySupporter{
+						SupporterID:   mech.OwnerID,
+						FactionID:     mech.FactionID,
+						BattleLobbyID: mech.BattleLobbyID,
+					}
+				}
+			case server.ZaibatsuFactionID:
+				if zaiSupporterCount == 0 {
+					selectedSupporter = &boiler.BattleLobbySupporter{
+						SupporterID:   mech.OwnerID,
+						FactionID:     mech.FactionID,
+						BattleLobbyID: mech.BattleLobbyID,
+					}
+				}
+			}
+			if selectedSupporter != nil {
+				err := selectedSupporter.Insert(gamedb.StdConn, boil.Infer())
+				if err != nil {
+					if !strings.Contains(err.Error(), "battle_lobby_supporters_supporter_id_battle_lobby_id_key") {
+						L.Error().Err(err).Interface("mech", mech).Msg("failed to insert new mech owner supporter")
+					}
+				}
+			}
+		}
+	}
+	// get all opted in supporters
+	bl, err = db.GetBattleLobby(blID)
+	if err != nil {
+		L.Error().Err(err).Msg("failed to get battle lobby")
+		return
+	}
+	resp, err := server.BattleLobbiesFromBoiler([]*boiler.BattleLobby{bl})
+	if err != nil {
+		L.Error().Err(err).Msg("failed to convert to lobby object")
+		return
+	}
+
+	ws.PublishMessage(fmt.Sprintf("/public/arena/%s/upcoming_battle", arena.ID), server.HubKeyNextBattleDetails, &UpcomingBattleResponse{
+		IsPreBattle:    true,
+		UpcomingBattle: resp[0],
+	})
+
+	rmAbilityIDs := []string{}
+	bcAbilityIDs := []string{}
+	zaiAbilityIDs := []string{}
+
+	battleAbilities, err := boiler.GameAbilities(
+		boiler.GameAbilityWhere.CountPerBattle.GT(0),
+	).All(gamedb.StdConn)
+	if err != nil {
+		L.Error().Err(err).Msg("failed to get battle abilities")
+		return
+	}
+
+	// split the abilities into their factions (we can set factions to have different amounts of different abilities)
+	for _, ability := range battleAbilities {
+		switch ability.FactionID {
+		case server.BostonCyberneticsFactionID:
+			for i := 0; i < ability.CountPerBattle; i++ {
+				bcAbilityIDs = append(bcAbilityIDs, ability.ID)
+			}
+		case server.RedMountainFactionID:
+			for i := 0; i < ability.CountPerBattle; i++ {
+				rmAbilityIDs = append(rmAbilityIDs, ability.ID)
+			}
+		case server.ZaibatsuFactionID:
+			for i := 0; i < ability.CountPerBattle; i++ {
+				zaiAbilityIDs = append(zaiAbilityIDs, ability.ID)
+			}
+		}
+	}
+
+	// shuffle all the ability ID slices
+	rand.Seed(time.Now().UnixNano())
+	for i := range bcAbilityIDs {
+		j := rand.Intn(i + 1)
+		bcAbilityIDs[i], bcAbilityIDs[j] = bcAbilityIDs[j], bcAbilityIDs[i]
+	}
+	rand.Seed(time.Now().UnixNano())
+	for i := range rmAbilityIDs {
+		j := rand.Intn(i + 1)
+		rmAbilityIDs[i], rmAbilityIDs[j] = rmAbilityIDs[j], rmAbilityIDs[i]
+	}
+	rand.Seed(time.Now().UnixNano())
+	for i := range zaiAbilityIDs {
+		j := rand.Intn(i + 1)
+		zaiAbilityIDs[i], zaiAbilityIDs[j] = zaiAbilityIDs[j], zaiAbilityIDs[i]
+	}
+
+	playerBattleAbilities := []*boiler.PlayerBattleAbility{}
+
+	// loop the abilities until we have popped off all the abilities
+	if len(resp[0].SelectedZaiSupporters) > 0 {
+		for i := 0; len(zaiAbilityIDs) > 0; i++ {
+			abilityID := ""
+			// pop off the first ability ID
+			abilityID, zaiAbilityIDs = zaiAbilityIDs[0], zaiAbilityIDs[1:]
+
+			// this is, i mod len(supporters)
+			// example, we are on the 8th ability with 6 supporters
+			// 8 mod 6 = 2, so we give this 8th ability to the 2nd supporter
+			// it should cycle everyone giving each person an ability until there are no more abilities in the slice
+			index := int(math.Mod(float64(i), float64(len(resp[0].SelectedZaiSupporters))))
+			userID := resp[0].SelectedZaiSupporters[index].ID
+
+			playerBattleAbilities = append(playerBattleAbilities, &boiler.PlayerBattleAbility{
+				PlayerID:      userID,
+				GameAbilityID: abilityID,
+				BattleID:      resp[0].AssignedToBattleID.String,
+			})
+		}
+	}
+	if len(resp[0].SelectedRedMountSupporters) > 0 {
+		for i := 0; len(rmAbilityIDs) > 0; i++ {
+			abilityID := ""
+			// pop off the first ability ID
+			abilityID, rmAbilityIDs = rmAbilityIDs[0], rmAbilityIDs[1:]
+
+			// this is, i mod len(supporters)
+			// example, we are on the 8th ability with 6 supporters
+			// 8 mod 6 = 2, so we give this 8th ability to the 2nd supporter
+			// it should cycle everyone giving each person an ability until there are no more abilities in the slice
+			index := int(math.Mod(float64(i), float64(len(resp[0].SelectedRedMountSupporters))))
+			userID := resp[0].SelectedRedMountSupporters[index].ID
+
+			playerBattleAbilities = append(playerBattleAbilities, &boiler.PlayerBattleAbility{
+				PlayerID:      userID,
+				GameAbilityID: abilityID,
+				BattleID:      resp[0].AssignedToBattleID.String,
+			})
+		}
+	}
+	if len(resp[0].SelectedBostonSupporters) > 0 {
+		for i := 0; len(bcAbilityIDs) > 0; i++ {
+			abilityID := ""
+			// pop off the first ability ID
+			abilityID, bcAbilityIDs = bcAbilityIDs[0], bcAbilityIDs[1:]
+
+			// this is, i mod len(supporters)
+			// example, we are on the 8th ability with 6 supporters
+			// 8 mod 6 = 2, so we give this 8th ability to the 2nd supporter
+			// it should cycle everyone giving each person an ability until there are no more abilities in the slice
+			index := int(math.Mod(float64(i), float64(len(resp[0].SelectedBostonSupporters))))
+			userID := resp[0].SelectedBostonSupporters[index].ID
+
+			playerBattleAbilities = append(playerBattleAbilities, &boiler.PlayerBattleAbility{
+				PlayerID:      userID,
+				GameAbilityID: abilityID,
+				BattleID:      resp[0].AssignedToBattleID.String,
+			})
+		}
+	}
+
+	for _, pba := range playerBattleAbilities {
+		err := pba.Insert(gamedb.StdConn, boil.Infer())
+		if err != nil {
+			gamelog.L.Error().Err(err).Msg("failed to insert support ability")
+		}
+	}
+
+	// here we just broadcast out the support abilities to the supporters
+	for _, rmSupper := range resp[0].SelectedRedMountSupporters {
+		BroadcastSupporterAbilities(rmSupper.ID, resp[0].AssignedToBattleID.String)
+	}
+	for _, zaiSupper := range resp[0].SelectedZaiSupporters {
+		BroadcastSupporterAbilities(zaiSupper.ID, resp[0].AssignedToBattleID.String)
+	}
+	for _, bcSupper := range resp[0].SelectedBostonSupporters {
+		BroadcastSupporterAbilities(bcSupper.ID, resp[0].AssignedToBattleID.String)
+	}
+}
+
+type PlayerSupportAbilitiesResponse struct {
+	BattleID           string                    `json:"battle_id"`
+	SupporterAbilities []*PlayerSupporterAbility `json:"supporter_abilities"`
+}
+
+type PlayerSupporterAbility struct {
+	ID                  string `json:"id"`
+	Label               string `json:"label"`
+	Colour              string `json:"colour"`
+	ImageURL            string `json:"image_url"`
+	Description         string `json:"description"`
+	TextColour          string `json:"text_colour"`
+	LocationSelectType  string `json:"location_select_type"`
+	GameClientAbilityID int    `json:"game_client_ability_id"`
+}
+
+func BroadcastSupporterAbilities(userID, battleID string) {
+	resp := &PlayerSupportAbilitiesResponse{
+		BattleID: battleID,
+	}
+	supporterAbilities, err := boiler.PlayerBattleAbilities(
+		boiler.PlayerBattleAbilityWhere.PlayerID.EQ(userID),
+		boiler.PlayerBattleAbilityWhere.BattleID.EQ(battleID),
+		boiler.PlayerBattleAbilityWhere.UsedAt.IsNull(),
+		qm.Load(boiler.PlayerBattleAbilityRels.GameAbility),
+	).All(gamedb.StdConn)
+	if err != nil {
+		return
+	}
+
+	for _, ability := range supporterAbilities {
+		resp.SupporterAbilities = append(resp.SupporterAbilities, &PlayerSupporterAbility{
+			ID:                  ability.ID,
+			Label:               ability.R.GameAbility.Label,
+			Colour:              ability.R.GameAbility.Colour,
+			ImageURL:            ability.R.GameAbility.ImageURL,
+			Description:         ability.R.GameAbility.Description,
+			TextColour:          ability.R.GameAbility.TextColour,
+			LocationSelectType:  ability.R.GameAbility.LocationSelectType,
+			GameClientAbilityID: ability.R.GameAbility.GameClientAbilityID,
+		})
+	}
+
+	ws.PublishMessage(fmt.Sprintf("/user/%s/battle/%s/supporter_abilities", userID, battleID), server.HubKeyPlayerSupportAbilities, resp)
 }
 
 func (arena *Arena) BeginBattle() {
@@ -1793,7 +1969,7 @@ func (arena *Arena) BeginBattle() {
 	arena.assignBattleLobby()
 	arena.Manager.Unlock()
 
-	// return, if the stage of the arena is still idle
+	// return, if the state of the arena is still idle
 	if arena.Stage.Load() == ArenaStageIdle || arena.currentLobbyID.Load() == "" {
 		return
 	}
@@ -1820,7 +1996,9 @@ func (arena *Arena) BeginBattle() {
 	// generate game map for the lobby, if there isn't one
 	if !battleLobby.GameMapID.Valid {
 		var gms []*boiler.GameMap
-		gms, err = boiler.GameMaps().All(gamedb.StdConn)
+		gms, err = boiler.GameMaps(
+			boiler.GameMapWhere.DisabledAt.IsNull(),
+		).All(gamedb.StdConn)
 		if err != nil {
 			gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("Failed to load game maps.")
 			arena.Stage.Store(ArenaStageIdle)
@@ -1904,7 +2082,7 @@ func (arena *Arena) BeginBattle() {
 			Name:          gameMap.Name,
 			BackgroundUrl: gameMap.BackgroundURL,
 		},
-		stage:                  atomic.NewInt32(BattleStageStart),
+		state:                  atomic.NewInt32(SetupState),
 		destroyedWarMachineMap: make(map[string]*WMDestroyedRecord),
 		MiniMapAbilityDisplayList: &MiniMapAbilityDisplayList{
 			m: make(map[string]*MiniMapAbilityContent),
@@ -1919,6 +2097,30 @@ func (arena *Arena) BeginBattle() {
 			Events: []*RecordingEvents{},
 		},
 	}
+	ws.PublishMessage(fmt.Sprintf("/public/arena/%s/battle_state", btl.ArenaID), server.HubKeyBattleState, SetupState)
+
+	// hold arena for the pre intro phase
+	prebattleTime := db.GetIntWithDefault(db.KeyPreBattleTimeSeconds, 20)
+	// 75% of pre battle time is for opting in
+	preBattleTimer := time.NewTimer(time.Second * time.Duration(float64(prebattleTime)*0.75))
+	// broadcast new lobby details for pre battle setup
+	arena.BroadcastLobbyUpdate()
+	// pause for time
+	<-preBattleTimer.C
+	// assign supporters
+	arena.assignSupporters()
+	// 25% of pre battle time is just because
+	preBattleTimer = time.NewTimer(time.Second * time.Duration(float64(prebattleTime)*0.25))
+	// pause for time
+	<-preBattleTimer.C
+	// broadcast that pre battle state is over
+	ws.PublishMessage(fmt.Sprintf("/public/arena/%s/upcoming_battle", arena.ID), server.HubKeyNextBattleDetails, &UpcomingBattleResponse{
+		IsPreBattle:    false,
+		UpcomingBattle: nil,
+	})
+	// set battle state as started
+	btl.state.Store(IntroState)
+	ws.PublishMessage(fmt.Sprintf("/public/arena/%s/battle_state", btl.ArenaID), server.HubKeyBattleState, IntroState)
 
 	// load war machines
 	err = btl.Load(battleLobby)
@@ -2163,8 +2365,8 @@ func (btl *Battle) AISpawned(payload *AISpawnedRequest) error {
 		Hash:          payload.Hash,
 		OwnedByID:     payload.UserID,
 		Name:          payload.Name,
-		Model:         payload.Model,
-		Skin:          payload.Skin,
+		ModelName:     payload.Model,
+		SkinName:      payload.Skin,
 		MaxHealth:     payload.MaxHealth,
 		Health:        payload.MaxHealth,
 		MaxShield:     payload.MaxShield,
@@ -2201,7 +2403,7 @@ func (btl *Battle) CompleteWarMachineMoveCommand(payload *AbilityMoveCommandComp
 	}
 
 	// check battle state
-	if btl.arena.currentBattleState() == BattleStageEnd {
+	if btl.arena.CurrentBattleState() == EndState {
 		return terror.Error(fmt.Errorf("current battle is ended"))
 	}
 

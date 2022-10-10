@@ -66,6 +66,7 @@ func (api *API) ProdGiveCrate(w http.ResponseWriter, r *http.Request) (int, erro
 	storeMechCrate, err := boiler.StorefrontMysteryCrates(
 		boiler.StorefrontMysteryCrateWhere.MysteryCrateType.EQ(boiler.CrateTypeMECH),
 		boiler.StorefrontMysteryCrateWhere.FactionID.EQ(user.FactionID.String),
+		qm.Load(qm.Rels(boiler.StorefrontMysteryCrateRels.FiatProduct, boiler.FiatProductRels.FiatProductPricings)),
 	).One(gamedb.StdConn)
 	if err != nil {
 		return http.StatusInternalServerError, terror.Error(err, "Failed to get mech crate for claim, please try again or contact support.")
@@ -75,6 +76,7 @@ func (api *API) ProdGiveCrate(w http.ResponseWriter, r *http.Request) (int, erro
 	storeWeaponCrate, err := boiler.StorefrontMysteryCrates(
 		boiler.StorefrontMysteryCrateWhere.MysteryCrateType.EQ(boiler.CrateTypeWEAPON),
 		boiler.StorefrontMysteryCrateWhere.FactionID.EQ(user.FactionID.String),
+		qm.Load(qm.Rels(boiler.StorefrontMysteryCrateRels.FiatProduct, boiler.FiatProductRels.FiatProductPricings)),
 	).One(gamedb.StdConn)
 	if err != nil {
 		return http.StatusInternalServerError, terror.Error(err, "Failed to get mech crate for claim, please try again or contact support.")

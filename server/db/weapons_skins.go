@@ -101,7 +101,7 @@ type WeaponSkinListOpts struct {
 	FilterEquippedStatuses   []string `json:"equipped_statuses"`
 }
 
-func WeaponSkinList(opts *WeaponSkinListOpts) (int64, []*server.WeaponSkin, error) {
+func WeaponSkinListDetailed(opts *WeaponSkinListOpts) (int64, []*server.WeaponSkin, error) {
 
 	var weaponSkins []*server.WeaponSkin
 
@@ -115,7 +115,7 @@ func WeaponSkinList(opts *WeaponSkinListOpts) (int64, []*server.WeaponSkin, erro
 			Operator: OperatorValueTypeEquals,
 			Value:    opts.OwnerID,
 		}, 0, ""),
-		// and item type = weapon Skin
+		// and item type = weapon SkinID
 		GenerateListFilterQueryMod(ListFilterRequestItem{
 			Table:    boiler.TableNames.CollectionItems,
 			Column:   boiler.CollectionItemColumns.ItemType,

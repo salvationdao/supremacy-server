@@ -108,7 +108,6 @@ func StoreFrontMysteryCrateFromBoiler(storefrontMysteryCrate *boiler.StorefrontM
 		ID:               storefrontMysteryCrate.ID,
 		FiatProductID:    storefrontMysteryCrate.FiatProductID,
 		MysteryCrateType: storefrontMysteryCrate.MysteryCrateType,
-		Price:            storefrontMysteryCrate.Price,
 		Amount:           storefrontMysteryCrate.Amount,
 		AmountSold:       storefrontMysteryCrate.AmountSold,
 		FactionID:        storefrontMysteryCrate.FactionID,
@@ -131,6 +130,9 @@ func StoreFrontMysteryCrateFromBoiler(storefrontMysteryCrate *boiler.StorefrontM
 					Amount:       p.Amount,
 				}
 				pricing = append(pricing, item)
+				if p.CurrencyCode == FiatCurrencyCodeSUPS {
+					output.Price = p.Amount
+				}
 			}
 		}
 		output.FiatProduct = &FiatProduct{

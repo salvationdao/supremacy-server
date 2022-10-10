@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/friendsofgo/errors"
 	"github.com/ninja-software/terror/v2"
+	"github.com/shopspring/decimal"
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 	"golang.org/x/exp/slices"
@@ -15,24 +16,32 @@ import (
 
 type BattleLobby struct {
 	*boiler.BattleLobby
-	HostBy             *boiler.Player       `json:"host_by"`
-	GameMap            *boiler.GameMap      `json:"game_map"`
-	BattleLobbiesMechs []*BattleLobbiesMech `json:"battle_lobbies_mechs"`
-	IsPrivate          bool                 `json:"is_private"`
+	HostBy                     *boiler.Player          `json:"host_by"`
+	GameMap                    *boiler.GameMap         `json:"game_map"`
+	BattleLobbiesMechs         []*BattleLobbiesMech    `json:"battle_lobbies_mechs"`
+	OptedInRedMountSupporters  []*BattleLobbySupporter `json:"opted_in_rm_supporters"`
+	OptedInZaiSupporters       []*BattleLobbySupporter `json:"opted_in_zai_supporters"`
+	OptedInBostonSupporters    []*BattleLobbySupporter `json:"opted_in_bc_supporters"`
+	SelectedRedMountSupporters []*BattleLobbySupporter `json:"selected_rm_supporters"`
+	SelectedZaiSupporters      []*BattleLobbySupporter `json:"selected_zai_supporters"`
+	SelectedBostonSupporters   []*BattleLobbySupporter `json:"selected_bc_supporters"`
+	IsPrivate                  bool                    `json:"is_private"`
 }
 
 type BattleLobbiesMech struct {
+	*BlueprintMech
+
 	MechID        string `json:"mech_id" db:"mech_id"`
 	BattleLobbyID string `json:"battle_lobby_id" db:"battle_lobby_id"`
 	AvatarURL     string `json:"avatar_url" db:"avatar_url"`
 	Name          string `json:"name" db:"name"`
-	Label         string `json:"label" db:"label"`
 	Tier          string `json:"tier" db:"tier"`
 
 	IsDestroyed bool           `json:"is_destroyed"`
 	Owner       *boiler.Player `json:"owner"`
 	FactionID   null.String    `json:"faction_id"`
-	WeaponSlots []*WeaponSlot  `json:"weapon_slots"`
+
+	WeaponSlots []*WeaponSlot `json:"weapon_slots"`
 }
 
 type WeaponSlot struct {
@@ -42,6 +51,14 @@ type WeaponSlot struct {
 	AllowMelee      bool        `json:"allow_melee"`
 	IsSkinInherited bool        `json:"is_skin_inherited"`
 	Weapon          *Weapon     `json:"weapon"`
+}
+
+type BattleLobbySupporter struct {
+	ID             string `json:"id"`
+	Username       string `json:"username"`
+	FactionID      string `json:"faction_id"`
+	AvatarURL      string `json:"avatar_url,omitempty"`
+	CustomAvatarID string `json:"custom_avatar_id,omitempty"`
 }
 
 func BattleLobbiesFromBoiler(bls []*boiler.BattleLobby) ([]*BattleLobby, error) {
@@ -55,13 +72,16 @@ func BattleLobbiesFromBoiler(bls []*boiler.BattleLobby) ([]*BattleLobby, error) 
 	for _, bl := range bls {
 		copiedBattleLobby := *bl
 		sbl := &BattleLobby{
-			BattleLobby:        &copiedBattleLobby,
-			IsPrivate:          copiedBattleLobby.Password.Valid,
-			BattleLobbiesMechs: []*BattleLobbiesMech{},
+			BattleLobby:                &copiedBattleLobby,
+			IsPrivate:                  copiedBattleLobby.AccessCode.Valid,
+			BattleLobbiesMechs:         []*BattleLobbiesMech{},
+			OptedInRedMountSupporters:  []*BattleLobbySupporter{},
+			OptedInZaiSupporters:       []*BattleLobbySupporter{},
+			OptedInBostonSupporters:    []*BattleLobbySupporter{},
+			SelectedRedMountSupporters: []*BattleLobbySupporter{},
+			SelectedZaiSupporters:      []*BattleLobbySupporter{},
+			SelectedBostonSupporters:   []*BattleLobbySupporter{},
 		}
-
-		// omit password
-		sbl.Password = null.StringFromPtr(nil)
 
 		if bl.R != nil {
 			if bl.R.HostBy != nil {
@@ -78,6 +98,94 @@ func BattleLobbiesFromBoiler(bls []*boiler.BattleLobby) ([]*BattleLobby, error) 
 
 			if bl.R.GameMap != nil {
 				sbl.GameMap = bl.R.GameMap
+			}
+
+			// opted in peeps
+			if bl.R.BattleLobbySupporterOptIns != nil && len(bl.R.BattleLobbySupporterOptIns) > 0 {
+				for _, sup := range bl.R.BattleLobbySupporterOptIns {
+					switch sup.FactionID {
+					case RedMountainFactionID:
+						supper := &BattleLobbySupporter{
+							ID:             sup.SupporterID,
+							Username:       sup.R.Supporter.Username.String,
+							FactionID:      sup.R.Supporter.FactionID.String,
+							CustomAvatarID: sup.R.Supporter.CustomAvatarID.String,
+						}
+						if sup.R.Supporter.R != nil && sup.R.Supporter.R.ProfileAvatar != nil {
+							supper.AvatarURL = sup.R.Supporter.R.ProfileAvatar.AvatarURL
+						}
+
+						sbl.OptedInRedMountSupporters = append(sbl.OptedInRedMountSupporters, supper)
+					case BostonCyberneticsFactionID:
+						supper := &BattleLobbySupporter{
+							ID:             sup.SupporterID,
+							Username:       sup.R.Supporter.Username.String,
+							FactionID:      sup.R.Supporter.FactionID.String,
+							CustomAvatarID: sup.R.Supporter.CustomAvatarID.String,
+						}
+						if sup.R.Supporter.R != nil && sup.R.Supporter.R.ProfileAvatar != nil {
+							supper.AvatarURL = sup.R.Supporter.R.ProfileAvatar.AvatarURL
+						}
+
+						sbl.OptedInBostonSupporters = append(sbl.OptedInBostonSupporters, supper)
+					case ZaibatsuFactionID:
+						supper := &BattleLobbySupporter{
+							ID:             sup.SupporterID,
+							Username:       sup.R.Supporter.Username.String,
+							FactionID:      sup.R.Supporter.FactionID.String,
+							CustomAvatarID: sup.R.Supporter.CustomAvatarID.String,
+						}
+						if sup.R.Supporter.R != nil && sup.R.Supporter.R.ProfileAvatar != nil {
+							supper.AvatarURL = sup.R.Supporter.R.ProfileAvatar.AvatarURL
+						}
+
+						sbl.OptedInZaiSupporters = append(sbl.OptedInZaiSupporters, supper)
+					}
+				}
+			}
+
+			// selected peeps
+			if bl.R.BattleLobbySupporters != nil && len(bl.R.BattleLobbySupporters) > 0 {
+				for _, sup := range bl.R.BattleLobbySupporters {
+					switch sup.FactionID {
+					case RedMountainFactionID:
+						supper := &BattleLobbySupporter{
+							ID:             sup.SupporterID,
+							Username:       sup.R.Supporter.Username.String,
+							FactionID:      sup.R.Supporter.FactionID.String,
+							CustomAvatarID: sup.R.Supporter.CustomAvatarID.String,
+						}
+						if sup.R.Supporter.R != nil && sup.R.Supporter.R.ProfileAvatar != nil {
+							supper.AvatarURL = sup.R.Supporter.R.ProfileAvatar.AvatarURL
+						}
+
+						sbl.SelectedRedMountSupporters = append(sbl.SelectedRedMountSupporters, supper)
+					case BostonCyberneticsFactionID:
+						supper := &BattleLobbySupporter{
+							ID:             sup.SupporterID,
+							Username:       sup.R.Supporter.Username.String,
+							FactionID:      sup.R.Supporter.FactionID.String,
+							CustomAvatarID: sup.R.Supporter.CustomAvatarID.String,
+						}
+						if sup.R.Supporter.R != nil && sup.R.Supporter.R.ProfileAvatar != nil {
+							supper.AvatarURL = sup.R.Supporter.R.ProfileAvatar.AvatarURL
+						}
+
+						sbl.SelectedBostonSupporters = append(sbl.SelectedBostonSupporters, supper)
+					case ZaibatsuFactionID:
+						supper := &BattleLobbySupporter{
+							ID:             sup.SupporterID,
+							Username:       sup.R.Supporter.Username.String,
+							FactionID:      sup.R.Supporter.FactionID.String,
+							CustomAvatarID: sup.R.Supporter.CustomAvatarID.String,
+						}
+						if sup.R.Supporter.R != nil && sup.R.Supporter.R.ProfileAvatar != nil {
+							supper.AvatarURL = sup.R.Supporter.R.ProfileAvatar.AvatarURL
+						}
+
+						sbl.SelectedZaiSupporters = append(sbl.SelectedZaiSupporters, supper)
+					}
+				}
 			}
 		}
 
@@ -123,7 +231,8 @@ func BattleLobbiesFromBoiler(bls []*boiler.BattleLobby) ([]*BattleLobby, error) 
 			fmt.Sprintf("_ci.%s AS mech_id", boiler.CollectionItemColumns.ItemID),
 			fmt.Sprintf("_ci.%s", boiler.BattleLobbiesMechColumns.BattleLobbyID),
 			boiler.MechTableColumns.Name,
-			boiler.BlueprintMechTableColumns.Label,
+			fmt.Sprintf("TO_JSON( %s.* ) AS bm", boiler.TableNames.BlueprintMechs),
+			boiler.MechSkinTableColumns.Level,
 			boiler.BlueprintMechSkinTableColumns.Tier,
 			fmt.Sprintf(
 				"(SELECT %s FROM %s WHERE %s = %s AND %s = %s) AS %s",
@@ -222,11 +331,15 @@ func BattleLobbiesFromBoiler(bls []*boiler.BattleLobby) ([]*BattleLobby, error) 
 		blm := &BattleLobbiesMech{
 			Owner: &boiler.Player{},
 		}
+
+		bm := &BlueprintMech{}
+		skinLevel := int64(0)
 		err = rows.Scan(
 			&blm.MechID,
 			&blm.BattleLobbyID,
 			&blm.Name,
-			&blm.Label,
+			&bm,
+			&skinLevel,
 			&blm.Tier,
 			&blm.AvatarURL,
 			&blm.Owner.ID,
@@ -240,14 +353,36 @@ func BattleLobbiesFromBoiler(bls []*boiler.BattleLobby) ([]*BattleLobby, error) 
 			return nil, terror.Error(err, "Failed to scan battle lobby mech")
 		}
 
-		if slices.Index(impactedMechIDs, blm.MechID) == -1 {
-			impactedMechIDs = append(impactedMechIDs, blm.MechID)
+		bm.BoostedSpeed = int64(bm.Speed)
+		bm.BoostedMaxHitpoints = int64(bm.MaxHitpoints)
+		bm.BoostedShieldRechargeRate = int64(bm.ShieldRechargeRate)
+
+		// mech boosted stat
+		if bm.BoostStat.Valid {
+			boostPercent := decimal.NewFromInt(skinLevel).Div(decimal.NewFromInt(100)).Add(decimal.NewFromInt(1))
+
+			switch bm.BoostStat.String {
+			case boiler.BoostStatMECH_SPEED:
+				bm.BoostedSpeed = decimal.NewFromInt(bm.BoostedSpeed).Mul(boostPercent).IntPart()
+			case boiler.BoostStatMECH_HEALTH:
+				bm.BoostedMaxHitpoints = decimal.NewFromInt(bm.BoostedMaxHitpoints).Mul(boostPercent).IntPart()
+			case boiler.BoostStatSHIELD_REGEN:
+				bm.BoostedShieldRechargeRate = decimal.NewFromInt(bm.BoostedShieldRechargeRate).Mul(boostPercent).IntPart()
+			}
 		}
+
+		blm.BlueprintMech = bm
 
 		// set is destroyed flag
 		blm.IsDestroyed = slices.Index(destroyedMechIDs, blm.MechID) != -1
+		blm.FactionID = blm.Owner.FactionID
 
 		blms = append(blms, blm)
+
+		// record mech id for weapon query
+		if slices.Index(impactedMechIDs, blm.MechID) == -1 {
+			impactedMechIDs = append(impactedMechIDs, blm.MechID)
+		}
 	}
 
 	// fill up mech weapon slots
@@ -364,41 +499,47 @@ func BattleLobbiesFactionFilter(bls []*BattleLobby, keepDataForFactionID string)
 	battleLobbies := []*BattleLobby{}
 
 	for _, bl := range bls {
-
-		// copy lobby data
-		battleLobby := &BattleLobby{
-			BattleLobby:        bl.BattleLobby,
-			HostBy:             bl.HostBy,
-			GameMap:            bl.GameMap,
-			BattleLobbiesMechs: []*BattleLobbiesMech{},
-			IsPrivate:          bl.IsPrivate,
-		}
-
-		for _, blm := range bl.BattleLobbiesMechs {
-			battleLobbyMech := &BattleLobbiesMech{
-				MechID:        blm.MechID,
-				BattleLobbyID: blm.BattleLobbyID,
-				AvatarURL:     blm.AvatarURL,
-				Name:          blm.Name,
-				Label:         blm.Label,
-				Tier:          blm.Tier,
-				IsDestroyed:   blm.IsDestroyed,
-				FactionID:     blm.Owner.FactionID,
-			}
-
-			if blm.Owner != nil && blm.Owner.FactionID.String == keepDataForFactionID {
-				// copy owner detail
-				battleLobbyMech.Owner = blm.Owner
-
-				// copy weapon slots
-				battleLobbyMech.WeaponSlots = blm.WeaponSlots
-			}
-
-			battleLobby.BattleLobbiesMechs = append(battleLobby.BattleLobbiesMechs, battleLobbyMech)
-		}
-
-		battleLobbies = append(battleLobbies, battleLobby)
+		battleLobbies = append(battleLobbies, BattleLobbyInfoFilter(bl, keepDataForFactionID))
 	}
 
 	return battleLobbies
+}
+
+// BattleLobbyInfoFilter filter single lobby at a time
+func BattleLobbyInfoFilter(bl *BattleLobby, keepDataForFactionID string) *BattleLobby {
+	// copy lobby data,
+	// important: access code must be omitted
+	battleLobby := &BattleLobby{
+		BattleLobby:        bl.BattleLobby,
+		HostBy:             bl.HostBy,
+		GameMap:            bl.GameMap,
+		BattleLobbiesMechs: []*BattleLobbiesMech{},
+		IsPrivate:          bl.IsPrivate,
+	}
+
+	for _, blm := range bl.BattleLobbiesMechs {
+		battleLobbyMech := &BattleLobbiesMech{
+			MechID:        blm.MechID,
+			BattleLobbyID: blm.BattleLobbyID,
+			AvatarURL:     blm.AvatarURL,
+			Name:          blm.Name,
+			Tier:          blm.Tier,
+			IsDestroyed:   blm.IsDestroyed,
+			FactionID:     blm.Owner.FactionID,
+		}
+
+		if blm.Owner != nil && blm.Owner.FactionID.String == keepDataForFactionID {
+			// copy owner detail
+			battleLobbyMech.Owner = blm.Owner
+
+			// copy weapon slots
+			battleLobbyMech.WeaponSlots = blm.WeaponSlots
+
+			battleLobbyMech.BlueprintMech = blm.BlueprintMech
+		}
+
+		battleLobby.BattleLobbiesMechs = append(battleLobby.BattleLobbiesMechs, battleLobbyMech)
+	}
+
+	return battleLobby
 }

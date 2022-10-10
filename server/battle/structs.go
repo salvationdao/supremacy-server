@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/gofrs/uuid"
-	"github.com/shopspring/decimal"
 )
 
 type Started struct {
@@ -19,22 +18,6 @@ type BattleUser struct {
 	Username  string    `json:"username"`
 	FactionID string    `json:"faction_id"`
 	deadlock.RWMutex
-}
-
-var FactionNames = map[string]string{
-	"98bf7bb3-1a7c-4f21-8843-458d62884060": "RedMountain",
-	"7c6dde21-b067-46cf-9e56-155c88a520e2": "Boston",
-	"880db344-e405-428d-84e5-6ebebab1fe6d": "Zaibatsu",
-}
-
-var FactionLogos = map[string]string{
-	"98bf7bb3-1a7c-4f21-8843-458d62884060": "red_mountain_logo",
-	"7c6dde21-b067-46cf-9e56-155c88a520e2": "boston_cybernetics_logo",
-	"880db344-e405-428d-84e5-6ebebab1fe6d": "zaibatsu_logo",
-}
-
-func (bu *BattleUser) AvatarID() string {
-	return FactionLogos[bu.FactionID]
 }
 
 type BattleEndDetail struct {
@@ -107,44 +90,4 @@ type FactionBrief struct {
 	Primary    string `json:"primary_color"`
 	Secondary  string `json:"secondary_color"`
 	Background string `json:"background_color"`
-}
-
-type GameAbility struct {
-	ID                  string          `json:"id" db:"id"`
-	GameClientAbilityID byte            `json:"game_client_ability_id" db:"game_client_ability_id"`
-	BattleAbilityID     *string         `json:"battle_ability_id,omitempty" db:"battle_ability_id,omitempty"`
-	Colour              string          `json:"colour" db:"colour"`
-	TextColour          string          `json:"text_colour" db:"text_colour"`
-	Description         string          `json:"description" db:"description"`
-	ImageUrl            string          `json:"image_url" db:"image_url"`
-	FactionID           string          `json:"faction_id" db:"faction_id"`
-	Label               string          `json:"label" db:"label"`
-	Level               string          `json:"level" db:"level"`
-	SupsCost            decimal.Decimal `json:"sups_cost"`
-	CurrentSups         decimal.Decimal `json:"current_sups"`
-	LocationSelectType  string          `json:"location_select_type"`
-
-	// used to track ability price update
-	Identity string `json:"identity"`
-
-	// if token id is not 0, it is a nft ability, otherwise it is a faction wide ability
-	WarMachineHash string
-	ParticipantID  *byte
-
-	// Category title for frontend to group the abilities together
-	Title string `json:"title"`
-
-	CooldownDurationSecond int `json:"cooldown_duration_second"`
-
-	deadlock.RWMutex
-}
-
-type GameAbilityPrice struct {
-	GameAbility    *GameAbility
-	isReached      bool
-	MaxTargetPrice decimal.Decimal
-	TargetPrice    decimal.Decimal
-	CurrentSups    decimal.Decimal
-
-	TxRefs []string
 }

@@ -8,6 +8,7 @@ const HubKeyPlayerMarketingPreferencesUpdate = "PLAYER:MARKETING:UPDATE"
 
 const HubKeyPlayerQueueStatus = "PLAYER:QUEUE:STATUS"
 const HubKeyPlayerAbilitiesList = "PLAYER:ABILITIES:LIST:SUBSCRIBE"
+const HubKeyPlayerSupportAbilities = "PLAYER:SUPPORT:ABILITIES"
 const HubKeyMechMoveCommandSubscribe = "MECH:MOVE:COMMAND:SUBSCRIBE"
 
 const HubKeySaleAbilitiesPriceSubscribe = "SALE:ABILITIES:PRICE:SUBSCRIBE"
@@ -68,6 +69,8 @@ const HubKeyChallengeFundSubscribe = "CHALLENGE:FUND"
 
 const HubKeyBattleArenaListSubscribe = "BATTLE:ARENA:LIST"
 const HubKeyBattleArenaClosedSubscribe = "BATTLE:ARENA:CLOSED"
+const HubKeyNextBattleDetails = "NEXT:BATTLE:DETAILS"
+const HubKeyBattleState = "BATTLE:STATE"
 
 // store
 
@@ -87,5 +90,6 @@ const HubKeyMiniMapAbilityDisplayList = "MINI:MAP:ABILITY:DISPLAY:LIST"
 const HubKeyPlayerMechsBrief = "PLAYER:MECHS:BRIEF"
 
 const HubKeyBattleLobbyListUpdate = "BATTLE:LOBBY:LIST:UPDATE"
+const HubKeyPrivateBattleLobbyUpdate = "PRIVATE:BATTLE:LOBBY:UPDATE"
 const HubKeyPlayerAssetMechQueueSubscribe = "PLAYER:ASSET:MECH:QUEUE:SUBSCRIBE"
 const HubKeyBattleETAUpdate = "BATTLE:ETA:UPDATE"

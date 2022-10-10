@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"fmt"
+	"github.com/ninja-software/tickle"
 	"net"
 	"net/http"
 	"server"
@@ -30,7 +31,6 @@ import (
 	"github.com/go-chi/cors"
 	"github.com/meehow/securebytes"
 	"github.com/microcosm-cc/bluemonday"
-	"github.com/ninja-software/tickle"
 	"github.com/ninja-syndicate/ws"
 	"github.com/pemistahl/lingua-go"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -163,9 +163,6 @@ func NewAPI(
 		ViewerUpdateChan: make(chan bool),
 	}
 
-	// set user online debounce
-	go api.debounceSendingViewerCount()
-
 	api.Commander = ws.NewCommander(func(c *ws.Commander) {
 		c.RestBridge("/rest")
 	})
@@ -187,7 +184,7 @@ func NewAPI(
 	ssc := NewStoreController(api)
 	_ = NewBattleController(api)
 	mc := NewMarketplaceController(api)
-	pac := NewPlayerAbilitiesController(api)
+	pac := NewAbilitiesController(api)
 	pasc := NewPlayerAssetsController(api)
 	_ = NewPlayerDevicesController(api)
 	_ = NewHangarController(api)
@@ -269,15 +266,15 @@ func NewAPI(
 				s.WS("/custom_avatar/{avatar_id}/details", HubKeyPlayerCustomAvatarDetails, pc.ProfileCustomAvatarDetailsHandler)
 
 				// battle related endpoint
+				s.WS("/arena/{arena_id}/upcoming_battle", server.HubKeyNextBattleDetails, api.NextBattleDetails)
 				s.WS("/arena/{arena_id}/notification", battle.HubKeyGameNotification, nil)
-				s.WS("/arena/{arena_id}/battle_ability", battle.HubKeyBattleAbilityUpdated, api.ArenaManager.PublicBattleAbilityUpdateSubscribeHandler)
 				s.WS("/arena/{arena_id}/minimap", battle.HubKeyMinimapUpdatesSubscribe, api.ArenaManager.MinimapUpdatesSubscribeHandler)
 				s.WS("/arena/{arena_id}/minimap_events", battle.HubKeyMinimapEventsSubscribe, api.ArenaManager.MinimapEventsSubscribeHandler)
 				s.WS("/arena/{arena_id}/game_settings", battle.HubKeyGameSettingsUpdated, api.ArenaManager.SendSettings)
 				s.WS("/arena/{arena_id}/battle_end_result", battle.HubKeyBattleEndDetailUpdated, api.BattleEndDetail)
+				s.WS("/arena/{arena_id}/battle_state", server.HubKeyBattleState, api.BattleState)
 
 				s.WSBatch("/arena/{arena_id}/mech/{slotNumber}", "/public/arena/{arena_id}/mech", battle.HubKeyWarMachineStatUpdated, api.ArenaManager.WarMachineStatSubscribe)
-				s.WS("/arena/{arena_id}/bribe_stage", battle.HubKeyBribeStageUpdateSubscribe, api.ArenaManager.BribeStageSubscribe)
 				s.WS("/arena/{arena_id}/mini_map_ability_display_list", server.HubKeyMiniMapAbilityDisplayList, api.MiniMapAbilityDisplayList)
 				s.WS("/live_viewer_count", HubKeyViewerLiveCountUpdated, api.LiveViewerCount)
 			}))
@@ -290,6 +287,7 @@ func NewAPI(
 				s.WS("/mech/{mech_id}/repair_case", server.HubKeyMechRepairCase, api.MechRepairCaseSubscribe)
 				s.WS("/mech/{mech_id}/active_repair_offer", server.HubKeyMechActiveRepairOffer, api.MechActiveRepairOfferSubscribe)
 				s.WS("/battle_eta", server.HubKeyBattleETAUpdate, api.BattleETASubscribeHandler)
+				s.WS("/game_map_list", HubKeyGameMapList, api.GameMapListSubscribeHandler)
 
 				// user related
 				s.WSTrack("/user/{user_id}", "user_id", server.HubKeyUserSubscribe, server.MustSecure(pc.PlayersSubscribeHandler), MustMatchUserID)
@@ -310,15 +308,14 @@ func NewAPI(
 
 				// user repair bay
 				s.WS("/user/{user_id}/repair_bay", server.HubKeyMechRepairSlots, server.MustSecure(api.PlayerMechRepairSlots), MustMatchUserID)
-
-				// battle related endpoint
-				s.WS("/user/{user_id}/arena/{arena_id}/battle_ability/check_opt_in", battle.HubKeyBattleAbilityOptInCheck, server.MustSecure(api.ArenaManager.BattleAbilityOptInSubscribeHandler), MustMatchUserID, MustHaveFaction)
 			}))
 
 			// secured user commander
 			r.Mount("/user/{user_id}", ws.NewServer(func(s *ws.Server) {
 				s.Use(api.AuthWS(true))
 				s.Mount("/user_commander", api.SecureUserCommander)
+
+				s.WS("/battle/{battle_id}/supporter_abilities", server.HubKeyPlayerSupportAbilities, server.MustSecure(pac.PlayerSupportAbilitiesHandler), MustMatchUserID)
 			}))
 
 			// secured faction route ws
@@ -331,6 +328,7 @@ func NewAPI(
 				s.WS("/faction_chat", HubKeyFactionChatSubscribe, server.MustSecureFaction(cc.FactionChatUpdatedSubscribeHandler))
 				s.WS("/marketplace/{id}", HubKeyMarketplaceSalesItemUpdate, server.MustSecureFaction(mc.SalesItemUpdateSubscriber))
 				s.WS("/battle_lobbies", server.HubKeyBattleLobbyListUpdate, server.MustSecureFaction(api.BattleLobbyListUpdate))
+				s.WS("/private_battle_lobby/{access_code}", server.HubKeyPrivateBattleLobbyUpdate, server.MustSecureFaction(api.PrivateBattleLobbyUpdate), MustHaveUrlParam("access_code"))
 
 				s.WS("/mech/{mech_id}/details", HubKeyPlayerAssetMechDetail, server.MustSecureFaction(pasc.PlayerAssetMechDetail))
 				s.WS("/mech/{mech_id}/brief_info", HubKeyPlayerAssetMechDetail, server.MustSecureFaction(pasc.PlayerAssetMechBriefInfo))
@@ -357,6 +355,18 @@ func NewAPI(
 		})
 	})
 
+	err = api.initialWSBroadcast()
+	if err != nil {
+		return nil, err
+	}
+
+	return api, nil
+}
+
+// initialWSBroadcast include all the go routines which contain broadcast
+// IMPORTANT: All the initial broadcast functions need to be trigger AFTER the ws tree is built.
+// otherwise, the server will panic!!!
+func (api *API) initialWSBroadcast() error {
 	// create a tickle that update faction mvp every day 00:00 am
 	factionMvpUpdate := tickle.New("Calculate faction mvp player", 24*60*60, func() (int, error) {
 		// set red mountain mvp player
@@ -384,7 +394,7 @@ func NewAPI(
 	})
 	factionMvpUpdate.Log = gamelog.L
 
-	err = factionMvpUpdate.SetIntervalAt(24*time.Hour, 0, 0)
+	err := factionMvpUpdate.SetIntervalAt(24*time.Hour, 0, 0)
 	if err != nil {
 		gamelog.L.Error().Err(err).Msg("Failed to set up faction mvp user update tickle")
 	}
@@ -398,7 +408,25 @@ func NewAPI(
 	api.FactionActivePlayerSetup()
 	go api.ChallengeFundDebounceBroadcast()
 
-	return api, nil
+	// set user online debounce
+	go api.debounceSendingViewerCount()
+
+	// start player rank updater
+	api.ArenaManager.PlayerRankUpdater()
+
+	// check default battle lobbies
+	err = api.ArenaManager.SetDefaultPublicBattleLobbies()
+	if err != nil {
+		return err
+	}
+
+	// start repair offer cleaner
+	go api.ArenaManager.RepairOfferCleaner()
+
+	// start debounce lobby update sender
+	go api.ArenaManager.DebounceSendBattleLobbiesUpdate()
+
+	return nil
 }
 
 // Run the API service

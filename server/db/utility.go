@@ -74,7 +74,7 @@ func GenerateUtilityStatFilterQueryMods(column string, filter *UtilityStatFilter
 	return output
 }
 
-func UtilityList(opts *UtilityListOpts) (int64, []*server.Utility, error) {
+func UtilityList(opts *UtilityListOpts) (int64, []*PlayerAsset, error) {
 	queryMods := getDefaultUtilityQueryMods()
 
 	if opts.OwnerID != "" {
@@ -178,6 +178,7 @@ func UtilityList(opts *UtilityListOpts) (int64, []*server.Utility, error) {
 			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.OwnerID),
 			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.Tier),
 			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.ItemType),
+			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.ItemID),
 			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.MarketLocked),
 			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.XsynLocked),
 			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.LockedToMarketplace),
@@ -206,32 +207,33 @@ func UtilityList(opts *UtilityListOpts) (int64, []*server.Utility, error) {
 	}
 	defer rows.Close()
 
-	var utilities []*server.Utility
+	var utilities []*PlayerAsset
 	for rows.Next() {
-		pc := &server.Utility{
+		u := &PlayerAsset{
 			CollectionItem: &server.CollectionItem{},
 		}
 
 		scanArgs := []interface{}{
-			&pc.CollectionItem.CollectionSlug,
-			&pc.CollectionItem.Hash,
-			&pc.CollectionItem.TokenID,
-			&pc.CollectionItem.OwnerID,
-			&pc.CollectionItem.Tier,
-			&pc.CollectionItem.ItemType,
-			&pc.CollectionItem.MarketLocked,
-			&pc.CollectionItem.XsynLocked,
-			&pc.CollectionItem.LockedToMarketplace,
-			&pc.CollectionItem.AssetHidden,
-			&pc.ID,
-			&pc.Label,
+			&u.CollectionItem.CollectionSlug,
+			&u.CollectionItem.Hash,
+			&u.CollectionItem.TokenID,
+			&u.CollectionItem.OwnerID,
+			&u.CollectionItem.Tier,
+			&u.CollectionItem.ItemType,
+			&u.CollectionItem.ItemID,
+			&u.CollectionItem.MarketLocked,
+			&u.CollectionItem.XsynLocked,
+			&u.CollectionItem.LockedToMarketplace,
+			&u.CollectionItem.AssetHidden,
+			&u.ID,
+			&u.Label,
 		}
 
 		err = rows.Scan(scanArgs...)
 		if err != nil {
 			return total, utilities, err
 		}
-		utilities = append(utilities, pc)
+		utilities = append(utilities, u)
 	}
 
 	return total, utilities, nil

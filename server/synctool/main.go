@@ -342,6 +342,7 @@ func SyncMechModels(f io.Reader, db *sql.DB) error {
 			ShieldRechargePowerCost: record[16],
 			ShieldTypeID:            record[17],
 			ShieldRechargeDelay:     record[18],
+			HeightMeters:            record[19],
 		}
 
 		MechModels = append(MechModels, *mechModel)
@@ -369,9 +370,10 @@ func SyncMechModels(f io.Reader, db *sql.DB) error {
 												shield_recharge_rate,
 												shield_recharge_power_cost,
 			                             		shield_type_id,
-			                             		shield_recharge_delay
+			                             		shield_recharge_delay,
+			                             		height_meters
 			                                   )
-			VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18)
+			VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19)
 			ON CONFLICT (id)
 			DO
 				UPDATE SET 
@@ -392,7 +394,8 @@ func SyncMechModels(f io.Reader, db *sql.DB) error {
 							shield_recharge_rate=$15,
 							shield_recharge_power_cost=$16,
 							shield_type_id=$17,
-							shield_recharge_delay=$18;
+							shield_recharge_delay=$18,
+							height_meters=$19;
 		`,
 			mechModel.ID,
 			mechModel.Label,
@@ -412,6 +415,7 @@ func SyncMechModels(f io.Reader, db *sql.DB) error {
 			mechModel.ShieldRechargePowerCost,
 			mechModel.ShieldTypeID,
 			mechModel.ShieldRechargeDelay,
+			mechModel.HeightMeters,
 		)
 		if err != nil {
 			fmt.Println("ERROR: " + err.Error())
@@ -1140,7 +1144,7 @@ func SyncWeaponModelSkinCompatibilities(f io.Reader, db *sql.DB) error {
 			null.NewString(weaponModelSkinCompat.YoutubeUrl, weaponModelSkinCompat.YoutubeUrl != ""),
 		)
 		if err != nil {
-			fmt.Printf("ERROR WITH %s - %s: %s\n", weaponModelSkinCompat.WeaponSkinID, weaponModelSkinCompat.WeaponModelID,err.Error())
+			fmt.Printf("ERROR WITH %s - %s: %s\n", weaponModelSkinCompat.WeaponSkinID, weaponModelSkinCompat.WeaponModelID, err.Error())
 			return err
 		}
 		count++
@@ -1245,17 +1249,15 @@ func SyncGameAbilities(f io.Reader, db *sql.DB) error {
 			Label:                    record[4],
 			Colour:                   record[5],
 			ImageURL:                 record[6],
-			SupsCost:                 record[7],
-			Description:              record[8],
-			TextColour:               record[9],
-			CurrentSups:              record[10],
-			Level:                    record[11],
-			LocationSelectType:       record[12],
-			DisplayOnMiniMap:         strings.ToLower(record[15]) == "true",
-			MiniMapDisplayEffectType: record[16],
-			MechDisplayEffectType:    record[17],
-			ShouldCheckTeamKill:      strings.ToLower(record[19]) == "true",
-			IgnoreSelfKill:           strings.ToLower(record[21]) == "true",
+			Description:              record[7],
+			TextColour:               record[8],
+			Level:                    record[9],
+			LocationSelectType:       record[10],
+			DisplayOnMiniMap:         strings.ToLower(record[13]) == "true",
+			MiniMapDisplayEffectType: record[14],
+			MechDisplayEffectType:    record[15],
+			ShouldCheckTeamKill:      strings.ToLower(record[17]) == "true",
+			IgnoreSelfKill:           strings.ToLower(record[19]) == "true",
 		}
 
 		gameAbility.GameClientAbilityID, err = strconv.Atoi(record[1])
@@ -1264,23 +1266,29 @@ func SyncGameAbilities(f io.Reader, db *sql.DB) error {
 			continue
 		}
 
-		if record[13] != "" {
+		if record[11] != "" {
 			gameAbility.DeletedAt = null.TimeFrom(time.Now())
 		}
 
-		gameAbility.LaunchingDelaySeconds, err = strconv.Atoi(record[14])
+		gameAbility.LaunchingDelaySeconds, err = strconv.Atoi(record[12])
 		if err != nil {
 			fmt.Println(err.Error()+gameAbility.ID, gameAbility.Label, gameAbility.Description)
 			continue
 		}
 
-		gameAbility.AnimationDurationSeconds, err = strconv.Atoi(record[18])
+		gameAbility.AnimationDurationSeconds, err = strconv.Atoi(record[16])
 		if err != nil {
 			fmt.Println(err.Error()+gameAbility.ID, gameAbility.Label, gameAbility.Description)
 			continue
 		}
 
-		gameAbility.MaximumTeamKillTolerantCount, err = strconv.Atoi(record[20])
+		gameAbility.MaximumTeamKillTolerantCount, err = strconv.Atoi(record[18])
+		if err != nil {
+			fmt.Println(err.Error()+gameAbility.ID, gameAbility.Label, gameAbility.Description)
+			continue
+		}
+
+		gameAbility.CountPerBattle, err = strconv.Atoi(record[20])
 		if err != nil {
 			fmt.Println(err.Error()+gameAbility.ID, gameAbility.Label, gameAbility.Description)
 			continue
@@ -1300,10 +1308,8 @@ func SyncGameAbilities(f io.Reader, db *sql.DB) error {
 				boiler.GameAbilityColumns.Label,
 				boiler.GameAbilityColumns.Colour,
 				boiler.GameAbilityColumns.ImageURL,
-				boiler.GameAbilityColumns.SupsCost,
 				boiler.GameAbilityColumns.Description,
 				boiler.GameAbilityColumns.TextColour,
-				boiler.GameAbilityColumns.CurrentSups,
 				boiler.GameAbilityColumns.Level,
 				boiler.GameAbilityColumns.LocationSelectType,
 				boiler.GameAbilityColumns.DeletedAt,
@@ -1315,6 +1321,7 @@ func SyncGameAbilities(f io.Reader, db *sql.DB) error {
 				boiler.GameAbilityColumns.ShouldCheckTeamKill,
 				boiler.GameAbilityColumns.MaximumTeamKillTolerantCount,
 				boiler.GameAbilityColumns.IgnoreSelfKill,
+				boiler.GameAbilityColumns.CountPerBattle,
 			),
 			boil.Infer(),
 		)

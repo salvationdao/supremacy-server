@@ -24,8 +24,8 @@ func (am *ArenaManager) SendBattleQueueFunc(fn func() error) error {
 	return fn()
 }
 
-// debounceSendBattleLobbiesUpdate debounce the lobby update sending
-func (am *ArenaManager) debounceSendBattleLobbiesUpdate() {
+// DebounceSendBattleLobbiesUpdate debounce the lobby update sending
+func (am *ArenaManager) DebounceSendBattleLobbiesUpdate() {
 	duration := 250 * time.Millisecond
 
 	timer := time.NewTimer(duration)
@@ -83,14 +83,30 @@ func broadcastBattleLobbyUpdate(battleLobbyIDs ...string) {
 		}
 	}
 
-	resp, err := server.BattleLobbiesFromBoiler(bls)
+	battleLobbies, err := server.BattleLobbiesFromBoiler(bls)
 	if err != nil {
 		return
 	}
 
-	go ws.PublishMessage(fmt.Sprintf("/faction/%s/battle_lobbies", server.RedMountainFactionID), server.HubKeyBattleLobbyListUpdate, append(server.BattleLobbiesFactionFilter(resp, server.RedMountainFactionID), deletedLobbies...))
-	go ws.PublishMessage(fmt.Sprintf("/faction/%s/battle_lobbies", server.BostonCyberneticsFactionID), server.HubKeyBattleLobbyListUpdate, append(server.BattleLobbiesFactionFilter(resp, server.BostonCyberneticsFactionID), deletedLobbies...))
-	go ws.PublishMessage(fmt.Sprintf("/faction/%s/battle_lobbies", server.ZaibatsuFactionID), server.HubKeyBattleLobbyListUpdate, append(server.BattleLobbiesFactionFilter(resp, server.ZaibatsuFactionID), deletedLobbies...))
+	// separate public and private lobbies
+	var publicLobbies []*server.BattleLobby
+
+	for _, battleLobby := range battleLobbies {
+		if !battleLobby.AccessCode.Valid {
+			publicLobbies = append(publicLobbies, battleLobby)
+			continue
+		}
+		// broadcast private lobby individually
+		go ws.PublishMessage(fmt.Sprintf("/faction/%s/private_battle_lobby/%s", server.RedMountainFactionID, battleLobby.AccessCode.String), server.HubKeyPrivateBattleLobbyUpdate, server.BattleLobbyInfoFilter(battleLobby, server.RedMountainFactionID))
+		go ws.PublishMessage(fmt.Sprintf("/faction/%s/private_battle_lobby/%s", server.BostonCyberneticsFactionID, battleLobby.AccessCode.String), server.HubKeyPrivateBattleLobbyUpdate, server.BattleLobbyInfoFilter(battleLobby, server.BostonCyberneticsFactionID))
+		go ws.PublishMessage(fmt.Sprintf("/faction/%s/private_battle_lobby/%s", server.ZaibatsuFactionID, battleLobby.AccessCode.String), server.HubKeyPrivateBattleLobbyUpdate, server.BattleLobbyInfoFilter(battleLobby, server.ZaibatsuFactionID))
+	}
+
+	if len(publicLobbies) > 0 {
+		go ws.PublishMessage(fmt.Sprintf("/faction/%s/battle_lobbies", server.RedMountainFactionID), server.HubKeyBattleLobbyListUpdate, append(server.BattleLobbiesFactionFilter(publicLobbies, server.RedMountainFactionID), deletedLobbies...))
+		go ws.PublishMessage(fmt.Sprintf("/faction/%s/battle_lobbies", server.BostonCyberneticsFactionID), server.HubKeyBattleLobbyListUpdate, append(server.BattleLobbiesFactionFilter(publicLobbies, server.BostonCyberneticsFactionID), deletedLobbies...))
+		go ws.PublishMessage(fmt.Sprintf("/faction/%s/battle_lobbies", server.ZaibatsuFactionID), server.HubKeyBattleLobbyListUpdate, append(server.BattleLobbiesFactionFilter(publicLobbies, server.ZaibatsuFactionID), deletedLobbies...))
+	}
 }
 
 // SetDefaultPublicBattleLobbies ensure there are enough battle lobbies when server start

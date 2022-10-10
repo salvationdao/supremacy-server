@@ -150,6 +150,7 @@ var BattleRels = struct {
 	ConsumedAbilities                  string
 	MechMoveCommandLogs                string
 	BattleNumberPlayerBans             string
+	PlayerBattleAbilities              string
 	PlayerKillLogs                     string
 	PlayerSpoilsOfWars                 string
 	StackedMechBattleLogs              string
@@ -177,6 +178,7 @@ var BattleRels = struct {
 	ConsumedAbilities:                  "ConsumedAbilities",
 	MechMoveCommandLogs:                "MechMoveCommandLogs",
 	BattleNumberPlayerBans:             "BattleNumberPlayerBans",
+	PlayerBattleAbilities:              "PlayerBattleAbilities",
 	PlayerKillLogs:                     "PlayerKillLogs",
 	PlayerSpoilsOfWars:                 "PlayerSpoilsOfWars",
 	StackedMechBattleLogs:              "StackedMechBattleLogs",
@@ -207,6 +209,7 @@ type battleR struct {
 	ConsumedAbilities                  ConsumedAbilitySlice         `boiler:"ConsumedAbilities" boil:"ConsumedAbilities" json:"ConsumedAbilities" toml:"ConsumedAbilities" yaml:"ConsumedAbilities"`
 	MechMoveCommandLogs                MechMoveCommandLogSlice      `boiler:"MechMoveCommandLogs" boil:"MechMoveCommandLogs" json:"MechMoveCommandLogs" toml:"MechMoveCommandLogs" yaml:"MechMoveCommandLogs"`
 	BattleNumberPlayerBans             PlayerBanSlice               `boiler:"BattleNumberPlayerBans" boil:"BattleNumberPlayerBans" json:"BattleNumberPlayerBans" toml:"BattleNumberPlayerBans" yaml:"BattleNumberPlayerBans"`
+	PlayerBattleAbilities              PlayerBattleAbilitySlice     `boiler:"PlayerBattleAbilities" boil:"PlayerBattleAbilities" json:"PlayerBattleAbilities" toml:"PlayerBattleAbilities" yaml:"PlayerBattleAbilities"`
 	PlayerKillLogs                     PlayerKillLogSlice           `boiler:"PlayerKillLogs" boil:"PlayerKillLogs" json:"PlayerKillLogs" toml:"PlayerKillLogs" yaml:"PlayerKillLogs"`
 	PlayerSpoilsOfWars                 PlayerSpoilsOfWarSlice       `boiler:"PlayerSpoilsOfWars" boil:"PlayerSpoilsOfWars" json:"PlayerSpoilsOfWars" toml:"PlayerSpoilsOfWars" yaml:"PlayerSpoilsOfWars"`
 	StackedMechBattleLogs              StackedMechBattleLogSlice    `boiler:"StackedMechBattleLogs" boil:"StackedMechBattleLogs" json:"StackedMechBattleLogs" toml:"StackedMechBattleLogs" yaml:"StackedMechBattleLogs"`
@@ -928,6 +931,28 @@ func (o *Battle) BattleNumberPlayerBans(mods ...qm.QueryMod) playerBanQuery {
 
 	if len(queries.GetSelect(query.Query)) == 0 {
 		queries.SetSelect(query.Query, []string{"\"player_bans\".*"})
+	}
+
+	return query
+}
+
+// PlayerBattleAbilities retrieves all the player_battle_ability's PlayerBattleAbilities with an executor.
+func (o *Battle) PlayerBattleAbilities(mods ...qm.QueryMod) playerBattleAbilityQuery {
+	var queryMods []qm.QueryMod
+	if len(mods) != 0 {
+		queryMods = append(queryMods, mods...)
+	}
+
+	queryMods = append(queryMods,
+		qm.Where("\"player_battle_abilities\".\"battle_id\"=?", o.ID),
+		qmhelper.WhereIsNull("\"player_battle_abilities\".\"deleted_at\""),
+	)
+
+	query := PlayerBattleAbilities(queryMods...)
+	queries.SetFrom(query.Query, "\"player_battle_abilities\"")
+
+	if len(queries.GetSelect(query.Query)) == 0 {
+		queries.SetSelect(query.Query, []string{"\"player_battle_abilities\".*"})
 	}
 
 	return query
@@ -3295,6 +3320,105 @@ func (battleL) LoadBattleNumberPlayerBans(e boil.Executor, singular bool, maybeB
 	return nil
 }
 
+// LoadPlayerBattleAbilities allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for a 1-M or N-M relationship.
+func (battleL) LoadPlayerBattleAbilities(e boil.Executor, singular bool, maybeBattle interface{}, mods queries.Applicator) error {
+	var slice []*Battle
+	var object *Battle
+
+	if singular {
+		object = maybeBattle.(*Battle)
+	} else {
+		slice = *maybeBattle.(*[]*Battle)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &battleR{}
+		}
+		args = append(args, object.ID)
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &battleR{}
+			}
+
+			for _, a := range args {
+				if a == obj.ID {
+					continue Outer
+				}
+			}
+
+			args = append(args, obj.ID)
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`player_battle_abilities`),
+		qm.WhereIn(`player_battle_abilities.battle_id in ?`, args...),
+		qmhelper.WhereIsNull(`player_battle_abilities.deleted_at`),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load player_battle_abilities")
+	}
+
+	var resultSlice []*PlayerBattleAbility
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice player_battle_abilities")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results in eager load on player_battle_abilities")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for player_battle_abilities")
+	}
+
+	if len(playerBattleAbilityAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+	if singular {
+		object.R.PlayerBattleAbilities = resultSlice
+		for _, foreign := range resultSlice {
+			if foreign.R == nil {
+				foreign.R = &playerBattleAbilityR{}
+			}
+			foreign.R.Battle = object
+		}
+		return nil
+	}
+
+	for _, foreign := range resultSlice {
+		for _, local := range slice {
+			if local.ID == foreign.BattleID {
+				local.R.PlayerBattleAbilities = append(local.R.PlayerBattleAbilities, foreign)
+				if foreign.R == nil {
+					foreign.R = &playerBattleAbilityR{}
+				}
+				foreign.R.Battle = local
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
 // LoadPlayerKillLogs allows an eager lookup of values, cached into the
 // loaded structs of the objects. This is for a 1-M or N-M relationship.
 func (battleL) LoadPlayerKillLogs(e boil.Executor, singular bool, maybeBattle interface{}, mods queries.Applicator) error {
@@ -5441,6 +5565,58 @@ func (o *Battle) RemoveBattleNumberPlayerBans(exec boil.Executor, related ...*Pl
 		}
 	}
 
+	return nil
+}
+
+// AddPlayerBattleAbilities adds the given related objects to the existing relationships
+// of the battle, optionally inserting them as new records.
+// Appends related to o.R.PlayerBattleAbilities.
+// Sets related.R.Battle appropriately.
+func (o *Battle) AddPlayerBattleAbilities(exec boil.Executor, insert bool, related ...*PlayerBattleAbility) error {
+	var err error
+	for _, rel := range related {
+		if insert {
+			rel.BattleID = o.ID
+			if err = rel.Insert(exec, boil.Infer()); err != nil {
+				return errors.Wrap(err, "failed to insert into foreign table")
+			}
+		} else {
+			updateQuery := fmt.Sprintf(
+				"UPDATE \"player_battle_abilities\" SET %s WHERE %s",
+				strmangle.SetParamNames("\"", "\"", 1, []string{"battle_id"}),
+				strmangle.WhereClause("\"", "\"", 2, playerBattleAbilityPrimaryKeyColumns),
+			)
+			values := []interface{}{o.ID, rel.ID}
+
+			if boil.DebugMode {
+				fmt.Fprintln(boil.DebugWriter, updateQuery)
+				fmt.Fprintln(boil.DebugWriter, values)
+			}
+			if _, err = exec.Exec(updateQuery, values...); err != nil {
+				return errors.Wrap(err, "failed to update foreign table")
+			}
+
+			rel.BattleID = o.ID
+		}
+	}
+
+	if o.R == nil {
+		o.R = &battleR{
+			PlayerBattleAbilities: related,
+		}
+	} else {
+		o.R.PlayerBattleAbilities = append(o.R.PlayerBattleAbilities, related...)
+	}
+
+	for _, rel := range related {
+		if rel.R == nil {
+			rel.R = &playerBattleAbilityR{
+				Battle: o,
+			}
+		} else {
+			rel.R.Battle = o
+		}
+	}
 	return nil
 }
 

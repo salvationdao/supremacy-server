@@ -33,15 +33,33 @@ func NewBattleController(api *API) *BattleControllerWS {
 	api.Command(HubKeyBattleMechStats, bc.BattleMechStatsHandler)
 
 	// commands from battle
-
 	api.SecureUserFactionCommand(battle.HubKeyPlayerAbilityUse, api.ArenaManager.PlayerAbilityUse)
+	api.SecureUserFactionCommand(battle.HubKeyPlayerSupportAbilityUse, api.ArenaManager.PlayerSupportAbilityUse)
 
 	// mech move command related
 	api.SecureUserFactionCommand(battle.HubKeyMechMoveCommandCancel, api.ArenaManager.MechMoveCommandCancelHandler)
-	// battle ability related (bribing)
-	api.SecureUserFactionCommand(battle.HubKeyAbilityLocationSelect, api.ArenaManager.AbilityLocationSelect)
-
 	return bc
+}
+
+const HubKeyGameMapList = "GAME:MAP:LIST"
+
+func (api *API) GameMapListSubscribeHandler(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
+	gameMap, err := boiler.GameMaps(
+		boiler.GameMapWhere.DisabledAt.IsNull(),
+	).All(gamedb.StdConn)
+	if err != nil {
+		gamelog.L.Error().Str("func", "GameMapListSubscribeHandler").Msg("Failed to load game maps.")
+		return terror.Error(err, "Failed to load game maps.")
+	}
+
+	if gameMap == nil {
+		reply([]*boiler.GameMap{})
+		return nil
+	}
+
+	reply(gameMap)
+
+	return nil
 }
 
 type BattleMechHistoryRequest struct {
@@ -353,5 +371,16 @@ func (api *API) MiniMapAbilityDisplayList(ctx context.Context, key string, paylo
 
 func (api *API) ChallengeFundSubscribeHandler(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
 	reply(api.ChallengeFund)
+	return nil
+}
+
+func (api *API) BattleState(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
+	arena, err := api.ArenaManager.GetArenaFromContext(ctx)
+	if err != nil {
+		reply(battle.EndState)
+		return nil
+	}
+
+	reply(arena.CurrentBattleState())
 	return nil
 }
