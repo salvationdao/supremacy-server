@@ -17,4 +17,10 @@ CREATE TABLE voice_streams
     has_voted BOOL NOT NULL default false,
     kicked_at TIMESTAMPTZ,
     created_at timestamptz NOT NULL default now()
-)
+);
+
+BEGIN;
+ALTER TYPE FEATURE_NAME ADD VALUE 'VOICE_CHAT';
+COMMIT;
+
+INSERT INTO features (name) VALUES ('VOICE_CHAT');

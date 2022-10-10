@@ -40,7 +40,7 @@ var VoiceChatSecretKey string
 
 func GetSignedPolicyURL(ownerID string) (*SignedPolicyURL, error) {
 	baseURL := fmt.Sprintf("%s/%s", db.GetStrWithDefault(db.KeyOvenmediaStreamURL, "wss://stream.supremacygame.io:3334/app"), ownerID)
-	urlExpiryTime := db.GetIntWithDefault(db.KeyVoiceExpiryTimeHours, 2000)
+	urlExpiryTime := db.GetIntWithDefault(db.KeyVoiceExpiryTimeHours, 2)
 	signedPolicyURL := &SignedPolicyURL{}
 
 	expiryTime := time.Now().Add(time.Hour * time.Duration(urlExpiryTime))
