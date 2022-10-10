@@ -363,8 +363,8 @@ func NewAPI(
 	return api, nil
 }
 
-// initialWSBroadcast include all the go routines which contain broadcast
-// IMPORTANT: All the initial broadcast functions need to be trigger AFTER the ws tree is built.
+// initialWSBroadcast include all the initial go routines that trigger ws broadcast
+// IMPORTANT: All the initial broadcast functions need to be triggered AFTER the ws tree is built.
 // otherwise, the server will panic!!!
 func (api *API) initialWSBroadcast() error {
 	// create a tickle that update faction mvp every day 00:00 am
@@ -399,7 +399,7 @@ func (api *API) initialWSBroadcast() error {
 		gamelog.L.Error().Err(err).Msg("Failed to set up faction mvp user update tickle")
 	}
 
-	// spin up a punish vote handlers for each faction
+	// spin up a punishment vote handlers for each faction
 	err = api.PunishVoteTrackerSetup()
 	if err != nil {
 		gamelog.L.Error().Err(err).Msg("Failed to setup punish vote tracker")
