@@ -18,6 +18,7 @@ func GetBattleLobbyViaIDs(lobbyIDs []string) ([]*boiler.BattleLobby, error) {
 		boiler.BattleLobbyWhere.ID.IN(lobbyIDs),
 		qm.Load(boiler.BattleLobbyRels.GameMap),
 		qm.Load(boiler.BattleLobbyRels.HostBy),
+		qm.Load(boiler.BattleLobbyRels.BattleLobbiesMechs),
 		qm.Load(
 			qm.Rels(
 				boiler.BattleLobbyRels.BattleLobbySupporters,
@@ -45,6 +46,7 @@ func GetBattleLobbyViaID(lobbyID string) (*boiler.BattleLobby, error) {
 	bl, err := boiler.BattleLobbies(
 		boiler.BattleLobbyWhere.ID.EQ(lobbyID),
 		qm.Load(boiler.BattleLobbyRels.GameMap),
+		qm.Load(boiler.BattleLobbyRels.BattleLobbiesMechs),
 		qm.Load(boiler.BattleLobbyRels.HostBy),
 		qm.Load(
 			qm.Rels(
@@ -74,6 +76,7 @@ func GetBattleLobbyViaAccessCode(accessCode string) (*boiler.BattleLobby, error)
 		boiler.BattleLobbyWhere.AccessCode.EQ(null.StringFrom(accessCode)),
 		qm.Load(boiler.BattleLobbyRels.GameMap),
 		qm.Load(boiler.BattleLobbyRels.HostBy),
+		qm.Load(boiler.BattleLobbyRels.BattleLobbiesMechs),
 		qm.Load(
 			qm.Rels(
 				boiler.BattleLobbyRels.BattleLobbySupporters,
