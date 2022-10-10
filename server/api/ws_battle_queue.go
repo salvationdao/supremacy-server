@@ -1303,7 +1303,7 @@ func (api *API) BattleLobbySupporterJoin(ctx context.Context, user *boiler.Playe
 		return nil
 	})
 	if err != nil {
-		if !strings.Contains(err.Error(), "already registered as a supporter") {
+		if !strings.Contains(err.Error(), "already") {
 			L.Error().Err(err).Msg("failed to insert new battle lobby supporter")
 		}
 		return err
