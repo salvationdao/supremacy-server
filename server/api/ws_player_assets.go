@@ -2074,6 +2074,7 @@ type PlayerAssetMechSubmodelListRequest struct {
 		ExcludeMarketLocked      bool                  `json:"exclude_market_locked"`
 		IncludeMarketListed      bool                  `json:"include_market_listed"`
 		DisplayGenesisAndLimited bool                  `json:"display_genesis_and_limited"`
+		DisplayUnique            bool                  `json:"display_unique"`
 		ExcludeIDs               []string              `json:"exclude_ids"`
 		IncludeIDs               []string              `json:"include_ids"`
 		FilterRarities           []string              `json:"rarities"`
@@ -2111,6 +2112,7 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetMechSubmodelListDetailedHandler(
 		DisplayXsyn:              req.Payload.DisplayXsyn,
 		ExcludeMarketLocked:      req.Payload.ExcludeMarketLocked,
 		IncludeMarketListed:      req.Payload.IncludeMarketListed,
+		DisplayUnique:            req.Payload.DisplayUnique,
 		ExcludeIDs:               req.Payload.ExcludeIDs,
 		IncludeIDs:               req.Payload.IncludeIDs,
 		FilterRarities:           req.Payload.FilterRarities,
