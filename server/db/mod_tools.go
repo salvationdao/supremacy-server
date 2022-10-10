@@ -19,6 +19,7 @@ type AdminToolResponse struct {
 	User              *server.Player        `json:"user"`
 	UserAssets        *AdminToolUserAsset   `json:"user_assets,omitempty"`
 	BanHistory        []*AdminBanHistory    `json:"ban_history,omitempty"`
+	ActiveBan         []*AdminBanHistory    `json:"active_ban, omitempty"`
 	RecentChatHistory []*boiler.ChatHistory `json:"recent_chat_history,omitempty"`
 	RelatedAccounts   []*server.Player      `json:"related_accounts,omitempty"`
 }
@@ -45,8 +46,15 @@ func ModToolGetUserData(userID string, isAdmin bool, supsAmount decimal.Decimal)
 		return nil, terror.Error(err, "Failed to find player for admin tool")
 	}
 
-	playerBans, err := boiler.PlayerBans(
+	now := time.Now()
+
+	playerBansHistory, err := boiler.PlayerBans(
 		boiler.PlayerBanWhere.BannedPlayerID.EQ(userID),
+		qm.Where(fmt.Sprintf(
+			`(%s < ? OR %s NOTNULL)`,
+			boiler.PlayerBanTableColumns.EndAt,
+			boiler.PlayerBanTableColumns.ManuallyUnbanByID,
+		), now),
 		qm.OrderBy(fmt.Sprintf("%s DESC", boiler.PlayerBanTableColumns.CreatedAt)),
 		qm.Load(boiler.PlayerBanRels.BannedBy),
 	).All(gamedb.StdConn)
@@ -56,8 +64,8 @@ func ModToolGetUserData(userID string, isAdmin bool, supsAmount decimal.Decimal)
 
 	adminBanHistories := []*AdminBanHistory{}
 
-	if len(playerBans) > 0 {
-		for _, pb := range playerBans {
+	if len(playerBansHistory) > 0 {
+		for _, pb := range playerBansHistory {
 			adminBanHistory := &AdminBanHistory{
 				ID:                     pb.ID,
 				CreatedAt:              pb.CreatedAt,
@@ -73,6 +81,42 @@ func ModToolGetUserData(userID string, isAdmin bool, supsAmount decimal.Decimal)
 			}
 
 			adminBanHistories = append(adminBanHistories, adminBanHistory)
+		}
+	}
+
+	playerActiveBans, err := boiler.PlayerBans(
+		boiler.PlayerBanWhere.BannedPlayerID.EQ(userID),
+		qm.Where(fmt.Sprintf(
+			`(%s > ? OR %s ISNULL)`,
+			boiler.PlayerBanTableColumns.EndAt,
+			boiler.PlayerBanTableColumns.ManuallyUnbanByID,
+		), now),
+		qm.OrderBy(fmt.Sprintf("%s DESC", boiler.PlayerBanTableColumns.CreatedAt)),
+		qm.Load(boiler.PlayerBanRels.BannedBy),
+	).All(gamedb.StdConn)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return nil, terror.Error(err, "Failed to get player bans")
+	}
+
+	activeBans := []*AdminBanHistory{}
+
+	if len(playerActiveBans) > 0 {
+		for _, pb := range playerActiveBans {
+			adminBanHistory := &AdminBanHistory{
+				ID:                     pb.ID,
+				CreatedAt:              pb.CreatedAt,
+				BannedAt:               pb.BannedAt,
+				Reason:                 pb.Reason,
+				EndAt:                  pb.EndAt,
+				ManuallyUnbanned:       pb.ManuallyUnbanByID.Valid,
+				ManuallyUnbannedReason: pb.ManuallyUnbanReason,
+			}
+
+			if pb.R != nil && pb.R.BannedBy != nil {
+				adminBanHistory.BannedBy = *server.PlayerFromBoiler(pb.R.BannedBy)
+			}
+
+			activeBans = append(activeBans, adminBanHistory)
 		}
 	}
 
@@ -92,6 +136,10 @@ func ModToolGetUserData(userID string, isAdmin bool, supsAmount decimal.Decimal)
 
 	if len(adminBanHistories) > 0 {
 		adminToolResponse.BanHistory = adminBanHistories
+	}
+
+	if len(playerActiveBans) > 0 {
+		adminToolResponse.ActiveBan = activeBans
 	}
 
 	relatedAccouts, err := getPlayerRelatedAccounts(player.ID)
