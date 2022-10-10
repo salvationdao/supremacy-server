@@ -37,11 +37,8 @@ func MustMatchUserID(ctx context.Context) bool {
 	}
 	// check user id matched the user id on url
 	userID := chi.RouteContext(ctx).URLParam("user_id")
-	if userID == "" || userID != authUserID {
-		return false
-	}
 
-	return true
+	return userID != "" && userID == authUserID
 }
 
 func MustMatchSyndicate(ctx context.Context) bool {
@@ -64,21 +61,12 @@ func MustMatchSyndicate(ctx context.Context) bool {
 		return false
 	}
 
-	// check syndicate id match
-	if !user.SyndicateID.Valid || user.SyndicateID.String != syndicateID {
-		return false
-	}
-
-	return true
+	return user.SyndicateID.Valid && user.SyndicateID.String == syndicateID
 }
 
 func MustHaveUrlParam(paramKey string) func(ctx context.Context) bool {
 	return func(ctx context.Context) bool {
-		if chi.RouteContext(ctx).URLParam(paramKey) == "" {
-			return false
-		}
-
-		return true
+		return chi.RouteContext(ctx).URLParam(paramKey) != ""
 	}
 }
 
