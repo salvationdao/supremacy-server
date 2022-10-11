@@ -46,6 +46,36 @@ func UserByStripeCustomer(conn boil.Executor, stripeCustomerID string) (string, 
 //  Product  //
 ///////////////
 
+type FiatProductColumn string
+
+const (
+	FiatProductColumnCreatedAt   FiatProductColumn = "created_at"
+	FiatProductColumnName        FiatProductColumn = "name"
+	FiatProductColumnFaction     FiatProductColumn = "faction_id"
+	FiatProductColumnDescription FiatProductColumn = "description"
+	FiatProductColumnProductType FiatProductColumn = "product_type"
+)
+
+func (c FiatProductColumn) IsValid() error {
+	switch c {
+	case FiatProductColumnCreatedAt,
+		FiatProductColumnName,
+		FiatProductColumnFaction,
+		FiatProductColumnDescription,
+		FiatProductColumnProductType:
+		return nil
+
+	}
+	return terror.Error(fmt.Errorf("invalid sort fiat product column"))
+}
+
+func (c FiatProductColumn) ColumnName() string {
+	if c == FiatProductColumnFaction {
+		return boiler.FactionTableColumns.Label
+	}
+	return qm.Rels(boiler.TableNames.FiatProducts, string(c))
+}
+
 var fiatProductQueryMods = []qm.QueryMod{
 	qm.Select(
 		boiler.FiatProductTableColumns.ID,
@@ -73,6 +103,14 @@ var fiatProductQueryMods = []qm.QueryMod{
 			boiler.FiatProductTableColumns.ProductType,
 		),
 		boiler.FiatProductTypesMysteryCrate,
+	),
+	qm.InnerJoin(
+		fmt.Sprintf(
+			"%s ON %s = %s",
+			boiler.TableNames.Factions,
+			boiler.FactionTableColumns.ID,
+			boiler.FiatProductTableColumns.FactionID,
+		),
 	),
 	qm.Load(boiler.FiatProductRels.FiatProductPricings),
 }
@@ -102,7 +140,7 @@ type FiatProductFilter struct {
 }
 
 // FiatProducts gets a list of available fiat products to purchase by faction.
-func FiatProducts(conn boil.Executor, filters *FiatProductFilter, search string, offset int, pageSize int) (int64, []*server.FiatProduct, error) {
+func FiatProducts(conn boil.Executor, filters *FiatProductFilter, search string, sortBy string, sortDir SortByDir, offset int, pageSize int) (int64, []*server.FiatProduct, error) {
 	queryMods := []qm.QueryMod{}
 
 	// Filters
@@ -117,25 +155,20 @@ func FiatProducts(conn boil.Executor, filters *FiatProductFilter, search string,
 	if search != "" {
 		xsearch := ParseQueryText(search, true)
 		queryMods = append(queryMods,
-			qm.InnerJoin(
-				fmt.Sprintf(
-					"%s ON %s = %s",
-					boiler.TableNames.Factions,
-					boiler.FactionTableColumns.ID,
-					boiler.FiatProductTableColumns.FactionID,
-				),
-			),
 			qm.And(
 				fmt.Sprintf(
 					`(
 						(to_tsvector('english', %s) @@ to_tsquery(?))
 						OR (to_tsvector('english', %s) @@ to_tsquery(?))
 						OR (to_tsvector('english', %s) @@ to_tsquery(?))
+						OR (to_tsvector('english', %s) @@ to_tsquery(?))
 					)`,
 					boiler.FiatProductTableColumns.Name,
 					boiler.FiatProductTableColumns.Description,
+					boiler.FiatProductTableColumns.ProductType,
 					boiler.FactionTableColumns.Label,
 				),
+				xsearch,
 				xsearch,
 				xsearch,
 				xsearch,
@@ -150,6 +183,19 @@ func FiatProducts(conn boil.Executor, filters *FiatProductFilter, search string,
 	}
 	if total == 0 {
 		return 0, []*server.FiatProduct{}, nil
+	}
+
+	// Sort by
+	if sortBy != "" {
+		sortByColumn := FiatProductColumn(sortBy)
+		err = sortByColumn.IsValid()
+		if err != nil {
+			sortByColumn = FiatProductColumnCreatedAt
+		}
+		if !sortDir.IsValid() {
+			sortDir = SortByDirDesc
+		}
+		queryMods = append(queryMods, qm.OrderBy(sortByColumn.ColumnName()+" "+string(sortDir)))
 	}
 
 	// Limit/Offset
