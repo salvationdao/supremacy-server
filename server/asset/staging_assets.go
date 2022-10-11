@@ -31,7 +31,7 @@ func GiveUserAllAssets(user *boiler.Player, pp *xsyn_rpcclient.XsynXrpcClient) e
 
 	defer tx.Rollback()
 
-	// give one of each factions mega genesis mechs
+	// give one of each faction mega genesis mechs
 	templateIDS := []string{}
 	templates, err := boiler.TemplateBlueprints(
 		boiler.TemplateBlueprintWhere.BlueprintID.IN(
@@ -80,17 +80,19 @@ func GiveUserAllAssets(user *boiler.Player, pp *xsyn_rpcclient.XsynXrpcClient) e
 		return err
 	}
 	for _, mech := range mechs {
-		insertedMech, insertedMechSkin, err := db.InsertNewMechAndSkin(
-			tx,
-			uuid.FromStringOrNil(user.ID),
-			server.BlueprintMechFromBoiler(mech),
-			server.BlueprintMechSkinFromBoiler(mech.R.DefaultChassisSkin),
-		)
-		if err != nil {
-			return err
+		for i := 0; i < 3; i ++ { // insert 3 of each mech
+			insertedMech, insertedMechSkin, err := db.InsertNewMechAndSkin(
+				tx,
+				uuid.FromStringOrNil(user.ID),
+				server.BlueprintMechFromBoiler(mech),
+				server.BlueprintMechSkinFromBoiler(mech.R.DefaultChassisSkin),
+			)
+			if err != nil {
+				return err
+			}
+			insertedMechs = append(insertedMechs, insertedMech)
+			insertedMechSkins = append(insertedMechSkins, insertedMechSkin)
 		}
-		insertedMechs = append(insertedMechs, insertedMech)
-		insertedMechSkins = append(insertedMechSkins, insertedMechSkin)
 	}
 
 	// also insert power cores for mechs
@@ -111,7 +113,7 @@ func GiveUserAllAssets(user *boiler.Player, pp *xsyn_rpcclient.XsynXrpcClient) e
 		}
 	}
 
-	// Now we want to give 2? of each weapon
+	// Now we want to give 4! of each weapon
 	weapons, err := boiler.BlueprintWeapons(
 		boiler.BlueprintWeaponWhere.ID.NIN(
 			[]string{
@@ -127,7 +129,7 @@ func GiveUserAllAssets(user *boiler.Player, pp *xsyn_rpcclient.XsynXrpcClient) e
 		return err
 	}
 	for _, weapon := range weapons {
-		for i := 0; i < 2; i++ { // do it twice
+		for i := 0; i < 4; i++ { // four hops this time
 			insertedWeapon, insertedWeaponSkin, err := db.InsertNewWeapon(
 				tx,
 				uuid.FromStringOrNil(user.ID),
