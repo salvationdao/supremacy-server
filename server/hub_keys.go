@@ -61,6 +61,8 @@ const HubKeySystemMessageSend = "SYSTEM:MESSAGE:SEND"
 const HubKeyPlayerQuestStats = "PLAYER:QUEST:STAT"
 const HubKeyPlayerQuestProgressions = "PLAYER:QUEST:PROGRESSIONS"
 
+const HubKeyVoiceStreams = "PLAYER:VOICE:STREAM"
+
 // battle arena
 
 const HubKeyArenaStatusSubscribe = "ARENA:STATUS:UPDATED"
@@ -71,7 +73,6 @@ const HubKeyBattleArenaListSubscribe = "BATTLE:ARENA:LIST"
 const HubKeyBattleArenaClosedSubscribe = "BATTLE:ARENA:CLOSED"
 const HubKeyNextBattleDetails = "NEXT:BATTLE:DETAILS"
 const HubKeyBattleState = "BATTLE:STATE"
-
 
 // store
 
@@ -86,10 +87,17 @@ const HubKeyShoppingCartUpdated = "FIAT:SHOPPING_CART:UPDATED"
 
 const HubKeyMiniMapAbilityDisplayList = "MINI:MAP:ABILITY:DISPLAY:LIST"
 
+// voice streams
+
+const HubKeyVoiceStreamJoinFactionCommander = "VOICE:JOIN:FACTION:COMMANDER"
+const HubKeyVoiceStreamLeaveFactionCommander = "VOICE:LEAVE:FACTION:COMMANDER"
+const HubKeyVoiceStreamVoteKick = "VOICE:VOTE:KICK"
+
 // battle queue
 
 const HubKeyPlayerMechsBrief = "PLAYER:MECHS:BRIEF"
 
 const HubKeyBattleLobbyListUpdate = "BATTLE:LOBBY:LIST:UPDATE"
+const HubKeyPrivateBattleLobbyUpdate = "PRIVATE:BATTLE:LOBBY:UPDATE"
 const HubKeyPlayerAssetMechQueueSubscribe = "PLAYER:ASSET:MECH:QUEUE:SUBSCRIBE"
 const HubKeyBattleETAUpdate = "BATTLE:ETA:UPDATE"

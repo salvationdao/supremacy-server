@@ -84,12 +84,14 @@ var BattleArenaRels = struct {
 	ArenaBattles                 string
 	ArenaChatHistories           string
 	ArenaMechMoveCommandLogs     string
+	ArenaVoiceStreams            string
 }{
 	AssignedToArenaBattleLobbies: "AssignedToArenaBattleLobbies",
 	ArenaBattleReplays:           "ArenaBattleReplays",
 	ArenaBattles:                 "ArenaBattles",
 	ArenaChatHistories:           "ArenaChatHistories",
 	ArenaMechMoveCommandLogs:     "ArenaMechMoveCommandLogs",
+	ArenaVoiceStreams:            "ArenaVoiceStreams",
 }
 
 // battleArenaR is where relationships are stored.
@@ -99,6 +101,7 @@ type battleArenaR struct {
 	ArenaBattles                 BattleSlice             `boiler:"ArenaBattles" boil:"ArenaBattles" json:"ArenaBattles" toml:"ArenaBattles" yaml:"ArenaBattles"`
 	ArenaChatHistories           ChatHistorySlice        `boiler:"ArenaChatHistories" boil:"ArenaChatHistories" json:"ArenaChatHistories" toml:"ArenaChatHistories" yaml:"ArenaChatHistories"`
 	ArenaMechMoveCommandLogs     MechMoveCommandLogSlice `boiler:"ArenaMechMoveCommandLogs" boil:"ArenaMechMoveCommandLogs" json:"ArenaMechMoveCommandLogs" toml:"ArenaMechMoveCommandLogs" yaml:"ArenaMechMoveCommandLogs"`
+	ArenaVoiceStreams            VoiceStreamSlice        `boiler:"ArenaVoiceStreams" boil:"ArenaVoiceStreams" json:"ArenaVoiceStreams" toml:"ArenaVoiceStreams" yaml:"ArenaVoiceStreams"`
 }
 
 // NewStruct creates a new relationship struct
@@ -461,6 +464,27 @@ func (o *BattleArena) ArenaMechMoveCommandLogs(mods ...qm.QueryMod) mechMoveComm
 
 	if len(queries.GetSelect(query.Query)) == 0 {
 		queries.SetSelect(query.Query, []string{"\"mech_move_command_logs\".*"})
+	}
+
+	return query
+}
+
+// ArenaVoiceStreams retrieves all the voice_stream's VoiceStreams with an executor via arena_id column.
+func (o *BattleArena) ArenaVoiceStreams(mods ...qm.QueryMod) voiceStreamQuery {
+	var queryMods []qm.QueryMod
+	if len(mods) != 0 {
+		queryMods = append(queryMods, mods...)
+	}
+
+	queryMods = append(queryMods,
+		qm.Where("\"voice_streams\".\"arena_id\"=?", o.ID),
+	)
+
+	query := VoiceStreams(queryMods...)
+	queries.SetFrom(query.Query, "\"voice_streams\"")
+
+	if len(queries.GetSelect(query.Query)) == 0 {
+		queries.SetSelect(query.Query, []string{"\"voice_streams\".*"})
 	}
 
 	return query
@@ -958,6 +982,104 @@ func (battleArenaL) LoadArenaMechMoveCommandLogs(e boil.Executor, singular bool,
 	return nil
 }
 
+// LoadArenaVoiceStreams allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for a 1-M or N-M relationship.
+func (battleArenaL) LoadArenaVoiceStreams(e boil.Executor, singular bool, maybeBattleArena interface{}, mods queries.Applicator) error {
+	var slice []*BattleArena
+	var object *BattleArena
+
+	if singular {
+		object = maybeBattleArena.(*BattleArena)
+	} else {
+		slice = *maybeBattleArena.(*[]*BattleArena)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &battleArenaR{}
+		}
+		args = append(args, object.ID)
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &battleArenaR{}
+			}
+
+			for _, a := range args {
+				if a == obj.ID {
+					continue Outer
+				}
+			}
+
+			args = append(args, obj.ID)
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`voice_streams`),
+		qm.WhereIn(`voice_streams.arena_id in ?`, args...),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load voice_streams")
+	}
+
+	var resultSlice []*VoiceStream
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice voice_streams")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results in eager load on voice_streams")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for voice_streams")
+	}
+
+	if len(voiceStreamAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+	if singular {
+		object.R.ArenaVoiceStreams = resultSlice
+		for _, foreign := range resultSlice {
+			if foreign.R == nil {
+				foreign.R = &voiceStreamR{}
+			}
+			foreign.R.Arena = object
+		}
+		return nil
+	}
+
+	for _, foreign := range resultSlice {
+		for _, local := range slice {
+			if local.ID == foreign.ArenaID {
+				local.R.ArenaVoiceStreams = append(local.R.ArenaVoiceStreams, foreign)
+				if foreign.R == nil {
+					foreign.R = &voiceStreamR{}
+				}
+				foreign.R.Arena = local
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
 // AddAssignedToArenaBattleLobbies adds the given related objects to the existing relationships
 // of the battle_arena, optionally inserting them as new records.
 // Appends related to o.R.AssignedToArenaBattleLobbies.
@@ -1355,6 +1477,58 @@ func (o *BattleArena) AddArenaMechMoveCommandLogs(exec boil.Executor, insert boo
 	for _, rel := range related {
 		if rel.R == nil {
 			rel.R = &mechMoveCommandLogR{
+				Arena: o,
+			}
+		} else {
+			rel.R.Arena = o
+		}
+	}
+	return nil
+}
+
+// AddArenaVoiceStreams adds the given related objects to the existing relationships
+// of the battle_arena, optionally inserting them as new records.
+// Appends related to o.R.ArenaVoiceStreams.
+// Sets related.R.Arena appropriately.
+func (o *BattleArena) AddArenaVoiceStreams(exec boil.Executor, insert bool, related ...*VoiceStream) error {
+	var err error
+	for _, rel := range related {
+		if insert {
+			rel.ArenaID = o.ID
+			if err = rel.Insert(exec, boil.Infer()); err != nil {
+				return errors.Wrap(err, "failed to insert into foreign table")
+			}
+		} else {
+			updateQuery := fmt.Sprintf(
+				"UPDATE \"voice_streams\" SET %s WHERE %s",
+				strmangle.SetParamNames("\"", "\"", 1, []string{"arena_id"}),
+				strmangle.WhereClause("\"", "\"", 2, voiceStreamPrimaryKeyColumns),
+			)
+			values := []interface{}{o.ID, rel.ID}
+
+			if boil.DebugMode {
+				fmt.Fprintln(boil.DebugWriter, updateQuery)
+				fmt.Fprintln(boil.DebugWriter, values)
+			}
+			if _, err = exec.Exec(updateQuery, values...); err != nil {
+				return errors.Wrap(err, "failed to update foreign table")
+			}
+
+			rel.ArenaID = o.ID
+		}
+	}
+
+	if o.R == nil {
+		o.R = &battleArenaR{
+			ArenaVoiceStreams: related,
+		}
+	} else {
+		o.R.ArenaVoiceStreams = append(o.R.ArenaVoiceStreams, related...)
+	}
+
+	for _, rel := range related {
+		if rel.R == nil {
+			rel.R = &voiceStreamR{
 				Arena: o,
 			}
 		} else {

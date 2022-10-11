@@ -27,6 +27,30 @@ func MustSecure(fn SecureCommandFunc) ws.CommandFunc {
 	}
 }
 
+func MustSecureAdmin(fn SecureCommandFunc) ws.CommandFunc {
+	return func(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
+		user, err := RetrieveUser(ctx)
+		if err != nil {
+			return err
+		}
+
+		err = user.L.LoadRole(gamedb.StdConn, true, user, nil)
+		if err != nil {
+			return terror.Error(err, "Failed to update player's marketing preferences.")
+		}
+
+		if user.R != nil && user.R.Role != nil {
+			if user.R.Role.RoleType == boiler.RoleNamePLAYER {
+				return fmt.Errorf("user has no admin privillege")
+			}
+		} else {
+			return fmt.Errorf("failed to get users role")
+		}
+
+		return fn(ctx, user, key, payload, reply)
+	}
+}
+
 func MustSecureFaction(fn SecureFactionCommandFunc) ws.CommandFunc {
 	return func(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
 		user, err := RetrieveUser(ctx)

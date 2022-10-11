@@ -19,6 +19,7 @@ import (
 	"server/replay"
 	"server/system_messages"
 	"server/telegram"
+	"server/voice_chat"
 	"server/xsyn_rpcclient"
 	"strconv"
 	"strings"
@@ -118,21 +119,6 @@ func NewArenaManager(opts *Opts) (*ArenaManager, error) {
 	if err != nil {
 		return nil, terror.Error(err, "Failed to delete unfinished AI battles.")
 	}
-
-	// start player rank updater
-	am.PlayerRankUpdater()
-
-	// check default battle lobbies
-	err = am.SetDefaultPublicBattleLobbies()
-	if err != nil {
-		return nil, err
-	}
-
-	// start repair offer cleaner
-	go am.RepairOfferCleaner()
-
-	// start debounce lobby update sender
-	go am.debounceSendBattleLobbiesUpdate()
 
 	return am, nil
 }
@@ -415,6 +401,7 @@ func (am *ArenaManager) NewArena(battleArena *boiler.BattleArena, wsConn *websoc
 		MechCommandCheckMap: &MechCommandCheckMap{
 			m: make(map[string]chan bool),
 		},
+		VoiceChannel: &voice_chat.VoiceChannel{},
 
 		// objects inherited from arena manager
 		Manager: am,
@@ -463,6 +450,7 @@ type Arena struct {
 	deadlock.RWMutex
 
 	beginBattleMux deadlock.Mutex
+	VoiceChannel   *voice_chat.VoiceChannel
 }
 
 type MechCommandCheckMap struct {
@@ -1580,7 +1568,7 @@ func (arena *Arena) BroadcastLobbyUpdate() {
 			return
 		}
 
-		bl, err := db.GetBattleLobby(blID)
+		bl, err := db.GetBattleLobbyViaID(blID)
 		if err != nil {
 			gamelog.L.Error().Err(err).Str("blID", blID).Msg("failed to find battle lobby")
 			ws.PublishMessage(fmt.Sprintf("/public/arena/%s/upcoming_battle", arena.ID), server.HubKeyNextBattleDetails, &UpcomingBattleResponse{
@@ -1632,7 +1620,7 @@ func (arena *Arena) GetLobbyDetails() *UpcomingBattleResponse {
 		}
 	}
 
-	bl, err := db.GetBattleLobby(blID)
+	bl, err := db.GetBattleLobbyViaID(blID)
 	if err != nil {
 		gamelog.L.Error().Err(err).Str("blID", blID).Msg("failed to find battle lobby")
 		return &UpcomingBattleResponse{
@@ -1667,7 +1655,7 @@ func (arena *Arena) assignSupporters() {
 	L = L.With().Str("blID", blID).Logger()
 
 	// get all opted in supporters
-	bl, err := db.GetBattleLobby(blID)
+	bl, err := db.GetBattleLobbyViaID(blID)
 	if err != nil {
 		L.Error().Err(err).Msg("failed to get battle lobby")
 		return
@@ -1768,7 +1756,7 @@ func (arena *Arena) assignSupporters() {
 		}
 	}
 	// get all opted in supporters
-	bl, err = db.GetBattleLobby(blID)
+	bl, err = db.GetBattleLobbyViaID(blID)
 	if err != nil {
 		L.Error().Err(err).Msg("failed to get battle lobby")
 		return
@@ -2011,7 +1999,9 @@ func (arena *Arena) BeginBattle() {
 	// generate game map for the lobby, if there isn't one
 	if !battleLobby.GameMapID.Valid {
 		var gms []*boiler.GameMap
-		gms, err = boiler.GameMaps().All(gamedb.StdConn)
+		gms, err = boiler.GameMaps(
+			boiler.GameMapWhere.DisabledAt.IsNull(),
+		).All(gamedb.StdConn)
 		if err != nil {
 			gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("Failed to load game maps.")
 			arena.Stage.Store(ArenaStageIdle)
@@ -2153,6 +2143,11 @@ func (arena *Arena) BeginBattle() {
 
 		// check mech join battle quest for each mech owner
 		arena.Manager.QuestManager.MechJoinBattleQuestCheck(wm.OwnedByID)
+	}
+
+	err = arena.VoiceChannel.UpdateAllVoiceChannel(btl.warMachineIDs, arena.ID)
+	if err != nil {
+		gamelog.L.Error().Msg("Failed to update voice chat channels")
 	}
 
 	// broadcast mech status change
@@ -2378,8 +2373,8 @@ func (btl *Battle) AISpawned(payload *AISpawnedRequest) error {
 		Hash:          payload.Hash,
 		OwnedByID:     payload.UserID,
 		Name:          payload.Name,
-		Model:         payload.Model,
-		Skin:          payload.Skin,
+		ModelName:     payload.Model,
+		SkinName:      payload.Skin,
 		MaxHealth:     payload.MaxHealth,
 		Health:        payload.MaxHealth,
 		MaxShield:     payload.MaxShield,

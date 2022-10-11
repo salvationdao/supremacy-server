@@ -4,17 +4,78 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
 )
 
-func GetBattleLobby(lobbyID string) (*boiler.BattleLobby, error) {
+
+func GetBattleLobbyViaIDs(lobbyIDs []string) ([]*boiler.BattleLobby, error) {
+	// get next lobby
+	bl, err := boiler.BattleLobbies(
+		boiler.BattleLobbyWhere.ID.IN(lobbyIDs),
+		qm.Load(boiler.BattleLobbyRels.GameMap),
+		qm.Load(boiler.BattleLobbyRels.HostBy),
+		qm.Load(boiler.BattleLobbyRels.BattleLobbiesMechs),
+		qm.Load(
+			qm.Rels(
+				boiler.BattleLobbyRels.BattleLobbySupporters,
+				boiler.BattleLobbySupporterRels.Supporter,
+				boiler.PlayerRels.ProfileAvatar,
+			),
+		),
+		qm.Load(
+			qm.Rels(
+				boiler.BattleLobbyRels.BattleLobbySupporterOptIns,
+				boiler.BattleLobbySupporterOptInRels.Supporter,
+				boiler.PlayerRels.ProfileAvatar,
+			),
+		),
+	).All(gamedb.StdConn)
+	if err != nil {
+		return nil, err
+	}
+
+	return bl, nil
+}
+
+func GetBattleLobbyViaID(lobbyID string) (*boiler.BattleLobby, error) {
 	// get next lobby
 	bl, err := boiler.BattleLobbies(
 		boiler.BattleLobbyWhere.ID.EQ(lobbyID),
 		qm.Load(boiler.BattleLobbyRels.GameMap),
+		qm.Load(boiler.BattleLobbyRels.BattleLobbiesMechs),
+		qm.Load(boiler.BattleLobbyRels.HostBy),
+		qm.Load(
+			qm.Rels(
+				boiler.BattleLobbyRels.BattleLobbySupporters,
+				boiler.BattleLobbySupporterRels.Supporter,
+				boiler.PlayerRels.ProfileAvatar,
+			),
+		),
+		qm.Load(
+			qm.Rels(
+				boiler.BattleLobbyRels.BattleLobbySupporterOptIns,
+				boiler.BattleLobbySupporterOptInRels.Supporter,
+				boiler.PlayerRels.ProfileAvatar,
+			),
+		),
+	).One(gamedb.StdConn)
+	if err != nil {
+		return nil, err
+	}
+
+	return bl, nil
+}
+
+func GetBattleLobbyViaAccessCode(accessCode string) (*boiler.BattleLobby, error) {
+	// get next lobby
+	bl, err := boiler.BattleLobbies(
+		boiler.BattleLobbyWhere.AccessCode.EQ(null.StringFrom(accessCode)),
+		qm.Load(boiler.BattleLobbyRels.GameMap),
+		qm.Load(boiler.BattleLobbyRels.HostBy),
 		qm.Load(boiler.BattleLobbyRels.BattleLobbiesMechs),
 		qm.Load(
 			qm.Rels(

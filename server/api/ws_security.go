@@ -2,9 +2,10 @@ package api
 
 import (
 	"context"
+	"server"
+
 	"github.com/go-chi/chi/v5"
 	"github.com/ninja-syndicate/ws"
-	"server"
 )
 
 func (api *API) Command(key string, fn ws.CommandFunc) {
@@ -13,6 +14,10 @@ func (api *API) Command(key string, fn ws.CommandFunc) {
 
 func (api *API) SecureUserCommand(key string, fn server.SecureCommandFunc) {
 	api.SecureUserCommander.Command(string(key), server.MustSecure(server.SecureUserTracer(fn, api.Config.Environment)))
+}
+
+func (api *API) SecureAdminCommand(key string, fn server.SecureCommandFunc) {
+	api.SecureUserCommander.Command(string(key), server.MustSecureAdmin(server.SecureUserTracer(fn, api.Config.Environment)))
 }
 
 func (api *API) SecureUserFactionCommand(key string, fn server.SecureFactionCommandFunc) {
@@ -37,11 +42,8 @@ func MustMatchUserID(ctx context.Context) bool {
 	}
 	// check user id matched the user id on url
 	userID := chi.RouteContext(ctx).URLParam("user_id")
-	if userID == "" || userID != authUserID {
-		return false
-	}
 
-	return true
+	return userID != "" && userID == authUserID
 }
 
 func MustMatchSyndicate(ctx context.Context) bool {
@@ -64,12 +66,13 @@ func MustMatchSyndicate(ctx context.Context) bool {
 		return false
 	}
 
-	// check syndicate id match
-	if !user.SyndicateID.Valid || user.SyndicateID.String != syndicateID {
-		return false
-	}
+	return user.SyndicateID.Valid && user.SyndicateID.String == syndicateID
+}
 
-	return true
+func MustHaveUrlParam(paramKey string) func(ctx context.Context) bool {
+	return func(ctx context.Context) bool {
+		return chi.RouteContext(ctx).URLParam(paramKey) != ""
+	}
 }
 
 func (api *API) SecureUserFeatureCheckCommand(featureType string, key string, fn server.SecureCommandFunc) {

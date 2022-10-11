@@ -115,7 +115,7 @@ func WeaponSkinListDetailed(opts *WeaponSkinListOpts) (int64, []*server.WeaponSk
 			Operator: OperatorValueTypeEquals,
 			Value:    opts.OwnerID,
 		}, 0, ""),
-		// and item type = weapon Skin
+		// and item type = weapon SkinID
 		GenerateListFilterQueryMod(ListFilterRequestItem{
 			Table:    boiler.TableNames.CollectionItems,
 			Column:   boiler.CollectionItemColumns.ItemType,

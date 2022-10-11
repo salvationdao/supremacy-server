@@ -11,6 +11,7 @@ import (
 	"go.uber.org/atomic"
 	"server"
 	"server/db/boiler"
+	"server/gamedb"
 	"server/gamelog"
 	"time"
 )
@@ -110,7 +111,13 @@ func (s *Syndicate) liquidate(tx *sql.Tx) error {
 
 	for _, p := range ps {
 		p.SyndicateID = null.StringFromPtr(nil)
-		ws.PublishMessage(fmt.Sprintf("/secure/user/%s", p.ID), server.HubKeyUserSubscribe, p)
+
+		err = p.L.LoadRole(gamedb.StdConn, true, p, nil)
+		if err != nil {
+			gamelog.L.Error().Str("player id", p.ID).Err(err).Msg("Failed to load role_id")
+		}
+
+		ws.PublishMessage(fmt.Sprintf("/secure/user/%s", p.ID), server.HubKeyUserSubscribe, server.PlayerFromBoiler(p))
 	}
 
 	// archive syndicate
