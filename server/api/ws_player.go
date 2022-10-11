@@ -90,7 +90,6 @@ type PlayerQueueStatus struct {
 	QueueLimit  int64 `json:"queue_limit"`
 }
 
-const PlayerRoleID = "8dd55355-fc22-4d1d-a825-b973bb075259"
 const HubKeyPlayerQueueStatus = "PLAYER:QUEUE:STATUS"
 
 func (pc *PlayerController) PlayerQueueStatusHandler(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
@@ -350,7 +349,7 @@ type PlayerGetSettingsRequest struct {
 
 const HubKeyPlayerGetSettings = "PLAYER:GET_SETTINGS"
 
-//PlayerGetSettingsHandler gets settings based on key, sends settings value back as json
+// PlayerGetSettingsHandler gets settings based on key, sends settings value back as json
 func (pc *PlayerController) PlayerGetSettingsHandler(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
 	errMsg := "Issue getting settings, try again or contact support."
 	req := &PlayerGetSettingsRequest{}
@@ -576,7 +575,7 @@ func (pc *PlayerController) PlayerSearch(ctx context.Context, user *boiler.Playe
 		return terror.Error(err, "Invalid request received")
 	}
 
-	if user.RoleID == "8dd55355-fc22-4d1d-a825-b973bb075259" || user.RoleID == "" {
+	if user.RoleID == server.UserRolePlayer.String() || user.RoleID == "" {
 		return terror.Error(err, "User is not an admin")
 	}
 
