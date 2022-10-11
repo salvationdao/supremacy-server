@@ -380,7 +380,7 @@ func SendStarterPackageContentsToUser(conn *sql.Tx, pp *xsyn_rpcclient.XsynXrpcC
 				weapon.WeaponSkin = items.WeaponSkins[i]
 				weapon.WeaponSkin.EquippedOn = null.StringFrom(items.Weapons[i].ID)
 				weapon.WeaponSkin.EquippedOnDetails = wod
-				xsynAsserts = append(xsynAsserts, rpctypes.ServerWeaServerWeaponSkinsToXsynAsset(conn, []*server.WeaponSkin{items.WeaponSkins[i]})...)
+				xsynAsserts = append(xsynAsserts, rpctypes.ServerWeaponSkinsToXsynAsset(conn, []*server.WeaponSkin{items.WeaponSkins[i]})...)
 			}
 			xsynAsserts = append(xsynAsserts, rpctypes.ServerWeaponsToXsynAsset(items.Weapons)...)
 
@@ -410,7 +410,7 @@ func SendStarterPackageContentsToUser(conn *sql.Tx, pp *xsyn_rpcclient.XsynXrpcC
 			}
 			items.WeaponSkins[0].EquippedOn = null.StringFrom(items.Weapons[0].ID)
 			items.WeaponSkins[0].EquippedOnDetails = wod
-			xsynAsserts = append(xsynAsserts, rpctypes.ServerWeaServerWeaponSkinsToXsynAsset(conn, []*server.WeaponSkin{items.WeaponSkins[0]})...)
+			xsynAsserts = append(xsynAsserts, rpctypes.ServerWeaponSkinsToXsynAsset(conn, []*server.WeaponSkin{items.WeaponSkins[0]})...)
 
 			weapon, err := db.Weapon(conn, items.Weapons[0].ID)
 			if err != nil {

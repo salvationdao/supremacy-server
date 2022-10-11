@@ -40,7 +40,7 @@ func (s *S) TemplateRegisterHandler(req rpctypes.TemplateRegisterReq, resp *rpct
 		assets = append(assets, rpctypes.ServerMechSkinsToXsynAsset(gamedb.StdConn, mechSkins)...)
 		assets = append(assets, rpctypes.ServerPowerCoresToXsynAsset(powerCores)...)
 		assets = append(assets, rpctypes.ServerWeaponsToXsynAsset(weapons)...)
-		assets = append(assets, rpctypes.ServerWeaServerWeaponSkinsToXsynAsset(gamedb.StdConn, weaponSkins)...)
+		assets = append(assets, rpctypes.ServerWeaponSkinsToXsynAsset(gamedb.StdConn, weaponSkins)...)
 		assets = append(assets, rpctypes.ServerUtilitiesToXsynAsset(utilities)...)
 	}
 

@@ -574,7 +574,7 @@ func ServerWeaponsToXsynAsset(weapons []*server.Weapon) []*XsynAsset {
 	return assets
 }
 
-func ServerWeaServerWeaponSkinsToXsynAsset(tx boil.Executor, weaponSkins []*server.WeaponSkin) []*XsynAsset {
+func ServerWeaponSkinsToXsynAsset(tx boil.Executor, weaponSkins []*server.WeaponSkin) []*XsynAsset {
 	var assets []*XsynAsset
 	for _, i := range weaponSkins {
 		asJson, err := json.Marshal(i)

@@ -74,7 +74,7 @@ func (s *S) AssetHandler(req rpctypes.AssetReq, resp *rpctypes.AssetResp) error 
 			gamelog.L.Error().Err(err).Str("ci.ItemID", ci.ItemID).Msg(" failed to get Weapon skin in Asset rpc call ")
 			return terror.Error(err)
 		}
-		resp.Asset = rpctypes.ServerWeaServerWeaponSkinsToXsynAsset(gamedb.StdConn, []*server.WeaponSkin{obj})[0]
+		resp.Asset = rpctypes.ServerWeaponSkinsToXsynAsset(gamedb.StdConn, []*server.WeaponSkin{obj})[0]
 	case boiler.ItemTypeMech:
 		obj, err := db.Mech(gamedb.StdConn, ci.ItemID)
 		if err != nil {

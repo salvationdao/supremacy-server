@@ -180,7 +180,7 @@ func GiveUserAllAssets(user *boiler.Player, pp *xsyn_rpcclient.XsynXrpcClient) e
 	xsynAssets = append(xsynAssets, rpctypes.ServerMechSkinsToXsynAsset(tx, insertedMechSkins)...)
 	xsynAssets = append(xsynAssets, rpctypes.ServerPowerCoresToXsynAsset(insertedPowerCores)...)
 	xsynAssets = append(xsynAssets, rpctypes.ServerWeaponsToXsynAsset(insertedWeapons)...)
-	xsynAssets = append(xsynAssets, rpctypes.ServerWeaServerWeaponSkinsToXsynAsset(tx, insertedWeaponSkins)...)
+	xsynAssets = append(xsynAssets, rpctypes.ServerWeaponSkinsToXsynAsset(tx, insertedWeaponSkins)...)
 
 	err = pp.AssetsRegister(xsynAssets) // register new assets
 	if err != nil {

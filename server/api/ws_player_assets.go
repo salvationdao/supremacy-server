@@ -1084,7 +1084,7 @@ func (pac *PlayerAssetsControllerWS) OpenCrateHandler(ctx context.Context, user 
 			weapon.WeaponSkin = items.WeaponSkins[i]
 			weapon.WeaponSkin.EquippedOn = null.StringFrom(items.Weapons[i].ID)
 			weapon.WeaponSkin.EquippedOnDetails = wod
-			xsynAssets = append(xsynAssets, rpctypes.ServerWeaServerWeaponSkinsToXsynAsset(tx, []*server.WeaponSkin{items.WeaponSkins[i]})...)
+			xsynAssets = append(xsynAssets, rpctypes.ServerWeaponSkinsToXsynAsset(tx, []*server.WeaponSkin{items.WeaponSkins[i]})...)
 		}
 		xsynAssets = append(xsynAssets, rpctypes.ServerWeaponsToXsynAsset(items.Weapons)...)
 
@@ -1124,7 +1124,7 @@ func (pac *PlayerAssetsControllerWS) OpenCrateHandler(ctx context.Context, user 
 
 		items.WeaponSkins[0].EquippedOn = null.StringFrom(items.Weapons[0].ID)
 		items.WeaponSkins[0].EquippedOnDetails = wod
-		xsynAssets = append(xsynAssets, rpctypes.ServerWeaServerWeaponSkinsToXsynAsset(tx, []*server.WeaponSkin{items.WeaponSkins[0]})...)
+		xsynAssets = append(xsynAssets, rpctypes.ServerWeaponSkinsToXsynAsset(tx, []*server.WeaponSkin{items.WeaponSkins[0]})...)
 
 		weapon, err := db.Weapon(tx, items.Weapons[0].ID)
 		if err != nil {
