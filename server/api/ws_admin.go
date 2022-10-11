@@ -30,6 +30,8 @@ type AdminFiatProductListRequest struct {
 	Payload struct {
 		Filters  *db.FiatProductFilter `json:"filters"`
 		Search   string                `json:"search"`
+		SortBy   string                `json:"sort_by"`
+		SortDir  db.SortByDir          `json:"sort_dir"`
 		PageSize int                   `json:"page_size"`
 		Page     int                   `json:"page"`
 	} `json:"payload"`
@@ -56,7 +58,7 @@ func (ac *AdminController) FiatProductList(ctx context.Context, user *boiler.Pla
 		offset = req.Payload.Page * req.Payload.PageSize
 	}
 
-	total, storePackages, err := db.FiatProducts(gamedb.StdConn, req.Payload.Filters, req.Payload.Search, offset, req.Payload.PageSize)
+	total, storePackages, err := db.FiatProducts(gamedb.StdConn, req.Payload.Filters, req.Payload.Search, req.Payload.SortBy, req.Payload.SortDir, offset, req.Payload.PageSize)
 	if err != nil {
 		return terror.Error(err, errMsg)
 	}
