@@ -29,6 +29,7 @@ type UserReq struct {
 
 type UserResp struct {
 	ID               string
+	AccountID        string
 	Username         string
 	FactionID        null.String
 	PublicAddress    null.String

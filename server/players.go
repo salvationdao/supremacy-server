@@ -13,6 +13,7 @@ import (
 
 type Player struct {
 	ID               string          `json:"id"`
+	AccountID        string          `json:"account_id"`
 	FactionID        null.String     `json:"faction_id,omitempty"`
 	Username         null.String     `json:"username,omitempty"`
 	PublicAddress    null.String     `json:"public_address,omitempty"`
