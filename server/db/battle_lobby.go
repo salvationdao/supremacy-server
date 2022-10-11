@@ -11,7 +11,6 @@ import (
 	"server/gamelog"
 )
 
-
 func GetBattleLobbyViaIDs(lobbyIDs []string) ([]*boiler.BattleLobby, error) {
 	// get next lobby
 	bl, err := boiler.BattleLobbies(
@@ -32,6 +31,11 @@ func GetBattleLobbyViaIDs(lobbyIDs []string) ([]*boiler.BattleLobby, error) {
 				boiler.BattleLobbySupporterOptInRels.Supporter,
 				boiler.PlayerRels.ProfileAvatar,
 			),
+		),
+		qm.Load(
+			boiler.BattleLobbyRels.BattleLobbyExtraSupsRewards,
+			boiler.BattleLobbyExtraSupsRewardWhere.RefundedTXID.IsNull(),
+			boiler.BattleLobbyExtraSupsRewardWhere.DeletedAt.IsNull(),
 		),
 	).All(gamedb.StdConn)
 	if err != nil {
@@ -61,6 +65,11 @@ func GetBattleLobbyViaID(lobbyID string) (*boiler.BattleLobby, error) {
 				boiler.BattleLobbySupporterOptInRels.Supporter,
 				boiler.PlayerRels.ProfileAvatar,
 			),
+		),
+		qm.Load(
+			boiler.BattleLobbyRels.BattleLobbyExtraSupsRewards,
+			boiler.BattleLobbyExtraSupsRewardWhere.RefundedTXID.IsNull(),
+			boiler.BattleLobbyExtraSupsRewardWhere.DeletedAt.IsNull(),
 		),
 	).One(gamedb.StdConn)
 	if err != nil {

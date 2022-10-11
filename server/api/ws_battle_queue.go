@@ -343,8 +343,18 @@ func (api *API) BattleLobbyJoin(ctx context.Context, user *boiler.Player, factio
 		return terror.Error(fmt.Errorf("lobby is full"), "The battle lobby is already full.")
 	}
 
-	// check password, if needed
-	if bl.AccessCode.Valid && req.Payload.AccessCode != bl.AccessCode.String {
+	blm, err := boiler.BattleLobbiesMechs(
+		boiler.BattleLobbiesMechWhere.BattleLobbyID.EQ(bl.ID),
+		boiler.BattleLobbiesMechWhere.OwnerID.EQ(user.ID),
+	).One(gamedb.StdConn)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		gamelog.L.Error().Err(err).Msg("Failed to check queued mechs")
+		return terror.Error(err, "Failed to check queued mechs")
+	}
+
+	// check password
+	// if provided password is incorrect and this is the first time the players queue their mech in the lobby
+	if bl.AccessCode.Valid && req.Payload.AccessCode != bl.AccessCode.String && blm == nil {
 		return terror.Error(fmt.Errorf("incorrect password"), "The password is incorrect.")
 	}
 
@@ -941,6 +951,11 @@ func (api *API) BattleLobbyListUpdate(ctx context.Context, user *boiler.Player, 
 		boiler.BattleLobbyWhere.AccessCode.IsNull(),
 		qm.Load(boiler.BattleLobbyRels.HostBy),
 		qm.Load(boiler.BattleLobbyRels.GameMap),
+		qm.Load(
+			boiler.BattleLobbyRels.BattleLobbyExtraSupsRewards,
+			boiler.BattleLobbyExtraSupsRewardWhere.RefundedTXID.IsNull(),
+			boiler.BattleLobbyExtraSupsRewardWhere.DeletedAt.IsNull(),
+		),
 	).All(gamedb.StdConn)
 	if err != nil {
 		gamelog.L.Error().Err(err).Msg("Failed to load battle lobbies.")
@@ -952,7 +967,7 @@ func (api *API) BattleLobbyListUpdate(ctx context.Context, user *boiler.Player, 
 		return err
 	}
 
-	reply(server.BattleLobbiesFactionFilter(resp, factionID))
+	reply(server.BattleLobbiesFactionFilter(resp, factionID, user.ID))
 
 	return nil
 }
@@ -974,7 +989,8 @@ func (api *API) PrivateBattleLobbyUpdate(ctx context.Context, user *boiler.Playe
 	}
 
 	if len(filteredBattleLobbies) > 0 {
-		reply(server.BattleLobbyInfoFilter(filteredBattleLobbies[0], factionID))
+		lobby := filteredBattleLobbies[0]
+		reply(server.BattleLobbyInfoFilter(lobby, factionID, lobby.HostByID == user.ID))
 	}
 
 	return nil
@@ -1292,7 +1308,6 @@ func (api *API) BattleLobbySupporterJoin(ctx context.Context, user *boiler.Playe
 				return err
 			}
 
-
 			api.ArenaManager.BattleLobbyDebounceBroadcastChan <- []string{bl.ID}
 
 			return nil
@@ -1353,6 +1368,11 @@ func (api *API) PlayerInvolvedBattleLobbies(ctx context.Context, user *boiler.Pl
 		)),
 		qm.Load(boiler.BattleLobbyRels.HostBy),
 		qm.Load(boiler.BattleLobbyRels.GameMap),
+		qm.Load(
+			boiler.BattleLobbyRels.BattleLobbyExtraSupsRewards,
+			boiler.BattleLobbyExtraSupsRewardWhere.RefundedTXID.IsNull(),
+			boiler.BattleLobbyExtraSupsRewardWhere.DeletedAt.IsNull(),
+		),
 	).All(gamedb.StdConn)
 	if err != nil {
 		return terror.Error(err, "Failed to load battle lobby")
@@ -1363,7 +1383,7 @@ func (api *API) PlayerInvolvedBattleLobbies(ctx context.Context, user *boiler.Pl
 		return err
 	}
 
-	reply(server.BattleLobbiesFactionFilter(resp, factionID))
+	reply(server.BattleLobbiesFactionFilter(resp, factionID, user.ID))
 
 	return nil
 }
