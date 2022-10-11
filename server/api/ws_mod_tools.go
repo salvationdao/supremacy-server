@@ -68,6 +68,7 @@ type ModToolBanUserReq struct {
 		BanDurationHours  int    `json:"ban_duration_hours"`
 		BanDurationDays   int    `json:"ban_duration_days"`
 		BanReason         string `json:"ban_reason"`
+		BanMechQueue      bool   `json:"ban_mech_queue"`
 		IsShadowBan       bool   `json:"is_shadow_ban"`
 	} `json:"payload"`
 }
@@ -100,6 +101,7 @@ func (api *API) ModToolBanUser(ctx context.Context, user *boiler.Player, key str
 			BanSupsContribute: req.Payload.SupContributeBan,
 			BanLocationSelect: req.Payload.LocationSelectBan,
 			BanSendChat:       req.Payload.ChatBan,
+			BanMechQueue:      req.Payload.BanMechQueue,
 		}
 
 		err = playerBan.Insert(gamedb.StdConn, boil.Infer())

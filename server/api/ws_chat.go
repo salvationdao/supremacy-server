@@ -304,6 +304,7 @@ const (
 	RestrictionChatSend       = "Send chat"
 	RestrictionChatView       = "Receive chat"
 	RestrictionSupsContribute = "Contribute sups"
+	RestrictionsMechQueuing   = "Mech queuing"
 )
 
 func (api *API) MessageBroadcaster() {

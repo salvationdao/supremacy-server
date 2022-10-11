@@ -42,6 +42,7 @@ type PlayerBan struct {
 	CreatedAt           time.Time   `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
 	UpdatedAt           time.Time   `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
 	DeletedAt           null.Time   `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
+	BanMechQueue        bool        `boiler:"ban_mech_queue" boil:"ban_mech_queue" json:"ban_mech_queue" toml:"ban_mech_queue" yaml:"ban_mech_queue"`
 
 	R *playerBanR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L playerBanL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -67,6 +68,7 @@ var PlayerBanColumns = struct {
 	CreatedAt           string
 	UpdatedAt           string
 	DeletedAt           string
+	BanMechQueue        string
 }{
 	ID:                  "id",
 	BanFrom:             "ban_from",
@@ -87,6 +89,7 @@ var PlayerBanColumns = struct {
 	CreatedAt:           "created_at",
 	UpdatedAt:           "updated_at",
 	DeletedAt:           "deleted_at",
+	BanMechQueue:        "ban_mech_queue",
 }
 
 var PlayerBanTableColumns = struct {
@@ -109,6 +112,7 @@ var PlayerBanTableColumns = struct {
 	CreatedAt           string
 	UpdatedAt           string
 	DeletedAt           string
+	BanMechQueue        string
 }{
 	ID:                  "player_bans.id",
 	BanFrom:             "player_bans.ban_from",
@@ -129,6 +133,7 @@ var PlayerBanTableColumns = struct {
 	CreatedAt:           "player_bans.created_at",
 	UpdatedAt:           "player_bans.updated_at",
 	DeletedAt:           "player_bans.deleted_at",
+	BanMechQueue:        "player_bans.ban_mech_queue",
 }
 
 // Generated where
@@ -153,6 +158,7 @@ var PlayerBanWhere = struct {
 	CreatedAt           whereHelpertime_Time
 	UpdatedAt           whereHelpertime_Time
 	DeletedAt           whereHelpernull_Time
+	BanMechQueue        whereHelperbool
 }{
 	ID:                  whereHelperstring{field: "\"player_bans\".\"id\""},
 	BanFrom:             whereHelperstring{field: "\"player_bans\".\"ban_from\""},
@@ -173,6 +179,7 @@ var PlayerBanWhere = struct {
 	CreatedAt:           whereHelpertime_Time{field: "\"player_bans\".\"created_at\""},
 	UpdatedAt:           whereHelpertime_Time{field: "\"player_bans\".\"updated_at\""},
 	DeletedAt:           whereHelpernull_Time{field: "\"player_bans\".\"deleted_at\""},
+	BanMechQueue:        whereHelperbool{field: "\"player_bans\".\"ban_mech_queue\""},
 }
 
 // PlayerBanRels is where relationship names are stored.
@@ -208,9 +215,9 @@ func (*playerBanR) NewStruct() *playerBanR {
 type playerBanL struct{}
 
 var (
-	playerBanAllColumns            = []string{"id", "ban_from", "battle_number", "banned_player_id", "banned_by_id", "reason", "banned_at", "end_at", "related_punish_vote_id", "manually_unban_by_id", "manually_unban_reason", "manually_unban_at", "ban_sups_contribute", "ban_location_select", "ban_send_chat", "ban_view_chat", "created_at", "updated_at", "deleted_at"}
+	playerBanAllColumns            = []string{"id", "ban_from", "battle_number", "banned_player_id", "banned_by_id", "reason", "banned_at", "end_at", "related_punish_vote_id", "manually_unban_by_id", "manually_unban_reason", "manually_unban_at", "ban_sups_contribute", "ban_location_select", "ban_send_chat", "ban_view_chat", "created_at", "updated_at", "deleted_at", "ban_mech_queue"}
 	playerBanColumnsWithoutDefault = []string{"ban_from", "banned_player_id", "banned_by_id", "reason", "end_at"}
-	playerBanColumnsWithDefault    = []string{"id", "battle_number", "banned_at", "related_punish_vote_id", "manually_unban_by_id", "manually_unban_reason", "manually_unban_at", "ban_sups_contribute", "ban_location_select", "ban_send_chat", "ban_view_chat", "created_at", "updated_at", "deleted_at"}
+	playerBanColumnsWithDefault    = []string{"id", "battle_number", "banned_at", "related_punish_vote_id", "manually_unban_by_id", "manually_unban_reason", "manually_unban_at", "ban_sups_contribute", "ban_location_select", "ban_send_chat", "ban_view_chat", "created_at", "updated_at", "deleted_at", "ban_mech_queue"}
 	playerBanPrimaryKeyColumns     = []string{"id"}
 	playerBanGeneratedColumns      = []string{}
 )

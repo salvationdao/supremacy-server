@@ -404,6 +404,9 @@ func PlayerBanRestrictions(pb *boiler.PlayerBan) []string {
 	if pb.BanSupsContribute {
 		restrictions = append(restrictions, RestrictionSupsContribute)
 	}
+	if pb.BanMechQueue {
+		restrictions = append(restrictions, RestrictionsMechQueuing)
+	}
 	return restrictions
 }
 
