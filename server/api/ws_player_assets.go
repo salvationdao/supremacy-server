@@ -893,7 +893,7 @@ func (pac *PlayerAssetsControllerWS) OpenCrateHandler(ctx context.Context, user 
 		return terror.Error(err, "Could not get mech during crate opening, try again or contact support.")
 	}
 
-	xsynAsserts := []*rpctypes.XsynAsset{}
+	xsynAssets := []*rpctypes.XsynAsset{}
 
 	blueprintMechs := []string{}
 	blueprintMechSkins := []string{}
@@ -1051,7 +1051,7 @@ func (pac *PlayerAssetsControllerWS) OpenCrateHandler(ctx context.Context, user 
 
 		rarerSkin.EquippedOn = null.StringFrom(items.Mech.ID)
 		rarerSkin.EquippedOnDetails = eod
-		xsynAsserts = append(xsynAsserts, rpctypes.ServerMechSkinsToXsynAsset(items.MechSkins)...)
+		xsynAssets = append(xsynAssets, rpctypes.ServerMechSkinsToXsynAsset(tx, items.MechSkins)...)
 
 		err = db.AttachPowerCoreToMech(tx, user.ID, items.Mech.ID, items.PowerCore.ID)
 		if err != nil {
@@ -1061,7 +1061,7 @@ func (pac *PlayerAssetsControllerWS) OpenCrateHandler(ctx context.Context, user 
 		}
 		items.PowerCore.EquippedOn = null.StringFrom(items.Mech.ID)
 		items.PowerCore.EquippedOnDetails = eod
-		xsynAsserts = append(xsynAsserts, rpctypes.ServerPowerCoresToXsynAsset([]*server.PowerCore{items.PowerCore})...)
+		xsynAssets = append(xsynAssets, rpctypes.ServerPowerCoresToXsynAsset([]*server.PowerCore{items.PowerCore})...)
 
 		//attach weapons to mech -mech
 		for i, weapon := range items.Weapons {
@@ -1084,9 +1084,9 @@ func (pac *PlayerAssetsControllerWS) OpenCrateHandler(ctx context.Context, user 
 			weapon.WeaponSkin = items.WeaponSkins[i]
 			weapon.WeaponSkin.EquippedOn = null.StringFrom(items.Weapons[i].ID)
 			weapon.WeaponSkin.EquippedOnDetails = wod
-			xsynAsserts = append(xsynAsserts, rpctypes.ServerWeaponSkinsToXsynAsset([]*server.WeaponSkin{items.WeaponSkins[i]})...)
+			xsynAssets = append(xsynAssets, rpctypes.ServerWeaponSkinsToXsynAsset(tx, []*server.WeaponSkin{items.WeaponSkins[i]})...)
 		}
-		xsynAsserts = append(xsynAsserts, rpctypes.ServerWeaponsToXsynAsset(items.Weapons)...)
+		xsynAssets = append(xsynAssets, rpctypes.ServerWeaponsToXsynAsset(items.Weapons)...)
 
 		mech, err := db.Mech(tx, items.Mech.ID)
 		if err != nil {
@@ -1095,7 +1095,7 @@ func (pac *PlayerAssetsControllerWS) OpenCrateHandler(ctx context.Context, user 
 			return terror.Error(err, "Could not open crate, try again or contact support.")
 		}
 		mech.ChassisSkin = rarerSkin
-		xsynAsserts = append(xsynAsserts, rpctypes.ServerMechsToXsynAsset([]*server.Mech{mech})...)
+		xsynAssets = append(xsynAssets, rpctypes.ServerMechsToXsynAsset([]*server.Mech{mech})...)
 
 		if req.Payload.IsHangar {
 			hangarResp, err = db.GetUserMechHangarItemsWithMechID(mech, user.ID, tx)
@@ -1124,7 +1124,7 @@ func (pac *PlayerAssetsControllerWS) OpenCrateHandler(ctx context.Context, user 
 
 		items.WeaponSkins[0].EquippedOn = null.StringFrom(items.Weapons[0].ID)
 		items.WeaponSkins[0].EquippedOnDetails = wod
-		xsynAsserts = append(xsynAsserts, rpctypes.ServerWeaponSkinsToXsynAsset([]*server.WeaponSkin{items.WeaponSkins[0]})...)
+		xsynAssets = append(xsynAssets, rpctypes.ServerWeaponSkinsToXsynAsset(tx, []*server.WeaponSkin{items.WeaponSkins[0]})...)
 
 		weapon, err := db.Weapon(tx, items.Weapons[0].ID)
 		if err != nil {
@@ -1132,7 +1132,7 @@ func (pac *PlayerAssetsControllerWS) OpenCrateHandler(ctx context.Context, user 
 			gamelog.L.Error().Err(err).Interface("crate", crate).Msg(fmt.Sprintf("failed to get final mech during CRATE:OPEN crate: %s", crate.ID))
 			return terror.Error(err, "Could not open crate, try again or contact support.")
 		}
-		xsynAsserts = append(xsynAsserts, rpctypes.ServerWeaponsToXsynAsset([]*server.Weapon{weapon})...)
+		xsynAssets = append(xsynAssets, rpctypes.ServerWeaponsToXsynAsset([]*server.Weapon{weapon})...)
 
 		if req.Payload.IsHangar {
 			hangarResp, err = db.GetUserWeaponHangarItemsWithID(weapon, user.ID, tx)
@@ -1144,7 +1144,7 @@ func (pac *PlayerAssetsControllerWS) OpenCrateHandler(ctx context.Context, user 
 		}
 	}
 
-	err = pac.API.Passport.AssetsRegister(xsynAsserts) // register new assets
+	err = pac.API.Passport.AssetsRegister(xsynAssets) // register new assets
 	if err != nil {
 		gamelog.L.Error().Err(err).Msg("issue inserting new mechs to xsyn for RegisterAllNewAssets")
 		crateRollback()
