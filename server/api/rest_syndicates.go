@@ -291,7 +291,12 @@ func (api *API) SyndicateCreate(player *server.Player, w http.ResponseWriter, r 
 	}
 
 	for _, ogm := range ogMembers {
-		ws.PublishMessage(fmt.Sprintf("/secure/user/%s", ogm.ID), server.HubKeyUserSubscribe, ogm)
+		err = ogm.L.LoadRole(gamedb.StdConn, true, player, nil)
+		if err != nil {
+			return http.StatusInternalServerError, terror.Error(err, "Unable to convert faction, contact support or try again.")
+		}
+
+		ws.PublishMessage(fmt.Sprintf("/secure/user/%s", ogm.ID), server.HubKeyUserSubscribe, server.PlayerFromBoiler(ogm))
 	}
 
 	return helpers.EncodeJSON(w, true)
