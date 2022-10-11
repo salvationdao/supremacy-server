@@ -121,6 +121,7 @@ var TableNames = struct {
 	RepairBlocks                                       string
 	RepairCases                                        string
 	RepairOffers                                       string
+	Roles                                              string
 	SalePlayerAbilities                                string
 	SchemaMigrations                                   string
 	SpoilsOfWar                                        string
@@ -269,6 +270,7 @@ var TableNames = struct {
 	RepairBlocks:                   "repair_blocks",
 	RepairCases:                    "repair_cases",
 	RepairOffers:                   "repair_offers",
+	Roles:                          "roles",
 	SalePlayerAbilities:            "sale_player_abilities",
 	SchemaMigrations:               "schema_migrations",
 	SpoilsOfWar:                    "spoils_of_war",
