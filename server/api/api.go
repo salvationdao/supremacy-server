@@ -195,6 +195,7 @@ func NewAPI(
 	NewMechRepairController(api)
 	fc := NewFiatController(api)
 	_ = NewReplayController(api)
+	NewVoiceStreamController(api)
 	BattleQueueController(api)
 
 	api.Routes.Use(middleware.RequestID)
@@ -298,6 +299,7 @@ func NewAPI(
 				s.WS("/user/{user_id}/telegram_shortcode_register", server.HubKeyTelegramShortcodeRegistered, nil, MustMatchUserID)
 				s.WS("/user/{user_id}/quest_stat", server.HubKeyPlayerQuestStats, server.MustSecure(pc.PlayerQuestStat), MustMatchUserID)
 				s.WS("/user/{user_id}/quest_progression", server.HubKeyPlayerQuestProgressions, server.MustSecure(pc.PlayerQuestProgressions), MustMatchUserID)
+				s.WS("/user/{user_id}/arena/{arena_id}", server.HubKeyVoiceStreams, server.MustSecure(api.VoiceStreamSubscribe), MustMatchUserID)
 				s.WS("/user/{user_id}/queue_status", server.HubKeyPlayerQueueStatus, server.MustSecure(pc.PlayerQueueStatusHandler), MustMatchUserID)
 
 				s.WS("/user/{user_id}/involved_battle_lobbies", server.HubKeyInvolvedBattleLobbyListUpdate, server.MustSecureFaction(api.PlayerInvolvedBattleLobbies))

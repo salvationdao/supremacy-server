@@ -176,6 +176,7 @@ var FactionRels = struct {
 	StorefrontMysteryCrates    string
 	Syndicates                 string
 	TemplatesOlds              string
+	VoiceStreams               string
 }{
 	IDFactionStat:              "IDFactionStat",
 	BattleAbilityOptInLogs:     "BattleAbilityOptInLogs",
@@ -204,6 +205,7 @@ var FactionRels = struct {
 	StorefrontMysteryCrates:    "StorefrontMysteryCrates",
 	Syndicates:                 "Syndicates",
 	TemplatesOlds:              "TemplatesOlds",
+	VoiceStreams:               "VoiceStreams",
 }
 
 // factionR is where relationships are stored.
@@ -235,6 +237,7 @@ type factionR struct {
 	StorefrontMysteryCrates    StorefrontMysteryCrateSlice    `boiler:"StorefrontMysteryCrates" boil:"StorefrontMysteryCrates" json:"StorefrontMysteryCrates" toml:"StorefrontMysteryCrates" yaml:"StorefrontMysteryCrates"`
 	Syndicates                 SyndicateSlice                 `boiler:"Syndicates" boil:"Syndicates" json:"Syndicates" toml:"Syndicates" yaml:"Syndicates"`
 	TemplatesOlds              TemplatesOldSlice              `boiler:"TemplatesOlds" boil:"TemplatesOlds" json:"TemplatesOlds" toml:"TemplatesOlds" yaml:"TemplatesOlds"`
+	VoiceStreams               VoiceStreamSlice               `boiler:"VoiceStreams" boil:"VoiceStreams" json:"VoiceStreams" toml:"VoiceStreams" yaml:"VoiceStreams"`
 }
 
 // NewStruct creates a new relationship struct
@@ -1066,6 +1069,27 @@ func (o *Faction) TemplatesOlds(mods ...qm.QueryMod) templatesOldQuery {
 
 	if len(queries.GetSelect(query.Query)) == 0 {
 		queries.SetSelect(query.Query, []string{"\"templates_old\".*"})
+	}
+
+	return query
+}
+
+// VoiceStreams retrieves all the voice_stream's VoiceStreams with an executor.
+func (o *Faction) VoiceStreams(mods ...qm.QueryMod) voiceStreamQuery {
+	var queryMods []qm.QueryMod
+	if len(mods) != 0 {
+		queryMods = append(queryMods, mods...)
+	}
+
+	queryMods = append(queryMods,
+		qm.Where("\"voice_streams\".\"faction_id\"=?", o.ID),
+	)
+
+	query := VoiceStreams(queryMods...)
+	queries.SetFrom(query.Query, "\"voice_streams\"")
+
+	if len(queries.GetSelect(query.Query)) == 0 {
+		queries.SetSelect(query.Query, []string{"\"voice_streams\".*"})
 	}
 
 	return query
@@ -3736,6 +3760,104 @@ func (factionL) LoadTemplatesOlds(e boil.Executor, singular bool, maybeFaction i
 	return nil
 }
 
+// LoadVoiceStreams allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for a 1-M or N-M relationship.
+func (factionL) LoadVoiceStreams(e boil.Executor, singular bool, maybeFaction interface{}, mods queries.Applicator) error {
+	var slice []*Faction
+	var object *Faction
+
+	if singular {
+		object = maybeFaction.(*Faction)
+	} else {
+		slice = *maybeFaction.(*[]*Faction)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &factionR{}
+		}
+		args = append(args, object.ID)
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &factionR{}
+			}
+
+			for _, a := range args {
+				if a == obj.ID {
+					continue Outer
+				}
+			}
+
+			args = append(args, obj.ID)
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`voice_streams`),
+		qm.WhereIn(`voice_streams.faction_id in ?`, args...),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load voice_streams")
+	}
+
+	var resultSlice []*VoiceStream
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice voice_streams")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results in eager load on voice_streams")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for voice_streams")
+	}
+
+	if len(voiceStreamAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+	if singular {
+		object.R.VoiceStreams = resultSlice
+		for _, foreign := range resultSlice {
+			if foreign.R == nil {
+				foreign.R = &voiceStreamR{}
+			}
+			foreign.R.Faction = object
+		}
+		return nil
+	}
+
+	for _, foreign := range resultSlice {
+		for _, local := range slice {
+			if local.ID == foreign.FactionID {
+				local.R.VoiceStreams = append(local.R.VoiceStreams, foreign)
+				if foreign.R == nil {
+					foreign.R = &voiceStreamR{}
+				}
+				foreign.R.Faction = local
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
 // SetIDFactionStat of the faction to the related item.
 // Sets o.R.IDFactionStat to related.
 // Adds o to related.R.IDFaction.
@@ -5275,6 +5397,58 @@ func (o *Faction) AddTemplatesOlds(exec boil.Executor, insert bool, related ...*
 	for _, rel := range related {
 		if rel.R == nil {
 			rel.R = &templatesOldR{
+				Faction: o,
+			}
+		} else {
+			rel.R.Faction = o
+		}
+	}
+	return nil
+}
+
+// AddVoiceStreams adds the given related objects to the existing relationships
+// of the faction, optionally inserting them as new records.
+// Appends related to o.R.VoiceStreams.
+// Sets related.R.Faction appropriately.
+func (o *Faction) AddVoiceStreams(exec boil.Executor, insert bool, related ...*VoiceStream) error {
+	var err error
+	for _, rel := range related {
+		if insert {
+			rel.FactionID = o.ID
+			if err = rel.Insert(exec, boil.Infer()); err != nil {
+				return errors.Wrap(err, "failed to insert into foreign table")
+			}
+		} else {
+			updateQuery := fmt.Sprintf(
+				"UPDATE \"voice_streams\" SET %s WHERE %s",
+				strmangle.SetParamNames("\"", "\"", 1, []string{"faction_id"}),
+				strmangle.WhereClause("\"", "\"", 2, voiceStreamPrimaryKeyColumns),
+			)
+			values := []interface{}{o.ID, rel.ID}
+
+			if boil.DebugMode {
+				fmt.Fprintln(boil.DebugWriter, updateQuery)
+				fmt.Fprintln(boil.DebugWriter, values)
+			}
+			if _, err = exec.Exec(updateQuery, values...); err != nil {
+				return errors.Wrap(err, "failed to update foreign table")
+			}
+
+			rel.FactionID = o.ID
+		}
+	}
+
+	if o.R == nil {
+		o.R = &factionR{
+			VoiceStreams: related,
+		}
+	} else {
+		o.R.VoiceStreams = append(o.R.VoiceStreams, related...)
+	}
+
+	for _, rel := range related {
+		if rel.R == nil {
+			rel.R = &voiceStreamR{
 				Faction: o,
 			}
 		} else {

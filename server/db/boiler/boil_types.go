@@ -242,6 +242,7 @@ const (
 	FeatureNameSYSTEM_MESSAGES = "SYSTEM_MESSAGES"
 	FeatureNameCHAT_BAN        = "CHAT_BAN"
 	FeatureNamePROFILE_AVATAR  = "PROFILE_AVATAR"
+	FeatureNameVOICE_CHAT      = "VOICE_CHAT"
 )
 
 // Enum values for FiatProductItemTypes
@@ -449,4 +450,10 @@ const (
 const (
 	SyndicateTypeCORPORATION   = "CORPORATION"
 	SyndicateTypeDECENTRALISED = "DECENTRALISED"
+)
+
+// Enum values for VoiceSenderType
+const (
+	VoiceSenderTypeMECH_OWNER        = "MECH_OWNER"
+	VoiceSenderTypeFACTION_COMMANDER = "FACTION_COMMANDER"
 )

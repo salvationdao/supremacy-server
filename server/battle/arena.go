@@ -19,6 +19,7 @@ import (
 	"server/replay"
 	"server/system_messages"
 	"server/telegram"
+	"server/voice_chat"
 	"server/xsyn_rpcclient"
 	"strconv"
 	"strings"
@@ -400,6 +401,7 @@ func (am *ArenaManager) NewArena(battleArena *boiler.BattleArena, wsConn *websoc
 		MechCommandCheckMap: &MechCommandCheckMap{
 			m: make(map[string]chan bool),
 		},
+		VoiceChannel: &voice_chat.VoiceChannel{},
 
 		// objects inherited from arena manager
 		Manager: am,
@@ -448,6 +450,7 @@ type Arena struct {
 	deadlock.RWMutex
 
 	beginBattleMux deadlock.Mutex
+	VoiceChannel   *voice_chat.VoiceChannel
 }
 
 type MechCommandCheckMap struct {
@@ -1565,7 +1568,7 @@ func (arena *Arena) BroadcastLobbyUpdate() {
 			return
 		}
 
-		bl, err := db.GetBattleLobby(blID)
+		bl, err := db.GetBattleLobbyViaID(blID)
 		if err != nil {
 			gamelog.L.Error().Err(err).Str("blID", blID).Msg("failed to find battle lobby")
 			ws.PublishMessage(fmt.Sprintf("/public/arena/%s/upcoming_battle", arena.ID), server.HubKeyNextBattleDetails, &UpcomingBattleResponse{
@@ -1617,7 +1620,7 @@ func (arena *Arena) GetLobbyDetails() *UpcomingBattleResponse {
 		}
 	}
 
-	bl, err := db.GetBattleLobby(blID)
+	bl, err := db.GetBattleLobbyViaID(blID)
 	if err != nil {
 		gamelog.L.Error().Err(err).Str("blID", blID).Msg("failed to find battle lobby")
 		return &UpcomingBattleResponse{
@@ -1652,7 +1655,7 @@ func (arena *Arena) assignSupporters() {
 	L = L.With().Str("blID", blID).Logger()
 
 	// get all opted in supporters
-	bl, err := db.GetBattleLobby(blID)
+	bl, err := db.GetBattleLobbyViaID(blID)
 	if err != nil {
 		L.Error().Err(err).Msg("failed to get battle lobby")
 		return
@@ -1753,7 +1756,7 @@ func (arena *Arena) assignSupporters() {
 		}
 	}
 	// get all opted in supporters
-	bl, err = db.GetBattleLobby(blID)
+	bl, err = db.GetBattleLobbyViaID(blID)
 	if err != nil {
 		L.Error().Err(err).Msg("failed to get battle lobby")
 		return
@@ -2140,6 +2143,11 @@ func (arena *Arena) BeginBattle() {
 
 		// check mech join battle quest for each mech owner
 		arena.Manager.QuestManager.MechJoinBattleQuestCheck(wm.OwnedByID)
+	}
+
+	err = arena.VoiceChannel.UpdateAllVoiceChannel(btl.warMachineIDs, arena.ID)
+	if err != nil {
+		gamelog.L.Error().Msg("Failed to update voice chat channels")
 	}
 
 	// broadcast mech status change
