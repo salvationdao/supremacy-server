@@ -444,7 +444,13 @@ func (a *Application) Action() {
 
 	// TODO: send message to applicant
 
-	ws.PublishMessage(fmt.Sprintf("/secure/user/%s", applicant.ID), server.HubKeyUserSubscribe, applicant)
+	err = applicant.L.LoadRole(gamedb.StdConn, true, applicant, nil)
+	if err != nil {
+		gamelog.L.Error().Err(err).Msg("Failed to load role")
+		return
+	}
+
+	ws.PublishMessage(fmt.Sprintf("/secure/user/%s", applicant.ID), server.HubKeyUserSubscribe, server.PlayerFromBoiler(applicant))
 
 	ws.PublishMessage(fmt.Sprintf("/faction/%s/syndicate/%s/join_applicant/%s", applicant.FactionID.String, a.SyndicateID, a.ID), server.HubKeySyndicateJoinApplicationUpdate, a)
 

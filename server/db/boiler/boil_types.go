@@ -384,6 +384,13 @@ const (
 	RepairFinishReasonSUCCEEDED = "SUCCEEDED"
 )
 
+// Enum values for RoleName
+const (
+	RoleNamePLAYER    = "PLAYER"
+	RoleNameMODERATOR = "MODERATOR"
+	RoleNameADMIN     = "ADMIN"
+)
+
 // Enum values for SyndicateElectionType
 const (
 	SyndicateElectionTypeADMIN = "ADMIN"
