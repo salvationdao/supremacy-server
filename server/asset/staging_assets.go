@@ -36,9 +36,9 @@ func GiveUserAllAssets(user *boiler.Player, pp *xsyn_rpcclient.XsynXrpcClient) e
 	templates, err := boiler.TemplateBlueprints(
 		boiler.TemplateBlueprintWhere.BlueprintID.IN(
 			[]string{
-				"65159dae-d349-4b7a-a6ca-81c69d1ae843", // static id for genesis mega skin
-				"1ab33cab-a76b-4557-b672-ba54545bdf6b", // static id for genesis mega skin
-				"123e2d2c-ffa5-4649-9641-c2cafac64c85", // static id for genesis mega skin
+				server.MechSkinDune, // static id for genesis mega skin
+				server.MechSkinBlackDigi, // static id for genesis mega skin
+				server.MechSkinRustBucket, // static id for genesis mega skin
 			},
 		),
 	).All(tx)
@@ -72,7 +72,7 @@ func GiveUserAllAssets(user *boiler.Player, pp *xsyn_rpcclient.XsynXrpcClient) e
 	// Now we want to give 1 of each nexus mech
 	// need mech + skin
 	mechs, err := boiler.BlueprintMechs(
-		boiler.BlueprintMechWhere.ShieldTypeID.EQ("b209a593-f0a0-4df9-bc8d-f6af8bab4362"), // static id nexus mech shield
+		boiler.BlueprintMechWhere.ShieldTypeID.EQ(server.ShieldTypeFormShield), // static id nexus mech shield
 		qm.Load(boiler.BlueprintMechRels.DefaultChassisSkin),
 	).All(tx)
 	if err != nil {
@@ -117,9 +117,9 @@ func GiveUserAllAssets(user *boiler.Player, pp *xsyn_rpcclient.XsynXrpcClient) e
 	weapons, err := boiler.BlueprintWeapons(
 		boiler.BlueprintWeaponWhere.ID.NIN(
 			[]string{
-				"c1c78867-9de7-43d3-97e9-91381800f38e", // don't want to give rocket pods since they're locked to genesis
-				"41099781-8586-4783-9d1c-b515a386fe9f", // don't want to give rocket pods since they're locked to genesis
-				"e9fc2417-6a5b-489d-b82e-42942535af90", // don't want to give rocket pods since they're locked to genesis
+				server.WeaponRocketPodsZai, // don't want to give rocket pods since they're locked to genesis
+				server.WeaponRocketPodsRM, // don't want to give rocket pods since they're locked to genesis
+				server.WeaponRocketPodsBC, // don't want to give rocket pods since they're locked to genesis
 			},
 		),
 		qm.Load(boiler.BlueprintWeaponRels.DefaultSkin),
