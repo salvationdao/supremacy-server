@@ -155,8 +155,8 @@ const HubKeyModToolsUnbanUser = "MOD:UNBAN:USER"
 
 type ModToolUnbanUserReq struct {
 	Payload struct {
-		PlayerBanID string `json:"player_ban_id"`
-		UnbanReason string `json:"unban_reason"`
+		PlayerBanID []string `json:"player_ban_id"`
+		UnbanReason string   `json:"unban_reason"`
 	} `json:"payload"`
 }
 
@@ -167,36 +167,38 @@ func (api *API) ModToolUnbanUser(ctx context.Context, user *boiler.Player, key s
 		return terror.Error(err, "Invalid request received.")
 	}
 
-	playerBan, err := boiler.PlayerBans(
+	playerBans, err := boiler.PlayerBans(
 		boiler.PlayerBanWhere.ManuallyUnbanByID.IsNull(),
 		boiler.PlayerBanWhere.ManuallyUnbanAt.IsNull(),
-		boiler.PlayerBanWhere.ID.EQ(req.Payload.PlayerBanID),
-	).One(gamedb.StdConn)
+		boiler.PlayerBanWhere.ID.IN(req.Payload.PlayerBanID),
+	).All(gamedb.StdConn)
 	if err != nil {
 		return terror.Error(err, "Failed to find player ban")
 	}
 
-	playerBan.ManuallyUnbanReason = null.StringFrom(req.Payload.UnbanReason)
-	playerBan.ManuallyUnbanAt = null.TimeFrom(time.Now())
-	playerBan.ManuallyUnbanByID = null.StringFrom(user.ID)
+	for _, playerBan := range playerBans {
+		playerBan.ManuallyUnbanReason = null.StringFrom(req.Payload.UnbanReason)
+		playerBan.ManuallyUnbanAt = null.TimeFrom(time.Now())
+		playerBan.ManuallyUnbanByID = null.StringFrom(user.ID)
 
-	_, err = playerBan.Update(gamedb.StdConn, boil.Infer())
-	if err != nil {
-		return terror.Error(err, "Failed to unban player")
-	}
+		_, err = playerBan.Update(gamedb.StdConn, boil.Infer())
+		if err != nil {
+			return terror.Error(err, "Failed to unban player")
+		}
 
-	msg := &boiler.SystemMessage{
-		PlayerID: playerBan.BannedPlayerID,
-		SenderID: user.ID,
-		Title:    "You've been unbanned by a Moderator",
-		Message:  fmt.Sprintf("You've been unbanned by moderator for the following reasons: %s", req.Payload.UnbanReason),
-	}
-	err = msg.Insert(gamedb.StdConn, boil.Infer())
-	if err != nil {
-		return err
-	}
+		msg := &boiler.SystemMessage{
+			PlayerID: playerBan.BannedPlayerID,
+			SenderID: user.ID,
+			Title:    "You've been unbanned by a Moderator",
+			Message:  fmt.Sprintf("You've been unbanned by moderator for the following reasons: %s", req.Payload.UnbanReason),
+		}
+		err = msg.Insert(gamedb.StdConn, boil.Infer())
+		if err != nil {
+			return err
+		}
 
-	ws.PublishMessage(fmt.Sprintf("/secure/user/%s/system_messages", playerBan.BannedPlayerID), server.HubKeySystemMessageListUpdatedSubscribe, true)
+		ws.PublishMessage(fmt.Sprintf("/secure/user/%s/system_messages", playerBan.BannedPlayerID), server.HubKeySystemMessageListUpdatedSubscribe, true)
+	}
 	reply(true)
 
 	return nil
