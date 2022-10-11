@@ -86,11 +86,8 @@ func ModToolGetUserData(userID string, isAdmin bool, supsAmount decimal.Decimal)
 
 	playerActiveBans, err := boiler.PlayerBans(
 		boiler.PlayerBanWhere.BannedPlayerID.EQ(userID),
-		qm.Where(fmt.Sprintf(
-			`(%s > ? OR %s ISNULL)`,
-			boiler.PlayerBanTableColumns.EndAt,
-			boiler.PlayerBanTableColumns.ManuallyUnbanByID,
-		), now),
+		boiler.PlayerBanWhere.EndAt.GT(now),
+		boiler.PlayerBanWhere.ManuallyUnbanAt.IsNull(),
 		qm.OrderBy(fmt.Sprintf("%s DESC", boiler.PlayerBanTableColumns.CreatedAt)),
 		qm.Load(boiler.PlayerBanRels.BannedBy),
 	).All(gamedb.StdConn)
