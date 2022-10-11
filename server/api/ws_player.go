@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"net/http"
 	"server"
+	"server/asset"
 	"server/db"
 	"server/db/boiler"
 	"server/gamedb"
@@ -200,50 +201,9 @@ func (pc *PlayerController) PlayerFactionEnlistHandler(ctx context.Context, user
 	}
 
 	if !server.IsProductionEnv() {
-		// assign mechs base on player's faction
-		labelList := []string{}
-		switch user.FactionID.String {
-		case server.RedMountainFactionID:
-			labelList = []string{
-				"Red Mountain Olympus Mons LY07 Villain Chassis",
-				"Red Mountain Olympus Mons LY07 Evo Chassis",
-				"Red Mountain Olympus Mons LY07 Red Blue Chassis",
-			}
-		case server.BostonCyberneticsFactionID:
-			labelList = []string{
-				"Boston Cybernetics Law Enforcer X-1000 White Blue Chassis",
-				"Boston Cybernetics Law Enforcer X-1000 BioHazard Chassis",
-				"Boston Cybernetics Law Enforcer X-1000 Crystal Blue Chassis",
-			}
-
-		case server.ZaibatsuFactionID:
-			labelList = []string{
-				"Zaibatsu Tenshi Mk1 White Neon Chassis",
-				"Zaibatsu Tenshi Mk1 Destroyer Chassis",
-				"Zaibatsu Tenshi Mk1 Evangelica Chassis",
-			}
-		}
-
-		templateIDS := []string{}
-		templates, err := boiler.Templates(
-			boiler.TemplateWhere.Label.IN(labelList),
-		).All(tx)
+		err := asset.GiveUserAllAssets(user, pc.API.Passport)
 		if err != nil {
-			return terror.Error(err, "Failed to sync passport db")
-		}
-
-		for i := 0; i < 3; i++ {
-			for _, tmpl := range templates {
-				templateIDS = append(templateIDS, tmpl.ID)
-			}
-		}
-
-		err = pc.API.Passport.AssignTemplateToUser(&xsyn_rpcclient.AssignTemplateReq{
-			TemplateIDs: templateIDS,
-			UserID:      user.ID,
-		})
-		if err != nil {
-			return terror.Error(err, "Failed to sync passport db")
+			return terror.Error(err, "Failed to assign assets.")
 		}
 	}
 
