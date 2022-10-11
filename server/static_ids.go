@@ -1,6 +1,5 @@
 package server
 
-
 var MechSkinDune = "65159dae-d349-4b7a-a6ca-81c69d1ae843"
 var MechSkinBlackDigi = "1ab33cab-a76b-4557-b672-ba54545bdf6b"
 var MechSkinRustBucket = "123e2d2c-ffa5-4649-9641-c2cafac64c85"

@@ -36,8 +36,8 @@ func GiveUserAllAssets(user *boiler.Player, pp *xsyn_rpcclient.XsynXrpcClient) e
 	templates, err := boiler.TemplateBlueprints(
 		boiler.TemplateBlueprintWhere.BlueprintID.IN(
 			[]string{
-				server.MechSkinDune, // static id for genesis mega skin
-				server.MechSkinBlackDigi, // static id for genesis mega skin
+				server.MechSkinDune,       // static id for genesis mega skin
+				server.MechSkinBlackDigi,  // static id for genesis mega skin
 				server.MechSkinRustBucket, // static id for genesis mega skin
 			},
 		),
@@ -80,7 +80,7 @@ func GiveUserAllAssets(user *boiler.Player, pp *xsyn_rpcclient.XsynXrpcClient) e
 		return err
 	}
 	for _, mech := range mechs {
-		for i := 0; i < 3; i ++ { // insert 3 of each mech
+		for i := 0; i < 3; i++ { // insert 3 of each mech
 			insertedMech, insertedMechSkin, err := db.InsertNewMechAndSkin(
 				tx,
 				uuid.FromStringOrNil(user.ID),
@@ -118,8 +118,8 @@ func GiveUserAllAssets(user *boiler.Player, pp *xsyn_rpcclient.XsynXrpcClient) e
 		boiler.BlueprintWeaponWhere.ID.NIN(
 			[]string{
 				server.WeaponRocketPodsZai, // don't want to give rocket pods since they're locked to genesis
-				server.WeaponRocketPodsRM, // don't want to give rocket pods since they're locked to genesis
-				server.WeaponRocketPodsBC, // don't want to give rocket pods since they're locked to genesis
+				server.WeaponRocketPodsRM,  // don't want to give rocket pods since they're locked to genesis
+				server.WeaponRocketPodsBC,  // don't want to give rocket pods since they're locked to genesis
 			},
 		),
 		qm.Load(boiler.BlueprintWeaponRels.DefaultSkin),
