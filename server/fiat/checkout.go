@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"math/rand"
 	"server"
-	"server/gamedb"
 	"time"
 
 	"server/db"
@@ -347,7 +346,7 @@ func SendStarterPackageContentsToUser(conn *sql.Tx, pp *xsyn_rpcclient.XsynXrpcC
 
 			rarerSkin.EquippedOn = null.StringFrom(items.Mech.ID)
 			rarerSkin.EquippedOnDetails = eod
-			xsynAsserts = append(xsynAsserts, rpctypes.ServerMechSkinsToXsynAsset(gamedb.StdConn, items.MechSkins)...)
+			xsynAsserts = append(xsynAsserts, rpctypes.ServerMechSkinsToXsynAsset(conn, items.MechSkins)...)
 
 			//attach powercore to mech - mech
 			err = db.AttachPowerCoreToMech(conn, user.ID, items.Mech.ID, items.PowerCore.ID)
