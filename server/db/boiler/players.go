@@ -274,6 +274,7 @@ var PlayerRels = struct {
 	FoundedBySyndicates                      string
 	SystemMessages                           string
 	SenderSystemMessages                     string
+	OwnerVoiceStreams                        string
 }{
 	CustomAvatar:                             "CustomAvatar",
 	Faction:                                  "Faction",
@@ -357,6 +358,7 @@ var PlayerRels = struct {
 	FoundedBySyndicates:                      "FoundedBySyndicates",
 	SystemMessages:                           "SystemMessages",
 	SenderSystemMessages:                     "SenderSystemMessages",
+	OwnerVoiceStreams:                        "OwnerVoiceStreams",
 }
 
 // playerR is where relationships are stored.
@@ -443,6 +445,7 @@ type playerR struct {
 	FoundedBySyndicates                      SyndicateSlice                   `boiler:"FoundedBySyndicates" boil:"FoundedBySyndicates" json:"FoundedBySyndicates" toml:"FoundedBySyndicates" yaml:"FoundedBySyndicates"`
 	SystemMessages                           SystemMessageSlice               `boiler:"SystemMessages" boil:"SystemMessages" json:"SystemMessages" toml:"SystemMessages" yaml:"SystemMessages"`
 	SenderSystemMessages                     SystemMessageSlice               `boiler:"SenderSystemMessages" boil:"SenderSystemMessages" json:"SenderSystemMessages" toml:"SenderSystemMessages" yaml:"SenderSystemMessages"`
+	OwnerVoiceStreams                        VoiceStreamSlice                 `boiler:"OwnerVoiceStreams" boil:"OwnerVoiceStreams" json:"OwnerVoiceStreams" toml:"OwnerVoiceStreams" yaml:"OwnerVoiceStreams"`
 }
 
 // NewStruct creates a new relationship struct
@@ -2415,6 +2418,27 @@ func (o *Player) SenderSystemMessages(mods ...qm.QueryMod) systemMessageQuery {
 
 	if len(queries.GetSelect(query.Query)) == 0 {
 		queries.SetSelect(query.Query, []string{"\"system_messages\".*"})
+	}
+
+	return query
+}
+
+// OwnerVoiceStreams retrieves all the voice_stream's VoiceStreams with an executor via owner_id column.
+func (o *Player) OwnerVoiceStreams(mods ...qm.QueryMod) voiceStreamQuery {
+	var queryMods []qm.QueryMod
+	if len(mods) != 0 {
+		queryMods = append(queryMods, mods...)
+	}
+
+	queryMods = append(queryMods,
+		qm.Where("\"voice_streams\".\"owner_id\"=?", o.ID),
+	)
+
+	query := VoiceStreams(queryMods...)
+	queries.SetFrom(query.Query, "\"voice_streams\"")
+
+	if len(queries.GetSelect(query.Query)) == 0 {
+		queries.SetSelect(query.Query, []string{"\"voice_streams\".*"})
 	}
 
 	return query
@@ -10578,6 +10602,104 @@ func (playerL) LoadSenderSystemMessages(e boil.Executor, singular bool, maybePla
 	return nil
 }
 
+// LoadOwnerVoiceStreams allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for a 1-M or N-M relationship.
+func (playerL) LoadOwnerVoiceStreams(e boil.Executor, singular bool, maybePlayer interface{}, mods queries.Applicator) error {
+	var slice []*Player
+	var object *Player
+
+	if singular {
+		object = maybePlayer.(*Player)
+	} else {
+		slice = *maybePlayer.(*[]*Player)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &playerR{}
+		}
+		args = append(args, object.ID)
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &playerR{}
+			}
+
+			for _, a := range args {
+				if a == obj.ID {
+					continue Outer
+				}
+			}
+
+			args = append(args, obj.ID)
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`voice_streams`),
+		qm.WhereIn(`voice_streams.owner_id in ?`, args...),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load voice_streams")
+	}
+
+	var resultSlice []*VoiceStream
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice voice_streams")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results in eager load on voice_streams")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for voice_streams")
+	}
+
+	if len(voiceStreamAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+	if singular {
+		object.R.OwnerVoiceStreams = resultSlice
+		for _, foreign := range resultSlice {
+			if foreign.R == nil {
+				foreign.R = &voiceStreamR{}
+			}
+			foreign.R.Owner = object
+		}
+		return nil
+	}
+
+	for _, foreign := range resultSlice {
+		for _, local := range slice {
+			if local.ID == foreign.OwnerID {
+				local.R.OwnerVoiceStreams = append(local.R.OwnerVoiceStreams, foreign)
+				if foreign.R == nil {
+					foreign.R = &voiceStreamR{}
+				}
+				foreign.R.Owner = local
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
 // SetCustomAvatar of the player to the related item.
 // Sets o.R.CustomAvatar to related.
 // Adds o to related.R.CustomAvatarPlayers.
@@ -15825,6 +15947,58 @@ func (o *Player) AddSenderSystemMessages(exec boil.Executor, insert bool, relate
 			}
 		} else {
 			rel.R.Sender = o
+		}
+	}
+	return nil
+}
+
+// AddOwnerVoiceStreams adds the given related objects to the existing relationships
+// of the player, optionally inserting them as new records.
+// Appends related to o.R.OwnerVoiceStreams.
+// Sets related.R.Owner appropriately.
+func (o *Player) AddOwnerVoiceStreams(exec boil.Executor, insert bool, related ...*VoiceStream) error {
+	var err error
+	for _, rel := range related {
+		if insert {
+			rel.OwnerID = o.ID
+			if err = rel.Insert(exec, boil.Infer()); err != nil {
+				return errors.Wrap(err, "failed to insert into foreign table")
+			}
+		} else {
+			updateQuery := fmt.Sprintf(
+				"UPDATE \"voice_streams\" SET %s WHERE %s",
+				strmangle.SetParamNames("\"", "\"", 1, []string{"owner_id"}),
+				strmangle.WhereClause("\"", "\"", 2, voiceStreamPrimaryKeyColumns),
+			)
+			values := []interface{}{o.ID, rel.ID}
+
+			if boil.DebugMode {
+				fmt.Fprintln(boil.DebugWriter, updateQuery)
+				fmt.Fprintln(boil.DebugWriter, values)
+			}
+			if _, err = exec.Exec(updateQuery, values...); err != nil {
+				return errors.Wrap(err, "failed to update foreign table")
+			}
+
+			rel.OwnerID = o.ID
+		}
+	}
+
+	if o.R == nil {
+		o.R = &playerR{
+			OwnerVoiceStreams: related,
+		}
+	} else {
+		o.R.OwnerVoiceStreams = append(o.R.OwnerVoiceStreams, related...)
+	}
+
+	for _, rel := range related {
+		if rel.R == nil {
+			rel.R = &voiceStreamR{
+				Owner: o,
+			}
+		} else {
+			rel.R.Owner = o
 		}
 	}
 	return nil

@@ -10,6 +10,8 @@ var (
 	UserRoleBroadcasterID = RoleID(uuid.Must(uuid.FromString("cca82653-c071-4171-92da-05b0808542e7")))
 	UserRoleViewerID      = RoleID(uuid.Must(uuid.FromString("1fb981b2-7489-4061-a379-1430ec4f7a63")))
 	UserRoleSuperAdminID  = RoleID(uuid.Must(uuid.FromString("85837f44-988c-4d1d-a292-e376b87015cd")))
+	UserRoleAdmin         = RoleID(uuid.Must(uuid.FromString("7e8f0c1d-f36c-437c-bee2-c14fedb4df93")))
+	UserRolePlayer        = RoleID(uuid.Must(uuid.FromString("8dd55355-fc22-4d1d-a825-b973bb075259")))
 )
 
 // Role is an object representing the database table.

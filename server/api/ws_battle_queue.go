@@ -952,11 +952,7 @@ func (api *API) PrivateBattleLobbyUpdate(ctx context.Context, user *boiler.Playe
 		return nil
 	}
 
-	bl, err := boiler.BattleLobbies(
-		boiler.BattleLobbyWhere.AccessCode.EQ(null.StringFrom(accessCode)),
-		qm.Load(boiler.BattleLobbyRels.HostBy),
-		qm.Load(boiler.BattleLobbyRels.GameMap),
-	).One(gamedb.StdConn)
+	bl, err := db.GetBattleLobbyViaAccessCode(accessCode)
 	if err != nil {
 		return terror.Error(err, "Failed to load battle lobby")
 	}
@@ -1210,6 +1206,7 @@ func (api *API) NextBattleDetails(ctx context.Context, key string, payload []byt
 type BattleLobbySupporterJoinRequest struct {
 	Payload struct {
 		BattleLobbyID string `json:"battle_lobby_id"`
+		AccessCode    string `json:"access_code"`
 	} `json:"payload"`
 }
 
@@ -1228,14 +1225,7 @@ func (api *API) BattleLobbySupporterJoin(ctx context.Context, user *boiler.Playe
 	// add support to battle lobby
 	err = api.ArenaManager.SendBattleQueueFunc(func() error {
 		// check lobby exists
-		bl, err := boiler.BattleLobbies(
-			boiler.BattleLobbyWhere.ID.EQ(req.Payload.BattleLobbyID),
-			qm.Load(boiler.BattleLobbyRels.BattleLobbiesMechs),
-			qm.Load(
-				boiler.BattleLobbyRels.BattleLobbySupporterOptIns,
-				boiler.BattleLobbySupporterOptInWhere.FactionID.EQ(factionID),
-			),
-		).One(gamedb.StdConn)
+		bl, err := db.GetBattleLobbyViaID(req.Payload.BattleLobbyID)
 		if err != nil {
 			return err
 		}
@@ -1243,7 +1233,11 @@ func (api *API) BattleLobbySupporterJoin(ctx context.Context, user *boiler.Playe
 		if bl == nil {
 			return fmt.Errorf("lobby id: %s does not exist", req.Payload.BattleLobbyID)
 		}
-		if !bl.AssignedToArenaID.Valid || bl.AssignedToArenaID.String == "" {
+		if bl.AccessCode.Valid && bl.AccessCode.String != req.Payload.AccessCode {
+			fmt.Printf("expected: %s, got: %s\n", bl.AccessCode.String, req.Payload.AccessCode)
+			return fmt.Errorf("invalid access code for lobby %s", req.Payload.BattleLobbyID)
+		}
+		if !bl.AccessCode.Valid && (!bl.AssignedToArenaID.Valid || bl.AssignedToArenaID.String == "") {
 			return fmt.Errorf("lobby id: %s does not have a arena id assigned", req.Payload.BattleLobbyID)
 		}
 
@@ -1256,6 +1250,15 @@ func (api *API) BattleLobbySupporterJoin(ctx context.Context, user *boiler.Playe
 			}
 		}
 
+		// check if already selected
+		if bl.R != nil && bl.R.BattleLobbySupporters != nil {
+			for _, supper := range bl.R.BattleLobbySupporters {
+				if supper.SupporterID == user.ID {
+					return fmt.Errorf("already a supporter")
+				}
+			}
+		}
+
 		// check if already registered
 		if bl.R != nil && bl.R.BattleLobbySupporterOptIns != nil {
 			for _, supper := range bl.R.BattleLobbySupporterOptIns {
@@ -1263,6 +1266,25 @@ func (api *API) BattleLobbySupporterJoin(ctx context.Context, user *boiler.Playe
 					return fmt.Errorf("already registered as a supporter")
 				}
 			}
+		}
+
+		// if they provide the access code, bypass the opting in and straight up assign them as a supporter.
+		if bl.AccessCode.Valid {
+			// add them as a supporter
+			bls := &boiler.BattleLobbySupporter{
+				SupporterID:   user.ID,
+				BattleLobbyID: bl.ID,
+				FactionID:     factionID,
+			}
+			err = bls.Insert(gamedb.StdConn, boil.Infer())
+			if err != nil {
+				return err
+			}
+
+
+			api.ArenaManager.BattleLobbyDebounceBroadcastChan <- []string{bl.ID}
+
+			return nil
 		}
 
 		// add them as a supporter
@@ -1281,7 +1303,7 @@ func (api *API) BattleLobbySupporterJoin(ctx context.Context, user *boiler.Playe
 		return nil
 	})
 	if err != nil {
-		if !strings.Contains(err.Error(), "already registered as a supporter") {
+		if !strings.Contains(err.Error(), "already") {
 			L.Error().Err(err).Msg("failed to insert new battle lobby supporter")
 		}
 		return err

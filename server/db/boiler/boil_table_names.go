@@ -165,6 +165,7 @@ var TableNames = struct {
 	TemplatesOld                                       string
 	Utility                                            string
 	UtilityShieldDontUse                               string
+	VoiceStreams                                       string
 	WeaponAmmo                                         string
 	WeaponModelSkinCompatibilities                     string
 	WeaponSkin                                         string
@@ -331,6 +332,7 @@ var TableNames = struct {
 	TemplatesOld:                   "templates_old",
 	Utility:                        "utility",
 	UtilityShieldDontUse:           "utility_shield_dont_use",
+	VoiceStreams:                   "voice_streams",
 	WeaponAmmo:                     "weapon_ammo",
 	WeaponModelSkinCompatibilities: "weapon_model_skin_compatibilities",
 	WeaponSkin:                     "weapon_skin",

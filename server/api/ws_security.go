@@ -2,9 +2,10 @@ package api
 
 import (
 	"context"
+	"server"
+
 	"github.com/go-chi/chi/v5"
 	"github.com/ninja-syndicate/ws"
-	"server"
 )
 
 func (api *API) Command(key string, fn ws.CommandFunc) {

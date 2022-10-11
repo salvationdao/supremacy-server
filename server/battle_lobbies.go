@@ -541,5 +541,17 @@ func BattleLobbyInfoFilter(bl *BattleLobby, keepDataForFactionID string) *Battle
 		battleLobby.BattleLobbiesMechs = append(battleLobby.BattleLobbiesMechs, battleLobbyMech)
 	}
 
+	// supporters
+	switch keepDataForFactionID {
+	case RedMountainFactionID:
+		battleLobby.OptedInRedMountSupporters = bl.OptedInRedMountSupporters
+		battleLobby.SelectedRedMountSupporters = bl.SelectedRedMountSupporters
+	case BostonCyberneticsFactionID:
+		battleLobby.OptedInBostonSupporters = bl.OptedInBostonSupporters
+		battleLobby.SelectedBostonSupporters = bl.SelectedBostonSupporters
+	case ZaibatsuFactionID:
+		battleLobby.OptedInZaiSupporters = bl.OptedInZaiSupporters
+		battleLobby.SelectedZaiSupporters = bl.SelectedZaiSupporters
+	}
 	return battleLobby
 }
