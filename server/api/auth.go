@@ -538,6 +538,7 @@ func (api *API) TokenLogin(tokenBase64 string, ignoreErr ...bool) (*server.Playe
 		}
 		return nil, err
 	}
+	serverPlayer.AccountID = userResp.AccountID // this we don't store on supremacy server
 
 	return serverPlayer, nil
 }
