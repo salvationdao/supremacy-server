@@ -24,6 +24,7 @@ import (
 	"server/sms"
 	"server/synctool"
 	"server/telegram"
+	"server/voice_chat"
 	"server/xsyn_rpcclient"
 	"server/zendesk"
 
@@ -180,6 +181,7 @@ func main() {
 
 					// Crypto signatures for battle histories
 					&cli.StringFlag{Name: "private_key_signer_hex", Value: "0x5f3b57101caf01c3d91e50809e70d84fcc404dd108aa8a9aa3e1a6c482267f48", EnvVars: []string{envPrefix + "_PRIVATE_KEY_SIGNER_HEX"}, Usage: "Private key for signing battle records (default is testnet dev private key)"},
+					&cli.StringFlag{Name: "ovenmedia_signed_key", Value: "aKq#1kj", EnvVars: []string{envPrefix + "_OVENMEDIA_SIGNED_KEY"}, Usage: "Ovenmedia secret sign key"},
 				},
 				Usage: "run server",
 				Action: func(c *cli.Context) error {
@@ -222,6 +224,7 @@ func main() {
 					environment := c.String("environment")
 
 					replay.OvenMediaAuthKey = c.String("ovenmedia_auth_key")
+					voice_chat.VoiceChatSecretKey = c.String("ovenmedia_signed_key")
 
 					server.SetEnv(environment)
 

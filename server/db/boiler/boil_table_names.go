@@ -22,6 +22,7 @@ var TableNames = struct {
 	BattleKills                                        string
 	BattleLobbies                                      string
 	BattleLobbiesMechs                                 string
+	BattleLobbyExtraSupsRewards                        string
 	BattleLobbySupporterOptIns                         string
 	BattleLobbySupporters                              string
 	BattleMapQueueOld                                  string
@@ -164,6 +165,7 @@ var TableNames = struct {
 	TemplatesOld                                       string
 	Utility                                            string
 	UtilityShieldDontUse                               string
+	VoiceStreams                                       string
 	WeaponAmmo                                         string
 	WeaponModelSkinCompatibilities                     string
 	WeaponSkin                                         string
@@ -187,6 +189,7 @@ var TableNames = struct {
 	BattleKills:                    "battle_kills",
 	BattleLobbies:                  "battle_lobbies",
 	BattleLobbiesMechs:             "battle_lobbies_mechs",
+	BattleLobbyExtraSupsRewards:    "battle_lobby_extra_sups_rewards",
 	BattleLobbySupporterOptIns:     "battle_lobby_supporter_opt_ins",
 	BattleLobbySupporters:          "battle_lobby_supporters",
 	BattleMapQueueOld:              "battle_map_queue_old",
@@ -329,6 +332,7 @@ var TableNames = struct {
 	TemplatesOld:                   "templates_old",
 	Utility:                        "utility",
 	UtilityShieldDontUse:           "utility_shield_dont_use",
+	VoiceStreams:                   "voice_streams",
 	WeaponAmmo:                     "weapon_ammo",
 	WeaponModelSkinCompatibilities: "weapon_model_skin_compatibilities",
 	WeaponSkin:                     "weapon_skin",
