@@ -27,6 +27,10 @@ func NewVoiceStreamController(api *API) {
 	api.SecureUserFactionCommand(server.HubKeyVoiceStreamJoinFactionCommander, api.JoinFactionCommander)
 	api.SecureUserFactionCommand(server.HubKeyVoiceStreamLeaveFactionCommander, api.LeaveFactionCommander)
 	api.SecureUserFactionCommand(server.HubKeyVoiceStreamVoteKick, api.VoteKickFactionCommander)
+
+	api.SecureUserFactionCommand(server.HubKeyVoiceStreamConnect, api.VoiceChatConnect)
+	api.SecureUserFactionCommand(server.HubKeyVoiceStreamDisconnect, api.VoiceChatDisconnect)
+
 }
 
 func (api *API) VoiceStreamSubscribe(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
@@ -45,6 +49,29 @@ func (api *API) VoiceStreamSubscribe(ctx context.Context, user *boiler.Player, k
 	}
 
 	reply(rvs)
+
+	return nil
+}
+
+func (api *API) VoiceStreamListenersSubscribe(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
+	if !user.FactionID.Valid {
+		return fmt.Errorf("faction id not found")
+	}
+
+	arenaID := chi.RouteContext(ctx).URLParam("arena_id")
+	if arenaID == "" {
+		return terror.Error(fmt.Errorf("missing arena id"), "Missing arena id")
+	}
+
+	resp := []*server.PublicPlayer{}
+
+	for _, vl := range api.VoiceStreamListeners {
+		if vl.FactionID == user.FactionID {
+			resp = append(resp, vl)
+		}
+	}
+
+	reply(resp)
 
 	return nil
 }
@@ -291,5 +318,38 @@ func (api *API) VoteKickFactionCommander(ctx context.Context, user *boiler.Playe
 
 	reply(true)
 
+	return nil
+}
+
+func (api *API) VoiceChatConnect(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
+	p := &server.PublicPlayer{
+		ID:        user.ID,
+		Username:  user.Username,
+		Gid:       user.Gid,
+		FactionID: user.FactionID,
+	}
+	api.VoiceStreamListeners = append(api.VoiceStreamListeners, p)
+	reply(true)
+
+	return nil
+}
+
+func (api *API) VoiceChatDisconnect(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
+
+	newSlice := []*server.PublicPlayer{}
+	for idx, v := range api.VoiceStreamListeners {
+		if newSlice != nil {
+			continue
+		}
+		if v.ID == user.ID {
+			newSlice = append(api.VoiceStreamListeners[0:idx], api.VoiceStreamListeners[idx+1:]...)
+		}
+	}
+
+	if newSlice != nil {
+		api.VoiceStreamListeners = newSlice
+	}
+
+	reply(true)
 	return nil
 }

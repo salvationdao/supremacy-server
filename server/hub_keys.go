@@ -61,8 +61,6 @@ const HubKeySystemMessageSend = "SYSTEM:MESSAGE:SEND"
 const HubKeyPlayerQuestStats = "PLAYER:QUEST:STAT"
 const HubKeyPlayerQuestProgressions = "PLAYER:QUEST:PROGRESSIONS"
 
-const HubKeyVoiceStreams = "PLAYER:VOICE:STREAM"
-
 // battle arena
 
 const HubKeyArenaStatusSubscribe = "ARENA:STATUS:UPDATED"
@@ -89,9 +87,13 @@ const HubKeyMiniMapAbilityDisplayList = "MINI:MAP:ABILITY:DISPLAY:LIST"
 
 // voice streams
 
+const HubKeyVoiceStreams = "PLAYER:VOICE:STREAM"
+const HubKeyVoiceStreamsListeners = "PLAYER:VOICE:STREAM:LISTENERS"
 const HubKeyVoiceStreamJoinFactionCommander = "VOICE:JOIN:FACTION:COMMANDER"
 const HubKeyVoiceStreamLeaveFactionCommander = "VOICE:LEAVE:FACTION:COMMANDER"
 const HubKeyVoiceStreamVoteKick = "VOICE:VOTE:KICK"
+const HubKeyVoiceStreamConnect = "VOICE:STREAM:CONNECT"
+const HubKeyVoiceStreamDisconnect = "VOICE:STREAM:DISCONNECT"
 
 // battle queue
 

@@ -3,7 +3,6 @@ package api
 import (
 	"context"
 	"fmt"
-	"github.com/ninja-software/tickle"
 	"net"
 	"net/http"
 	"server"
@@ -20,6 +19,8 @@ import (
 	"server/xsyn_rpcclient"
 	"server/zendesk"
 	"time"
+
+	"github.com/ninja-software/tickle"
 
 	"github.com/gofrs/uuid"
 	"github.com/shopspring/decimal"
@@ -62,6 +63,8 @@ type API struct {
 	FactionPunishVote map[string]*PunishVoteTracker
 
 	FactionActivePlayers map[string]*ActivePlayers
+
+	VoiceStreamListeners []*server.PublicPlayer
 
 	// marketplace
 	MarketplaceController *marketplace.MarketplaceController
@@ -303,6 +306,8 @@ func NewAPI(
 				s.WS("/user/{user_id}/quest_stat", server.HubKeyPlayerQuestStats, server.MustSecure(pc.PlayerQuestStat), MustMatchUserID)
 				s.WS("/user/{user_id}/quest_progression", server.HubKeyPlayerQuestProgressions, server.MustSecure(pc.PlayerQuestProgressions), MustMatchUserID)
 				s.WS("/user/{user_id}/arena/{arena_id}", server.HubKeyVoiceStreams, server.MustSecure(api.VoiceStreamSubscribe), MustMatchUserID)
+				s.WS("/user/{user_id}/arena/{arena_id}/listeners", server.HubKeyVoiceStreams, server.MustSecure(api.VoiceStreamListenersSubscribe), MustMatchUserID)
+
 				s.WS("/user/{user_id}/queue_status", server.HubKeyPlayerQueueStatus, server.MustSecure(pc.PlayerQueueStatusHandler), MustMatchUserID)
 
 				// fiat related
