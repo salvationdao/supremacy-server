@@ -1220,63 +1220,6 @@ type WarMachineStat struct {
 
 const HubKeyWarMachineStatUpdated = "WAR:MACHINE:STAT:UPDATED"
 
-//// WarMachineStatSubscribe subscribe on bribing stage change
-//func (am *ArenaManager) WarMachineStatSubscribe(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
-//	arena, err := am.GetArenaFromContext(ctx)
-//	if err != nil {
-//		return err
-//	}
-//
-//	battle := arena.CurrentBattle()
-//	if battle == nil || battle.stage.Load() == BattleStageEnd {
-//		return terror.Error(fmt.Errorf("battle not started yet"), "Battle is ended.")
-//	}
-//
-//	slotNumber := chi.RouteContext(ctx).URLParam("slotNumber")
-//	if slotNumber == "" {
-//		return fmt.Errorf("slot number is required")
-//	}
-//
-//	participantID, err := strconv.Atoi(slotNumber)
-//	if err != nil || participantID == 0 {
-//		return fmt.Errorf("invlid participant id")
-//	}
-//
-//	// return data if, current battle is not null
-//	wm := arena.CurrentBattleWarMachine(participantID)
-//	if wm != nil {
-//		wStat := &WarMachineStat{
-//			ParticipantID: participantID,
-//			Health:        wm.Health,
-//			Position:      wm.Position,
-//			Rotation:      wm.Rotation,
-//			IsHidden:      wm.IsHidden,
-//			Shield:        wm.Shield,
-//			TickOrder:     battle.MechTickOrder.Load(),
-//		}
-//
-//		// Hidden/Incognito
-//		if wStat.Position != nil {
-//			hideMech := arena.CurrentBattle().playerAbilityManager().IsWarMachineHidden(wm.Hash)
-//			hideMech = hideMech || arena.CurrentBattle().playerAbilityManager().IsWarMachineInBlackout(server.GameLocation{
-//				X: wStat.Position.X,
-//				Y: wStat.Position.Y,
-//			})
-//			if hideMech {
-//				wStat.IsHidden = true
-//				wStat.Position = &server.Vector3{
-//					X: -1,
-//					Y: -1,
-//					Z: -1,
-//				}
-//			}
-//		}
-//
-//		reply(wStat)
-//	}
-//	return nil
-//}
-
 const HubKeyBribeStageUpdateSubscribe = "BRIBE:STAGE:UPDATED:SUBSCRIBE"
 
 // BribeStageSubscribe subscribe on bribing stage change
