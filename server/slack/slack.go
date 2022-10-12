@@ -9,6 +9,7 @@ import (
 	"server"
 	"server/db"
 	"server/gamelog"
+	"time"
 )
 
 const APIBaseURL = "https://slack.com/api"
@@ -20,7 +21,7 @@ type SendMessagePayload struct {
 	Text    string `json:"text"`
 }
 
-func SendSlackNotification(slackMessage string, slackChannel string) error {
+func SendSlackNotification(slackMessage, slackChannel, appToken string) error {
 	if server.IsDevelopmentEnv() {
 		if !db.GetBoolWithDefault("send_slack_dev_notification", false) {
 			gamelog.L.Info().Msg("Slack notification send is turned off for dev")
@@ -39,7 +40,7 @@ func SendSlackNotification(slackMessage string, slackChannel string) error {
 	}
 
 	slackMessagePayload := &SendMessagePayload{
-		Channel: string(slackChannel),
+		Channel: slackChannel,
 		Text:    slackMessage,
 	}
 
@@ -54,10 +55,14 @@ func SendSlackNotification(slackMessage string, slackChannel string) error {
 	if err != nil {
 		return terror.Error(err, "Failed to send slack notification")
 	}
-	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", ModToolsAppToken))
+	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", appToken))
 	req.Header.Set("Content-Type", "application/json")
 
-	resp, err := http.DefaultClient.Do(req)
+	client := &http.Client{
+		Timeout: 3 * time.Second, // set timeout prevent hanging
+	}
+
+	resp, err := client.Do(req)
 	if err != nil {
 		return terror.Error(err, "Failed to send slack notification")
 	}
