@@ -65,12 +65,9 @@ func (am *ArenaManager) QueueJoinHandler(ctx context.Context, user *boiler.Playe
 
 	playerBan, err := boiler.PlayerBans(
 		boiler.PlayerBanWhere.BanMechQueue.EQ(true),
-		qm.Where(fmt.Sprintf(
-			`(%s > ? OR %s IS NULL)`,
-			boiler.PlayerBanTableColumns.EndAt,
-			boiler.PlayerBanTableColumns.ManuallyUnbanByID,
-		), time.Now()),
-		boiler.PlayerBanWhere.ID.EQ(user.ID),
+		boiler.PlayerBanWhere.EndAt.GT(time.Now()),
+		boiler.PlayerBanWhere.ManuallyUnbanByID.IsNull(),
+		boiler.PlayerBanWhere.BannedPlayerID.EQ(user.ID),
 	).One(gamedb.StdConn)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return terror.Error(err, "Failed to find banned user")

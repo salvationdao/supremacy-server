@@ -136,7 +136,7 @@ func (api *API) ModToolBanUser(ctx context.Context, user *boiler.Player, key str
 
 			cm := &ChatMessage{
 				ID:     banMessage.ID,
-				Type:   ChatMessageTypeSystemBan,
+				Type:   ChatMessageTypeModBan,
 				SentAt: time.Now(),
 				Data:   banMessage,
 			}
