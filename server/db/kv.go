@@ -76,6 +76,7 @@ const KeyCanRecordReplayStatus KVKey = "can_record_replay"
 
 const KeySlackModChannelID KVKey = "slack_mod_channel_id"
 const KeySlackRapiChannelID KVKey = "slack_rapid_channel_id"
+const KeySlackDevChannelID KVKey = "slack_dev_channel_id"
 
 const KeyAutoRepairSlotCount KVKey = "auto_repair_slot_count"
 const KeyAutoRepairDurationSeconds KVKey = "auto_repair_duration_seconds"

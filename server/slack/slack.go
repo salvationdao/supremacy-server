@@ -27,8 +27,8 @@ func SendSlackNotification(slackMessage, slackChannel, appToken string) error {
 			gamelog.L.Info().Msg("Slack notification send is turned off for dev")
 			return nil
 		}
-		// Send Slack notification to #slack-app-test chat to dev-ops to be added to test channel
-		slackChannel = "C04648C7ZNE"
+		// Send Slack notification to #slack-app-test chat to dev-ops to be added to test channel or create a channel and change value in kv
+		slackChannel = db.GetStrWithDefault(db.KeySlackDevChannelID, "C04648C7ZNE")
 	}
 
 	if ModToolsAppToken == "" {
