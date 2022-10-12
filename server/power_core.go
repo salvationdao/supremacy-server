@@ -14,7 +14,7 @@ type PowerCore struct {
 	*CollectionItem
 	*Images
 	ID                    string          `json:"id"`
-	BlueprintID           null.String     `json:"blueprint_id"`
+	BlueprintID           string          `json:"blueprint_id"`
 	Label                 string          `json:"label"`
 	Size                  string          `json:"size"`
 	Capacity              decimal.Decimal `json:"capacity"`
