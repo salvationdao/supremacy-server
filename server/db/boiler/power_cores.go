@@ -25,7 +25,7 @@ import (
 // PowerCore is an object representing the database table.
 type PowerCore struct {
 	ID                    string          `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
-	BlueprintID           null.String     `boiler:"blueprint_id" boil:"blueprint_id" json:"blueprint_id,omitempty" toml:"blueprint_id" yaml:"blueprint_id,omitempty"`
+	BlueprintID           string          `boiler:"blueprint_id" boil:"blueprint_id" json:"blueprint_id" toml:"blueprint_id" yaml:"blueprint_id"`
 	LabelDontUse          string          `boiler:"label_dont_use" boil:"label_dont_use" json:"label_dont_use" toml:"label_dont_use" yaml:"label_dont_use"`
 	SizeDontUse           string          `boiler:"size_dont_use" boil:"size_dont_use" json:"size_dont_use" toml:"size_dont_use" yaml:"size_dont_use"`
 	CapacityDontUse       decimal.Decimal `boiler:"capacity_dont_use" boil:"capacity_dont_use" json:"capacity_dont_use" toml:"capacity_dont_use" yaml:"capacity_dont_use"`
@@ -106,7 +106,7 @@ var PowerCoreTableColumns = struct {
 
 var PowerCoreWhere = struct {
 	ID                    whereHelperstring
-	BlueprintID           whereHelpernull_String
+	BlueprintID           whereHelperstring
 	LabelDontUse          whereHelperstring
 	SizeDontUse           whereHelperstring
 	CapacityDontUse       whereHelperdecimal_Decimal
@@ -120,7 +120,7 @@ var PowerCoreWhere = struct {
 	CreatedAt             whereHelpertime_Time
 }{
 	ID:                    whereHelperstring{field: "\"power_cores\".\"id\""},
-	BlueprintID:           whereHelpernull_String{field: "\"power_cores\".\"blueprint_id\""},
+	BlueprintID:           whereHelperstring{field: "\"power_cores\".\"blueprint_id\""},
 	LabelDontUse:          whereHelperstring{field: "\"power_cores\".\"label_dont_use\""},
 	SizeDontUse:           whereHelperstring{field: "\"power_cores\".\"size_dont_use\""},
 	CapacityDontUse:       whereHelperdecimal_Decimal{field: "\"power_cores\".\"capacity_dont_use\""},
@@ -162,8 +162,8 @@ type powerCoreL struct{}
 
 var (
 	powerCoreAllColumns            = []string{"id", "blueprint_id", "label_dont_use", "size_dont_use", "capacity_dont_use", "genesis_token_id", "limited_release_token_id", "max_draw_rate_dont_use", "recharge_rate_dont_use", "armour_dont_use", "max_hitpoints_dont_use", "equipped_on", "created_at"}
-	powerCoreColumnsWithoutDefault = []string{"label_dont_use"}
-	powerCoreColumnsWithDefault    = []string{"id", "blueprint_id", "size_dont_use", "capacity_dont_use", "genesis_token_id", "limited_release_token_id", "max_draw_rate_dont_use", "recharge_rate_dont_use", "armour_dont_use", "max_hitpoints_dont_use", "equipped_on", "created_at"}
+	powerCoreColumnsWithoutDefault = []string{"blueprint_id", "label_dont_use"}
+	powerCoreColumnsWithDefault    = []string{"id", "size_dont_use", "capacity_dont_use", "genesis_token_id", "limited_release_token_id", "max_draw_rate_dont_use", "recharge_rate_dont_use", "armour_dont_use", "max_hitpoints_dont_use", "equipped_on", "created_at"}
 	powerCorePrimaryKeyColumns     = []string{"id"}
 	powerCoreGeneratedColumns      = []string{}
 )
@@ -478,9 +478,7 @@ func (powerCoreL) LoadBlueprint(e boil.Executor, singular bool, maybePowerCore i
 		if object.R == nil {
 			object.R = &powerCoreR{}
 		}
-		if !queries.IsNil(object.BlueprintID) {
-			args = append(args, object.BlueprintID)
-		}
+		args = append(args, object.BlueprintID)
 
 	} else {
 	Outer:
@@ -490,14 +488,12 @@ func (powerCoreL) LoadBlueprint(e boil.Executor, singular bool, maybePowerCore i
 			}
 
 			for _, a := range args {
-				if queries.Equal(a, obj.BlueprintID) {
+				if a == obj.BlueprintID {
 					continue Outer
 				}
 			}
 
-			if !queries.IsNil(obj.BlueprintID) {
-				args = append(args, obj.BlueprintID)
-			}
+			args = append(args, obj.BlueprintID)
 
 		}
 	}
@@ -555,7 +551,7 @@ func (powerCoreL) LoadBlueprint(e boil.Executor, singular bool, maybePowerCore i
 
 	for _, local := range slice {
 		for _, foreign := range resultSlice {
-			if queries.Equal(local.BlueprintID, foreign.ID) {
+			if local.BlueprintID == foreign.ID {
 				local.R.Blueprint = foreign
 				if foreign.R == nil {
 					foreign.R = &blueprintPowerCoreR{}
@@ -803,7 +799,7 @@ func (o *PowerCore) SetBlueprint(exec boil.Executor, insert bool, related *Bluep
 		return errors.Wrap(err, "failed to update local table")
 	}
 
-	queries.Assign(&o.BlueprintID, related.ID)
+	o.BlueprintID = related.ID
 	if o.R == nil {
 		o.R = &powerCoreR{
 			Blueprint: related,
@@ -820,39 +816,6 @@ func (o *PowerCore) SetBlueprint(exec boil.Executor, insert bool, related *Bluep
 		related.R.BlueprintPowerCores = append(related.R.BlueprintPowerCores, o)
 	}
 
-	return nil
-}
-
-// RemoveBlueprint relationship.
-// Sets o.R.Blueprint to nil.
-// Removes o from all passed in related items' relationships struct (Optional).
-func (o *PowerCore) RemoveBlueprint(exec boil.Executor, related *BlueprintPowerCore) error {
-	var err error
-
-	queries.SetScanner(&o.BlueprintID, nil)
-	if _, err = o.Update(exec, boil.Whitelist("blueprint_id")); err != nil {
-		return errors.Wrap(err, "failed to update local table")
-	}
-
-	if o.R != nil {
-		o.R.Blueprint = nil
-	}
-	if related == nil || related.R == nil {
-		return nil
-	}
-
-	for i, ri := range related.R.BlueprintPowerCores {
-		if queries.Equal(o.BlueprintID, ri.BlueprintID) {
-			continue
-		}
-
-		ln := len(related.R.BlueprintPowerCores)
-		if ln > 1 && i < ln-1 {
-			related.R.BlueprintPowerCores[i] = related.R.BlueprintPowerCores[ln-1]
-		}
-		related.R.BlueprintPowerCores = related.R.BlueprintPowerCores[:ln-1]
-		break
-	}
 	return nil
 }
 

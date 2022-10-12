@@ -608,7 +608,7 @@ func (blueprintPowerCoreL) LoadBlueprintPowerCores(e boil.Executor, singular boo
 			}
 
 			for _, a := range args {
-				if queries.Equal(a, obj.ID) {
+				if a == obj.ID {
 					continue Outer
 				}
 			}
@@ -666,7 +666,7 @@ func (blueprintPowerCoreL) LoadBlueprintPowerCores(e boil.Executor, singular boo
 
 	for _, foreign := range resultSlice {
 		for _, local := range slice {
-			if queries.Equal(local.ID, foreign.BlueprintID) {
+			if local.ID == foreign.BlueprintID {
 				local.R.BlueprintPowerCores = append(local.R.BlueprintPowerCores, foreign)
 				if foreign.R == nil {
 					foreign.R = &powerCoreR{}
@@ -813,7 +813,7 @@ func (o *BlueprintPowerCore) AddBlueprintPowerCores(exec boil.Executor, insert b
 	var err error
 	for _, rel := range related {
 		if insert {
-			queries.Assign(&rel.BlueprintID, o.ID)
+			rel.BlueprintID = o.ID
 			if err = rel.Insert(exec, boil.Infer()); err != nil {
 				return errors.Wrap(err, "failed to insert into foreign table")
 			}
@@ -833,7 +833,7 @@ func (o *BlueprintPowerCore) AddBlueprintPowerCores(exec boil.Executor, insert b
 				return errors.Wrap(err, "failed to update foreign table")
 			}
 
-			queries.Assign(&rel.BlueprintID, o.ID)
+			rel.BlueprintID = o.ID
 		}
 	}
 
@@ -854,79 +854,6 @@ func (o *BlueprintPowerCore) AddBlueprintPowerCores(exec boil.Executor, insert b
 			rel.R.Blueprint = o
 		}
 	}
-	return nil
-}
-
-// SetBlueprintPowerCores removes all previously related items of the
-// blueprint_power_core replacing them completely with the passed
-// in related items, optionally inserting them as new records.
-// Sets o.R.Blueprint's BlueprintPowerCores accordingly.
-// Replaces o.R.BlueprintPowerCores with related.
-// Sets related.R.Blueprint's BlueprintPowerCores accordingly.
-func (o *BlueprintPowerCore) SetBlueprintPowerCores(exec boil.Executor, insert bool, related ...*PowerCore) error {
-	query := "update \"power_cores\" set \"blueprint_id\" = null where \"blueprint_id\" = $1"
-	values := []interface{}{o.ID}
-	if boil.DebugMode {
-		fmt.Fprintln(boil.DebugWriter, query)
-		fmt.Fprintln(boil.DebugWriter, values)
-	}
-	_, err := exec.Exec(query, values...)
-	if err != nil {
-		return errors.Wrap(err, "failed to remove relationships before set")
-	}
-
-	if o.R != nil {
-		for _, rel := range o.R.BlueprintPowerCores {
-			queries.SetScanner(&rel.BlueprintID, nil)
-			if rel.R == nil {
-				continue
-			}
-
-			rel.R.Blueprint = nil
-		}
-
-		o.R.BlueprintPowerCores = nil
-	}
-	return o.AddBlueprintPowerCores(exec, insert, related...)
-}
-
-// RemoveBlueprintPowerCores relationships from objects passed in.
-// Removes related items from R.BlueprintPowerCores (uses pointer comparison, removal does not keep order)
-// Sets related.R.Blueprint.
-func (o *BlueprintPowerCore) RemoveBlueprintPowerCores(exec boil.Executor, related ...*PowerCore) error {
-	if len(related) == 0 {
-		return nil
-	}
-
-	var err error
-	for _, rel := range related {
-		queries.SetScanner(&rel.BlueprintID, nil)
-		if rel.R != nil {
-			rel.R.Blueprint = nil
-		}
-		if _, err = rel.Update(exec, boil.Whitelist("blueprint_id")); err != nil {
-			return err
-		}
-	}
-	if o.R == nil {
-		return nil
-	}
-
-	for _, rel := range related {
-		for i, ri := range o.R.BlueprintPowerCores {
-			if rel != ri {
-				continue
-			}
-
-			ln := len(o.R.BlueprintPowerCores)
-			if ln > 1 && i < ln-1 {
-				o.R.BlueprintPowerCores[i] = o.R.BlueprintPowerCores[ln-1]
-			}
-			o.R.BlueprintPowerCores = o.R.BlueprintPowerCores[:ln-1]
-			break
-		}
-	}
-
 	return nil
 }
 

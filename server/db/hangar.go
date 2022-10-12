@@ -189,7 +189,7 @@ func GetUserMechHangarItems(userID string) ([]*SiloType, error) {
 			newAttribute := MechSiloAccessories{
 				Type:        "power_core",
 				OwnershipID: powerCoreCollection.ID,
-				StaticID:    powerCoreBlueprint.BlueprintID.String,
+				StaticID:    powerCoreBlueprint.BlueprintID,
 			}
 
 			mechAttributes = append(mechAttributes, newAttribute)
@@ -395,7 +395,7 @@ func GetUserMechHangarItemsWithMechID(mech *server.Mech, userID string, trx boil
 			return nil, terror.Error(err, "Failed to get collection item for power core")
 		}
 
-		powerCoreBlueprint, err := boiler.PowerCores(boiler.PowerCoreWhere.ID.EQ(mech.PowerCoreID.String)).One(trx)
+		powerCore, err := boiler.PowerCores(boiler.PowerCoreWhere.ID.EQ(mech.PowerCoreID.String)).One(trx)
 		if err != nil && !errors.Is(err, sql.ErrNoRows) {
 			return nil, terror.Error(err, "Failed to get blueprint info for power core")
 		}
@@ -403,7 +403,7 @@ func GetUserMechHangarItemsWithMechID(mech *server.Mech, userID string, trx boil
 		newAttribute := MechSiloAccessories{
 			Type:        "power_core",
 			OwnershipID: powerCoreCollection.ID,
-			StaticID:    powerCoreBlueprint.BlueprintID.String,
+			StaticID:    powerCore.BlueprintID,
 		}
 
 		mechAttributes = append(mechAttributes, newAttribute)
