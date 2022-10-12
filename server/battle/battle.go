@@ -1561,8 +1561,8 @@ func (btl *Battle) Tick(payload []byte) {
 		return
 	}
 
-	// collect ws message
-	wsMessages := []ws.Message{}
+	// collect war machine stat
+	var wmss []*WarMachineStat
 
 	// Update game settings (so new players get the latest position, health and shield of all warmachines)
 	count := int(payload[1])
@@ -1618,7 +1618,7 @@ func (btl *Battle) Tick(payload []byte) {
 
 		// Get Current Mech State
 		warmachine.Lock()
-		wms := WarMachineStat{
+		wms := &WarMachineStat{
 			ParticipantID: int(warmachine.ParticipantID),
 			Position:      warmachine.Position,
 			Rotation:      warmachine.Rotation,
@@ -1692,18 +1692,15 @@ func (btl *Battle) Tick(payload []byte) {
 
 		// If Mech is a regular type OR is a mini mech
 		if participantID < 100 || btl.IsMechOfType(int(participantID), MiniMech) {
-			wsMessages = append(wsMessages, ws.Message{
-				URI:     fmt.Sprintf("/public/arena/%s/mech/%d", btl.ArenaID, participantID),
-				Key:     HubKeyWarMachineStatUpdated,
-				Payload: wms,
-			})
+			wmss = append(wmss, wms)
 		}
 	}
 
-	if len(wsMessages) > 0 {
-		gamelog.L.Trace().Str("func", "Tick").Msg("batch sending")
-		ws.PublishBatchMessages(fmt.Sprintf("/public/arena/%s/mech", btl.ArenaID), wsMessages)
-		gamelog.L.Trace().Str("func", "Tick").Msg("batch sent")
+	if len(wmss) > 0 {
+		select {
+		case btl.arena.WarMachineStatBroadcastChan <- wmss:
+		default: // skip, if the channel is full
+		}
 	}
 
 	if btl.playerAbilityManager().HasBlackoutsUpdated() {
@@ -1732,6 +1729,53 @@ func (btl *Battle) Tick(payload []byte) {
 
 			// Unpack and save static events for sending to newly joined frontend clients (ie: landmine, pickup locations and the hive status)
 			btl.MapEventList.MapEventsUnpack(mapEvents)
+		}
+	}
+}
+
+func (arena *Arena) warMachinePositionBroadcaster() {
+
+	// broadcast war machine stat every 250 millisecond
+	ticker := time.NewTicker(250 * time.Millisecond)
+	var warMachineStats []*WarMachineStat
+
+	for {
+		select {
+		case stats := <-arena.WarMachineStatBroadcastChan:
+			// update war machine stats
+			for _, stat := range stats {
+				index := slices.IndexFunc(warMachineStats, func(wms *WarMachineStat) bool {
+					return stat.ParticipantID == stat.ParticipantID
+				})
+
+				// append, if not exists
+				if index == -1 {
+					warMachineStats = append(warMachineStats, stat)
+					continue
+				}
+
+				// replace, if exits
+				warMachineStats[index] = stat
+			}
+
+		case <-ticker.C:
+			if warMachineStats == nil || len(warMachineStats) == 0 {
+				continue
+			}
+
+			// otherwise broadcast current data
+			ws.PublishMessage(fmt.Sprintf("/public/arena/%s/mech_position", arena.ID), HubKeyWarMachineStatUpdated, warMachineStats)
+
+			// clear war machine stat
+			warMachineStats = []*WarMachineStat{}
+
+			// trigger everytime when a battle is ended
+		case <-arena.WarMachineStatBroadcastResetChan:
+			warMachineStats = []*WarMachineStat{}
+
+			// triggered when arena is disconnected
+		case <-arena.WarMachineStatBroadcastStopChan:
+			return
 		}
 	}
 }
