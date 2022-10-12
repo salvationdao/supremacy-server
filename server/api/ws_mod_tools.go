@@ -187,6 +187,8 @@ func (api *API) ModToolBanUser(ctx context.Context, user *boiler.Player, key str
 			gamelog.L.Err(err).Msg("Failed to send slack notification for banning user")
 		}
 
+		gamelog.L.Info().Str("Mod Action", "Ban").Interface("Mod Audit", audit).Msg("Mod tool event")
+
 	}
 
 	reply(true)
@@ -285,6 +287,8 @@ func (api *API) ModToolUnbanUser(ctx context.Context, user *boiler.Player, key s
 			gamelog.L.Err(err).Msg("Failed to send slack notification for unbanning user")
 		}
 
+		gamelog.L.Info().Str("Mod Action", "Unban").Interface("Mod Audit", audit).Msg("Mod tool event")
+
 	}
 
 	reply(true)
@@ -335,6 +339,8 @@ func (api *API) ModToolRestartServer(ctx context.Context, user *boiler.Player, k
 	if err != nil {
 		gamelog.L.Err(err).Msg("Failed to send slack notification for banning user")
 	}
+
+	gamelog.L.Warn().Str("Mod Action", "Restart").Interface("Mod Audit", audit).Msg("Mod tool event")
 
 	os.Exit(1)
 
