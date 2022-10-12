@@ -22,6 +22,7 @@ func NewAdminController(api *API) *AdminController {
 	}
 
 	api.SecureAdminCommand(HubKeyAdminFiatProductList, adminHub.FiatProductList)
+	api.SecureAdminCommand(HubKeyAdminFiatBlueprintMechList, adminHub.FiatBlueprintMechList)
 
 	return adminHub
 }
@@ -67,6 +68,26 @@ func (ac *AdminController) FiatProductList(ctx context.Context, user *boiler.Pla
 		Total:   total,
 		Records: storePackages,
 	}
+	reply(resp)
+
+	return nil
+}
+
+const HubKeyAdminFiatBlueprintMechList = "ADMIN:FIAT:BLUEPRINT:MECH:LIST"
+
+func (ac *AdminController) FiatBlueprintMechList(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
+	errMsg := "Failed to get mech blueprints, please try again."
+
+	blueprintMechs, err := boiler.BlueprintMechs().All(gamedb.StdConn)
+	if err != nil {
+		return terror.Error(err, errMsg)
+	}
+
+	resp := []*server.BlueprintMech{}
+	for _, bm := range blueprintMechs {
+		resp = append(resp, server.BlueprintMechFromBoiler(bm))
+	}
+
 	reply(resp)
 
 	return nil
