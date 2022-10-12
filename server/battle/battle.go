@@ -1758,7 +1758,7 @@ func (arena *Arena) warMachinePositionBroadcaster() {
 			}
 
 			// otherwise broadcast current data
-			ws.PublishMessage(fmt.Sprintf("/public/arena/%s/mech_stats", arena.ID), HubKeyWarMachineStatUpdated, warMachineStats)
+			ws.PublishBytes(fmt.Sprintf("/public/arena/%s/mech_stats", arena.ID), append([]byte{server.BinaryKeyWarMachineStats}, PackWarMachineStatsInBytes(warMachineStats)...))
 
 			// clear war machine stat
 			warMachineStats = []*WarMachineStat{}
@@ -1772,6 +1772,46 @@ func (arena *Arena) warMachinePositionBroadcaster() {
 			return
 		}
 	}
+}
+
+func PackWarMachineStatsInBytes(warMachineStats []*WarMachineStat) []byte {
+	payload := []byte{byte(len(warMachineStats))}
+
+	// repack current data
+	for _, wms := range warMachineStats {
+		// push participant id into the array
+		payload = append(payload, byte(wms.ParticipantID))
+
+		// push location x into the array
+		payload = append(payload, helpers.IntToBytes(int32(wms.Position.X))...)
+
+		// push location x into the array
+		payload = append(payload, helpers.IntToBytes(int32(wms.Position.Y))...)
+
+		// push location x into the array
+		payload = append(payload, helpers.IntToBytes(int32(wms.Rotation))...)
+
+		// push current health into the array
+		health := make([]byte, 4)
+		binary.BigEndian.PutUint32(health, wms.Health)
+		payload = append(payload, health...)
+
+		// push current shield into the array
+		shield := make([]byte, 4)
+		binary.BigEndian.PutUint32(shield, wms.Shield)
+		payload = append(payload, shield...)
+
+		// is hidden
+		if wms.IsHidden {
+			payload = append(payload, byte(1))
+			continue
+		}
+
+		// not hidden
+		payload = append(payload, byte(0))
+	}
+
+	return payload
 }
 
 func tickSkipToWarmachineEnd(offset *int, booleans []bool) {

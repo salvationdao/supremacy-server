@@ -1217,8 +1217,6 @@ type WarMachineStat struct {
 	IsHidden      bool            `json:"is_hidden"`
 }
 
-const HubKeyWarMachineStatUpdated = "WAR:MACHINE:STAT:UPDATED"
-
 func (am *ArenaManager) WarMachineStatsSubscribe(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
 	arena, err := am.GetArenaFromContext(ctx)
 	if err != nil {
@@ -1265,7 +1263,7 @@ func (am *ArenaManager) WarMachineStatsSubscribe(ctx context.Context, key string
 		wmss = append(wmss, wms)
 	}
 
-	reply(wmss)
+	reply(append([]byte{server.BinaryKeyWarMachineStats}, PackWarMachineStatsInBytes(wmss)...))
 	return nil
 }
 
