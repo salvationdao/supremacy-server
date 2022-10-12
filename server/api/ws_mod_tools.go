@@ -10,7 +10,7 @@ import (
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
-	"server/mod_tools"
+	"server/slack"
 	"time"
 
 	"github.com/gofrs/uuid"
@@ -182,7 +182,7 @@ func (api *API) ModToolBanUser(ctx context.Context, user *boiler.Player, key str
 
 		slackMessage := fmt.Sprintf("<!subteam^S03GCC87CD7>\n\n:x: `%s#%d` has banned user `%s#%d` :x: \n\n```Reasons: %s\nBan End At: %s\nBan Type:%s```", user.Username.String, user.Gid, bannedPlayer.Username.String, bannedPlayer.Gid, req.Payload.BanReason, banEndAt.String(), banTypeString)
 
-		err = mod_tools.SendSlackNotification(slackMessage, db.GetStrWithDefault(db.KeySlackModChannelID, "C03GDHLV9FE"))
+		err = slack.SendSlackNotification(slackMessage, db.GetStrWithDefault(db.KeySlackModChannelID, "C03GDHLV9FE"))
 		if err != nil {
 			gamelog.L.Err(err).Msg("Failed to send slack notification for banning user")
 		}
@@ -282,7 +282,7 @@ func (api *API) ModToolUnbanUser(ctx context.Context, user *boiler.Player, key s
 
 		slackMessage := fmt.Sprintf("<!subteam^S03GCC87CD7>\n\n:white_check_mark: `%s#%d` has unbanned user `%s#%d` :white_check_mark: \n\n```Reasons: %s\nUnbanned from:%s```", user.Username.String, user.Gid, player.Username.String, player.Gid, req.Payload.UnbanReason, unbackFrom)
 
-		err = mod_tools.SendSlackNotification(slackMessage, db.GetStrWithDefault(db.KeySlackModChannelID, "C03GDHLV9FE"))
+		err = slack.SendSlackNotification(slackMessage, db.GetStrWithDefault(db.KeySlackModChannelID, "C03GDHLV9FE"))
 		if err != nil {
 			gamelog.L.Err(err).Msg("Failed to send slack notification for unbanning user")
 		}
@@ -328,14 +328,14 @@ func (api *API) ModToolRestartServer(ctx context.Context, user *boiler.Player, k
 
 	slackMessage := fmt.Sprintf("<!channel>\n\n:warning: `%s#%d` has restarted Gameserver :warning: \n\n```Reason: %s```", user.Username.String, user.Gid, req.Payload.Reason)
 
-	err = mod_tools.SendSlackNotification(slackMessage, db.GetStrWithDefault(db.KeySlackRapiChannelID, "C03F29D12BA"))
+	err = slack.SendSlackNotification(slackMessage, db.GetStrWithDefault(db.KeySlackRapiChannelID, "C03F29D12BA"))
 	if err != nil {
 		gamelog.L.Err(err).Msg("Failed to send slack notification for banning user")
 	}
 
 	slackMessage = fmt.Sprintf("<!subteam^S03GCC87CD7>\n\n:warning: `%s#%d` has restarted Gameserver :warning: \n\n```Reason: %s```", user.Username.String, user.Gid, req.Payload.Reason)
 
-	err = mod_tools.SendSlackNotification(slackMessage, db.GetStrWithDefault(db.KeySlackModChannelID, "C03GDHLV9FE"))
+	err = slack.SendSlackNotification(slackMessage, db.GetStrWithDefault(db.KeySlackModChannelID, "C03GDHLV9FE"))
 	if err != nil {
 		gamelog.L.Err(err).Msg("Failed to send slack notification for banning user")
 	}

@@ -18,10 +18,10 @@ import (
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
-	"server/mod_tools"
 	"server/profanities"
 	"server/quest"
 	"server/replay"
+	"server/slack"
 	"server/sms"
 	"server/synctool"
 	"server/telegram"
@@ -217,7 +217,7 @@ func main() {
 					environment := c.String("environment")
 
 					replay.OvenMediaAuthKey = c.String("ovenmedia_auth_key")
-					mod_tools.SlackModToolsAppToken = c.String("slack_auth_token")
+					slack.ModToolsAppToken = c.String("slack_auth_token")
 
 					server.SetEnv(environment)
 

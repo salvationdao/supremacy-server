@@ -1,4 +1,4 @@
-package mod_tools
+package slack
 
 import (
 	"bytes"
@@ -11,11 +11,11 @@ import (
 	"server/gamelog"
 )
 
-const SlackAPIBaseURL = "https://slack.com/api"
+const APIBaseURL = "https://slack.com/api"
 
-var SlackModToolsAppToken string
+var ModToolsAppToken string
 
-type SlackMessagePayload struct {
+type SendMessagePayload struct {
 	Channel string `json:"channel"`
 	Text    string `json:"text"`
 }
@@ -30,7 +30,7 @@ func SendSlackNotification(slackMessage string, slackChannel string) error {
 		slackChannel = "C04648C7ZNE"
 	}
 
-	if SlackModToolsAppToken == "" {
+	if ModToolsAppToken == "" {
 		return terror.Error(fmt.Errorf("slack mod app auth token not provided"), "Slack mod app auth token not provided")
 	}
 
@@ -38,23 +38,23 @@ func SendSlackNotification(slackMessage string, slackChannel string) error {
 		return terror.Error(fmt.Errorf("slack channel id not provided"), "Slack channel id not provided")
 	}
 
-	slackMessagePayload := &SlackMessagePayload{
+	slackMessagePayload := &SendMessagePayload{
 		Channel: string(slackChannel),
 		Text:    slackMessage,
 	}
 
 	payloadBytes, err := json.Marshal(slackMessagePayload)
 	if err != nil {
-		gamelog.L.Err(err).Interface("SlackMessagePayload", slackMessagePayload).Msg("Failed to marshal slack notification")
+		gamelog.L.Err(err).Interface("SendMessagePayload", slackMessagePayload).Msg("Failed to marshal slack notification")
 		return terror.Error(err, "Failed to marshal slack notification")
 	}
 	body := bytes.NewReader(payloadBytes)
 
-	req, err := http.NewRequest("POST", fmt.Sprintf("%s/chat.postMessage", SlackAPIBaseURL), body)
+	req, err := http.NewRequest("POST", fmt.Sprintf("%s/chat.postMessage", APIBaseURL), body)
 	if err != nil {
 		return terror.Error(err, "Failed to send slack notification")
 	}
-	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", SlackModToolsAppToken))
+	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", ModToolsAppToken))
 	req.Header.Set("Content-Type", "application/json")
 
 	resp, err := http.DefaultClient.Do(req)
