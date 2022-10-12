@@ -197,6 +197,9 @@ func NewAPI(
 	_ = NewReplayController(api)
 	NewVoiceStreamController(api)
 	BattleQueueController(api)
+	NewMarketplaceController(api)
+	NewModToolsController(api)
+	NewAdminController(api)
 
 	api.Routes.Use(middleware.RequestID)
 	api.Routes.Use(middleware.RealIP)

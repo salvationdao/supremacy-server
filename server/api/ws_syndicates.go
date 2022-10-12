@@ -397,8 +397,13 @@ func (api *API) SyndicateLeaveHandler(ctx context.Context, user *boiler.Player, 
 		return terror.Error(err, "Failed to exit syndicate")
 	}
 
+	err = user.L.LoadRole(gamedb.StdConn, true, user, nil)
+	if err != nil {
+		return terror.Error(err, "Failed to update player's marketing preferences.")
+	}
+
 	// broadcast updated user
-	ws.PublishMessage(fmt.Sprintf("/secure/user/%s", user.ID), server.HubKeyUserSubscribe, user)
+	ws.PublishMessage(fmt.Sprintf("/secure/user/%s", user.ID), server.HubKeyUserSubscribe, server.PlayerFromBoiler(user))
 
 	// broadcast latest syndicate detail
 	serverSyndicate, err := db.GetSyndicateDetail(syndicate.ID)

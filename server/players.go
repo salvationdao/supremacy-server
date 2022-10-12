@@ -13,6 +13,7 @@ import (
 
 type Player struct {
 	ID               string          `json:"id"`
+	AccountID        string          `json:"account_id"`
 	FactionID        null.String     `json:"faction_id,omitempty"`
 	Username         null.String     `json:"username,omitempty"`
 	PublicAddress    null.String     `json:"public_address,omitempty"`
@@ -33,6 +34,7 @@ type Player struct {
 	Syndicate *boiler.Syndicate  `json:"syndicate"`
 
 	Features []*Feature `json:"features"`
+	RoleType string     `json:"role_type"`
 }
 
 type PublicPlayer struct {
@@ -80,8 +82,15 @@ func PlayerFromBoiler(player *boiler.Player, features ...boiler.FeatureSlice) *P
 	}
 
 	if player.R != nil {
-		serverPlayer.Stat = player.R.IDPlayerStat
-		serverPlayer.Syndicate = player.R.Syndicate
+		if player.R.IDPlayerStat != nil {
+			serverPlayer.Stat = player.R.IDPlayerStat
+		}
+		if player.R.Syndicate != nil {
+			serverPlayer.Syndicate = player.R.Syndicate
+		}
+		if player.R.Role != nil {
+			serverPlayer.RoleType = player.R.Role.RoleType
+		}
 	}
 
 	return serverPlayer

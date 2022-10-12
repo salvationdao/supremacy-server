@@ -46,6 +46,36 @@ func UserByStripeCustomer(conn boil.Executor, stripeCustomerID string) (string, 
 //  Product  //
 ///////////////
 
+type FiatProductColumn string
+
+const (
+	FiatProductColumnCreatedAt   FiatProductColumn = "created_at"
+	FiatProductColumnName        FiatProductColumn = "name"
+	FiatProductColumnFaction     FiatProductColumn = "faction_id"
+	FiatProductColumnDescription FiatProductColumn = "description"
+	FiatProductColumnProductType FiatProductColumn = "product_type"
+)
+
+func (c FiatProductColumn) IsValid() error {
+	switch c {
+	case FiatProductColumnCreatedAt,
+		FiatProductColumnName,
+		FiatProductColumnFaction,
+		FiatProductColumnDescription,
+		FiatProductColumnProductType:
+		return nil
+
+	}
+	return terror.Error(fmt.Errorf("invalid sort fiat product column"))
+}
+
+func (c FiatProductColumn) ColumnName() string {
+	if c == FiatProductColumnFaction {
+		return boiler.FactionTableColumns.Label
+	}
+	return qm.Rels(boiler.TableNames.FiatProducts, string(c))
+}
+
 var fiatProductQueryMods = []qm.QueryMod{
 	qm.Select(
 		boiler.FiatProductTableColumns.ID,
@@ -74,6 +104,14 @@ var fiatProductQueryMods = []qm.QueryMod{
 		),
 		boiler.FiatProductTypesMysteryCrate,
 	),
+	qm.InnerJoin(
+		fmt.Sprintf(
+			"%s ON %s = %s",
+			boiler.TableNames.Factions,
+			boiler.FactionTableColumns.ID,
+			boiler.FiatProductTableColumns.FactionID,
+		),
+	),
 	qm.Load(boiler.FiatProductRels.FiatProductPricings),
 }
 
@@ -96,11 +134,46 @@ func FiatProduct(conn boil.Executor, id string) (*server.FiatProduct, error) {
 	return output, nil
 }
 
+type FiatProductFilter struct {
+	FactionID   []string `json:"faction_id"`
+	ProductType []string `json:"product_type"`
+}
+
 // FiatProducts gets a list of available fiat products to purchase by faction.
-func FiatProducts(conn boil.Executor, factionID string, productType string, offset int, pageSize int) (int64, []*server.FiatProduct, error) {
-	queryMods := []qm.QueryMod{
-		boiler.FiatProductWhere.FactionID.EQ(factionID),
-		boiler.FiatProductWhere.ProductType.EQ(productType),
+func FiatProducts(conn boil.Executor, filters *FiatProductFilter, search string, sortBy string, sortDir SortByDir, offset int, pageSize int) (int64, []*server.FiatProduct, error) {
+	queryMods := []qm.QueryMod{}
+
+	// Filters
+	if filters != nil {
+		if len(filters.FactionID) > 0 {
+			queryMods = append(queryMods, boiler.FiatProductWhere.FactionID.IN(filters.FactionID))
+		}
+		if len(filters.ProductType) > 0 {
+			queryMods = append(queryMods, boiler.FiatProductWhere.ProductType.IN(filters.ProductType))
+		}
+	}
+	if search != "" {
+		xsearch := ParseQueryText(search, true)
+		queryMods = append(queryMods,
+			qm.And(
+				fmt.Sprintf(
+					`(
+						(to_tsvector('english', %s) @@ to_tsquery(?))
+						OR (to_tsvector('english', %s) @@ to_tsquery(?))
+						OR (to_tsvector('english', %s) @@ to_tsquery(?))
+						OR (to_tsvector('english', %s) @@ to_tsquery(?))
+					)`,
+					boiler.FiatProductTableColumns.Name,
+					boiler.FiatProductTableColumns.Description,
+					boiler.FiatProductTableColumns.ProductType,
+					boiler.FactionTableColumns.Label,
+				),
+				xsearch,
+				xsearch,
+				xsearch,
+				xsearch,
+			),
+		)
 	}
 
 	// Get total rows
@@ -110,6 +183,19 @@ func FiatProducts(conn boil.Executor, factionID string, productType string, offs
 	}
 	if total == 0 {
 		return 0, []*server.FiatProduct{}, nil
+	}
+
+	// Sort by
+	if sortBy != "" {
+		sortByColumn := FiatProductColumn(sortBy)
+		err = sortByColumn.IsValid()
+		if err != nil {
+			sortByColumn = FiatProductColumnCreatedAt
+		}
+		if !sortDir.IsValid() {
+			sortDir = SortByDirDesc
+		}
+		queryMods = append(queryMods, qm.OrderBy(sortByColumn.ColumnName()+" "+string(sortDir)))
 	}
 
 	// Limit/Offset

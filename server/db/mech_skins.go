@@ -128,6 +128,7 @@ type MechSkinListOpts struct {
 	ExcludeMarketLocked      bool
 	IncludeMarketListed      bool
 	DisplayGenesisAndLimited bool
+	DisplayUnique            bool     `json:"display_unique"`
 	ExcludeIDs               []string `json:"exclude_ids"`
 	IncludeIDs               []string `json:"include_ids"`
 	FilterRarities           []string `json:"rarities"`
@@ -240,7 +241,11 @@ func MechSkinListDetailed(opts *MechSkinListOpts) (int64, []*server.MechSkin, er
 	}
 
 	if len(opts.ExcludeIDs) > 0 {
-		queryMods = append(queryMods, boiler.MechSkinWhere.ID.NIN(opts.ExcludeIDs))
+		if opts.DisplayUnique {
+			queryMods = append(queryMods, boiler.MechSkinWhere.BlueprintID.NIN(opts.ExcludeIDs))
+		} else {
+			queryMods = append(queryMods, boiler.MechSkinWhere.ID.NIN(opts.ExcludeIDs))
+		}
 	}
 	if len(opts.IncludeIDs) > 0 {
 		queryMods = append(queryMods, boiler.MechSkinWhere.BlueprintID.IN(opts.IncludeIDs))
@@ -253,7 +258,7 @@ func MechSkinListDetailed(opts *MechSkinListOpts) (int64, []*server.MechSkin, er
 		queryMods = append(queryMods, qm.AndIn(fmt.Sprintf("%s IN ?", qm.Rels(boiler.TableNames.BlueprintMechSkin, boiler.BlueprintMechSkinColumns.Tier)), vals...))
 	}
 	if len(opts.FilterEquippedStatuses) == 1 {
-		if opts.FilterEquippedStatuses[0] == "UNEQUIPPED" {
+		if opts.FilterEquippedStatuses[0] == "unequipped" {
 			queryMods = append(queryMods, GenerateListFilterQueryMod(ListFilterRequestItem{
 				Table:    boiler.TableNames.MechSkin,
 				Column:   boiler.MechSkinColumns.EquippedOn,
@@ -281,8 +286,15 @@ func MechSkinListDetailed(opts *MechSkinListOpts) (int64, []*server.MechSkin, er
 				))
 		}
 	}
+
+	countQueryMods := []qm.QueryMod{}
+	countQueryMods = append(countQueryMods, queryMods...)
+	if opts.DisplayUnique {
+		countQueryMods = append(countQueryMods, qm.Distinct(boiler.MechSkinTableColumns.BlueprintID))
+	}
+
 	total, err := boiler.CollectionItems(
-		queryMods...,
+		countQueryMods...,
 	).Count(gamedb.StdConn)
 	if err != nil {
 		return 0, nil, err
@@ -296,65 +308,91 @@ func MechSkinListDetailed(opts *MechSkinListOpts) (int64, []*server.MechSkin, er
 	}
 
 	// Build query
+	selectCols := []string{}
+	appendSelectCols := []string{
+		qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.CollectionSlug),
+		qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.Hash),
+		qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.TokenID),
+		qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.OwnerID),
+		qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.ItemType),
+		qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.MarketLocked),
+		qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.XsynLocked),
+		qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.LockedToMarketplace),
+		qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.AssetHidden),
+		qm.Rels(boiler.TableNames.MechSkin, boiler.MechSkinColumns.ID),
+		qm.Rels(boiler.TableNames.MechSkin, boiler.MechSkinColumns.EquippedOn),
+		qm.Rels(boiler.TableNames.MechSkin, boiler.MechSkinColumns.LockedToMech),
+		qm.Rels(boiler.TableNames.MechSkin, boiler.MechSkinColumns.GenesisTokenID),
+		qm.Rels(boiler.TableNames.MechSkin, boiler.MechSkinColumns.LimitedReleaseTokenID),
+		qm.Rels(boiler.TableNames.MechSkin, boiler.MechSkinColumns.Level),
+		qm.Rels(boiler.TableNames.BlueprintMechSkin, boiler.BlueprintMechSkinColumns.Label),
+		qm.Rels(boiler.TableNames.BlueprintMechSkin, boiler.BlueprintMechSkinColumns.DefaultLevel),
+		qm.Rels(boiler.TableNames.BlueprintMechSkin, boiler.BlueprintMechSkinColumns.Tier),
+		qm.Rels(boiler.TableNames.BlueprintMechSkin, boiler.BlueprintMechSkinColumns.ImageURL),
+		qm.Rels(boiler.TableNames.BlueprintMechSkin, boiler.BlueprintMechSkinColumns.CardAnimationURL),
+		qm.Rels(boiler.TableNames.BlueprintMechSkin, boiler.BlueprintMechSkinColumns.AvatarURL),
+		qm.Rels(boiler.TableNames.BlueprintMechSkin, boiler.BlueprintMechSkinColumns.LargeImageURL),
+		qm.Rels(boiler.TableNames.BlueprintMechSkin, boiler.BlueprintMechSkinColumns.AnimationURL),
+		qm.Rels(boiler.TableNames.BlueprintMechSkin, boiler.BlueprintMechSkinColumns.YoutubeURL),
+		qm.Rels(boiler.TableNames.BlueprintMechSkin, boiler.BlueprintMechSkinColumns.BackgroundColor),
+		qm.Rels(boiler.TableNames.MechModelSkinCompatibilities, boiler.MechModelSkinCompatibilityColumns.ImageURL),
+		qm.Rels(boiler.TableNames.MechModelSkinCompatibilities, boiler.MechModelSkinCompatibilityColumns.CardAnimationURL),
+		qm.Rels(boiler.TableNames.MechModelSkinCompatibilities, boiler.MechModelSkinCompatibilityColumns.AvatarURL),
+		qm.Rels(boiler.TableNames.MechModelSkinCompatibilities, boiler.MechModelSkinCompatibilityColumns.LargeImageURL),
+		qm.Rels(boiler.TableNames.MechModelSkinCompatibilities, boiler.MechModelSkinCompatibilityColumns.AnimationURL),
+		qm.Rels(boiler.TableNames.MechModelSkinCompatibilities, boiler.MechModelSkinCompatibilityColumns.YoutubeURL),
+		qm.Rels(boiler.TableNames.MechModelSkinCompatibilities, boiler.MechModelSkinCompatibilityColumns.BackgroundColor),
+	}
+	if opts.DisplayUnique {
+		selectCols = append(selectCols, fmt.Sprintf("DISTINCT ON (%[1]s) %[1]s", boiler.MechSkinTableColumns.BlueprintID))
+	} else {
+		selectCols = append(selectCols, qm.Rels(boiler.TableNames.BlueprintMechSkin, boiler.BlueprintMechSkinColumns.ID))
+	}
+	selectCols = append(selectCols, appendSelectCols...)
+
 	queryMods = append(queryMods,
-		qm.Select(
-			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.CollectionSlug),
-			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.Hash),
-			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.TokenID),
-			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.OwnerID),
-			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.ItemType),
-			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.MarketLocked),
-			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.XsynLocked),
-			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.LockedToMarketplace),
-			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.AssetHidden),
-			qm.Rels(boiler.TableNames.MechSkin, boiler.MechSkinColumns.ID),
-			qm.Rels(boiler.TableNames.MechSkin, boiler.MechSkinColumns.EquippedOn),
-			qm.Rels(boiler.TableNames.MechSkin, boiler.MechSkinColumns.LockedToMech),
-			qm.Rels(boiler.TableNames.MechSkin, boiler.MechSkinColumns.GenesisTokenID),
-			qm.Rels(boiler.TableNames.MechSkin, boiler.MechSkinColumns.LimitedReleaseTokenID),
-			qm.Rels(boiler.TableNames.MechSkin, boiler.MechSkinColumns.Level),
-			qm.Rels(boiler.TableNames.BlueprintMechSkin, boiler.BlueprintMechSkinColumns.ID),
-			qm.Rels(boiler.TableNames.BlueprintMechSkin, boiler.BlueprintMechSkinColumns.Label),
-			qm.Rels(boiler.TableNames.BlueprintMechSkin, boiler.BlueprintMechSkinColumns.DefaultLevel),
-			qm.Rels(boiler.TableNames.BlueprintMechSkin, boiler.BlueprintMechSkinColumns.Tier),
-			qm.Rels(boiler.TableNames.BlueprintMechSkin, boiler.BlueprintMechSkinColumns.ImageURL),
-			qm.Rels(boiler.TableNames.BlueprintMechSkin, boiler.BlueprintMechSkinColumns.CardAnimationURL),
-			qm.Rels(boiler.TableNames.BlueprintMechSkin, boiler.BlueprintMechSkinColumns.AvatarURL),
-			qm.Rels(boiler.TableNames.BlueprintMechSkin, boiler.BlueprintMechSkinColumns.LargeImageURL),
-			qm.Rels(boiler.TableNames.BlueprintMechSkin, boiler.BlueprintMechSkinColumns.AnimationURL),
-			qm.Rels(boiler.TableNames.BlueprintMechSkin, boiler.BlueprintMechSkinColumns.YoutubeURL),
-			qm.Rels(boiler.TableNames.BlueprintMechSkin, boiler.BlueprintMechSkinColumns.BackgroundColor),
-			qm.Rels(boiler.TableNames.MechModelSkinCompatibilities, boiler.MechModelSkinCompatibilityColumns.ImageURL),
-			qm.Rels(boiler.TableNames.MechModelSkinCompatibilities, boiler.MechModelSkinCompatibilityColumns.CardAnimationURL),
-			qm.Rels(boiler.TableNames.MechModelSkinCompatibilities, boiler.MechModelSkinCompatibilityColumns.AvatarURL),
-			qm.Rels(boiler.TableNames.MechModelSkinCompatibilities, boiler.MechModelSkinCompatibilityColumns.LargeImageURL),
-			qm.Rels(boiler.TableNames.MechModelSkinCompatibilities, boiler.MechModelSkinCompatibilityColumns.AnimationURL),
-			qm.Rels(boiler.TableNames.MechModelSkinCompatibilities, boiler.MechModelSkinCompatibilityColumns.YoutubeURL),
-			qm.Rels(boiler.TableNames.MechModelSkinCompatibilities, boiler.MechModelSkinCompatibilityColumns.BackgroundColor),
-		),
+		qm.Select(selectCols...),
 		qm.From(boiler.TableNames.CollectionItems),
 	)
 
 	// Sort
 	if opts.Sort != nil && opts.Sort.Table == boiler.TableNames.MechSkin && IsMechSkinColumn(opts.Sort.Column) && opts.Sort.Direction.IsValid() {
-		queryMods = append(queryMods, qm.OrderBy(fmt.Sprintf("%s.%s %s", boiler.TableNames.MechSkin, opts.Sort.Column, opts.Sort.Direction)))
+		orderBy := fmt.Sprintf("%s.%s %s", boiler.TableNames.MechSkin, opts.Sort.Column, opts.Sort.Direction)
+		if opts.DisplayUnique {
+			orderBy = fmt.Sprintf("%s, %s.%s %s",
+				boiler.MechSkinTableColumns.BlueprintID,
+				boiler.TableNames.MechSkin, opts.Sort.Column, opts.Sort.Direction,
+			)
+		}
+		queryMods = append(queryMods, qm.OrderBy(orderBy))
 	} else if opts.SortBy != "" && opts.SortDir.IsValid() {
 		if opts.SortBy == "alphabetical" {
-			queryMods = append(queryMods,
-				qm.OrderBy(
-					fmt.Sprintf("(%[1]s) %[2]s",
-						qm.Rels(boiler.TableNames.BlueprintMechSkin, boiler.BlueprintMechSkinColumns.Label),
-						opts.SortDir,
-					)))
+			orderBy := fmt.Sprintf("(%s) %s",
+				boiler.BlueprintMechSkinTableColumns.Label,
+				opts.SortDir,
+			)
+			if opts.DisplayUnique {
+				orderBy = fmt.Sprintf("%s, (%s) %s",
+					boiler.MechSkinTableColumns.BlueprintID,
+					boiler.BlueprintMechSkinTableColumns.Label,
+					opts.SortDir,
+				)
+			}
+			queryMods = append(queryMods, qm.OrderBy(orderBy))
 		} else if opts.SortBy == "rarity" {
 			queryMods = append(queryMods, GenerateTierSort(qm.Rels(boiler.TableNames.BlueprintMechSkin, boiler.BlueprintMechSkinColumns.Tier), opts.SortDir))
 		}
 	} else {
-		queryMods = append(queryMods,
-			qm.OrderBy(
-				fmt.Sprintf("%[1]s ASC",
-					qm.Rels(boiler.TableNames.BlueprintMechSkin, boiler.BlueprintMechSkinColumns.Label),
-				)))
+		orderBy := fmt.Sprintf("%s ASC",
+			qm.Rels(boiler.TableNames.BlueprintMechSkin, boiler.BlueprintMechSkinColumns.Label),
+		)
+		if opts.DisplayUnique {
+			orderBy = fmt.Sprintf("%s, %s ASC",
+				boiler.MechSkinTableColumns.BlueprintID,
+				qm.Rels(boiler.TableNames.BlueprintMechSkin, boiler.BlueprintMechSkinColumns.Label),
+			)
+		}
+		queryMods = append(queryMods, qm.OrderBy(orderBy))
 	}
 
 	rows, err := boiler.NewQuery(
@@ -374,6 +412,7 @@ func MechSkinListDetailed(opts *MechSkinListOpts) (int64, []*server.MechSkin, er
 		}
 
 		scanArgs := []interface{}{
+			&mc.BlueprintID,
 			&mc.CollectionItem.CollectionSlug,
 			&mc.CollectionItem.Hash,
 			&mc.CollectionItem.TokenID,
@@ -389,7 +428,6 @@ func MechSkinListDetailed(opts *MechSkinListOpts) (int64, []*server.MechSkin, er
 			&mc.GenesisTokenID,
 			&mc.LimitedReleaseTokenID,
 			&mc.Level,
-			&mc.BlueprintID,
 			&mc.Label,
 			&mc.DefaultLevel,
 			&mc.Tier,

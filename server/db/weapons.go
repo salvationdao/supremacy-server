@@ -63,12 +63,7 @@ func getDefaultWeaponQueryMods() []qm.QueryMod {
 	}
 }
 
-func WeaponEquippedOnDetails(trx boil.Executor, equippedOnID string) (*server.EquippedOnDetails, error) {
-	tx := trx
-	if trx == nil {
-		tx = gamedb.StdConn
-	}
-
+func WeaponEquippedOnDetails(tx boil.Executor, equippedOnID string) (*server.EquippedOnDetails, error) {
 	eid := &server.EquippedOnDetails{}
 
 	err := boiler.NewQuery(

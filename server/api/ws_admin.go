@@ -1,0 +1,73 @@
+package api
+
+import (
+	"context"
+	"encoding/json"
+	"server"
+	"server/db"
+	"server/db/boiler"
+	"server/gamedb"
+
+	"github.com/ninja-software/terror/v2"
+	"github.com/ninja-syndicate/ws"
+)
+
+type AdminController struct {
+	API *API
+}
+
+func NewAdminController(api *API) *AdminController {
+	adminHub := &AdminController{
+		API: api,
+	}
+
+	api.SecureAdminCommand(HubKeyAdminFiatProductList, adminHub.FiatProductList)
+
+	return adminHub
+}
+
+type AdminFiatProductListRequest struct {
+	Payload struct {
+		Filters  *db.FiatProductFilter `json:"filters"`
+		Search   string                `json:"search"`
+		SortBy   string                `json:"sort_by"`
+		SortDir  db.SortByDir          `json:"sort_dir"`
+		PageSize int                   `json:"page_size"`
+		Page     int                   `json:"page"`
+	} `json:"payload"`
+}
+
+type AdminFiatProductListResponse struct {
+	Total   int64                 `json:"total"`
+	Records []*server.FiatProduct `json:"records"`
+}
+
+const HubKeyAdminFiatProductList = "ADMIN:FIAT:PRODUCT:LIST"
+
+func (ac *AdminController) FiatProductList(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
+	errMsg := "Failed to get packages, please try again."
+
+	req := &AdminFiatProductListRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return terror.Error(err, "Invalid request received.")
+	}
+
+	offset := 0
+	if req.Payload.Page > 0 {
+		offset = req.Payload.Page * req.Payload.PageSize
+	}
+
+	total, storePackages, err := db.FiatProducts(gamedb.StdConn, req.Payload.Filters, req.Payload.Search, req.Payload.SortBy, req.Payload.SortDir, offset, req.Payload.PageSize)
+	if err != nil {
+		return terror.Error(err, errMsg)
+	}
+
+	resp := &FiatProductListResponse{
+		Total:   total,
+		Records: storePackages,
+	}
+	reply(resp)
+
+	return nil
+}

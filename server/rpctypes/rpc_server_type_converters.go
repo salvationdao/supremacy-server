@@ -3,6 +3,7 @@ package rpctypes
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/volatiletech/sqlboiler/v4/boil"
 	"server"
 	"server/db"
 	"server/gamedb"
@@ -215,7 +216,7 @@ func ServerMechAnimationsToXsynAsset(mechAnimations []*server.MechAnimation) []*
 	return assets
 }
 
-func ServerMechSkinsToXsynAsset(mechSkins []*server.MechSkin) []*XsynAsset {
+func ServerMechSkinsToXsynAsset(tx boil.Executor, mechSkins []*server.MechSkin) []*XsynAsset {
 	var assets []*XsynAsset
 	for _, i := range mechSkins {
 		asJson, err := json.Marshal(i)
@@ -243,7 +244,7 @@ func ServerMechSkinsToXsynAsset(mechSkins []*server.MechSkin) []*XsynAsset {
 		if i.EquippedOn.Valid {
 			if i.EquippedOnDetails == nil {
 				// make db call
-				i.EquippedOnDetails, err = db.MechEquippedOnDetails(gamedb.StdConn, i.EquippedOn.String)
+				i.EquippedOnDetails, err = db.MechEquippedOnDetails(tx, i.EquippedOn.String)
 				if err != nil {
 					gamelog.L.Error().Err(err).Interface("interface", i).Msg("failed to get db.MechEquippedOnDetails")
 					continue
@@ -573,7 +574,7 @@ func ServerWeaponsToXsynAsset(weapons []*server.Weapon) []*XsynAsset {
 	return assets
 }
 
-func ServerWeaponSkinsToXsynAsset(weaponSkins []*server.WeaponSkin) []*XsynAsset {
+func ServerWeaponSkinsToXsynAsset(tx boil.Executor, weaponSkins []*server.WeaponSkin) []*XsynAsset {
 	var assets []*XsynAsset
 	for _, i := range weaponSkins {
 		asJson, err := json.Marshal(i)
@@ -601,7 +602,7 @@ func ServerWeaponSkinsToXsynAsset(weaponSkins []*server.WeaponSkin) []*XsynAsset
 		if i.EquippedOn.Valid {
 			if i.EquippedOnDetails == nil {
 				// make db call
-				i.EquippedOnDetails, err = db.WeaponEquippedOnDetails(nil, i.EquippedOn.String)
+				i.EquippedOnDetails, err = db.WeaponEquippedOnDetails(tx, i.EquippedOn.String)
 				if err != nil {
 					gamelog.L.Error().Err(err).Interface("interface", i).Msg("failed to get db.MechEquippedOnDetails")
 					continue

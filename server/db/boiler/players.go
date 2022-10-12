@@ -44,6 +44,7 @@ type Player struct {
 	CustomAvatarID   null.String     `boiler:"custom_avatar_id" boil:"custom_avatar_id" json:"custom_avatar_id,omitempty" toml:"custom_avatar_id" yaml:"custom_avatar_id,omitempty"`
 	StripeCustomerID null.String     `boiler:"stripe_customer_id" boil:"stripe_customer_id" json:"stripe_customer_id,omitempty" toml:"stripe_customer_id" yaml:"stripe_customer_id,omitempty"`
 	AcceptsMarketing null.Bool       `boiler:"accepts_marketing" boil:"accepts_marketing" json:"accepts_marketing,omitempty" toml:"accepts_marketing" yaml:"accepts_marketing,omitempty"`
+	RoleID           string          `boiler:"role_id" boil:"role_id" json:"role_id" toml:"role_id" yaml:"role_id"`
 
 	R *playerR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L playerL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -70,6 +71,7 @@ var PlayerColumns = struct {
 	CustomAvatarID   string
 	StripeCustomerID string
 	AcceptsMarketing string
+	RoleID           string
 }{
 	ID:               "id",
 	FactionID:        "faction_id",
@@ -91,6 +93,7 @@ var PlayerColumns = struct {
 	CustomAvatarID:   "custom_avatar_id",
 	StripeCustomerID: "stripe_customer_id",
 	AcceptsMarketing: "accepts_marketing",
+	RoleID:           "role_id",
 }
 
 var PlayerTableColumns = struct {
@@ -114,6 +117,7 @@ var PlayerTableColumns = struct {
 	CustomAvatarID   string
 	StripeCustomerID string
 	AcceptsMarketing string
+	RoleID           string
 }{
 	ID:               "players.id",
 	FactionID:        "players.faction_id",
@@ -135,6 +139,7 @@ var PlayerTableColumns = struct {
 	CustomAvatarID:   "players.custom_avatar_id",
 	StripeCustomerID: "players.stripe_customer_id",
 	AcceptsMarketing: "players.accepts_marketing",
+	RoleID:           "players.role_id",
 }
 
 // Generated where
@@ -160,6 +165,7 @@ var PlayerWhere = struct {
 	CustomAvatarID   whereHelpernull_String
 	StripeCustomerID whereHelpernull_String
 	AcceptsMarketing whereHelpernull_Bool
+	RoleID           whereHelperstring
 }{
 	ID:               whereHelperstring{field: "\"players\".\"id\""},
 	FactionID:        whereHelpernull_String{field: "\"players\".\"faction_id\""},
@@ -181,6 +187,7 @@ var PlayerWhere = struct {
 	CustomAvatarID:   whereHelpernull_String{field: "\"players\".\"custom_avatar_id\""},
 	StripeCustomerID: whereHelpernull_String{field: "\"players\".\"stripe_customer_id\""},
 	AcceptsMarketing: whereHelpernull_Bool{field: "\"players\".\"accepts_marketing\""},
+	RoleID:           whereHelperstring{field: "\"players\".\"role_id\""},
 }
 
 // PlayerRels is where relationship names are stored.
@@ -188,6 +195,7 @@ var PlayerRels = struct {
 	CustomAvatar                             string
 	Faction                                  string
 	ProfileAvatar                            string
+	Role                                     string
 	Syndicate                                string
 	PlayerSettingsPreference                 string
 	IDPlayerStat                             string
@@ -271,6 +279,7 @@ var PlayerRels = struct {
 	CustomAvatar:                             "CustomAvatar",
 	Faction:                                  "Faction",
 	ProfileAvatar:                            "ProfileAvatar",
+	Role:                                     "Role",
 	Syndicate:                                "Syndicate",
 	PlayerSettingsPreference:                 "PlayerSettingsPreference",
 	IDPlayerStat:                             "IDPlayerStat",
@@ -357,6 +366,7 @@ type playerR struct {
 	CustomAvatar                             *ProfileCustomAvatar             `boiler:"CustomAvatar" boil:"CustomAvatar" json:"CustomAvatar" toml:"CustomAvatar" yaml:"CustomAvatar"`
 	Faction                                  *Faction                         `boiler:"Faction" boil:"Faction" json:"Faction" toml:"Faction" yaml:"Faction"`
 	ProfileAvatar                            *ProfileAvatar                   `boiler:"ProfileAvatar" boil:"ProfileAvatar" json:"ProfileAvatar" toml:"ProfileAvatar" yaml:"ProfileAvatar"`
+	Role                                     *Role                            `boiler:"Role" boil:"Role" json:"Role" toml:"Role" yaml:"Role"`
 	Syndicate                                *Syndicate                       `boiler:"Syndicate" boil:"Syndicate" json:"Syndicate" toml:"Syndicate" yaml:"Syndicate"`
 	PlayerSettingsPreference                 *PlayerSettingsPreference        `boiler:"PlayerSettingsPreference" boil:"PlayerSettingsPreference" json:"PlayerSettingsPreference" toml:"PlayerSettingsPreference" yaml:"PlayerSettingsPreference"`
 	IDPlayerStat                             *PlayerStat                      `boiler:"IDPlayerStat" boil:"IDPlayerStat" json:"IDPlayerStat" toml:"IDPlayerStat" yaml:"IDPlayerStat"`
@@ -447,9 +457,9 @@ func (*playerR) NewStruct() *playerR {
 type playerL struct{}
 
 var (
-	playerAllColumns            = []string{"id", "faction_id", "username", "public_address", "is_ai", "deleted_at", "updated_at", "created_at", "mobile_number", "issue_punish_fee", "reported_cost", "gid", "rank", "sent_message_count", "about_me", "profile_avatar_id", "syndicate_id", "custom_avatar_id", "stripe_customer_id", "accepts_marketing"}
+	playerAllColumns            = []string{"id", "faction_id", "username", "public_address", "is_ai", "deleted_at", "updated_at", "created_at", "mobile_number", "issue_punish_fee", "reported_cost", "gid", "rank", "sent_message_count", "about_me", "profile_avatar_id", "syndicate_id", "custom_avatar_id", "stripe_customer_id", "accepts_marketing", "role_id"}
 	playerColumnsWithoutDefault = []string{"id"}
-	playerColumnsWithDefault    = []string{"faction_id", "username", "public_address", "is_ai", "deleted_at", "updated_at", "created_at", "mobile_number", "issue_punish_fee", "reported_cost", "gid", "rank", "sent_message_count", "about_me", "profile_avatar_id", "syndicate_id", "custom_avatar_id", "stripe_customer_id", "accepts_marketing"}
+	playerColumnsWithDefault    = []string{"faction_id", "username", "public_address", "is_ai", "deleted_at", "updated_at", "created_at", "mobile_number", "issue_punish_fee", "reported_cost", "gid", "rank", "sent_message_count", "about_me", "profile_avatar_id", "syndicate_id", "custom_avatar_id", "stripe_customer_id", "accepts_marketing", "role_id"}
 	playerPrimaryKeyColumns     = []string{"id"}
 	playerGeneratedColumns      = []string{}
 )
@@ -737,6 +747,20 @@ func (o *Player) ProfileAvatar(mods ...qm.QueryMod) profileAvatarQuery {
 
 	query := ProfileAvatars(queryMods...)
 	queries.SetFrom(query.Query, "\"profile_avatars\"")
+
+	return query
+}
+
+// Role pointed to by the foreign key.
+func (o *Player) Role(mods ...qm.QueryMod) roleQuery {
+	queryMods := []qm.QueryMod{
+		qm.Where("\"id\" = ?", o.RoleID),
+	}
+
+	queryMods = append(queryMods, mods...)
+
+	query := Roles(queryMods...)
+	queries.SetFrom(query.Query, "\"roles\"")
 
 	return query
 }
@@ -2737,6 +2761,110 @@ func (playerL) LoadProfileAvatar(e boil.Executor, singular bool, maybePlayer int
 				local.R.ProfileAvatar = foreign
 				if foreign.R == nil {
 					foreign.R = &profileAvatarR{}
+				}
+				foreign.R.Players = append(foreign.R.Players, local)
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
+// LoadRole allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for an N-1 relationship.
+func (playerL) LoadRole(e boil.Executor, singular bool, maybePlayer interface{}, mods queries.Applicator) error {
+	var slice []*Player
+	var object *Player
+
+	if singular {
+		object = maybePlayer.(*Player)
+	} else {
+		slice = *maybePlayer.(*[]*Player)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &playerR{}
+		}
+		args = append(args, object.RoleID)
+
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &playerR{}
+			}
+
+			for _, a := range args {
+				if a == obj.RoleID {
+					continue Outer
+				}
+			}
+
+			args = append(args, obj.RoleID)
+
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`roles`),
+		qm.WhereIn(`roles.id in ?`, args...),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load Role")
+	}
+
+	var resultSlice []*Role
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice Role")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results of eager load for roles")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for roles")
+	}
+
+	if len(playerAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+
+	if len(resultSlice) == 0 {
+		return nil
+	}
+
+	if singular {
+		foreign := resultSlice[0]
+		object.R.Role = foreign
+		if foreign.R == nil {
+			foreign.R = &roleR{}
+		}
+		foreign.R.Players = append(foreign.R.Players, object)
+		return nil
+	}
+
+	for _, local := range slice {
+		for _, foreign := range resultSlice {
+			if local.RoleID == foreign.ID {
+				local.R.Role = foreign
+				if foreign.R == nil {
+					foreign.R = &roleR{}
 				}
 				foreign.R.Players = append(foreign.R.Players, local)
 				break
@@ -10806,6 +10934,52 @@ func (o *Player) RemoveProfileAvatar(exec boil.Executor, related *ProfileAvatar)
 		related.R.Players = related.R.Players[:ln-1]
 		break
 	}
+	return nil
+}
+
+// SetRole of the player to the related item.
+// Sets o.R.Role to related.
+// Adds o to related.R.Players.
+func (o *Player) SetRole(exec boil.Executor, insert bool, related *Role) error {
+	var err error
+	if insert {
+		if err = related.Insert(exec, boil.Infer()); err != nil {
+			return errors.Wrap(err, "failed to insert into foreign table")
+		}
+	}
+
+	updateQuery := fmt.Sprintf(
+		"UPDATE \"players\" SET %s WHERE %s",
+		strmangle.SetParamNames("\"", "\"", 1, []string{"role_id"}),
+		strmangle.WhereClause("\"", "\"", 2, playerPrimaryKeyColumns),
+	)
+	values := []interface{}{related.ID, o.ID}
+
+	if boil.DebugMode {
+		fmt.Fprintln(boil.DebugWriter, updateQuery)
+		fmt.Fprintln(boil.DebugWriter, values)
+	}
+	if _, err = exec.Exec(updateQuery, values...); err != nil {
+		return errors.Wrap(err, "failed to update local table")
+	}
+
+	o.RoleID = related.ID
+	if o.R == nil {
+		o.R = &playerR{
+			Role: related,
+		}
+	} else {
+		o.R.Role = related
+	}
+
+	if related.R == nil {
+		related.R = &roleR{
+			Players: PlayerSlice{o},
+		}
+	} else {
+		related.R.Players = append(related.R.Players, o)
+	}
+
 	return nil
 }
 
