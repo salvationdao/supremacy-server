@@ -18,6 +18,7 @@ import (
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
+	"server/mod_tools"
 	"server/profanities"
 	"server/quest"
 	"server/replay"
@@ -172,6 +173,7 @@ func main() {
 					&cli.StringFlag{Name: "zendesk_url", Value: "", EnvVars: []string{envPrefix + "_ZENDESK_URL"}, Usage: "Zendesk url to write tickets/requests"},
 
 					&cli.StringFlag{Name: "ovenmedia_auth_key", Value: "test", EnvVars: []string{envPrefix + "_OVENMEDIA_AUTH_KEY"}, Usage: "Auth key for ovenmedia"},
+					&cli.StringFlag{Name: "slack_auth_token", EnvVars: []string{envPrefix + "_SLACK_AUTH_TOKEN"}, Usage: "Slack app token for mod tools"},
 
 					// Crypto signatures for battle histories
 					&cli.StringFlag{Name: "private_key_signer_hex", Value: "0x5f3b57101caf01c3d91e50809e70d84fcc404dd108aa8a9aa3e1a6c482267f48", EnvVars: []string{envPrefix + "_PRIVATE_KEY_SIGNER_HEX"}, Usage: "Private key for signing battle records (default is testnet dev private key)"},
@@ -215,6 +217,7 @@ func main() {
 					environment := c.String("environment")
 
 					replay.OvenMediaAuthKey = c.String("ovenmedia_auth_key")
+					mod_tools.SlackModToolsAppToken = c.String("slack_auth_token")
 
 					server.SetEnv(environment)
 

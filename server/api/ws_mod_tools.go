@@ -4,10 +4,13 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
 	"server"
 	"server/db"
 	"server/db/boiler"
 	"server/gamedb"
+	"server/gamelog"
+	"server/mod_tools"
 	"time"
 
 	"github.com/gofrs/uuid"
@@ -21,6 +24,7 @@ func NewModToolsController(api *API) {
 	api.SecureAdminCommand(HubKeyModToolsGetUser, api.ModToolsGetUser)
 	api.SecureAdminCommand(HubKeyModToolsBanUser, api.ModToolBanUser)
 	api.SecureAdminCommand(HubKeyModToolsUnbanUser, api.ModToolUnbanUser)
+	api.SecureAdminCommand(HubKeyModToolRestartServer, api.ModToolRestartServer)
 }
 
 const HubKeyModToolsGetUser = "MOD:GET:USER"
@@ -146,6 +150,43 @@ func (api *API) ModToolBanUser(ctx context.Context, user *boiler.Player, key str
 			ws.PublishMessage("/public/global_chat", HubKeyGlobalChatSubscribe, []*ChatMessage{cm})
 		}
 
+		banTypeString := ""
+
+		if req.Payload.LocationSelectBan {
+			banTypeString = banTypeString + "\n- Location select ban"
+		}
+
+		if req.Payload.BanMechQueue {
+			banTypeString = banTypeString + "\n- Mech queueing"
+		}
+
+		if req.Payload.SupContributeBan {
+			banTypeString = banTypeString + "\n- Sup contributing"
+		}
+
+		if req.Payload.ChatBan {
+			banTypeString = banTypeString + "\n- Chat ban"
+		}
+
+		audit := &boiler.ModActionAudit{
+			ActionType:  boiler.ModActionTypeBAN,
+			ModID:       user.ID,
+			Reason:      req.Payload.BanReason,
+			PlayerBanID: null.StringFrom(playerBan.ID),
+		}
+
+		err = audit.Insert(gamedb.StdConn, boil.Infer())
+		if err != nil {
+			return terror.Error(err, "Failed to insert audit please try again")
+		}
+
+		slackMessage := fmt.Sprintf("<!subteam^S03GCC87CD7>\n\n:x: `%s#%d` has banned user `%s#%d` :x: \n\n```Reasons: %s\nBan End At: %s\nBan Type:%s```", user.Username.String, user.Gid, bannedPlayer.Username.String, bannedPlayer.Gid, req.Payload.BanReason, banEndAt.String(), banTypeString)
+
+		err = mod_tools.SendSlackNotification(slackMessage, db.GetStrWithDefault(db.KeySlackModChannelID, "C03GDHLV9FE"))
+		if err != nil {
+			gamelog.L.Err(err).Msg("Failed to send slack notification for banning user")
+		}
+
 	}
 
 	reply(true)
@@ -200,8 +241,102 @@ func (api *API) ModToolUnbanUser(ctx context.Context, user *boiler.Player, key s
 		}
 
 		ws.PublishMessage(fmt.Sprintf("/secure/user/%s/system_messages", playerBan.BannedPlayerID), server.HubKeySystemMessageListUpdatedSubscribe, true)
+
+		player, err := boiler.FindPlayer(gamedb.StdConn, playerBan.BannedPlayerID)
+		if err != nil {
+			gamelog.L.Err(err).Msg("Failed to find player for unbanning")
+			continue
+		}
+
+		audit := &boiler.ModActionAudit{
+			ActionType:  boiler.ModActionTypeUNBAN,
+			ModID:       user.ID,
+			Reason:      req.Payload.UnbanReason,
+			PlayerBanID: null.StringFrom(playerBan.ID),
+		}
+
+		err = audit.Insert(gamedb.StdConn, boil.Infer())
+		if err != nil {
+			return terror.Error(err, "Failed to insert audit please try again")
+		}
+
+		unbackFrom := ""
+
+		if playerBan.BanLocationSelect {
+			unbackFrom = unbackFrom + "\n- Location select ban"
+		}
+
+		if playerBan.BanMechQueue {
+			unbackFrom = unbackFrom + "\n- Mech queueing"
+		}
+
+		if playerBan.BanSupsContribute {
+			unbackFrom = unbackFrom + "\n- Sup contributing"
+		}
+
+		if playerBan.BanSendChat {
+			unbackFrom = unbackFrom + "\n- Chat ban"
+		}
+
+		slackMessage := fmt.Sprintf("<!subteam^S03GCC87CD7>\n\n:white_check_mark: `%s#%d` has unbanned user `%s#%d` :white_check_mark: \n\n```Reasons: %s\nUnbanned from:%s```", user.Username.String, user.Gid, player.Username.String, player.Gid, req.Payload.UnbanReason, unbackFrom)
+
+		err = mod_tools.SendSlackNotification(slackMessage, db.GetStrWithDefault(db.KeySlackModChannelID, "C03GDHLV9FE"))
+		if err != nil {
+			gamelog.L.Err(err).Msg("Failed to send slack notification for unbanning user")
+		}
+
 	}
+
 	reply(true)
+
+	return nil
+}
+
+const HubKeyModToolRestartServer = "MOD:RESTART:SERVER"
+
+type ModToolRestartServer struct {
+	Payload struct {
+		Reason string `json:"reason"`
+	} `json:"payload"`
+}
+
+func (api *API) ModToolRestartServer(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
+	req := &ModToolRestartServer{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return terror.Error(err, "Invalid request received.")
+	}
+
+	if req.Payload.Reason == "" {
+		return terror.Error(fmt.Errorf("no reason provided for restarting server"), "PLease provide a reason before attempting to restart server")
+	}
+
+	audit := &boiler.ModActionAudit{
+		ActionType: boiler.ModActionTypeRESTART,
+		ModID:      user.ID,
+		Reason:     req.Payload.Reason,
+	}
+
+	err = audit.Insert(gamedb.StdConn, boil.Infer())
+	if err != nil {
+		return terror.Error(err, "Failed to insert audit please try again")
+	}
+
+	slackMessage := fmt.Sprintf("<!channel>\n\n:warning: `%s#%d` has restarted Gameserver :warning: \n\n```Reason: %s```", user.Username.String, user.Gid, req.Payload.Reason)
+
+	err = mod_tools.SendSlackNotification(slackMessage, db.GetStrWithDefault(db.KeySlackRapiChannelID, "C03F29D12BA"))
+	if err != nil {
+		gamelog.L.Err(err).Msg("Failed to send slack notification for banning user")
+	}
+
+	slackMessage = fmt.Sprintf("<!subteam^S03GCC87CD7>\n\n:warning: `%s#%d` has restarted Gameserver :warning: \n\n```Reason: %s```", user.Username.String, user.Gid, req.Payload.Reason)
+
+	err = mod_tools.SendSlackNotification(slackMessage, db.GetStrWithDefault(db.KeySlackModChannelID, "C03GDHLV9FE"))
+	if err != nil {
+		gamelog.L.Err(err).Msg("Failed to send slack notification for banning user")
+	}
+
+	os.Exit(1)
 
 	return nil
 }

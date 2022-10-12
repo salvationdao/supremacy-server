@@ -188,22 +188,25 @@ var PlayerBanRels = struct {
 	BannedPlayer                 string
 	BattleNumberBattle           string
 	RelatedPunishVote            string
+	ModActionAudits              string
 	RelatedPlayBanPlayerKillLogs string
 }{
 	BannedBy:                     "BannedBy",
 	BannedPlayer:                 "BannedPlayer",
 	BattleNumberBattle:           "BattleNumberBattle",
 	RelatedPunishVote:            "RelatedPunishVote",
+	ModActionAudits:              "ModActionAudits",
 	RelatedPlayBanPlayerKillLogs: "RelatedPlayBanPlayerKillLogs",
 }
 
 // playerBanR is where relationships are stored.
 type playerBanR struct {
-	BannedBy                     *Player            `boiler:"BannedBy" boil:"BannedBy" json:"BannedBy" toml:"BannedBy" yaml:"BannedBy"`
-	BannedPlayer                 *Player            `boiler:"BannedPlayer" boil:"BannedPlayer" json:"BannedPlayer" toml:"BannedPlayer" yaml:"BannedPlayer"`
-	BattleNumberBattle           *Battle            `boiler:"BattleNumberBattle" boil:"BattleNumberBattle" json:"BattleNumberBattle" toml:"BattleNumberBattle" yaml:"BattleNumberBattle"`
-	RelatedPunishVote            *PunishVote        `boiler:"RelatedPunishVote" boil:"RelatedPunishVote" json:"RelatedPunishVote" toml:"RelatedPunishVote" yaml:"RelatedPunishVote"`
-	RelatedPlayBanPlayerKillLogs PlayerKillLogSlice `boiler:"RelatedPlayBanPlayerKillLogs" boil:"RelatedPlayBanPlayerKillLogs" json:"RelatedPlayBanPlayerKillLogs" toml:"RelatedPlayBanPlayerKillLogs" yaml:"RelatedPlayBanPlayerKillLogs"`
+	BannedBy                     *Player             `boiler:"BannedBy" boil:"BannedBy" json:"BannedBy" toml:"BannedBy" yaml:"BannedBy"`
+	BannedPlayer                 *Player             `boiler:"BannedPlayer" boil:"BannedPlayer" json:"BannedPlayer" toml:"BannedPlayer" yaml:"BannedPlayer"`
+	BattleNumberBattle           *Battle             `boiler:"BattleNumberBattle" boil:"BattleNumberBattle" json:"BattleNumberBattle" toml:"BattleNumberBattle" yaml:"BattleNumberBattle"`
+	RelatedPunishVote            *PunishVote         `boiler:"RelatedPunishVote" boil:"RelatedPunishVote" json:"RelatedPunishVote" toml:"RelatedPunishVote" yaml:"RelatedPunishVote"`
+	ModActionAudits              ModActionAuditSlice `boiler:"ModActionAudits" boil:"ModActionAudits" json:"ModActionAudits" toml:"ModActionAudits" yaml:"ModActionAudits"`
+	RelatedPlayBanPlayerKillLogs PlayerKillLogSlice  `boiler:"RelatedPlayBanPlayerKillLogs" boil:"RelatedPlayBanPlayerKillLogs" json:"RelatedPlayBanPlayerKillLogs" toml:"RelatedPlayBanPlayerKillLogs" yaml:"RelatedPlayBanPlayerKillLogs"`
 }
 
 // NewStruct creates a new relationship struct
@@ -519,6 +522,27 @@ func (o *PlayerBan) RelatedPunishVote(mods ...qm.QueryMod) punishVoteQuery {
 
 	query := PunishVotes(queryMods...)
 	queries.SetFrom(query.Query, "\"punish_votes\"")
+
+	return query
+}
+
+// ModActionAudits retrieves all the mod_action_audit's ModActionAudits with an executor.
+func (o *PlayerBan) ModActionAudits(mods ...qm.QueryMod) modActionAuditQuery {
+	var queryMods []qm.QueryMod
+	if len(mods) != 0 {
+		queryMods = append(queryMods, mods...)
+	}
+
+	queryMods = append(queryMods,
+		qm.Where("\"mod_action_audit\".\"player_ban_id\"=?", o.ID),
+	)
+
+	query := ModActionAudits(queryMods...)
+	queries.SetFrom(query.Query, "\"mod_action_audit\"")
+
+	if len(queries.GetSelect(query.Query)) == 0 {
+		queries.SetSelect(query.Query, []string{"\"mod_action_audit\".*"})
+	}
 
 	return query
 }
@@ -971,6 +995,104 @@ func (playerBanL) LoadRelatedPunishVote(e boil.Executor, singular bool, maybePla
 	return nil
 }
 
+// LoadModActionAudits allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for a 1-M or N-M relationship.
+func (playerBanL) LoadModActionAudits(e boil.Executor, singular bool, maybePlayerBan interface{}, mods queries.Applicator) error {
+	var slice []*PlayerBan
+	var object *PlayerBan
+
+	if singular {
+		object = maybePlayerBan.(*PlayerBan)
+	} else {
+		slice = *maybePlayerBan.(*[]*PlayerBan)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &playerBanR{}
+		}
+		args = append(args, object.ID)
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &playerBanR{}
+			}
+
+			for _, a := range args {
+				if queries.Equal(a, obj.ID) {
+					continue Outer
+				}
+			}
+
+			args = append(args, obj.ID)
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`mod_action_audit`),
+		qm.WhereIn(`mod_action_audit.player_ban_id in ?`, args...),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load mod_action_audit")
+	}
+
+	var resultSlice []*ModActionAudit
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice mod_action_audit")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results in eager load on mod_action_audit")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for mod_action_audit")
+	}
+
+	if len(modActionAuditAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+	if singular {
+		object.R.ModActionAudits = resultSlice
+		for _, foreign := range resultSlice {
+			if foreign.R == nil {
+				foreign.R = &modActionAuditR{}
+			}
+			foreign.R.PlayerBan = object
+		}
+		return nil
+	}
+
+	for _, foreign := range resultSlice {
+		for _, local := range slice {
+			if queries.Equal(local.ID, foreign.PlayerBanID) {
+				local.R.ModActionAudits = append(local.R.ModActionAudits, foreign)
+				if foreign.R == nil {
+					foreign.R = &modActionAuditR{}
+				}
+				foreign.R.PlayerBan = local
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
 // LoadRelatedPlayBanPlayerKillLogs allows an eager lookup of values, cached into the
 // loaded structs of the objects. This is for a 1-M or N-M relationship.
 func (playerBanL) LoadRelatedPlayBanPlayerKillLogs(e boil.Executor, singular bool, maybePlayerBan interface{}, mods queries.Applicator) error {
@@ -1316,6 +1438,131 @@ func (o *PlayerBan) RemoveRelatedPunishVote(exec boil.Executor, related *PunishV
 		related.R.RelatedPunishVotePlayerBans = related.R.RelatedPunishVotePlayerBans[:ln-1]
 		break
 	}
+	return nil
+}
+
+// AddModActionAudits adds the given related objects to the existing relationships
+// of the player_ban, optionally inserting them as new records.
+// Appends related to o.R.ModActionAudits.
+// Sets related.R.PlayerBan appropriately.
+func (o *PlayerBan) AddModActionAudits(exec boil.Executor, insert bool, related ...*ModActionAudit) error {
+	var err error
+	for _, rel := range related {
+		if insert {
+			queries.Assign(&rel.PlayerBanID, o.ID)
+			if err = rel.Insert(exec, boil.Infer()); err != nil {
+				return errors.Wrap(err, "failed to insert into foreign table")
+			}
+		} else {
+			updateQuery := fmt.Sprintf(
+				"UPDATE \"mod_action_audit\" SET %s WHERE %s",
+				strmangle.SetParamNames("\"", "\"", 1, []string{"player_ban_id"}),
+				strmangle.WhereClause("\"", "\"", 2, modActionAuditPrimaryKeyColumns),
+			)
+			values := []interface{}{o.ID, rel.ID}
+
+			if boil.DebugMode {
+				fmt.Fprintln(boil.DebugWriter, updateQuery)
+				fmt.Fprintln(boil.DebugWriter, values)
+			}
+			if _, err = exec.Exec(updateQuery, values...); err != nil {
+				return errors.Wrap(err, "failed to update foreign table")
+			}
+
+			queries.Assign(&rel.PlayerBanID, o.ID)
+		}
+	}
+
+	if o.R == nil {
+		o.R = &playerBanR{
+			ModActionAudits: related,
+		}
+	} else {
+		o.R.ModActionAudits = append(o.R.ModActionAudits, related...)
+	}
+
+	for _, rel := range related {
+		if rel.R == nil {
+			rel.R = &modActionAuditR{
+				PlayerBan: o,
+			}
+		} else {
+			rel.R.PlayerBan = o
+		}
+	}
+	return nil
+}
+
+// SetModActionAudits removes all previously related items of the
+// player_ban replacing them completely with the passed
+// in related items, optionally inserting them as new records.
+// Sets o.R.PlayerBan's ModActionAudits accordingly.
+// Replaces o.R.ModActionAudits with related.
+// Sets related.R.PlayerBan's ModActionAudits accordingly.
+func (o *PlayerBan) SetModActionAudits(exec boil.Executor, insert bool, related ...*ModActionAudit) error {
+	query := "update \"mod_action_audit\" set \"player_ban_id\" = null where \"player_ban_id\" = $1"
+	values := []interface{}{o.ID}
+	if boil.DebugMode {
+		fmt.Fprintln(boil.DebugWriter, query)
+		fmt.Fprintln(boil.DebugWriter, values)
+	}
+	_, err := exec.Exec(query, values...)
+	if err != nil {
+		return errors.Wrap(err, "failed to remove relationships before set")
+	}
+
+	if o.R != nil {
+		for _, rel := range o.R.ModActionAudits {
+			queries.SetScanner(&rel.PlayerBanID, nil)
+			if rel.R == nil {
+				continue
+			}
+
+			rel.R.PlayerBan = nil
+		}
+
+		o.R.ModActionAudits = nil
+	}
+	return o.AddModActionAudits(exec, insert, related...)
+}
+
+// RemoveModActionAudits relationships from objects passed in.
+// Removes related items from R.ModActionAudits (uses pointer comparison, removal does not keep order)
+// Sets related.R.PlayerBan.
+func (o *PlayerBan) RemoveModActionAudits(exec boil.Executor, related ...*ModActionAudit) error {
+	if len(related) == 0 {
+		return nil
+	}
+
+	var err error
+	for _, rel := range related {
+		queries.SetScanner(&rel.PlayerBanID, nil)
+		if rel.R != nil {
+			rel.R.PlayerBan = nil
+		}
+		if _, err = rel.Update(exec, boil.Whitelist("player_ban_id")); err != nil {
+			return err
+		}
+	}
+	if o.R == nil {
+		return nil
+	}
+
+	for _, rel := range related {
+		for i, ri := range o.R.ModActionAudits {
+			if rel != ri {
+				continue
+			}
+
+			ln := len(o.R.ModActionAudits)
+			if ln > 1 && i < ln-1 {
+				o.R.ModActionAudits[i] = o.R.ModActionAudits[ln-1]
+			}
+			o.R.ModActionAudits = o.R.ModActionAudits[:ln-1]
+			break
+		}
+	}
+
 	return nil
 }
 
