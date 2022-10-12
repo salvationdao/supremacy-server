@@ -1215,10 +1215,59 @@ type WarMachineStat struct {
 	Health        uint32          `json:"health"`
 	Shield        uint32          `json:"shield"`
 	IsHidden      bool            `json:"is_hidden"`
-	TickOrder     int64           `json:"tick_order"`
 }
 
 const HubKeyWarMachineStatUpdated = "WAR:MACHINE:STAT:UPDATED"
+
+func (am *ArenaManager) WarMachineStatsSubscribe(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
+	arena, err := am.GetArenaFromContext(ctx)
+	if err != nil {
+		return err
+	}
+
+	battle := arena.CurrentBattle()
+	if battle == nil || battle.stage.Load() == BattleStageEnd {
+		return terror.Error(fmt.Errorf("battle not started yet"), "Battle is ended.")
+	}
+
+	pam := battle.playerAbilityManager()
+
+	var wmss []*WarMachineStat
+	for _, wm := range append(battle.WarMachines, battle.SpawnedAI...) {
+		wms := &WarMachineStat{
+			ParticipantID: int(wm.ParticipantID),
+			Health:        wm.Health,
+			Position:      wm.Position,
+			Rotation:      wm.Rotation,
+			IsHidden:      wm.IsHidden,
+			Shield:        wm.Shield,
+		}
+
+		// Hidden/Incognito
+		if wms.Position != nil {
+			if pam != nil {
+				hideMech := pam.IsWarMachineHidden(wm.Hash)
+				hideMech = hideMech || pam.IsWarMachineInBlackout(server.GameLocation{
+					X: wms.Position.X,
+					Y: wms.Position.Y,
+				})
+				if hideMech {
+					wms.IsHidden = true
+					wms.Position = &server.Vector3{
+						X: -1,
+						Y: -1,
+						Z: -1,
+					}
+				}
+			}
+		}
+
+		wmss = append(wmss, wms)
+	}
+
+	reply(wmss)
+	return nil
+}
 
 const HubKeyBribeStageUpdateSubscribe = "BRIBE:STAGE:UPDATED:SUBSCRIBE"
 
@@ -1936,8 +1985,6 @@ func (arena *Arena) BeginBattle() {
 			},
 			Events: events,
 		},
-
-		MechTickOrder: atomic.NewInt64(0),
 	}
 
 	// load war machines first

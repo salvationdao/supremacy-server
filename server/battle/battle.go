@@ -83,8 +83,6 @@ type Battle struct {
 
 	// for afk checker
 	introEndedAt time.Time
-
-	MechTickOrder *atomic.Int64
 }
 
 type MechBattleBrief struct {
@@ -1538,9 +1536,6 @@ func (btl *Battle) BroadcastUpdate() {
 func (btl *Battle) Tick(payload []byte) {
 	gamelog.L.Trace().Str("func", "Tick").Msg("start")
 	defer gamelog.L.Trace().Str("func", "Tick").Msg("end")
-
-	btl.MechTickOrder.Add(1)
-
 	if len(payload) < 1 {
 		gamelog.L.Error().Str("log_name", "battle arena").Err(fmt.Errorf("len(payload) < 1")).Interface("payload", payload).Msg("len(payload) < 1")
 		return
@@ -1625,7 +1620,6 @@ func (btl *Battle) Tick(payload []byte) {
 			Health:        warmachine.Health,
 			Shield:        warmachine.Shield,
 			IsHidden:      false,
-			TickOrder:     btl.MechTickOrder.Load(),
 		}
 
 		if wms.Position == nil {
@@ -1745,7 +1739,7 @@ func (arena *Arena) warMachinePositionBroadcaster() {
 			// update war machine stats
 			for _, stat := range stats {
 				index := slices.IndexFunc(warMachineStats, func(wms *WarMachineStat) bool {
-					return stat.ParticipantID == stat.ParticipantID
+					return wms.ParticipantID == stat.ParticipantID
 				})
 
 				// append, if not exists
@@ -1764,7 +1758,7 @@ func (arena *Arena) warMachinePositionBroadcaster() {
 			}
 
 			// otherwise broadcast current data
-			ws.PublishMessage(fmt.Sprintf("/public/arena/%s/mech_position", arena.ID), HubKeyWarMachineStatUpdated, warMachineStats)
+			ws.PublishMessage(fmt.Sprintf("/public/arena/%s/mech_stats", arena.ID), HubKeyWarMachineStatUpdated, warMachineStats)
 
 			// clear war machine stat
 			warMachineStats = []*WarMachineStat{}
