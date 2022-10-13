@@ -831,10 +831,13 @@ func WeaponListDetailed(opts *WeaponListOpts) (int64, []*server.Weapon, error) {
 	)
 
 	if opts.SortBy != "" && opts.SortDir.IsValid() {
-		if opts.SortBy == "alphabetical" {
-			queryMods = append(queryMods, qm.OrderBy(fmt.Sprintf("%s %s", qm.Rels(boiler.TableNames.BlueprintWeapons, boiler.BlueprintWeaponColumns.Label), opts.SortDir)))
-		} else if opts.SortBy == "rarity" {
-			queryMods = append(queryMods, GenerateTierSort(qm.Rels(boiler.TableNames.BlueprintWeaponSkin, boiler.BlueprintWeaponSkinColumns.Tier), opts.SortDir))
+		switch opts.SortBy {
+		case "alphabetical":
+			queryMods = append(queryMods, qm.OrderBy(fmt.Sprintf("%s %s", boiler.BlueprintWeaponTableColumns.Label, opts.SortDir)))
+		case "rarity":
+			queryMods = append(queryMods, GenerateTierSort(boiler.BlueprintWeaponSkinTableColumns.Tier, opts.SortDir))
+		case "date":
+			queryMods = append(queryMods, qm.OrderBy(fmt.Sprintf("%s %s", boiler.WeaponTableColumns.CreatedAt, opts.SortDir)))
 		}
 	} else {
 		queryMods = append(queryMods, qm.OrderBy(fmt.Sprintf("%s ASC", qm.Rels(boiler.TableNames.BlueprintWeapons, boiler.BlueprintWeaponColumns.Label))))
