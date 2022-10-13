@@ -28,6 +28,7 @@ type ModActionAudit struct {
 	ModID       string      `boiler:"mod_id" boil:"mod_id" json:"mod_id" toml:"mod_id" yaml:"mod_id"`
 	Reason      string      `boiler:"reason" boil:"reason" json:"reason" toml:"reason" yaml:"reason"`
 	PlayerBanID null.String `boiler:"player_ban_id" boil:"player_ban_id" json:"player_ban_id,omitempty" toml:"player_ban_id" yaml:"player_ban_id,omitempty"`
+	CreatedAt   time.Time   `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
 
 	R *modActionAuditR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L modActionAuditL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -39,12 +40,14 @@ var ModActionAuditColumns = struct {
 	ModID       string
 	Reason      string
 	PlayerBanID string
+	CreatedAt   string
 }{
 	ID:          "id",
 	ActionType:  "action_type",
 	ModID:       "mod_id",
 	Reason:      "reason",
 	PlayerBanID: "player_ban_id",
+	CreatedAt:   "created_at",
 }
 
 var ModActionAuditTableColumns = struct {
@@ -53,12 +56,14 @@ var ModActionAuditTableColumns = struct {
 	ModID       string
 	Reason      string
 	PlayerBanID string
+	CreatedAt   string
 }{
 	ID:          "mod_action_audit.id",
 	ActionType:  "mod_action_audit.action_type",
 	ModID:       "mod_action_audit.mod_id",
 	Reason:      "mod_action_audit.reason",
 	PlayerBanID: "mod_action_audit.player_ban_id",
+	CreatedAt:   "mod_action_audit.created_at",
 }
 
 // Generated where
@@ -69,12 +74,14 @@ var ModActionAuditWhere = struct {
 	ModID       whereHelperstring
 	Reason      whereHelperstring
 	PlayerBanID whereHelpernull_String
+	CreatedAt   whereHelpertime_Time
 }{
 	ID:          whereHelperstring{field: "\"mod_action_audit\".\"id\""},
 	ActionType:  whereHelperstring{field: "\"mod_action_audit\".\"action_type\""},
 	ModID:       whereHelperstring{field: "\"mod_action_audit\".\"mod_id\""},
 	Reason:      whereHelperstring{field: "\"mod_action_audit\".\"reason\""},
 	PlayerBanID: whereHelpernull_String{field: "\"mod_action_audit\".\"player_ban_id\""},
+	CreatedAt:   whereHelpertime_Time{field: "\"mod_action_audit\".\"created_at\""},
 }
 
 // ModActionAuditRels is where relationship names are stored.
@@ -101,9 +108,9 @@ func (*modActionAuditR) NewStruct() *modActionAuditR {
 type modActionAuditL struct{}
 
 var (
-	modActionAuditAllColumns            = []string{"id", "action_type", "mod_id", "reason", "player_ban_id"}
+	modActionAuditAllColumns            = []string{"id", "action_type", "mod_id", "reason", "player_ban_id", "created_at"}
 	modActionAuditColumnsWithoutDefault = []string{"action_type", "mod_id", "reason"}
-	modActionAuditColumnsWithDefault    = []string{"id", "player_ban_id"}
+	modActionAuditColumnsWithDefault    = []string{"id", "player_ban_id", "created_at"}
 	modActionAuditPrimaryKeyColumns     = []string{"id"}
 	modActionAuditGeneratedColumns      = []string{}
 )
@@ -763,6 +770,11 @@ func (o *ModActionAudit) Insert(exec boil.Executor, columns boil.Columns) error 
 	}
 
 	var err error
+	currTime := time.Now().In(boil.GetLocation())
+
+	if o.CreatedAt.IsZero() {
+		o.CreatedAt = currTime
+	}
 
 	if err := o.doBeforeInsertHooks(exec); err != nil {
 		return err
@@ -964,6 +976,11 @@ func (o ModActionAuditSlice) UpdateAll(exec boil.Executor, cols M) (int64, error
 func (o *ModActionAudit) Upsert(exec boil.Executor, updateOnConflict bool, conflictColumns []string, updateColumns, insertColumns boil.Columns) error {
 	if o == nil {
 		return errors.New("boiler: no mod_action_audit provided for upsert")
+	}
+	currTime := time.Now().In(boil.GetLocation())
+
+	if o.CreatedAt.IsZero() {
+		o.CreatedAt = currTime
 	}
 
 	if err := o.doBeforeUpsertHooks(exec); err != nil {
