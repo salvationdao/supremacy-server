@@ -64,7 +64,7 @@ type API struct {
 
 	FactionActivePlayers map[string]*ActivePlayers
 
-	VoiceStreamListeners []*server.PublicPlayer
+	VoiceChatListeners *VoiceChatListeners
 
 	// marketplace
 	MarketplaceController *marketplace.MarketplaceController
@@ -119,7 +119,6 @@ func NewAPI(
 		gamelog.L.Error().Err(err).Msg("Failed to spin up syndicate system")
 		return nil, err
 	}
-
 	// initialise api
 	api := &API{
 		Config:                   config,
@@ -162,6 +161,8 @@ func NewAPI(
 			verifyUrl: "https://hcaptcha.com/siteverify",
 		},
 		questManager: questManager,
+
+		VoiceChatListeners: NewVoiceChatListeners(),
 
 		ViewerUpdateChan: make(chan bool),
 	}

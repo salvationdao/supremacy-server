@@ -13,6 +13,7 @@ import (
 	"server/voice_chat"
 	"time"
 
+	"github.com/sasha-s/go-deadlock"
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 
@@ -63,14 +64,7 @@ func (api *API) VoiceStreamListenersSubscribe(ctx context.Context, user *boiler.
 		return terror.Error(fmt.Errorf("missing arena id"), "Missing arena id")
 	}
 
-	resp := []*server.PublicPlayer{}
-
-	for _, vl := range api.VoiceStreamListeners {
-		if vl.FactionID == user.FactionID {
-			resp = append(resp, vl)
-		}
-	}
-
+	resp := api.VoiceChatListeners.CurrentVoiceChatListeners()
 	reply(resp)
 
 	return nil
@@ -321,33 +315,99 @@ func (api *API) VoteKickFactionCommander(ctx context.Context, user *boiler.Playe
 	return nil
 }
 
+type VoiceChatListeners struct {
+	Listeners []*server.PublicPlayer
+	API       *API
+	deadlock.RWMutex
+}
+
+func NewVoiceChatListeners() *VoiceChatListeners {
+	vcl := &VoiceChatListeners{}
+
+	return vcl
+
+}
+
+// CurrentVoiceChatListeners return a copy of current voice stream listeners
+func (vcl *VoiceChatListeners) CurrentVoiceChatListeners() []*server.PublicPlayer {
+	vcl.RLock()
+	defer vcl.RUnlock()
+
+	return vcl.Listeners
+}
+
+func (vcl *VoiceChatListeners) AddListener(newListener *server.PublicPlayer) {
+	vcl.Lock()
+	found := false
+	for _, l := range vcl.Listeners {
+		if l.ID == newListener.ID {
+			found = true
+		}
+	}
+
+	if !found {
+		vcl.Listeners = append(vcl.Listeners, newListener)
+	}
+	vcl.Unlock()
+}
+
+func (vcl *VoiceChatListeners) RemoveListener(listenerID string) {
+	vcl.Lock()
+
+	newSlice := []*server.PublicPlayer{}
+	for _, v := range vcl.Listeners {
+		if v.ID != listenerID {
+			newSlice = append(newSlice, v)
+		}
+	}
+
+	vcl.Listeners = newSlice
+	vcl.Unlock()
+
+}
+
 func (api *API) VoiceChatConnect(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
+	req := &VoiceStreamReq{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return terror.Error(err, "Invalid request received")
+	}
 	p := &server.PublicPlayer{
 		ID:        user.ID,
 		Username:  user.Username,
 		Gid:       user.Gid,
 		FactionID: user.FactionID,
 	}
-	api.VoiceStreamListeners = append(api.VoiceStreamListeners, p)
+
+	// add
+	api.VoiceChatListeners.AddListener(p)
+
+	listeners := api.VoiceChatListeners.CurrentVoiceChatListeners()
 	reply(true)
+
+	err = voice_chat.UpdateFactionVoiceStreamListeners(user.FactionID.String, req.Payload.ArenaID, listeners)
+	if err != nil {
+		return terror.Error(err, "failed to update voice stream listeners")
+	}
 
 	return nil
 }
 
 func (api *API) VoiceChatDisconnect(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
-
-	newSlice := []*server.PublicPlayer{}
-	for idx, v := range api.VoiceStreamListeners {
-		if newSlice != nil {
-			continue
-		}
-		if v.ID == user.ID {
-			newSlice = append(api.VoiceStreamListeners[0:idx], api.VoiceStreamListeners[idx+1:]...)
-		}
+	req := &VoiceStreamReq{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return terror.Error(err, "Invalid request received")
 	}
 
-	if newSlice != nil {
-		api.VoiceStreamListeners = newSlice
+	// remove
+	api.VoiceChatListeners.RemoveListener(user.ID)
+
+	listeners := api.VoiceChatListeners.CurrentVoiceChatListeners()
+
+	err = voice_chat.UpdateFactionVoiceStreamListeners(user.FactionID.String, req.Payload.ArenaID, listeners)
+	if err != nil {
+		return terror.Error(err, "failed to update voice stream listeners")
 	}
 
 	reply(true)

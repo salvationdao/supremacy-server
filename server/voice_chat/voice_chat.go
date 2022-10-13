@@ -145,25 +145,10 @@ func (vc *VoiceChannel) UpdateAllVoiceChannel(warMachineIDs []string, arenaID st
 
 	for _, p := range ps {
 		vcs := []*server.VoiceStreamResp{}
-		switch p.FactionID.String {
-		case server.ZaibatsuFactionID:
-			vcs, err = db.GetActiveVoiceChat(p.ID, p.FactionID.String, arenaID)
-			if err != nil {
-				return terror.Error(err, "Failed to get active voice chat")
+		vcs, err = db.GetActiveVoiceChat(p.ID, p.FactionID.String, arenaID)
+		if err != nil {
+			return terror.Error(err, "Failed to get active voice chat")
 
-			}
-		case server.RedMountainFactionID:
-			vcs, err = db.GetActiveVoiceChat(p.ID, p.FactionID.String, arenaID)
-			if err != nil {
-				return terror.Error(err, "Failed to get active voice chat")
-
-			}
-		case server.BostonCyberneticsFactionID:
-			vcs, err = db.GetActiveVoiceChat(p.ID, p.FactionID.String, arenaID)
-			if err != nil {
-				return terror.Error(err, "Failed to get active voice chat")
-
-			}
 		}
 
 		ws.PublishMessage(fmt.Sprintf("/secure/user/%s/arena/%s", p.ID, arenaID), server.HubKeyVoiceStreams, vcs)
@@ -190,6 +175,23 @@ func UpdateFactionVoiceChannel(factionID, arenaID string) error {
 		}
 
 		ws.PublishMessage(fmt.Sprintf("/secure/user/%s/arena/%s", p.ID, arenaID), server.HubKeyVoiceStreams, vcs)
+	}
+
+	return nil
+}
+
+func UpdateFactionVoiceStreamListeners(factionID, arenaID string, listeners []*server.PublicPlayer) error {
+	ps, err := boiler.Players(
+		qm.Select(boiler.PlayerColumns.ID, boiler.PlayerColumns.FactionID),
+		boiler.PlayerWhere.ID.IN(ws.TrackedIdents()),
+		boiler.PlayerWhere.FactionID.IsNotNull(),
+	).All(gamedb.StdConn)
+	if err != nil {
+		return err
+	}
+
+	for _, p := range ps {
+		ws.PublishMessage(fmt.Sprintf("/secure/user/%s/arena/%s/listeners", p.ID, arenaID), server.HubKeyVoiceStreamsListeners, listeners)
 	}
 
 	return nil
