@@ -354,8 +354,6 @@ func IsWeaponColumn(col string) bool {
 
 type WeaponListOpts struct {
 	Search                        string
-	Filter                        *ListFilterRequest
-	Sort                          *ListSortRequest
 	SortBy                        string
 	SortDir                       SortByDir
 	PageSize                      int
@@ -428,17 +426,6 @@ func WeaponList(opts *WeaponListOpts) (int64, []*PlayerAsset, error) {
 		queryMods = append(queryMods,
 			boiler.WeaponWhere.LockedToMech.EQ(false),
 		)
-	}
-
-	// Filters
-	if opts.Filter != nil {
-		// if we have filter
-		for i, f := range opts.Filter.Items {
-			// validate it is the right table and valid column
-			if f.Table == boiler.TableNames.Weapons && IsWeaponColumn(f.Column) {
-				queryMods = append(queryMods, GenerateListFilterQueryMod(*f, i+1, opts.Filter.LinkOperator))
-			}
-		}
 	}
 
 	if len(opts.ExcludeIDs) > 0 {
@@ -575,10 +562,13 @@ func WeaponList(opts *WeaponListOpts) (int64, []*PlayerAsset, error) {
 	)
 
 	if opts.SortBy != "" && opts.SortDir.IsValid() {
-		if opts.SortBy == "alphabetical" {
-			queryMods = append(queryMods, qm.OrderBy(fmt.Sprintf("%s %s", qm.Rels(boiler.TableNames.BlueprintWeapons, boiler.BlueprintWeaponColumns.Label), opts.SortDir)))
-		} else if opts.SortBy == "rarity" {
-			queryMods = append(queryMods, GenerateTierSort(qm.Rels(boiler.TableNames.BlueprintWeaponSkin, boiler.BlueprintWeaponSkinColumns.Tier), opts.SortDir))
+		switch opts.SortBy {
+		case "alphabetical":
+			queryMods = append(queryMods, qm.OrderBy(fmt.Sprintf("%s %s", boiler.BlueprintWeaponTableColumns.Label, opts.SortDir)))
+		case "rarity":
+			queryMods = append(queryMods, GenerateTierSort(boiler.BlueprintWeaponSkinTableColumns.Tier, opts.SortDir))
+		case "date":
+			queryMods = append(queryMods, qm.OrderBy(fmt.Sprintf("%s %s", boiler.WeaponTableColumns.CreatedAt, opts.SortDir)))
 		}
 	} else {
 		queryMods = append(queryMods, qm.OrderBy(fmt.Sprintf("%s ASC", qm.Rels(boiler.TableNames.BlueprintWeapons, boiler.BlueprintWeaponColumns.Label))))
@@ -651,17 +641,6 @@ func WeaponListDetailed(opts *WeaponListOpts) (int64, []*server.Weapon, error) {
 		queryMods = append(queryMods,
 			boiler.WeaponWhere.LockedToMech.EQ(false),
 		)
-	}
-
-	// Filters
-	if opts.Filter != nil {
-		// if we have filter
-		for i, f := range opts.Filter.Items {
-			// validate it is the right table and valid column
-			if f.Table == boiler.TableNames.Weapons && IsWeaponColumn(f.Column) {
-				queryMods = append(queryMods, GenerateListFilterQueryMod(*f, i+1, opts.Filter.LinkOperator))
-			}
-		}
 	}
 
 	if len(opts.ExcludeIDs) > 0 {

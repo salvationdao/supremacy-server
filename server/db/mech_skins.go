@@ -380,7 +380,8 @@ func MechSkinListDetailed(opts *MechSkinListOpts) (int64, []*server.MechSkin, er
 		}
 		queryMods = append(queryMods, qm.OrderBy(orderBy))
 	} else if opts.SortBy != "" && opts.SortDir.IsValid() {
-		if opts.SortBy == "alphabetical" {
+		switch opts.SortBy {
+		case "alphabetical":
 			orderBy := fmt.Sprintf("(%s) %s",
 				boiler.BlueprintMechSkinTableColumns.Label,
 				opts.SortDir,
@@ -393,8 +394,21 @@ func MechSkinListDetailed(opts *MechSkinListOpts) (int64, []*server.MechSkin, er
 				)
 			}
 			queryMods = append(queryMods, qm.OrderBy(orderBy))
-		} else if opts.SortBy == "rarity" {
+		case "rarity":
 			queryMods = append(queryMods, GenerateTierSort(qm.Rels(boiler.TableNames.BlueprintMechSkin, boiler.BlueprintMechSkinColumns.Tier), opts.SortDir))
+		case "date":
+			orderBy := fmt.Sprintf("(%s) %s",
+				boiler.MechSkinTableColumns.CreatedAt,
+				opts.SortDir,
+			)
+			if opts.DisplayUnique {
+				orderBy = fmt.Sprintf("%s, (%s) %s",
+					boiler.MechSkinTableColumns.BlueprintID,
+					boiler.MechSkinTableColumns.CreatedAt,
+					opts.SortDir,
+				)
+			}
+			queryMods = append(queryMods, qm.OrderBy(orderBy))
 		}
 	} else {
 		orderBy := fmt.Sprintf("%s ASC",
