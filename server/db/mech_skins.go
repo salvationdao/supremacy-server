@@ -124,6 +124,7 @@ type MechSkinListOpts struct {
 	PageSize                 int
 	Page                     int
 	OwnerID                  string
+	ModelID                  string
 	DisplayXsyn              bool
 	ExcludeMarketLocked      bool
 	IncludeMarketListed      bool
@@ -168,15 +169,27 @@ func MechSkinListDetailed(opts *MechSkinListOpts) (int64, []*server.MechSkin, er
 			qm.Rels(boiler.TableNames.BlueprintMechSkin, boiler.BlueprintMechSkinColumns.ID),
 			qm.Rels(boiler.TableNames.MechSkin, boiler.MechSkinColumns.BlueprintID),
 		)),
-		qm.InnerJoin(fmt.Sprintf("LATERAL (SELECT * FROM %s _wmsc WHERE _wmsc.%s = %s LIMIT 1) %s ON %s = %s",
+	)
+	if opts.ModelID != "" {
+		queryMods = append(queryMods, qm.InnerJoin(fmt.Sprintf("LATERAL (SELECT * FROM %s _wmsc WHERE _wmsc.%s = %s AND _wmsc.%s = ? LIMIT 1) %s ON %s = %s",
+			boiler.TableNames.MechModelSkinCompatibilities,
+			boiler.MechModelSkinCompatibilityColumns.BlueprintMechSkinID,
+			qm.Rels(boiler.TableNames.BlueprintMechSkin, boiler.BlueprintMechSkinColumns.ID),
+			boiler.MechModelSkinCompatibilityColumns.MechModelID,
+			boiler.TableNames.MechModelSkinCompatibilities,
+			qm.Rels(boiler.TableNames.MechModelSkinCompatibilities, boiler.MechModelSkinCompatibilityColumns.BlueprintMechSkinID),
+			qm.Rels(boiler.TableNames.BlueprintMechSkin, boiler.BlueprintMechSkinColumns.ID),
+		), opts.ModelID))
+	} else {
+		queryMods = append(queryMods, qm.InnerJoin(fmt.Sprintf("LATERAL (SELECT * FROM %s _wmsc WHERE _wmsc.%s = %s LIMIT 1) %s ON %s = %s",
 			boiler.TableNames.MechModelSkinCompatibilities,
 			boiler.MechModelSkinCompatibilityColumns.BlueprintMechSkinID,
 			qm.Rels(boiler.TableNames.BlueprintMechSkin, boiler.BlueprintMechSkinColumns.ID),
 			boiler.TableNames.MechModelSkinCompatibilities,
 			qm.Rels(boiler.TableNames.MechModelSkinCompatibilities, boiler.MechModelSkinCompatibilityColumns.BlueprintMechSkinID),
 			qm.Rels(boiler.TableNames.BlueprintMechSkin, boiler.BlueprintMechSkinColumns.ID),
-		)),
-	)
+		)))
+	}
 
 	if len(opts.FilterSkinCompatibility) > 0 {
 		var args []interface{}
@@ -188,7 +201,7 @@ func MechSkinListDetailed(opts *MechSkinListOpts) (int64, []*server.MechSkin, er
 				whereClause = whereClause + "?)"
 				continue
 			}
-			whereClause = whereClause + fmt.Sprintf("?,")
+			whereClause = whereClause + "?,"
 		}
 
 		queryMods = append(queryMods,
