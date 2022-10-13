@@ -296,6 +296,11 @@ func (am *ArenaManager) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				}
 			}
 		}
+
+		select {
+		case arena.WarMachineStatBroadcastStopChan <- true:
+		case <-time.After(1 * time.Second): // timeout
+		}
 	}()
 
 	arena.Start()
@@ -318,6 +323,12 @@ func (am *ArenaManager) NewArena(wsConn *websocket.Conn) (*Arena, error) {
 	if a, ok := am.arenas[ba.ID]; ok {
 		// set connected flag of the prev arena to false
 		a.connected.Store(false)
+
+		// stop war machine stat broadcast
+		select {
+		case a.WarMachineStatBroadcastStopChan <- true:
+		case <-time.After(1 * time.Second): // timeout
+		}
 
 		if btl := a.CurrentBattle(); btl != nil && btl.replaySession.ReplaySession != nil {
 			err = replay.RecordReplayRequest(btl.Battle, btl.replaySession.ReplaySession.ID, replay.StopRecording)
@@ -348,6 +359,10 @@ func (am *ArenaManager) NewArena(wsConn *websocket.Conn) (*Arena, error) {
 			m: make(map[string]chan bool),
 		},
 
+		WarMachineStatBroadcastChan:      make(chan []*WarMachineStat, 10),
+		WarMachineStatBroadcastStopChan:  make(chan bool),
+		WarMachineStatBroadcastResetChan: make(chan bool),
+
 		// objects inherited from arena manager
 		RPCClient:                am.RPCClient,
 		sms:                      am.sms,
@@ -374,6 +389,8 @@ func (am *ArenaManager) NewArena(wsConn *websocket.Conn) (*Arena, error) {
 	// speed up mech stat broadcast by separate json data and binary data
 	go arena.GameClientJsonDataParser()
 
+	go arena.warMachinePositionBroadcaster()
+
 	am.arenas[arena.ID] = arena
 
 	return arena, nil
@@ -395,6 +412,10 @@ type Arena struct {
 	SystemMessagingManager   *system_messages.SystemMessagingManager
 	NewBattleChan            chan *NewBattleChan
 	ChallengeFundUpdateChan  chan bool
+
+	WarMachineStatBroadcastChan      chan []*WarMachineStat
+	WarMachineStatBroadcastStopChan  chan bool
+	WarMachineStatBroadcastResetChan chan bool
 
 	LastBattleResult *BattleEndDetail
 
@@ -1194,13 +1215,11 @@ type WarMachineStat struct {
 	Health        uint32          `json:"health"`
 	Shield        uint32          `json:"shield"`
 	IsHidden      bool            `json:"is_hidden"`
-	TickOrder     int64           `json:"tick_order"`
 }
 
 const HubKeyWarMachineStatUpdated = "WAR:MACHINE:STAT:UPDATED"
 
-// WarMachineStatSubscribe subscribe on bribing stage change
-func (am *ArenaManager) WarMachineStatSubscribe(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
+func (am *ArenaManager) WarMachineStatsSubscribe(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
 	arena, err := am.GetArenaFromContext(ctx)
 	if err != nil {
 		return err
@@ -1211,48 +1230,42 @@ func (am *ArenaManager) WarMachineStatSubscribe(ctx context.Context, key string,
 		return terror.Error(fmt.Errorf("battle not started yet"), "Battle is ended.")
 	}
 
-	slotNumber := chi.RouteContext(ctx).URLParam("slotNumber")
-	if slotNumber == "" {
-		return fmt.Errorf("slot number is required")
-	}
+	pam := battle.playerAbilityManager()
 
-	participantID, err := strconv.Atoi(slotNumber)
-	if err != nil || participantID == 0 {
-		return fmt.Errorf("invlid participant id")
-	}
-
-	// return data if, current battle is not null
-	wm := arena.CurrentBattleWarMachine(participantID)
-	if wm != nil {
-		wStat := &WarMachineStat{
-			ParticipantID: participantID,
+	var wmss []*WarMachineStat
+	for _, wm := range append(battle.WarMachines, battle.SpawnedAI...) {
+		wms := &WarMachineStat{
+			ParticipantID: int(wm.ParticipantID),
 			Health:        wm.Health,
 			Position:      wm.Position,
 			Rotation:      wm.Rotation,
 			IsHidden:      wm.IsHidden,
 			Shield:        wm.Shield,
-			TickOrder:     battle.MechTickOrder.Load(),
 		}
 
 		// Hidden/Incognito
-		if wStat.Position != nil {
-			hideMech := arena.CurrentBattle().playerAbilityManager().IsWarMachineHidden(wm.Hash)
-			hideMech = hideMech || arena.CurrentBattle().playerAbilityManager().IsWarMachineInBlackout(server.GameLocation{
-				X: wStat.Position.X,
-				Y: wStat.Position.Y,
-			})
-			if hideMech {
-				wStat.IsHidden = true
-				wStat.Position = &server.Vector3{
-					X: -1,
-					Y: -1,
-					Z: -1,
+		if wms.Position != nil {
+			if pam != nil {
+				hideMech := pam.IsWarMachineHidden(wm.Hash)
+				hideMech = hideMech || pam.IsWarMachineInBlackout(server.GameLocation{
+					X: wms.Position.X,
+					Y: wms.Position.Y,
+				})
+				if hideMech {
+					wms.IsHidden = true
+					wms.Position = &server.Vector3{
+						X: -1,
+						Y: -1,
+						Z: -1,
+					}
 				}
 			}
 		}
 
-		reply(wStat)
+		wmss = append(wmss, wms)
 	}
+
+	reply(wmss)
 	return nil
 }
 
@@ -1592,6 +1605,9 @@ func (arena *Arena) GameClientJsonDataParser() {
 				continue
 			}
 			btl.end(dataPayload)
+
+			// reset war machine broadcast
+			btl.arena.WarMachineStatBroadcastResetChan <- true
 
 		case "BATTLE:AI_SPAWNED":
 			var dataPayload *AISpawnedRequest
@@ -1969,8 +1985,6 @@ func (arena *Arena) BeginBattle() {
 			},
 			Events: events,
 		},
-
-		MechTickOrder: atomic.NewInt64(0),
 	}
 
 	// load war machines first
