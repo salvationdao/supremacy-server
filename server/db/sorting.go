@@ -2,7 +2,16 @@ package db
 
 import (
 	"fmt"
+
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
+)
+
+type SortBy string
+
+const (
+	SortByAlphabetical SortBy = "alphabetical"
+	SortByRarity       SortBy = "rarity"
+	SortByDate         SortBy = "date"
 )
 
 type SortByDir string

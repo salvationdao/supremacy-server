@@ -1911,7 +1911,7 @@ func (api *API) GetMaxWeaponStats(w http.ResponseWriter, r *http.Request) (int, 
 type PlayerAssetWeaponListRequest struct {
 	Payload struct {
 		Search                        string                    `json:"search"`
-		SortBy                        string                    `json:"sort_by"`
+		SortBy                        db.SortBy                 `json:"sort_by"`
 		SortDir                       db.SortByDir              `json:"sort_dir"`
 		PageSize                      int                       `json:"page_size"`
 		Page                          int                       `json:"page"`
@@ -2066,7 +2066,7 @@ type PlayerAssetMechSubmodelListRequest struct {
 		Search                   string                `json:"search"`
 		Filter                   *db.ListFilterRequest `json:"filter"`
 		Sort                     *db.ListSortRequest   `json:"sort"`
-		SortBy                   string                `json:"sort_by"`
+		SortBy                   db.SortBy             `json:"sort_by"`
 		SortDir                  db.SortByDir          `json:"sort_dir"`
 		PageSize                 int                   `json:"page_size"`
 		Page                     int                   `json:"page"`
@@ -2075,6 +2075,7 @@ type PlayerAssetMechSubmodelListRequest struct {
 		IncludeMarketListed      bool                  `json:"include_market_listed"`
 		DisplayGenesisAndLimited bool                  `json:"display_genesis_and_limited"`
 		DisplayUnique            bool                  `json:"display_unique"`
+		ModelID                  string                `json:"model_id"`
 		ExcludeIDs               []string              `json:"exclude_ids"`
 		IncludeIDs               []string              `json:"include_ids"`
 		FilterRarities           []string              `json:"rarities"`
@@ -2115,6 +2116,7 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetMechSubmodelListDetailedHandler(
 		DisplayUnique:            req.Payload.DisplayUnique,
 		ExcludeIDs:               req.Payload.ExcludeIDs,
 		IncludeIDs:               req.Payload.IncludeIDs,
+		ModelID:                  req.Payload.ModelID,
 		FilterRarities:           req.Payload.FilterRarities,
 		FilterEquippedStatuses:   req.Payload.FilterEquippedStatuses,
 		SortBy:                   req.Payload.SortBy,
