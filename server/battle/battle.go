@@ -17,6 +17,7 @@ import (
 	"server/system_messages"
 	"server/xsyn_rpcclient"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -121,7 +122,7 @@ type MiniMapAbilityContent struct {
 }
 
 // Add new pending ability and return a copy of current list
-func (dap *MiniMapAbilityDisplayList) Add(offeringID string, dac *MiniMapAbilityContent) []MiniMapAbilityContent {
+func (dap *MiniMapAbilityDisplayList) Add(offeringID string, dac *MiniMapAbilityContent) []byte {
 	dap.Lock()
 	defer dap.Unlock()
 
@@ -137,11 +138,11 @@ func (dap *MiniMapAbilityDisplayList) Add(offeringID string, dac *MiniMapAbility
 
 	sort.Slice(result, func(i, j int) bool { return result[i].UpdatedAt.After(result[j].UpdatedAt) })
 
-	return result
+	return MiniMapAbilityContentsToByteArray(result)
 }
 
 // Remove pending ability and return a copy of current list
-func (dap *MiniMapAbilityDisplayList) Remove(offeringID string) []MiniMapAbilityContent {
+func (dap *MiniMapAbilityDisplayList) Remove(offeringID string) []byte {
 	dap.Lock()
 	defer dap.Unlock()
 
@@ -154,7 +155,7 @@ func (dap *MiniMapAbilityDisplayList) Remove(offeringID string) []MiniMapAbility
 
 	sort.Slice(result, func(i, j int) bool { return result[i].UpdatedAt.After(result[j].UpdatedAt) })
 
-	return result
+	return MiniMapAbilityContentsToByteArray(result)
 }
 
 // Get a mini map ability from givent offering id
@@ -170,7 +171,7 @@ func (dap *MiniMapAbilityDisplayList) Get(offingID string) *MiniMapAbilityConten
 }
 
 // List a copy of current pending list
-func (dap *MiniMapAbilityDisplayList) List() []MiniMapAbilityContent {
+func (dap *MiniMapAbilityDisplayList) List() []byte {
 	dap.RLock()
 	defer dap.RUnlock()
 
@@ -181,7 +182,39 @@ func (dap *MiniMapAbilityDisplayList) List() []MiniMapAbilityContent {
 
 	sort.Slice(result, func(i, j int) bool { return result[i].UpdatedAt.After(result[j].UpdatedAt) })
 
-	return result
+	return MiniMapAbilityContentsToByteArray(result)
+}
+
+func MiniMapAbilityContentsToByteArray(mmas []MiniMapAbilityContent) []byte {
+	list := []string{}
+	for _, mma := range mmas {
+		strs := []string{
+			mma.OfferingID,
+			mma.Location.X.String(),
+			mma.Location.Y.String(),
+			mma.ImageUrl,
+			mma.Colour,
+			mma.MiniMapDisplayEffectType,
+			mma.MechDisplayEffectType,
+			mma.LocationSelectType,
+		}
+
+		if mma.Radius.Valid {
+			strs = append(strs, strconv.Itoa(mma.Radius.Int))
+		} else {
+			strs = append(strs, "")
+		}
+
+		if mma.LaunchingAt.Valid {
+			strs = append(strs, mma.LaunchingAt.Time.String())
+		} else {
+			strs = append(strs, "")
+		}
+
+		list = append(list, strings.Join(strs, "_"))
+	}
+
+	return []byte(strings.Join(list, "|"))
 }
 
 type RecordingSession struct {
@@ -1758,7 +1791,7 @@ func (arena *Arena) warMachinePositionBroadcaster() {
 			}
 
 			// otherwise broadcast current data
-			ws.PublishBytes(fmt.Sprintf("/public/arena/%s/mech_stats", arena.ID), append([]byte{server.BinaryKeyWarMachineStats}, PackWarMachineStatsInBytes(warMachineStats)...))
+			ws.PublishBytes(fmt.Sprintf("/public/arena/%s/mech_stats", arena.ID), server.BinaryKeyWarMachineStats, PackWarMachineStatsInBytes(warMachineStats))
 
 			// clear war machine stat
 			warMachineStats = []*WarMachineStat{}

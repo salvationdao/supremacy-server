@@ -1658,9 +1658,9 @@ func (arena *Arena) GameClientJsonDataParser() {
 			}
 
 			// remove repair from pending list, and broadcast
-			ws.PublishMessage(
+			ws.PublishBytes(
 				fmt.Sprintf("/public/arena/%s/mini_map_ability_display_list", btl.ArenaID),
-				server.HubKeyMiniMapAbilityDisplayList,
+				server.BinaryKeyMiniMapAbilityContents,
 				btl.MiniMapAbilityDisplayList.Remove(dataPayload.EventID),
 			)
 
@@ -1708,31 +1708,31 @@ func (arena *Arena) GameClientJsonDataParser() {
 				case 12: // EMP
 					if wm.Status.IsStunned {
 						// add ability onto pending list, and broadcast
-						ws.PublishMessage(
+						ws.PublishBytes(
 							fmt.Sprintf("/public/arena/%s/mini_map_ability_display_list", btl.ArenaID),
-							server.HubKeyMiniMapAbilityDisplayList,
+							server.BinaryKeyMiniMapAbilityContents,
 							btl.MiniMapAbilityDisplayList.Add(offeringID, mma),
 						)
 						continue
 					}
-					ws.PublishMessage(
+					ws.PublishBytes(
 						fmt.Sprintf("/public/arena/%s/mini_map_ability_display_list", btl.ArenaID),
-						server.HubKeyMiniMapAbilityDisplayList,
+						server.BinaryKeyMiniMapAbilityContents,
 						btl.MiniMapAbilityDisplayList.Remove(offeringID),
 					)
 				case 13: // HACKER DRONE
 					if wm.Status.IsHacked {
 						// add ability onto pending list, and broadcast
-						ws.PublishMessage(
+						ws.PublishBytes(
 							fmt.Sprintf("/public/arena/%s/mini_map_ability_display_list", btl.ArenaID),
-							server.HubKeyMiniMapAbilityDisplayList,
+							server.BinaryKeyMiniMapAbilityContents,
 							btl.MiniMapAbilityDisplayList.Add(offeringID, mma),
 						)
 						continue
 					}
-					ws.PublishMessage(
+					ws.PublishBytes(
 						fmt.Sprintf("/public/arena/%s/mini_map_ability_display_list", btl.ArenaID),
-						server.HubKeyMiniMapAbilityDisplayList,
+						server.BinaryKeyMiniMapAbilityContents,
 						btl.MiniMapAbilityDisplayList.Remove(offeringID),
 					)
 				}
@@ -1772,9 +1772,9 @@ func (arena *Arena) GameClientJsonDataParser() {
 			}
 
 			// remove ability from pending list, and broadcast
-			ws.PublishMessage(
+			ws.PublishBytes(
 				fmt.Sprintf("/public/arena/%s/mini_map_ability_display_list", btl.ArenaID),
-				server.HubKeyMiniMapAbilityDisplayList,
+				server.BinaryKeyMiniMapAbilityContents,
 				btl.MiniMapAbilityDisplayList.Remove(eventID),
 			)
 		default:

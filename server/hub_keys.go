@@ -69,5 +69,6 @@ const HubKeyBattleArenaClosedSubscribe = "BATTLE:ARENA:CLOSED"
 const HubKeyMiniMapAbilityDisplayList = "MINI:MAP:ABILITY:DISPLAY:LIST"
 
 const (
-	BinaryKeyWarMachineStats = 1
+	BinaryKeyWarMachineStats        byte = 1
+	BinaryKeyMiniMapAbilityContents byte = 2
 )

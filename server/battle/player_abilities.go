@@ -580,9 +580,9 @@ func (am *ArenaManager) PlayerAbilityUse(ctx context.Context, user *boiler.Playe
 				mma.LaunchingAt = null.TimeFrom(time.Now().Add(time.Duration(bpa.LaunchingDelaySeconds) * time.Second))
 			}
 
-			ws.PublishMessage(
+			ws.PublishBytes(
 				fmt.Sprintf("/public/arena/%s/mini_map_ability_display_list", arena.ID),
-				server.HubKeyMiniMapAbilityDisplayList,
+				server.BinaryKeyMiniMapAbilityContents,
 				btl.MiniMapAbilityDisplayList.Add(offeringID.String(), mma),
 			)
 
@@ -591,9 +591,9 @@ func (am *ArenaManager) PlayerAbilityUse(ctx context.Context, user *boiler.Playe
 					time.Sleep(time.Duration(bpa.AnimationDurationSeconds) * time.Second)
 					if battle != nil && battle.stage.Load() == BattleStageStart {
 						if ab := battle.MiniMapAbilityDisplayList.Get(offeringID.String()); ab != nil {
-							ws.PublishMessage(
+							ws.PublishBytes(
 								fmt.Sprintf("/public/arena/%s/mini_map_ability_display_list", arena.ID),
-								server.HubKeyMiniMapAbilityDisplayList,
+								server.BinaryKeyMiniMapAbilityContents,
 								battle.MiniMapAbilityDisplayList.Remove(offeringID.String()),
 							)
 						}
@@ -903,18 +903,18 @@ func (am *ArenaManager) MechAbilityTriggerHandler(ctx context.Context, user *boi
 				MechID:                   wm.ID,
 			}
 
-			ws.PublishMessage(
+			ws.PublishBytes(
 				fmt.Sprintf("/public/arena/%s/mini_map_ability_display_list", arena.ID),
-				server.HubKeyMiniMapAbilityDisplayList,
+				server.BinaryKeyMiniMapAbilityContents,
 				btl.MiniMapAbilityDisplayList.Add(offeringID.String(), mma),
 			)
 
 			// cancel ability after animation end
 			if gameAbility.AnimationDurationSeconds > 0 {
 				time.Sleep(time.Duration(gameAbility.AnimationDurationSeconds) * time.Second)
-				ws.PublishMessage(
+				ws.PublishBytes(
 					fmt.Sprintf("/public/arena/%s/mini_map_ability_display_list", arena.ID),
-					server.HubKeyMiniMapAbilityDisplayList,
+					server.BinaryKeyMiniMapAbilityContents,
 					btl.MiniMapAbilityDisplayList.Remove(offeringID.String()),
 				)
 			}
