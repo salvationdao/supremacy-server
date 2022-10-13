@@ -192,6 +192,7 @@ func MiniMapAbilityContentsToByteArray(mmas []MiniMapAbilityContent) []byte {
 			mma.OfferingID,
 			mma.Location.X.String(),
 			mma.Location.Y.String(),
+			mma.MechID,
 			mma.ImageUrl,
 			mma.Colour,
 			mma.MiniMapDisplayEffectType,
@@ -967,7 +968,7 @@ func (btl *Battle) RewardBattleMechOwners(winningFactionOrder []string) {
 						totalSups.Mul(secondRankSupsRewardRatio).Div(playerPerFaction[bq.FactionID]),
 						taxRatio,
 						bq.R.Fee,
-						bonusSups, // bonus sups
+						bonusSups,                                 // bonus sups
 						slices.Index(afkMechIDs, bq.MechID) != -1, // if mech is in the afk mech list
 						false,
 					)
@@ -991,7 +992,7 @@ func (btl *Battle) RewardBattleMechOwners(winningFactionOrder []string) {
 						totalSups.Mul(thirdRankSupsRewardRatio).Div(playerPerFaction[bq.FactionID]),
 						taxRatio,
 						bq.R.Fee,
-						bonusSups, // bonus sups
+						bonusSups,                                 // bonus sups
 						slices.Index(afkMechIDs, bq.MechID) != -1, // if mech is in the afk mech list
 						true,
 					)
@@ -1752,7 +1753,7 @@ func (btl *Battle) Tick(payload []byte) {
 		if mapEventCount > 0 {
 			// Pass map events straight to frontend clients
 			mapEvents := payload[offset:]
-			ws.PublishMessage(fmt.Sprintf("/public/arena/%s/minimap_events", btl.ArenaID), HubKeyMinimapEventsSubscribe, mapEvents)
+			ws.PublishBytes(fmt.Sprintf("/mini_map/arena/%s/public/minimap_events", btl.ArenaID), server.BinaryKeyMiniMapEvents, mapEvents)
 
 			// Unpack and save static events for sending to newly joined frontend clients (ie: landmine, pickup locations and the hive status)
 			btl.MapEventList.MapEventsUnpack(mapEvents)
@@ -1791,7 +1792,7 @@ func (arena *Arena) warMachinePositionBroadcaster() {
 			}
 
 			// otherwise broadcast current data
-			ws.PublishBytes(fmt.Sprintf("/public/arena/%s/mech_stats", arena.ID), server.BinaryKeyWarMachineStats, PackWarMachineStatsInBytes(warMachineStats))
+			ws.PublishBytes(fmt.Sprintf("/mini_map/arena/%s/public/mech_stats", arena.ID), server.BinaryKeyWarMachineStats, PackWarMachineStatsInBytes(warMachineStats))
 
 			// clear war machine stat
 			warMachineStats = []*WarMachineStat{}
@@ -2287,15 +2288,41 @@ func (btl *Battle) Destroyed(dp *BattleWMDestroyedPayload) {
 		}
 	}
 
-	if isAI && *destroyedWarMachine.AIType == MiniMech {
-		btl.arena._currentBattle.playerAbilityManager().DeleteMiniMechMove(destroyedWarMachine.Hash)
+	// tell frontend to cancel mech move command
+	mmc := &MechMoveCommandResponse{
+		MechMoveCommandLog: &boiler.MechMoveCommandLog{
+			ID:          btl.ID + destroyedWarMachine.Hash,
+			BattleID:    btl.ID,
+			MechID:      destroyedWarMachine.ID,
+			CancelledAt: null.TimeFrom(time.Now()),
+		},
+		IsMiniMech: false,
 	}
 
-	// broadcast changes
-	err := btl.arena.BroadcastFactionMechCommands(destroyedWarMachine.FactionID)
-	if err != nil {
-		gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("Failed to broadcast faction mech commands")
+	fmc := &FactionMechCommand{
+		ID:         mmc.ID,
+		BattleID:   btl.ID,
+		IsMiniMech: false,
+		IsEnded:    true,
 	}
+	if isAI && *destroyedWarMachine.AIType == MiniMech {
+		btl.arena._currentBattle.playerAbilityManager().DeleteMiniMechMove(destroyedWarMachine.Hash)
+		fmc.IsMiniMech = true
+
+		// tell frontend to cancel mech move command
+		mmc = &MechMoveCommandResponse{
+			MechMoveCommandLog: &boiler.MechMoveCommandLog{
+				ID:          btl.ID + destroyedWarMachine.Hash,
+				BattleID:    btl.ID,
+				CancelledAt: null.TimeFrom(time.Now()),
+			},
+			IsMiniMech: false,
+		}
+	}
+
+	// broadcast faction mech commands
+	ws.PublishBytes(fmt.Sprintf("/mini_map/arena/%s/faction/%s/mech_command/%s", btl.ArenaID, destroyedWarMachine.FactionID, destroyedWarMachine.Hash), server.BinaryKeyMechMoveCommandIndividual, []byte(mmc.ToByteStr()))
+	ws.PublishBytes(fmt.Sprintf("/mini_map/arena/%s/faction/%s/mech_commands", btl.ArenaID, destroyedWarMachine.FactionID), server.BinaryKeyMechMoveCommandMap, []byte(fmc.ToByteString()))
 }
 
 func (btl *Battle) Load() error {

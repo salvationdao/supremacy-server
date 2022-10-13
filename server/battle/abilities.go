@@ -721,7 +721,7 @@ func (as *AbilitiesSystem) launchAbility(ls *locationSelect, offeringID uuid.UUI
 
 			// add ability onto pending list, and broadcast
 			ws.PublishBytes(
-				fmt.Sprintf("/public/arena/%s/mini_map_ability_display_list", as.arenaID),
+				fmt.Sprintf("/mini_map/arena/%s/public/mini_map_ability_display_list", as.arenaID),
 				server.BinaryKeyMiniMapAbilityContents,
 				btl.MiniMapAbilityDisplayList.Add(offeringID.String(), mma),
 			)
@@ -745,7 +745,7 @@ func (as *AbilitiesSystem) launchAbility(ls *locationSelect, offeringID uuid.UUI
 		}
 		// broadcast changes
 		ws.PublishBytes(
-			fmt.Sprintf("/public/arena/%s/mini_map_ability_display_list", as.arenaID),
+			fmt.Sprintf("/mini_map/arena/%s/public/mini_map_ability_display_list", as.arenaID),
 			server.BinaryKeyMiniMapAbilityContents,
 			btl.MiniMapAbilityDisplayList.Add(offeringID.String(), mma),
 		)
@@ -757,7 +757,7 @@ func (as *AbilitiesSystem) launchAbility(ls *locationSelect, offeringID uuid.UUI
 				if battle != nil && battle.stage.Load() == BattleStageStart {
 					if ab := battle.MiniMapAbilityDisplayList.Get(offeringID.String()); ab != nil {
 						ws.PublishBytes(
-							fmt.Sprintf("/public/arena/%s/mini_map_ability_display_list", battle.ArenaID),
+							fmt.Sprintf("/mini_map/arena/%s/public/mini_map_ability_display_list", battle.ArenaID),
 							server.BinaryKeyMiniMapAbilityContents,
 							battle.MiniMapAbilityDisplayList.Remove(offeringID.String()),
 						)

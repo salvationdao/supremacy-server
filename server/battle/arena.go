@@ -982,8 +982,6 @@ func (am *ArenaManager) MinimapUpdatesSubscribeHandler(ctx context.Context, key 
 	return nil
 }
 
-const HubKeyMinimapEventsSubscribe = "MINIMAP:EVENTS:SUBSCRIBE"
-
 func (am *ArenaManager) MinimapEventsSubscribeHandler(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
 	arena, err := am.GetArenaFromContext(ctx)
 	if err != nil {
@@ -999,7 +997,7 @@ func (am *ArenaManager) MinimapEventsSubscribeHandler(ctx context.Context, key s
 	// send landmine, pickup locations and the hive map state
 	hasMessages, mapEventsPacked := btl.MapEventList.Pack()
 	if hasMessages {
-		reply(mapEventsPacked)
+		reply(append([]byte{server.BinaryKeyMiniMapEvents}, mapEventsPacked...))
 	}
 
 	return nil
@@ -1659,7 +1657,7 @@ func (arena *Arena) GameClientJsonDataParser() {
 
 			// remove repair from pending list, and broadcast
 			ws.PublishBytes(
-				fmt.Sprintf("/public/arena/%s/mini_map_ability_display_list", btl.ArenaID),
+				fmt.Sprintf("/mini_map/arena/%s/public/mini_map_ability_display_list", btl.ArenaID),
 				server.BinaryKeyMiniMapAbilityContents,
 				btl.MiniMapAbilityDisplayList.Remove(dataPayload.EventID),
 			)
@@ -1709,14 +1707,14 @@ func (arena *Arena) GameClientJsonDataParser() {
 					if wm.Status.IsStunned {
 						// add ability onto pending list, and broadcast
 						ws.PublishBytes(
-							fmt.Sprintf("/public/arena/%s/mini_map_ability_display_list", btl.ArenaID),
+							fmt.Sprintf("/mini_map/arena/%s/public/mini_map_ability_display_list", btl.ArenaID),
 							server.BinaryKeyMiniMapAbilityContents,
 							btl.MiniMapAbilityDisplayList.Add(offeringID, mma),
 						)
 						continue
 					}
 					ws.PublishBytes(
-						fmt.Sprintf("/public/arena/%s/mini_map_ability_display_list", btl.ArenaID),
+						fmt.Sprintf("/mini_map/arena/%s/public/mini_map_ability_display_list", btl.ArenaID),
 						server.BinaryKeyMiniMapAbilityContents,
 						btl.MiniMapAbilityDisplayList.Remove(offeringID),
 					)
@@ -1724,14 +1722,14 @@ func (arena *Arena) GameClientJsonDataParser() {
 					if wm.Status.IsHacked {
 						// add ability onto pending list, and broadcast
 						ws.PublishBytes(
-							fmt.Sprintf("/public/arena/%s/mini_map_ability_display_list", btl.ArenaID),
+							fmt.Sprintf("/mini_map/arena/%s/public/mini_map_ability_display_list", btl.ArenaID),
 							server.BinaryKeyMiniMapAbilityContents,
 							btl.MiniMapAbilityDisplayList.Add(offeringID, mma),
 						)
 						continue
 					}
 					ws.PublishBytes(
-						fmt.Sprintf("/public/arena/%s/mini_map_ability_display_list", btl.ArenaID),
+						fmt.Sprintf("/mini_map/arena/%s/public/mini_map_ability_display_list", btl.ArenaID),
 						server.BinaryKeyMiniMapAbilityContents,
 						btl.MiniMapAbilityDisplayList.Remove(offeringID),
 					)
@@ -1773,7 +1771,7 @@ func (arena *Arena) GameClientJsonDataParser() {
 
 			// remove ability from pending list, and broadcast
 			ws.PublishBytes(
-				fmt.Sprintf("/public/arena/%s/mini_map_ability_display_list", btl.ArenaID),
+				fmt.Sprintf("/mini_map/arena/%s/public/mini_map_ability_display_list", btl.ArenaID),
 				server.BinaryKeyMiniMapAbilityContents,
 				btl.MiniMapAbilityDisplayList.Remove(eventID),
 			)
@@ -2275,10 +2273,17 @@ func (btl *Battle) CompleteWarMachineMoveCommand(payload *AbilityMoveCommandComp
 		return terror.Error(fmt.Errorf("war machine not exists"))
 	}
 
+	mmc := &MechMoveCommandResponse{}
+	// record for faction move command
+	fmc := &FactionMechCommand{
+		BattleID: btl.ID,
+		IsEnded:  true,
+	}
+
 	isMiniMech := wm.AIType != nil && *wm.AIType == MiniMech
 	if !isMiniMech {
 		// get the last move command of the mech
-		mmc, err := boiler.MechMoveCommandLogs(
+		mechMoveCommand, err := boiler.MechMoveCommandLogs(
 			boiler.MechMoveCommandLogWhere.MechID.EQ(wm.ID),
 			boiler.MechMoveCommandLogWhere.BattleID.EQ(btl.ID),
 			qm.OrderBy(boiler.MechMoveCommandLogColumns.CreatedAt+" DESC"),
@@ -2288,41 +2293,51 @@ func (btl *Battle) CompleteWarMachineMoveCommand(payload *AbilityMoveCommandComp
 		}
 
 		// update completed_at
-		mmc.ReachedAt = null.TimeFrom(time.Now())
-		mmc.IsMoving = false
-		_, err = mmc.Update(gamedb.StdConn, boil.Whitelist(boiler.MechMoveCommandLogColumns.ReachedAt))
+		mechMoveCommand.ReachedAt = null.TimeFrom(time.Now())
+		mechMoveCommand.IsMoving = false
+		_, err = mechMoveCommand.Update(gamedb.StdConn, boil.Whitelist(boiler.MechMoveCommandLogColumns.ReachedAt))
 		if err != nil {
 			return terror.Error(err, "Failed to update mech move command")
 		}
 
-		ws.PublishMessage(fmt.Sprintf("/faction/%s/arena/%s/mech_command/%s", wm.FactionID, btl.ArenaID, wm.Hash), server.HubKeyMechMoveCommandSubscribe, &MechMoveCommandResponse{
-			MechMoveCommandLog: mmc,
-		})
+		mmc = &MechMoveCommandResponse{MechMoveCommandLog: mechMoveCommand}
+		mmc.ID = btl.ID + wm.ID
+
+		// broadcast faction mech move command
+		fmc.ID = mmc.ID
+		fmc.IsMiniMech = false
+
 	} else {
 		mmmc, err := btl.arena._currentBattle.playerAbilityManager().CompleteMiniMechMove(wm.Hash)
-		if err == nil && mmmc != nil {
-			ws.PublishMessage(fmt.Sprintf("/faction/%s/arena/%s/mech_command/%s", wm.FactionID, btl.ArenaID, wm.Hash), server.HubKeyMechMoveCommandSubscribe, &MechMoveCommandResponse{
-				MechMoveCommandLog: &boiler.MechMoveCommandLog{
-					ID:            fmt.Sprintf("%s_%s", mmmc.BattleID, mmmc.MechHash),
-					BattleID:      mmmc.BattleID,
-					MechID:        mmmc.MechHash,
-					TriggeredByID: mmmc.TriggeredByID,
-					CellX:         mmmc.CellX,
-					CellY:         mmmc.CellY,
-					CancelledAt:   mmmc.CancelledAt,
-					ReachedAt:     mmmc.ReachedAt,
-					CreatedAt:     mmmc.CreatedAt,
-					IsMoving:      mmmc.IsMoving,
-				},
-				IsMiniMech: true,
-			})
+		if err != nil {
+			gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("Failed to get mini mech move command")
+			return terror.Error(err, "Failed to record mech move command.")
 		}
+
+		mmc = &MechMoveCommandResponse{
+			MechMoveCommandLog: &boiler.MechMoveCommandLog{
+				ID:            btl.ID + mmmc.MechHash,
+				BattleID:      mmmc.BattleID,
+				MechID:        mmmc.MechHash,
+				TriggeredByID: mmmc.TriggeredByID,
+				CellX:         mmmc.CellX,
+				CellY:         mmmc.CellY,
+				CancelledAt:   mmmc.CancelledAt,
+				ReachedAt:     mmmc.ReachedAt,
+				CreatedAt:     mmmc.CreatedAt,
+				IsMoving:      mmmc.IsMoving,
+			},
+			IsMiniMech: true,
+		}
+
+		// broadcast faction mech move command
+		fmc.ID = mmc.ID
+		fmc.IsMiniMech = true
 	}
 
-	err := btl.arena.BroadcastFactionMechCommands(wm.FactionID)
-	if err != nil {
-		gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("Failed to broadcast faction mech commands")
-	}
+	ws.PublishBytes(fmt.Sprintf("/mini_map/arena/%s/faction/%s/mech_command/%s", btl.ArenaID, wm.FactionID, wm.Hash), server.BinaryKeyMechMoveCommandIndividual, []byte(mmc.ToByteStr()))
+	ws.PublishBytes(fmt.Sprintf("/mini_map/arena/%s/faction/%s/mech_commands", btl.ArenaID, wm.FactionID), server.BinaryKeyMechMoveCommandMap, []byte(fmc.ToByteString()))
+
 	return nil
 }
 

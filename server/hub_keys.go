@@ -2,7 +2,6 @@ package server
 
 // player_abilities
 const HubKeyPlayerAbilitiesList = "PLAYER:ABILITIES:LIST:SUBSCRIBE"
-const HubKeyMechMoveCommandSubscribe = "MECH:MOVE:COMMAND:SUBSCRIBE"
 
 const HubKeySaleAbilitiesPriceSubscribe = "SALE:ABILITIES:PRICE:SUBSCRIBE"
 const HubKeySaleAbilitiesListSubscribe = "SALE:ABILITIES:LIST:SUBSCRIBE"
@@ -10,8 +9,6 @@ const HubKeySaleAbilitiesList = "SALE:ABILITIES:LIST"
 const HubKeySaleAbilityPurchase = "SALE:ABILITY:PURCHASE"
 
 const HubKeyGlobalAnnouncementSubscribe = "GLOBAL_ANNOUNCEMENT:SUBSCRIBE"
-
-const WarMachineRepairStatusSubscribe = "WAR:MACHINE:REPAIR:STATUS:SUBSCRIBE"
 
 const HubKeySyndicateGeneralDetailSubscribe = "SYNDICATE:GENERAL:DETAIL:SUBSCRIBE"
 const HubKeySyndicateDirectorsSubscribe = "SYNDICATE:DIRECTORS:SUBSCRIBE"
@@ -64,11 +61,11 @@ const HubKeyChallengeFundSubscribe = "CHALLENGE:FUND"
 const HubKeyBattleArenaListSubscribe = "BATTLE:ARENA:LIST"
 const HubKeyBattleArenaClosedSubscribe = "BATTLE:ARENA:CLOSED"
 
-// battle abilities
-
-const HubKeyMiniMapAbilityDisplayList = "MINI:MAP:ABILITY:DISPLAY:LIST"
-
+// binary key
 const (
-	BinaryKeyWarMachineStats        byte = 1
-	BinaryKeyMiniMapAbilityContents byte = 2
+	BinaryKeyWarMachineStats           byte = 1
+	BinaryKeyMiniMapAbilityContents    byte = 2
+	BinaryKeyMiniMapEvents             byte = 3
+	BinaryKeyMechMoveCommandIndividual byte = 4
+	BinaryKeyMechMoveCommandMap        byte = 5
 )
