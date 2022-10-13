@@ -14,6 +14,3 @@ VALUES ('8dd55355-fc22-4d1d-a825-b973bb075259', 'PLAYER'),
 
 ALTER TABLE players
     ADD COLUMN role_id UUID NOT NULL REFERENCES roles (id) DEFAULT '8dd55355-fc22-4d1d-a825-b973bb075259'; -- defaults to 'PLAYER' role
-
-ALTER TABLE player_bans
-    ADD COLUMN ban_mech_queue BOOLEAN NOT NULL default false;

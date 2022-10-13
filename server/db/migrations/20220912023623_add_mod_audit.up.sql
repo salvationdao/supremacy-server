@@ -10,3 +10,6 @@ CREATE TABLE mod_action_audit
     player_ban_id UUID references player_bans (id) NULL,
     created_at    TIMESTAMPTZ                      NOT NULL DEFAULT now()
 );
+
+ALTER TABLE player_bans
+    ADD COLUMN ban_mech_queue BOOLEAN NOT NULL default false;
