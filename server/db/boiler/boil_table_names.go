@@ -82,6 +82,7 @@ var TableNames = struct {
 	MechWeapons                                        string
 	Mechs                                              string
 	MechsOld                                           string
+	ModActionAudit                                     string
 	Multipliers                                        string
 	MysteryCrate                                       string
 	MysteryCrateBlueprints                             string
@@ -121,6 +122,7 @@ var TableNames = struct {
 	RepairBlocks                                       string
 	RepairCases                                        string
 	RepairOffers                                       string
+	Roles                                              string
 	SalePlayerAbilities                                string
 	SchemaMigrations                                   string
 	SpoilsOfWar                                        string
@@ -230,6 +232,7 @@ var TableNames = struct {
 	MechWeapons:                    "mech_weapons",
 	Mechs:                          "mechs",
 	MechsOld:                       "mechs_old",
+	ModActionAudit:                 "mod_action_audit",
 	Multipliers:                    "multipliers",
 	MysteryCrate:                   "mystery_crate",
 	MysteryCrateBlueprints:         "mystery_crate_blueprints",
@@ -269,6 +272,7 @@ var TableNames = struct {
 	RepairBlocks:                   "repair_blocks",
 	RepairCases:                    "repair_cases",
 	RepairOffers:                   "repair_offers",
+	Roles:                          "roles",
 	SalePlayerAbilities:            "sale_player_abilities",
 	SchemaMigrations:               "schema_migrations",
 	SpoilsOfWar:                    "spoils_of_war",

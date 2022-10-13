@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 	"net/http"
 	"server"
 	"server/db"
@@ -109,6 +110,18 @@ func (api *API) AuthCheckHandler(w http.ResponseWriter, r *http.Request) (int, e
 			return http.StatusInternalServerError, terror.Error(err, "Failed to write cookie")
 		}
 
+		user, err := boiler.Players(
+			boiler.PlayerWhere.ID.EQ(player.ID),
+			qm.Load(boiler.PlayerRels.Role),
+		).One(gamedb.StdConn)
+		if err != nil {
+			return http.StatusInternalServerError, terror.Error(err, "Failed to find player.")
+		}
+
+		if user.R != nil && user.R.Role != nil {
+			player.RoleType = user.R.Role.RoleType
+		}
+
 		return helpers.EncodeJSON(w, player)
 	}
 
@@ -130,6 +143,18 @@ func (api *API) AuthCheckHandler(w http.ResponseWriter, r *http.Request) (int, e
 	err = api.UpsertPlayer(player.ID, player.Username, player.PublicAddress, player.FactionID, req.Fingerprint)
 	if err != nil {
 		return http.StatusInternalServerError, terror.Error(err, "Failed to update player.")
+	}
+
+	user, err := boiler.Players(
+		boiler.PlayerWhere.ID.EQ(player.ID),
+		qm.Load(boiler.PlayerRels.Role),
+	).One(gamedb.StdConn)
+	if err != nil {
+		return http.StatusInternalServerError, terror.Error(err, "Failed to find player.")
+	}
+
+	if user.R != nil && user.R.Role != nil {
+		player.RoleType = user.R.Role.RoleType
 	}
 
 	return helpers.EncodeJSON(w, player)

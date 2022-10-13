@@ -63,6 +63,20 @@ func (am *ArenaManager) QueueJoinHandler(ctx context.Context, user *boiler.Playe
 		return terror.Error(fmt.Errorf("mech id list not provided"), "Mech id list is not provided.")
 	}
 
+	playerBan, err := boiler.PlayerBans(
+		boiler.PlayerBanWhere.BanMechQueue.EQ(true),
+		boiler.PlayerBanWhere.EndAt.GT(time.Now()),
+		boiler.PlayerBanWhere.ManuallyUnbanByID.IsNull(),
+		boiler.PlayerBanWhere.BannedPlayerID.EQ(user.ID),
+	).One(gamedb.StdConn)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return terror.Error(err, "Failed to find banned user")
+	}
+
+	if playerBan != nil {
+		return terror.Error(fmt.Errorf("user is banned from queing mechs"), "User is banned from queuing mech")
+	}
+
 	mcis, err := boiler.CollectionItems(
 		boiler.CollectionItemWhere.ItemID.IN(req.Payload.MechIDs),
 		boiler.CollectionItemWhere.ItemType.EQ(boiler.ItemTypeMech),
