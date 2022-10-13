@@ -354,7 +354,7 @@ func IsWeaponColumn(col string) bool {
 
 type WeaponListOpts struct {
 	Search                        string
-	SortBy                        string
+	SortBy                        SortBy
 	SortDir                       SortByDir
 	PageSize                      int
 	Page                          int
@@ -563,11 +563,11 @@ func WeaponList(opts *WeaponListOpts) (int64, []*PlayerAsset, error) {
 
 	if opts.SortBy != "" && opts.SortDir.IsValid() {
 		switch opts.SortBy {
-		case "alphabetical":
+		case SortByAlphabetical:
 			queryMods = append(queryMods, qm.OrderBy(fmt.Sprintf("%s %s", boiler.BlueprintWeaponTableColumns.Label, opts.SortDir)))
-		case "rarity":
+		case SortByRarity:
 			queryMods = append(queryMods, GenerateTierSort(boiler.BlueprintWeaponSkinTableColumns.Tier, opts.SortDir))
-		case "date":
+		case SortByDate:
 			queryMods = append(queryMods, qm.OrderBy(fmt.Sprintf("%s %s", boiler.WeaponTableColumns.CreatedAt, opts.SortDir)))
 		}
 	} else {
@@ -832,11 +832,11 @@ func WeaponListDetailed(opts *WeaponListOpts) (int64, []*server.Weapon, error) {
 
 	if opts.SortBy != "" && opts.SortDir.IsValid() {
 		switch opts.SortBy {
-		case "alphabetical":
+		case SortByAlphabetical:
 			queryMods = append(queryMods, qm.OrderBy(fmt.Sprintf("%s %s", boiler.BlueprintWeaponTableColumns.Label, opts.SortDir)))
-		case "rarity":
+		case SortByRarity:
 			queryMods = append(queryMods, GenerateTierSort(boiler.BlueprintWeaponSkinTableColumns.Tier, opts.SortDir))
-		case "date":
+		case SortByDate:
 			queryMods = append(queryMods, qm.OrderBy(fmt.Sprintf("%s %s", boiler.WeaponTableColumns.CreatedAt, opts.SortDir)))
 		}
 	} else {

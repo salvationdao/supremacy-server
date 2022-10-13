@@ -1911,7 +1911,7 @@ func (api *API) GetMaxWeaponStats(w http.ResponseWriter, r *http.Request) (int, 
 type PlayerAssetWeaponListRequest struct {
 	Payload struct {
 		Search                        string                    `json:"search"`
-		SortBy                        string                    `json:"sort_by"`
+		SortBy                        db.SortBy                 `json:"sort_by"`
 		SortDir                       db.SortByDir              `json:"sort_dir"`
 		PageSize                      int                       `json:"page_size"`
 		Page                          int                       `json:"page"`
@@ -2066,7 +2066,7 @@ type PlayerAssetMechSubmodelListRequest struct {
 		Search                   string                `json:"search"`
 		Filter                   *db.ListFilterRequest `json:"filter"`
 		Sort                     *db.ListSortRequest   `json:"sort"`
-		SortBy                   string                `json:"sort_by"`
+		SortBy                   db.SortBy             `json:"sort_by"`
 		SortDir                  db.SortByDir          `json:"sort_dir"`
 		PageSize                 int                   `json:"page_size"`
 		Page                     int                   `json:"page"`

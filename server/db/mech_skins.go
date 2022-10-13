@@ -119,7 +119,7 @@ type MechSkinListOpts struct {
 	Search                   string
 	Filter                   *ListFilterRequest
 	Sort                     *ListSortRequest
-	SortBy                   string
+	SortBy                   SortBy
 	SortDir                  SortByDir
 	PageSize                 int
 	Page                     int
@@ -381,7 +381,7 @@ func MechSkinListDetailed(opts *MechSkinListOpts) (int64, []*server.MechSkin, er
 		queryMods = append(queryMods, qm.OrderBy(orderBy))
 	} else if opts.SortBy != "" && opts.SortDir.IsValid() {
 		switch opts.SortBy {
-		case "alphabetical":
+		case SortByAlphabetical:
 			orderBy := fmt.Sprintf("(%s) %s",
 				boiler.BlueprintMechSkinTableColumns.Label,
 				opts.SortDir,
@@ -394,9 +394,9 @@ func MechSkinListDetailed(opts *MechSkinListOpts) (int64, []*server.MechSkin, er
 				)
 			}
 			queryMods = append(queryMods, qm.OrderBy(orderBy))
-		case "rarity":
+		case SortByRarity:
 			queryMods = append(queryMods, GenerateTierSort(qm.Rels(boiler.TableNames.BlueprintMechSkin, boiler.BlueprintMechSkinColumns.Tier), opts.SortDir))
-		case "date":
+		case SortByDate:
 			orderBy := fmt.Sprintf("(%s) %s",
 				boiler.MechSkinTableColumns.CreatedAt,
 				opts.SortDir,
