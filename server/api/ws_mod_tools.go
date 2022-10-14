@@ -115,7 +115,7 @@ func (api *API) ModToolBanUser(ctx context.Context, user *boiler.Player, key str
 
 		msg := &boiler.SystemMessage{
 			PlayerID: bannedPlayer.ID,
-			SenderID: user.ID,
+			SenderID: server.SupremacySystemModeratorUserID,
 			Title:    "You've been banned by a Moderator",
 			Message:  fmt.Sprintf("You've been banned by moderator for the following reasons: %s \n If you think you've been wrongly banned please put a ticket through our support team.", req.Payload.BanReason),
 		}
@@ -233,7 +233,7 @@ func (api *API) ModToolUnbanUser(ctx context.Context, user *boiler.Player, key s
 
 		msg := &boiler.SystemMessage{
 			PlayerID: playerBan.BannedPlayerID,
-			SenderID: user.ID,
+			SenderID: server.SupremacySystemModeratorUserID,
 			Title:    "You've been unbanned by a Moderator",
 			Message:  fmt.Sprintf("You've been unbanned by moderator for the following reasons: %s", req.Payload.UnbanReason),
 		}
