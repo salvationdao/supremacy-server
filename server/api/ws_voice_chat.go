@@ -184,7 +184,6 @@ func (api *API) JoinFactionCommander(ctx context.Context, user *boiler.Player, f
 	}
 
 	reply(true)
-
 	return nil
 }
 
@@ -226,7 +225,6 @@ func (api *API) LeaveFactionCommander(ctx context.Context, user *boiler.Player, 
 	}
 
 	reply(true)
-
 	return nil
 }
 
@@ -311,59 +309,7 @@ func (api *API) VoteKickFactionCommander(ctx context.Context, user *boiler.Playe
 	}
 
 	reply(true)
-
 	return nil
-}
-
-type VoiceChatListeners struct {
-	Listeners []*server.PublicPlayer
-	API       *API
-	deadlock.RWMutex
-}
-
-func NewVoiceChatListeners() *VoiceChatListeners {
-	vcl := &VoiceChatListeners{}
-
-	return vcl
-
-}
-
-// CurrentVoiceChatListeners return a copy of current voice stream listeners
-func (vcl *VoiceChatListeners) CurrentVoiceChatListeners() []*server.PublicPlayer {
-	vcl.RLock()
-	defer vcl.RUnlock()
-
-	return vcl.Listeners
-}
-
-func (vcl *VoiceChatListeners) AddListener(newListener *server.PublicPlayer) {
-	vcl.Lock()
-	found := false
-	for _, l := range vcl.Listeners {
-		if l.ID == newListener.ID {
-			found = true
-		}
-	}
-
-	if !found {
-		vcl.Listeners = append(vcl.Listeners, newListener)
-	}
-	vcl.Unlock()
-}
-
-func (vcl *VoiceChatListeners) RemoveListener(listenerID string) {
-	vcl.Lock()
-
-	newSlice := []*server.PublicPlayer{}
-	for _, v := range vcl.Listeners {
-		if v.ID != listenerID {
-			newSlice = append(newSlice, v)
-		}
-	}
-
-	vcl.Listeners = newSlice
-	vcl.Unlock()
-
 }
 
 func (api *API) VoiceChatConnect(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
@@ -412,4 +358,52 @@ func (api *API) VoiceChatDisconnect(ctx context.Context, user *boiler.Player, fa
 
 	reply(true)
 	return nil
+}
+
+type VoiceChatListeners struct {
+	Listeners []*server.PublicPlayer
+	deadlock.RWMutex
+}
+
+func NewVoiceChatListeners() *VoiceChatListeners {
+	vcl := &VoiceChatListeners{}
+	return vcl
+}
+
+// CurrentVoiceChatListeners return a copy of current voice stream listeners
+func (vcl *VoiceChatListeners) CurrentVoiceChatListeners() []*server.PublicPlayer {
+	vcl.RLock()
+	defer vcl.RUnlock()
+
+	return vcl.Listeners
+}
+
+func (vcl *VoiceChatListeners) AddListener(newListener *server.PublicPlayer) {
+	vcl.Lock()
+	found := false
+	for _, l := range vcl.Listeners {
+		if l.ID == newListener.ID {
+			found = true
+		}
+	}
+
+	if !found {
+		vcl.Listeners = append(vcl.Listeners, newListener)
+	}
+	vcl.Unlock()
+}
+
+func (vcl *VoiceChatListeners) RemoveListener(listenerID string) {
+	vcl.Lock()
+
+	newSlice := []*server.PublicPlayer{}
+	for _, v := range vcl.Listeners {
+		if v.ID != listenerID {
+			newSlice = append(newSlice, v)
+		}
+	}
+
+	vcl.Listeners = newSlice
+	vcl.Unlock()
+
 }
