@@ -354,7 +354,7 @@ func (am *ArenaManager) NewArena(wsConn *websocket.Conn) (*Arena, error) {
 		BattleArena:            ba,
 		socket:                 wsConn,
 		connected:              atomic.NewBool(true),
-		gameClientJsonDataChan: make(chan []byte, 3),
+		gameClientJsonDataChan: make(chan []byte),
 		MechCommandCheckMap: &MechCommandCheckMap{
 			m: make(map[string]chan bool),
 		},
