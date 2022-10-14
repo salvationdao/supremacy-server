@@ -131,6 +131,23 @@ func FiatProduct(conn boil.Executor, id string) (*server.FiatProduct, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	pricing, err := boiler.FiatProductPricings(
+		boiler.FiatProductPricingWhere.FiatProductID.EQ(output.ID),
+	).All(conn)
+	if err != nil {
+		return nil, err
+	}
+
+	output.Pricing = []*server.FiatProductPricing{}
+	for _, p := range pricing {
+		item := &server.FiatProductPricing{
+			CurrencyCode: p.CurrencyCode,
+			Amount:       p.Amount,
+		}
+		output.Pricing = append(output.Pricing, item)
+	}
+
 	return output, nil
 }
 

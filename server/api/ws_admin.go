@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"server"
@@ -9,6 +10,7 @@ import (
 	"server/db/boiler"
 	"server/gamedb"
 
+	"github.com/friendsofgo/errors"
 	"github.com/ninja-software/terror/v2"
 	"github.com/ninja-syndicate/ws"
 	"github.com/shopspring/decimal"
@@ -25,11 +27,42 @@ func NewAdminController(api *API) *AdminController {
 		API: api,
 	}
 
+	api.SecureAdminCommand(HubKeyAdminFiatProductGet, adminHub.FiatProductGet)
 	api.SecureAdminCommand(HubKeyAdminFiatProductList, adminHub.FiatProductList)
 	api.SecureAdminCommand(HubKeyAdminFiatProductCreate, adminHub.FiatProductCreate)
 	api.SecureAdminCommand(HubKeyAdminFiatBlueprintMechList, adminHub.FiatBlueprintMechList)
 
 	return adminHub
+}
+
+type AdminFiatProductGetRequest struct {
+	Payload struct {
+		ID string `json:"id"`
+	} `json:"payload"`
+}
+
+const HubKeyAdminFiatProductGet = "ADMIN:FIAT:PRODUCT:GET"
+
+func (ac *AdminController) FiatProductGet(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
+	errMsg := "Failed to get packages, please try again."
+
+	req := &AdminFiatProductGetRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return terror.Error(err, "Invalid request received.")
+	}
+
+	product, err := db.FiatProduct(gamedb.StdConn, req.Payload.ID)
+	if errors.Is(err, sql.ErrNoRows) {
+		return terror.Error(fmt.Errorf("product not found"), "Product not found.")
+	}
+	if err != nil {
+		return terror.Error(err, errMsg)
+	}
+
+	reply(product)
+
+	return nil
 }
 
 type AdminFiatProductListRequest struct {
