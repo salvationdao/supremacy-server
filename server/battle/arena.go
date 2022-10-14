@@ -397,7 +397,7 @@ func (am *ArenaManager) NewArena(battleArena *boiler.BattleArena, wsConn *websoc
 		Stage:                  atomic.NewString(ArenaStageIdle),
 		socket:                 wsConn,
 		connected:              atomic.NewBool(true),
-		gameClientJsonDataChan: make(chan []byte, 3),
+		gameClientJsonDataChan: make(chan []byte),
 		MechCommandCheckMap: &MechCommandCheckMap{
 			m: make(map[string]chan bool),
 		},
