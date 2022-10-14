@@ -119,11 +119,12 @@ type MechSkinListOpts struct {
 	Search                   string
 	Filter                   *ListFilterRequest
 	Sort                     *ListSortRequest
-	SortBy                   string
+	SortBy                   SortBy
 	SortDir                  SortByDir
 	PageSize                 int
 	Page                     int
 	OwnerID                  string
+	ModelID                  string
 	DisplayXsyn              bool
 	ExcludeMarketLocked      bool
 	IncludeMarketListed      bool
@@ -168,15 +169,27 @@ func MechSkinListDetailed(opts *MechSkinListOpts) (int64, []*server.MechSkin, er
 			qm.Rels(boiler.TableNames.BlueprintMechSkin, boiler.BlueprintMechSkinColumns.ID),
 			qm.Rels(boiler.TableNames.MechSkin, boiler.MechSkinColumns.BlueprintID),
 		)),
-		qm.InnerJoin(fmt.Sprintf("LATERAL (SELECT * FROM %s _wmsc WHERE _wmsc.%s = %s LIMIT 1) %s ON %s = %s",
+	)
+	if opts.ModelID != "" {
+		queryMods = append(queryMods, qm.InnerJoin(fmt.Sprintf("LATERAL (SELECT * FROM %s _wmsc WHERE _wmsc.%s = %s AND _wmsc.%s = ? LIMIT 1) %s ON %s = %s",
+			boiler.TableNames.MechModelSkinCompatibilities,
+			boiler.MechModelSkinCompatibilityColumns.BlueprintMechSkinID,
+			qm.Rels(boiler.TableNames.BlueprintMechSkin, boiler.BlueprintMechSkinColumns.ID),
+			boiler.MechModelSkinCompatibilityColumns.MechModelID,
+			boiler.TableNames.MechModelSkinCompatibilities,
+			qm.Rels(boiler.TableNames.MechModelSkinCompatibilities, boiler.MechModelSkinCompatibilityColumns.BlueprintMechSkinID),
+			qm.Rels(boiler.TableNames.BlueprintMechSkin, boiler.BlueprintMechSkinColumns.ID),
+		), opts.ModelID))
+	} else {
+		queryMods = append(queryMods, qm.InnerJoin(fmt.Sprintf("LATERAL (SELECT * FROM %s _wmsc WHERE _wmsc.%s = %s LIMIT 1) %s ON %s = %s",
 			boiler.TableNames.MechModelSkinCompatibilities,
 			boiler.MechModelSkinCompatibilityColumns.BlueprintMechSkinID,
 			qm.Rels(boiler.TableNames.BlueprintMechSkin, boiler.BlueprintMechSkinColumns.ID),
 			boiler.TableNames.MechModelSkinCompatibilities,
 			qm.Rels(boiler.TableNames.MechModelSkinCompatibilities, boiler.MechModelSkinCompatibilityColumns.BlueprintMechSkinID),
 			qm.Rels(boiler.TableNames.BlueprintMechSkin, boiler.BlueprintMechSkinColumns.ID),
-		)),
-	)
+		)))
+	}
 
 	if len(opts.FilterSkinCompatibility) > 0 {
 		var args []interface{}
@@ -188,7 +201,7 @@ func MechSkinListDetailed(opts *MechSkinListOpts) (int64, []*server.MechSkin, er
 				whereClause = whereClause + "?)"
 				continue
 			}
-			whereClause = whereClause + fmt.Sprintf("?,")
+			whereClause = whereClause + "?,"
 		}
 
 		queryMods = append(queryMods,
@@ -328,6 +341,7 @@ func MechSkinListDetailed(opts *MechSkinListOpts) (int64, []*server.MechSkin, er
 		qm.Rels(boiler.TableNames.BlueprintMechSkin, boiler.BlueprintMechSkinColumns.Label),
 		qm.Rels(boiler.TableNames.BlueprintMechSkin, boiler.BlueprintMechSkinColumns.DefaultLevel),
 		qm.Rels(boiler.TableNames.BlueprintMechSkin, boiler.BlueprintMechSkinColumns.Tier),
+		qm.Rels(boiler.TableNames.BlueprintMechSkin, boiler.BlueprintMechSkinColumns.BlueprintWeaponSkinID),
 		qm.Rels(boiler.TableNames.BlueprintMechSkin, boiler.BlueprintMechSkinColumns.ImageURL),
 		qm.Rels(boiler.TableNames.BlueprintMechSkin, boiler.BlueprintMechSkinColumns.CardAnimationURL),
 		qm.Rels(boiler.TableNames.BlueprintMechSkin, boiler.BlueprintMechSkinColumns.AvatarURL),
@@ -366,7 +380,8 @@ func MechSkinListDetailed(opts *MechSkinListOpts) (int64, []*server.MechSkin, er
 		}
 		queryMods = append(queryMods, qm.OrderBy(orderBy))
 	} else if opts.SortBy != "" && opts.SortDir.IsValid() {
-		if opts.SortBy == "alphabetical" {
+		switch opts.SortBy {
+		case SortByAlphabetical:
 			orderBy := fmt.Sprintf("(%s) %s",
 				boiler.BlueprintMechSkinTableColumns.Label,
 				opts.SortDir,
@@ -379,8 +394,21 @@ func MechSkinListDetailed(opts *MechSkinListOpts) (int64, []*server.MechSkin, er
 				)
 			}
 			queryMods = append(queryMods, qm.OrderBy(orderBy))
-		} else if opts.SortBy == "rarity" {
+		case SortByRarity:
 			queryMods = append(queryMods, GenerateTierSort(qm.Rels(boiler.TableNames.BlueprintMechSkin, boiler.BlueprintMechSkinColumns.Tier), opts.SortDir))
+		case SortByDate:
+			orderBy := fmt.Sprintf("(%s) %s",
+				boiler.MechSkinTableColumns.CreatedAt,
+				opts.SortDir,
+			)
+			if opts.DisplayUnique {
+				orderBy = fmt.Sprintf("%s, (%s) %s",
+					boiler.MechSkinTableColumns.BlueprintID,
+					boiler.MechSkinTableColumns.CreatedAt,
+					opts.SortDir,
+				)
+			}
+			queryMods = append(queryMods, qm.OrderBy(orderBy))
 		}
 	} else {
 		orderBy := fmt.Sprintf("%s ASC",
@@ -431,6 +459,7 @@ func MechSkinListDetailed(opts *MechSkinListOpts) (int64, []*server.MechSkin, er
 			&mc.Label,
 			&mc.DefaultLevel,
 			&mc.Tier,
+			&mc.BlueprintWeaponSkinID,
 			&mc.SkinSwatch.ImageURL,
 			&mc.SkinSwatch.CardAnimationURL,
 			&mc.SkinSwatch.AvatarURL,

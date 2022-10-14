@@ -123,6 +123,7 @@ type WarMachineCustomisation struct {
 
 type PowerCore struct {
 	ID           string          `json:"id"`
+	ModelID      string          `json:"model_id"`
 	Label        string          `json:"label"`
 	Capacity     decimal.Decimal `json:"capacity"`
 	MaxDrawRate  decimal.Decimal `json:"max_draw_rate"`
@@ -134,6 +135,8 @@ type PowerCore struct {
 }
 
 type PowerCoreGameClient struct {
+	ID                       string  `json:"id"`
+	BlueprintID              string  `json:"blueprint_id"`
 	PowerCapacity            float32 `json:"power_capacity"`
 	RechargeRate             float32 `json:"recharge_rate"`
 	MaxDrawRate              float32 `json:"max_draw_rate"`
@@ -311,20 +314,21 @@ func WeaponFromServer(weapon *server.Weapon) *Weapon {
 	}
 }
 
-func PowerCoreFromServer(ec *server.PowerCore) *PowerCore {
-	if ec == nil {
+func PowerCoreFromServer(pc *server.PowerCore) *PowerCore {
+	if pc == nil {
 		return nil
 	}
 	return &PowerCore{
-		ID:           ec.ID,
-		Label:        ec.Label,
-		Capacity:     ec.Capacity,
-		MaxDrawRate:  ec.MaxDrawRate,
-		RechargeRate: ec.RechargeRate,
-		Armour:       ec.Armour,
-		MaxHitpoints: ec.MaxHitpoints,
-		EquippedOn:   ec.EquippedOn,
-		CreatedAt:    ec.CreatedAt,
+		ID:           pc.ID,
+		ModelID:      pc.BlueprintID,
+		Label:        pc.Label,
+		Capacity:     pc.Capacity,
+		MaxDrawRate:  pc.MaxDrawRate,
+		RechargeRate: pc.RechargeRate,
+		Armour:       pc.Armour,
+		MaxHitpoints: pc.MaxHitpoints,
+		EquippedOn:   pc.EquippedOn,
+		CreatedAt:    pc.CreatedAt,
 	}
 }
 
