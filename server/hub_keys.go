@@ -61,11 +61,20 @@ const HubKeyChallengeFundSubscribe = "CHALLENGE:FUND"
 const HubKeyBattleArenaListSubscribe = "BATTLE:ARENA:LIST"
 const HubKeyBattleArenaClosedSubscribe = "BATTLE:ARENA:CLOSED"
 
+const HubKeyMiniMapAbilityContentSubscribe = "MINI:MAP:ABILITY:CONTENT"
+const HubKeyMechCommandUpdateSubscribe = "MECH:COMMAND:UPDATE"
+const HubKeyFactionMechCommandUpdateSubscribe = "FACTION:MECH:COMMANDS:UPDATE"
+const HubKeyMiniMapUpdateSubscribe = "MINI:MAP:UPDATE"
+
 // binary key
 const (
-	BinaryKeyWarMachineStats           byte = 1
-	BinaryKeyMiniMapAbilityContents    byte = 2
-	BinaryKeyMiniMapEvents             byte = 3
-	BinaryKeyMechMoveCommandIndividual byte = 4
-	BinaryKeyMechMoveCommandMap        byte = 5
+	BinaryKeyWarMachineStats byte = 1
+	BinaryKeyMiniMapEvents   byte = 2
 )
+
+// json binary
+
+type JsonBinaryData struct {
+	Key  string      `json:"key"`
+	Data interface{} `json:"data"`
+}

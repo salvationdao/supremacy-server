@@ -351,10 +351,11 @@ func (am *ArenaManager) NewArena(wsConn *websocket.Conn) (*Arena, error) {
 	}
 
 	arena := &Arena{
-		BattleArena:            ba,
-		socket:                 wsConn,
-		connected:              atomic.NewBool(true),
-		gameClientJsonDataChan: make(chan []byte, 3),
+		BattleArena:                     ba,
+		socket:                          wsConn,
+		connected:                       atomic.NewBool(true),
+		gameClientBattleRoutineDataChan: make(chan []byte),
+		gameClientAbilityDataChan:       make(chan []byte, 1000),
 		MechCommandCheckMap: &MechCommandCheckMap{
 			m: make(map[string]chan bool),
 		},
@@ -389,6 +390,8 @@ func (am *ArenaManager) NewArena(wsConn *websocket.Conn) (*Arena, error) {
 	// speed up mech stat broadcast by separate json data and binary data
 	go arena.GameClientJsonDataParser()
 
+	go arena.AbilityRelatedChan()
+
 	go arena.warMachinePositionBroadcaster()
 
 	am.arenas[arena.ID] = arena
@@ -421,7 +424,8 @@ type Arena struct {
 
 	QuestManager *quest.System
 
-	gameClientJsonDataChan chan []byte
+	gameClientBattleRoutineDataChan chan []byte
+	gameClientAbilityDataChan       chan []byte
 
 	MechCommandCheckMap *MechCommandCheckMap
 	sync.RWMutex
@@ -950,8 +954,6 @@ type MinimapEvent struct {
 	Coords        server.CellLocation `json:"coords"`
 }
 
-const HubKeyMinimapUpdatesSubscribe = "MINIMAP:UPDATES:SUBSCRIBE"
-
 func (am *ArenaManager) MinimapUpdatesSubscribeHandler(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
 	arena, err := am.GetArenaFromContext(ctx)
 	if err != nil {
@@ -1471,11 +1473,20 @@ func (arena *Arena) start() {
 			if btl != nil && msg.BattleCommand == "BATTLE:END" {
 				btl.stage.Store(BattleStageEnd)
 			}
-			// handle message through channel
-			arena.gameClientJsonDataChan <- data
+
+			switch msg.BattleCommand {
+			case "BATTLE:MAP_DETAILS", "BATTLE:START", "BATTLE:INTRO_FINISHED", "BATTLE:WAR_MACHINE_DESTROYED", "BATTLE:END", "BATTLE:OUTRO_FINISHED":
+				// handle message through channel
+				arena.gameClientBattleRoutineDataChan <- data
+
+			default:
+				// handle all the ability related data
+				arena.gameClientAbilityDataChan <- data
+			}
+
 		case Tick:
 			if btl := arena.CurrentBattle(); btl != nil && btl.stage.Load() == BattleStageStart {
-				btl.Tick(payload)
+				go btl.Tick(payload)
 			}
 
 		default:
@@ -1491,7 +1502,7 @@ func (arena *Arena) GameClientJsonDataParser() {
 		}
 	}()
 	for {
-		data := <-arena.gameClientJsonDataChan
+		data := <-arena.gameClientBattleRoutineDataChan
 		msg := &BattleMsg{}
 		err := json.Unmarshal(data, msg)
 		if err != nil {
@@ -1542,6 +1553,41 @@ func (arena *Arena) GameClientJsonDataParser() {
 				return
 			}
 			arena.NewBattleChan <- &NewBattleChan{btl.ID, btl.BattleNumber}
+
+		case "BATTLE:INTRO_FINISHED":
+			if btl.replaySession.ReplaySession != nil {
+				btl.replaySession.ReplaySession.IntroEndedAt = null.TimeFrom(time.Now())
+			}
+
+			// record into finished time for tracking AFK
+			btl.introEndedAt = time.Now()
+
+			btl.start()
+
+		case "BATTLE:WAR_MACHINE_DESTROYED":
+			// do not process, if battle already ended
+			if btl.stage.Load() == BattleStageEnd {
+				continue
+			}
+
+			var dataPayload BattleWMDestroyedPayload
+			if err := json.Unmarshal(msg.Payload, &dataPayload); err != nil {
+				L.Warn().Err(err).Msg("unable to unmarshal battle message warmachine destroyed payload")
+				continue
+			}
+			btl.Destroyed(&dataPayload)
+
+		case "BATTLE:END":
+			var dataPayload *BattleEndPayload
+			if err := json.Unmarshal(msg.Payload, &dataPayload); err != nil {
+				L.Warn().Err(err).Msg("unable to unmarshal battle message warmachine destroyed payload")
+				continue
+			}
+			btl.end(dataPayload)
+
+			// reset war machine broadcast
+			btl.arena.WarMachineStatBroadcastResetChan <- true
+
 		case "BATTLE:OUTRO_FINISHED":
 			if btl.replaySession.ReplaySession != nil {
 				err = replay.RecordReplayRequest(btl.Battle, btl.replaySession.ReplaySession.ID, replay.StopRecording)
@@ -1573,38 +1619,38 @@ func (arena *Arena) GameClientJsonDataParser() {
 			// begin battle
 			arena.BeginBattle()
 
-		case "BATTLE:INTRO_FINISHED":
-			if btl.replaySession.ReplaySession != nil {
-				btl.replaySession.ReplaySession.IntroEndedAt = null.TimeFrom(time.Now())
-			}
+		default:
+			L.Warn().Err(err).Msg("Battle Arena WS: no command response")
+		}
+		L.Debug().Msg("game client message handled")
+	}
+}
 
-			// record into finished time for tracking AFK
-			btl.introEndedAt = time.Now()
+func (arena *Arena) AbilityRelatedChan() {
+	defer func() {
+		if r := recover(); r != nil {
+			gamelog.LogPanicRecovery("Panic! Panic! Panic! Panic on GameClientJsonDataParser!", r)
+		}
+	}()
+	for {
+		data := <-arena.gameClientAbilityDataChan
+		msg := &BattleMsg{}
+		err := json.Unmarshal(data, msg)
+		if err != nil {
+			gamelog.L.Warn().Str("msg", string(data)).Err(err).Msg("unable to unmarshal battle message")
+			continue
+		}
 
-			btl.start()
-		case "BATTLE:WAR_MACHINE_DESTROYED":
-			// do not process, if battle already ended
-			if btl.stage.Load() == BattleStageEnd {
-				continue
-			}
+		btl := arena.CurrentBattle()
+		if btl == nil || btl.stage.Load() == BattleStageEnd {
+			continue
+		}
 
-			var dataPayload BattleWMDestroyedPayload
-			if err := json.Unmarshal(msg.Payload, &dataPayload); err != nil {
-				L.Warn().Err(err).Msg("unable to unmarshal battle message warmachine destroyed payload")
-				continue
-			}
-			btl.Destroyed(&dataPayload)
-		case "BATTLE:END":
-			var dataPayload *BattleEndPayload
-			if err := json.Unmarshal(msg.Payload, &dataPayload); err != nil {
-				L.Warn().Err(err).Msg("unable to unmarshal battle message warmachine destroyed payload")
-				continue
-			}
-			btl.end(dataPayload)
+		L := gamelog.L.With().Str("game_client_data", string(data)).Int("message_type", int(JSON)).Str("battleCommand", msg.BattleCommand).Logger()
+		L.Info().Msg("game client message received")
 
-			// reset war machine broadcast
-			btl.arena.WarMachineStatBroadcastResetChan <- true
-
+		command := strings.TrimSpace(msg.BattleCommand) // temp fix for issue on gameclient
+		switch command {
 		case "BATTLE:AI_SPAWNED":
 			var dataPayload *AISpawnedRequest
 			if err := json.Unmarshal(msg.Payload, &dataPayload); err != nil {
@@ -1656,9 +1702,9 @@ func (arena *Arena) GameClientJsonDataParser() {
 			}
 
 			// remove repair from pending list, and broadcast
-			ws.PublishBytes(
+			ws.PublishMessage(
 				fmt.Sprintf("/mini_map/arena/%s/public/mini_map_ability_display_list", btl.ArenaID),
-				server.BinaryKeyMiniMapAbilityContents,
+				server.HubKeyMiniMapAbilityContentSubscribe,
 				btl.MiniMapAbilityDisplayList.Remove(dataPayload.EventID),
 			)
 
@@ -1706,31 +1752,31 @@ func (arena *Arena) GameClientJsonDataParser() {
 				case 12: // EMP
 					if wm.Status.IsStunned {
 						// add ability onto pending list, and broadcast
-						ws.PublishBytes(
+						ws.PublishMessage(
 							fmt.Sprintf("/mini_map/arena/%s/public/mini_map_ability_display_list", btl.ArenaID),
-							server.BinaryKeyMiniMapAbilityContents,
+							server.HubKeyMiniMapAbilityContentSubscribe,
 							btl.MiniMapAbilityDisplayList.Add(offeringID, mma),
 						)
 						continue
 					}
-					ws.PublishBytes(
+					ws.PublishMessage(
 						fmt.Sprintf("/mini_map/arena/%s/public/mini_map_ability_display_list", btl.ArenaID),
-						server.BinaryKeyMiniMapAbilityContents,
+						server.HubKeyMiniMapAbilityContentSubscribe,
 						btl.MiniMapAbilityDisplayList.Remove(offeringID),
 					)
 				case 13: // HACKER DRONE
 					if wm.Status.IsHacked {
 						// add ability onto pending list, and broadcast
-						ws.PublishBytes(
+						ws.PublishMessage(
 							fmt.Sprintf("/mini_map/arena/%s/public/mini_map_ability_display_list", btl.ArenaID),
-							server.BinaryKeyMiniMapAbilityContents,
+							server.HubKeyMiniMapAbilityContentSubscribe,
 							btl.MiniMapAbilityDisplayList.Add(offeringID, mma),
 						)
 						continue
 					}
-					ws.PublishBytes(
+					ws.PublishMessage(
 						fmt.Sprintf("/mini_map/arena/%s/public/mini_map_ability_display_list", btl.ArenaID),
-						server.BinaryKeyMiniMapAbilityContents,
+						server.HubKeyMiniMapAbilityContentSubscribe,
 						btl.MiniMapAbilityDisplayList.Remove(offeringID),
 					)
 				}
@@ -1770,9 +1816,9 @@ func (arena *Arena) GameClientJsonDataParser() {
 			}
 
 			// remove ability from pending list, and broadcast
-			ws.PublishBytes(
+			ws.PublishMessage(
 				fmt.Sprintf("/mini_map/arena/%s/public/mini_map_ability_display_list", btl.ArenaID),
-				server.BinaryKeyMiniMapAbilityContents,
+				server.HubKeyMiniMapAbilityContentSubscribe,
 				btl.MiniMapAbilityDisplayList.Remove(eventID),
 			)
 		default:
@@ -2335,8 +2381,8 @@ func (btl *Battle) CompleteWarMachineMoveCommand(payload *AbilityMoveCommandComp
 		fmc.IsMiniMech = true
 	}
 
-	ws.PublishBytes(fmt.Sprintf("/mini_map/arena/%s/faction/%s/mech_command/%s", btl.ArenaID, wm.FactionID, wm.Hash), server.BinaryKeyMechMoveCommandIndividual, []byte(mmc.ToByteStr()))
-	ws.PublishBytes(fmt.Sprintf("/mini_map/arena/%s/faction/%s/mech_commands", btl.ArenaID, wm.FactionID), server.BinaryKeyMechMoveCommandMap, []byte(fmc.ToByteString()))
+	ws.PublishMessage(fmt.Sprintf("/mini_map/arena/%s/faction/%s/mech_command/%s", btl.ArenaID, wm.FactionID, wm.Hash), server.HubKeyMechCommandUpdateSubscribe, mmc)
+	ws.PublishMessage(fmt.Sprintf("/mini_map/arena/%s/faction/%s/mech_commands", btl.ArenaID, wm.FactionID), server.HubKeyFactionMechCommandUpdateSubscribe, []*FactionMechCommand{fmc})
 
 	return nil
 }

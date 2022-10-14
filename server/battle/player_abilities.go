@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"github.com/davecgh/go-spew/spew"
 	"server"
 	"server/battle/player_abilities"
 	"server/db"
@@ -12,8 +13,6 @@ import (
 	"server/gamedb"
 	"server/gamelog"
 	"server/helpers"
-	"strconv"
-	"strings"
 	"time"
 
 	"github.com/sasha-s/go-deadlock"
@@ -582,9 +581,9 @@ func (am *ArenaManager) PlayerAbilityUse(ctx context.Context, user *boiler.Playe
 				mma.LaunchingAt = null.TimeFrom(time.Now().Add(time.Duration(bpa.LaunchingDelaySeconds) * time.Second))
 			}
 
-			ws.PublishBytes(
+			ws.PublishMessage(
 				fmt.Sprintf("/mini_map/arena/%s/public/mini_map_ability_display_list", arena.ID),
-				server.BinaryKeyMiniMapAbilityContents,
+				server.HubKeyMiniMapAbilityContentSubscribe,
 				btl.MiniMapAbilityDisplayList.Add(offeringID.String(), mma),
 			)
 
@@ -593,9 +592,9 @@ func (am *ArenaManager) PlayerAbilityUse(ctx context.Context, user *boiler.Playe
 					time.Sleep(time.Duration(bpa.AnimationDurationSeconds) * time.Second)
 					if battle != nil && battle.stage.Load() == BattleStageStart {
 						if ab := battle.MiniMapAbilityDisplayList.Get(offeringID.String()); ab != nil {
-							ws.PublishBytes(
+							ws.PublishMessage(
 								fmt.Sprintf("/mini_map/arena/%s/public/mini_map_ability_display_list", arena.ID),
-								server.BinaryKeyMiniMapAbilityContents,
+								server.HubKeyMiniMapAbilityContentSubscribe,
 								battle.MiniMapAbilityDisplayList.Remove(offeringID.String()),
 							)
 						}
@@ -631,29 +630,6 @@ func (am *ArenaManager) PlayerAbilityUse(ctx context.Context, user *boiler.Playe
 const MechMoveCommandCreateGameAbilityID = 8
 const MechMoveCommandCancelGameAbilityID = 9
 
-func (fmc *FactionMechCommand) ToByteString() string {
-	strs := []string{
-		fmc.ID,
-		fmc.BattleID,
-		strconv.Itoa(fmc.CellX),
-		strconv.Itoa(fmc.CellY),
-	}
-
-	if fmc.IsMiniMech {
-		strs = append(strs, "1")
-	} else {
-		strs = append(strs, "0")
-	}
-
-	if fmc.IsEnded {
-		strs = append(strs, "1")
-	} else {
-		strs = append(strs, "0")
-	}
-
-	return strings.Join(strs, "_")
-}
-
 func (am *ArenaManager) MechCommandsSubscriber(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
 	arena, err := am.GetArenaFromContext(ctx)
 	if err != nil {
@@ -685,32 +661,29 @@ func (am *ArenaManager) MechCommandsSubscriber(ctx context.Context, user *boiler
 		return terror.Error(err, "Failed to get mech command logs")
 	}
 
-	result := []string{}
+	result := []*FactionMechCommand{}
 	for _, l := range logs {
-		fmc := &FactionMechCommand{
+		result = append(result, &FactionMechCommand{
 			BattleID:   l.BattleID,
 			CellX:      l.CellX,
 			CellY:      l.CellY,
 			IsMiniMech: false,
-		}
-
-		result = append(result, fmc.ToByteString())
+		})
 	}
 
 	movingMiniMechs := btl.playerAbilityManager().MovingFactionMiniMechs(factionID)
 	for _, mm := range movingMiniMechs {
 		mm.Read(func(mmmc *player_abilities.MiniMechMoveCommand) {
-			fmc := &FactionMechCommand{
+			result = append(result, &FactionMechCommand{
 				BattleID:   mm.BattleID,
 				CellX:      mm.CellX,
 				CellY:      mm.CellY,
 				IsMiniMech: true,
-			}
-			result = append(result, fmc.ToByteString())
+			})
 		})
 	}
 
-	reply(append([]byte{server.BinaryKeyMechMoveCommandMap}, []byte(strings.Join(result, "|"))...))
+	reply(result)
 	return nil
 }
 
@@ -726,44 +699,6 @@ type FactionMechCommand struct {
 type MechMoveCommandResponse struct {
 	*boiler.MechMoveCommandLog
 	IsMiniMech bool `json:"is_mini_mech"`
-}
-
-func (mmc *MechMoveCommandResponse) ToByteStr() string {
-	strs := []string{
-		mmc.ID,
-		mmc.ArenaID,
-		mmc.BattleID,
-		mmc.MechID,
-		mmc.TriggeredByID,
-		strconv.Itoa(mmc.CellX),
-		strconv.Itoa(mmc.CellY),
-	}
-
-	if mmc.CancelledAt.Valid {
-		strs = append(strs, "1")
-	} else {
-		strs = append(strs, "0")
-	}
-
-	if mmc.ReachedAt.Valid {
-		strs = append(strs, "1")
-	} else {
-		strs = append(strs, "0")
-	}
-
-	if mmc.IsMoving {
-		strs = append(strs, "1")
-	} else {
-		strs = append(strs, "0")
-	}
-
-	if mmc.IsMiniMech {
-		strs = append(strs, "1")
-	} else {
-		strs = append(strs, "0")
-	}
-
-	return strings.Join(strs, "_")
 }
 
 func (am *ArenaManager) MechMoveCommandSubscriber(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
@@ -829,7 +764,7 @@ func (am *ArenaManager) MechMoveCommandSubscriber(ctx context.Context, user *boi
 		}
 	}
 
-	reply(append([]byte{server.BinaryKeyMechMoveCommandIndividual}, []byte(resp.ToByteStr())...))
+	reply(resp)
 	return nil
 }
 
@@ -971,18 +906,18 @@ func (am *ArenaManager) MechAbilityTriggerHandler(ctx context.Context, user *boi
 				MechID:                   wm.ID,
 			}
 
-			ws.PublishBytes(
+			ws.PublishMessage(
 				fmt.Sprintf("/mini_map/arena/%s/public/mini_map_ability_display_list", arena.ID),
-				server.BinaryKeyMiniMapAbilityContents,
+				server.HubKeyMiniMapAbilityContentSubscribe,
 				btl.MiniMapAbilityDisplayList.Add(offeringID.String(), mma),
 			)
 
 			// cancel ability after animation end
 			if gameAbility.AnimationDurationSeconds > 0 {
 				time.Sleep(time.Duration(gameAbility.AnimationDurationSeconds) * time.Second)
-				ws.PublishBytes(
+				ws.PublishMessage(
 					fmt.Sprintf("/mini_map/arena/%s/public/mini_map_ability_display_list", arena.ID),
-					server.BinaryKeyMiniMapAbilityContents,
+					server.HubKeyMiniMapAbilityContentSubscribe,
 					btl.MiniMapAbilityDisplayList.Remove(offeringID.String()),
 				)
 			}
@@ -1236,8 +1171,11 @@ func (arena *Arena) MechMoveCommandCreateHandler(ctx context.Context, user *boil
 			fmc.CellY = mmc.CellY
 		})
 	}
-	ws.PublishBytes(fmt.Sprintf("/mini_map/arena/%s/faction/%s/mech_command/%s", arena.ID, factionID, wm.Hash), server.BinaryKeyMechMoveCommandIndividual, []byte(mmc.ToByteStr()))
-	ws.PublishBytes(fmt.Sprintf("/mini_map/arena/%s/faction/%s/mech_commands", btl.ArenaID, wm.FactionID), server.BinaryKeyMechMoveCommandMap, []byte(fmc.ToByteString()))
+
+	spew.Dump(mmc)
+
+	ws.PublishMessage(fmt.Sprintf("/mini_map/arena/%s/faction/%s/mech_command/%s", arena.ID, factionID, wm.Hash), server.HubKeyMechCommandUpdateSubscribe, mmc)
+	ws.PublishMessage(fmt.Sprintf("/mini_map/arena/%s/faction/%s/mech_commands", btl.ArenaID, wm.FactionID), server.HubKeyFactionMechCommandUpdateSubscribe, []*FactionMechCommand{fmc})
 
 	reply(true)
 
@@ -1396,8 +1334,8 @@ func (am *ArenaManager) MechMoveCommandCancelHandler(ctx context.Context, user *
 		fmc.IsMiniMech = true
 	}
 
-	ws.PublishBytes(fmt.Sprintf("/mini_map/arena/%s/faction/%s/mech_command/%s", arena.ID, factionID, wm.Hash), server.BinaryKeyMechMoveCommandIndividual, []byte(mmc.ToByteStr()))
-	ws.PublishBytes(fmt.Sprintf("/mini_map/arena/%s/faction/%s/mech_commands", btl.ArenaID, wm.FactionID), server.BinaryKeyMechMoveCommandMap, []byte(fmc.ToByteString()))
+	ws.PublishMessage(fmt.Sprintf("/mini_map/arena/%s/faction/%s/mech_command/%s", arena.ID, factionID, wm.Hash), server.HubKeyMechCommandUpdateSubscribe, mmc)
+	ws.PublishMessage(fmt.Sprintf("/mini_map/arena/%s/faction/%s/mech_commands", btl.ArenaID, wm.FactionID), server.HubKeyFactionMechCommandUpdateSubscribe, []*FactionMechCommand{fmc})
 
 	reply(true)
 

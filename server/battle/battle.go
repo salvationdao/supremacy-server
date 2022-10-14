@@ -17,7 +17,6 @@ import (
 	"server/system_messages"
 	"server/xsyn_rpcclient"
 	"sort"
-	"strconv"
 	"strings"
 	"time"
 
@@ -122,7 +121,7 @@ type MiniMapAbilityContent struct {
 }
 
 // Add new pending ability and return a copy of current list
-func (dap *MiniMapAbilityDisplayList) Add(offeringID string, dac *MiniMapAbilityContent) []byte {
+func (dap *MiniMapAbilityDisplayList) Add(offeringID string, dac *MiniMapAbilityContent) []MiniMapAbilityContent {
 	dap.Lock()
 	defer dap.Unlock()
 
@@ -138,11 +137,11 @@ func (dap *MiniMapAbilityDisplayList) Add(offeringID string, dac *MiniMapAbility
 
 	sort.Slice(result, func(i, j int) bool { return result[i].UpdatedAt.After(result[j].UpdatedAt) })
 
-	return MiniMapAbilityContentsToByteArray(result)
+	return result
 }
 
 // Remove pending ability and return a copy of current list
-func (dap *MiniMapAbilityDisplayList) Remove(offeringID string) []byte {
+func (dap *MiniMapAbilityDisplayList) Remove(offeringID string) []MiniMapAbilityContent {
 	dap.Lock()
 	defer dap.Unlock()
 
@@ -155,7 +154,7 @@ func (dap *MiniMapAbilityDisplayList) Remove(offeringID string) []byte {
 
 	sort.Slice(result, func(i, j int) bool { return result[i].UpdatedAt.After(result[j].UpdatedAt) })
 
-	return MiniMapAbilityContentsToByteArray(result)
+	return result
 }
 
 // Get a mini map ability from givent offering id
@@ -171,7 +170,7 @@ func (dap *MiniMapAbilityDisplayList) Get(offingID string) *MiniMapAbilityConten
 }
 
 // List a copy of current pending list
-func (dap *MiniMapAbilityDisplayList) List() []byte {
+func (dap *MiniMapAbilityDisplayList) List() []MiniMapAbilityContent {
 	dap.RLock()
 	defer dap.RUnlock()
 
@@ -182,40 +181,7 @@ func (dap *MiniMapAbilityDisplayList) List() []byte {
 
 	sort.Slice(result, func(i, j int) bool { return result[i].UpdatedAt.After(result[j].UpdatedAt) })
 
-	return MiniMapAbilityContentsToByteArray(result)
-}
-
-func MiniMapAbilityContentsToByteArray(mmas []MiniMapAbilityContent) []byte {
-	list := []string{}
-	for _, mma := range mmas {
-		strs := []string{
-			mma.OfferingID,
-			mma.Location.X.String(),
-			mma.Location.Y.String(),
-			mma.MechID,
-			mma.ImageUrl,
-			mma.Colour,
-			mma.MiniMapDisplayEffectType,
-			mma.MechDisplayEffectType,
-			mma.LocationSelectType,
-		}
-
-		if mma.Radius.Valid {
-			strs = append(strs, strconv.Itoa(mma.Radius.Int))
-		} else {
-			strs = append(strs, "")
-		}
-
-		if mma.LaunchingAt.Valid {
-			strs = append(strs, mma.LaunchingAt.Time.String())
-		} else {
-			strs = append(strs, "")
-		}
-
-		list = append(list, strings.Join(strs, "_"))
-	}
-
-	return []byte(strings.Join(list, "|"))
+	return result
 }
 
 type RecordingSession struct {
@@ -968,7 +934,7 @@ func (btl *Battle) RewardBattleMechOwners(winningFactionOrder []string) {
 						totalSups.Mul(secondRankSupsRewardRatio).Div(playerPerFaction[bq.FactionID]),
 						taxRatio,
 						bq.R.Fee,
-						bonusSups,                                 // bonus sups
+						bonusSups, // bonus sups
 						slices.Index(afkMechIDs, bq.MechID) != -1, // if mech is in the afk mech list
 						false,
 					)
@@ -992,7 +958,7 @@ func (btl *Battle) RewardBattleMechOwners(winningFactionOrder []string) {
 						totalSups.Mul(thirdRankSupsRewardRatio).Div(playerPerFaction[bq.FactionID]),
 						taxRatio,
 						bq.R.Fee,
-						bonusSups,                                 // bonus sups
+						bonusSups, // bonus sups
 						slices.Index(afkMechIDs, bq.MechID) != -1, // if mech is in the afk mech list
 						true,
 					)
@@ -1744,7 +1710,8 @@ func (btl *Battle) Tick(payload []byte) {
 		}
 
 		btl.playerAbilityManager().ResetHasBlackoutsUpdated()
-		ws.PublishMessage(fmt.Sprintf("/public/arena/%s/minimap", btl.ArenaID), HubKeyMinimapUpdatesSubscribe, minimapUpdates)
+
+		ws.PublishMessage(fmt.Sprintf("/mini_map/arena/%s/public/minimap", btl.ArenaID), server.HubKeyMiniMapUpdateSubscribe, minimapUpdates)
 	}
 
 	// Map Events
@@ -2321,8 +2288,8 @@ func (btl *Battle) Destroyed(dp *BattleWMDestroyedPayload) {
 	}
 
 	// broadcast faction mech commands
-	ws.PublishBytes(fmt.Sprintf("/mini_map/arena/%s/faction/%s/mech_command/%s", btl.ArenaID, destroyedWarMachine.FactionID, destroyedWarMachine.Hash), server.BinaryKeyMechMoveCommandIndividual, []byte(mmc.ToByteStr()))
-	ws.PublishBytes(fmt.Sprintf("/mini_map/arena/%s/faction/%s/mech_commands", btl.ArenaID, destroyedWarMachine.FactionID), server.BinaryKeyMechMoveCommandMap, []byte(fmc.ToByteString()))
+	ws.PublishMessage(fmt.Sprintf("/mini_map/arena/%s/faction/%s/mech_command/%s", btl.ArenaID, destroyedWarMachine.FactionID, destroyedWarMachine.Hash), server.HubKeyMechCommandUpdateSubscribe, mmc)
+	ws.PublishMessage(fmt.Sprintf("/mini_map/arena/%s/faction/%s/mech_commands", btl.ArenaID, destroyedWarMachine.FactionID), server.HubKeyFactionMechCommandUpdateSubscribe, []*FactionMechCommand{fmc})
 }
 
 func (btl *Battle) Load() error {

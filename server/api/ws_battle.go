@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"server"
 	"server/battle"
 	"server/db"
 	"server/db/boiler"
@@ -382,8 +381,12 @@ func (api *API) MiniMapAbilityDisplayList(ctx context.Context, key string, paylo
 
 	// if current battle still running
 	btl := arena.CurrentBattle()
+	if btl == nil {
+		return nil
+	}
+
 	if btl != nil {
-		reply(append([]byte{server.BinaryKeyMiniMapAbilityContents}, btl.MiniMapAbilityDisplayList.List()...))
+		reply(btl.MiniMapAbilityDisplayList.List())
 	}
 	return nil
 }

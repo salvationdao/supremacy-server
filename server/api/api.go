@@ -253,13 +253,11 @@ func NewAPI(
 				s.WS("/arena/{arena_id}/status", server.HubKeyArenaStatusSubscribe, api.ArenaManager.ArenaStatusSubscribeHandler)
 				s.WS("/arena/{arena_id}/notification", battle.HubKeyGameNotification, nil)
 				s.WS("/arena/{arena_id}/battle_ability", battle.HubKeyBattleAbilityUpdated, api.ArenaManager.PublicBattleAbilityUpdateSubscribeHandler)
-				s.WS("/arena/{arena_id}/minimap", battle.HubKeyMinimapUpdatesSubscribe, api.ArenaManager.MinimapUpdatesSubscribeHandler)
 				s.WS("/arena/{arena_id}/game_settings", battle.HubKeyGameSettingsUpdated, api.ArenaManager.SendSettings)
 				s.WS("/arena/{arena_id}/battle_end_result", battle.HubKeyBattleEndDetailUpdated, api.BattleEndDetail)
 				s.WS("/arena/upcomming_battle", battle.HubKeyNextBattleDetails, api.NextBattleDetails)
 
 				s.WS("/arena/{arena_id}/bribe_stage", battle.HubKeyBribeStageUpdateSubscribe, api.ArenaManager.BribeStageSubscribe)
-				//s.WS("/arena/{arena_id}/mini_map_ability_display_list", server.HubKeyMiniMapAbilityDisplayList, api.MiniMapAbilityDisplayList)
 				s.WS("/live_viewer_count", HubKeyViewerLiveCountUpdated, api.LiveViewerCount)
 			}))
 
@@ -331,13 +329,14 @@ func NewAPI(
 				r.Mount("/public", ws.NewServer(func(s *ws.Server) {
 					s.WSBinary("/minimap_events", api.ArenaManager.MinimapEventsSubscribeHandler)
 					s.WSBinary("/mech_stats", api.ArenaManager.WarMachineStatsSubscribe)
-					s.WSBinary("/mini_map_ability_display_list", api.MiniMapAbilityDisplayList)
+					s.WS("/mini_map_ability_display_list", server.HubKeyMiniMapAbilityContentSubscribe, api.MiniMapAbilityDisplayList)
+					s.WS("/minimap", server.HubKeyMiniMapUpdateSubscribe, api.ArenaManager.MinimapUpdatesSubscribeHandler)
 				}))
 
 				r.Mount("/faction/{faction_id}", ws.NewServer(func(s *ws.Server) {
 					s.Use(api.AuthUserFactionWS(true))
-					s.WSBinary("/mech_command/{hash}", server.MustSecureFaction(api.ArenaManager.MechMoveCommandSubscriber))
-					s.WSBinary("/mech_commands", server.MustSecureFaction(api.ArenaManager.MechCommandsSubscriber))
+					s.WS("/mech_command/{hash}", server.HubKeyMechCommandUpdateSubscribe, server.MustSecureFaction(api.ArenaManager.MechMoveCommandSubscriber))
+					s.WS("/mech_commands", server.HubKeyFactionMechCommandUpdateSubscribe, server.MustSecureFaction(api.ArenaManager.MechCommandsSubscriber))
 				}))
 			})
 
