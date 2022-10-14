@@ -110,6 +110,7 @@ const (
 	WeaponTypeRifle           = "Rifle"
 	WeaponTypeSniperRifle     = "Sniper Rifle"
 	WeaponTypeSword           = "Sword"
+	WeaponTypeRocketPods      = "Rocket Pods"
 )
 
 // Enum values for  are not proper Go identifiers, cannot emit constants

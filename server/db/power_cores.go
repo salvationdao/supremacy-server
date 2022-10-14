@@ -253,11 +253,11 @@ func PowerCoreList(opts *PowerCoreListOpts) (int64, []*PlayerAsset, error) {
 	return total, powerCores, nil
 }
 
-func InsertNewPowerCore(tx boil.Executor, ownerID uuid.UUID, ec *server.BlueprintPowerCore) (*server.PowerCore, error) {
+func InsertNewPowerCore(tx boil.Executor, ownerID uuid.UUID, pc *server.BlueprintPowerCore) (*server.PowerCore, error) {
 	newPowerCore := boiler.PowerCore{
-		BlueprintID:           null.StringFrom(ec.ID),
-		GenesisTokenID:        ec.GenesisTokenID,
-		LimitedReleaseTokenID: ec.LimitedReleaseTokenID,
+		BlueprintID:           pc.ID,
+		GenesisTokenID:        pc.GenesisTokenID,
+		LimitedReleaseTokenID: pc.LimitedReleaseTokenID,
 	}
 
 	err := newPowerCore.Insert(tx, boil.Infer())
@@ -266,10 +266,10 @@ func InsertNewPowerCore(tx boil.Executor, ownerID uuid.UUID, ec *server.Blueprin
 	}
 
 	_, err = InsertNewCollectionItem(tx,
-		ec.Collection,
+		pc.Collection,
 		boiler.ItemTypePowerCore,
 		newPowerCore.ID,
-		ec.Tier,
+		pc.Tier,
 		ownerID.String(),
 	)
 	if err != nil {
