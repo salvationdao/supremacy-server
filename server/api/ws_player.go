@@ -84,6 +84,8 @@ func NewPlayerController(api *API) *PlayerController {
 
 	api.SecureUserCommand(HubKeyGenOneTimeToken, pc.GenOneTimeToken)
 
+	api.SecureUserFactionCommand(HubKeyPlayerSearch, pc.PlayerSearch)
+
 	return pc
 }
 
@@ -215,7 +217,12 @@ func (pc *PlayerController) PlayerFactionEnlistHandler(ctx context.Context, user
 		return terror.Error(err, "Failed to commit db transaction")
 	}
 
-	ws.PublishMessage(fmt.Sprintf("/secure/user/%s", user.ID), server.HubKeyUserSubscribe, user)
+	err = user.L.LoadRole(gamedb.StdConn, true, user, nil)
+	if err != nil {
+		return terror.Error(err, "Failed to load role")
+	}
+
+	ws.PublishMessage(fmt.Sprintf("/secure/user/%s", user.ID), server.HubKeyUserSubscribe, server.PlayerFromBoiler(user))
 
 	reply(true)
 
@@ -397,6 +404,9 @@ func PlayerBanRestrictions(pb *boiler.PlayerBan) []string {
 	if pb.BanSupsContribute {
 		restrictions = append(restrictions, RestrictionSupsContribute)
 	}
+	if pb.BanMechQueue {
+		restrictions = append(restrictions, RestrictionsMechQueuing)
+	}
 	return restrictions
 }
 
@@ -558,6 +568,50 @@ type PunishVoteInstantPassRequest struct {
 	Payload struct {
 		PunishVoteID string `json:"punish_vote_id"`
 	} `json:"payload"`
+}
+
+const HubKeyPlayerSearch = "PLAYER:SEARCH"
+
+// PlayerSearch return up to 10 players base on the given text
+func (pc *PlayerController) PlayerSearch(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
+	req := &PlayerSearchRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return terror.Error(err, "Invalid request received")
+	}
+
+	if user.RoleID == server.UserRolePlayer.String() || user.RoleID == "" {
+		return terror.Error(err, "User is not an admin")
+	}
+
+	search := strings.TrimSpace(req.Payload.Search)
+	if search == "" {
+		return terror.Error(terror.ErrInvalidInput, "search key should not be empty")
+	}
+
+	ps, err := boiler.Players(
+		qm.Select(
+			boiler.PlayerColumns.ID,
+			boiler.PlayerColumns.Username,
+			boiler.PlayerColumns.Gid,
+		),
+		boiler.PlayerWhere.IsAi.EQ(false),
+		boiler.PlayerWhere.ID.NEQ(user.ID),
+		qm.Where(
+			fmt.Sprintf("LOWER(%s||'#'||%s::TEXT) LIKE ?",
+				qm.Rels(boiler.TableNames.Players, boiler.PlayerColumns.Username),
+				qm.Rels(boiler.TableNames.Players, boiler.PlayerColumns.Gid),
+			),
+			"%"+strings.ToLower(search)+"%",
+		),
+		qm.Limit(10),
+	).All(gamedb.StdConn)
+	if err != nil {
+		return terror.Error(err, "Failed to search players from db")
+	}
+
+	reply(ps)
+	return nil
 }
 
 const HubKeyInstantPassPunishVote = "PUNISH:VOTE:INSTANT:PASS"
@@ -1017,6 +1071,11 @@ func (pc *PlayerController) PlayersSubscribeHandler(ctx context.Context, user *b
 		gamelog.L.Error().Str("player id", user.ID).Err(err).Msg("Failed to get player feature")
 	}
 
+	err = user.L.LoadRole(gamedb.StdConn, true, user, nil)
+	if err != nil {
+		gamelog.L.Error().Str("player id", user.ID).Err(err).Msg("Failed to get player role")
+	}
+
 	reply(server.PlayerFromBoiler(user, features))
 
 	// broadcast player stat
@@ -1310,7 +1369,12 @@ func (pc *PlayerController) PlayerUpdateUsernameHandler(ctx context.Context, use
 		return terror.Error(err, errMsg)
 	}
 	reply(user.Username.String)
-	ws.PublishMessage(fmt.Sprintf("/secure/user/%s", user.ID), server.HubKeyUserSubscribe, user)
+	err = user.L.LoadRole(gamedb.StdConn, true, user, nil)
+	if err != nil {
+		return terror.Error(err, "Failed to update player's marketing preferences.")
+	}
+
+	ws.PublishMessage(fmt.Sprintf("/secure/user/%s", user.ID), server.HubKeyUserSubscribe, server.PlayerFromBoiler(user))
 
 	return nil
 }

@@ -277,6 +277,13 @@ const (
 	MarketplaceEventCancelled = "cancelled"
 )
 
+// Enum values for ModActionType
+const (
+	ModActionTypeBAN     = "BAN"
+	ModActionTypeUNBAN   = "UNBAN"
+	ModActionTypeRESTART = "RESTART"
+)
+
 // Enum values for MultiplierTypeEnum
 const (
 	MultiplierTypeEnumSpendAverage = "spend_average"
@@ -358,6 +365,13 @@ const (
 	RepairFinishReasonEXPIRED   = "EXPIRED"
 	RepairFinishReasonSTOPPED   = "STOPPED"
 	RepairFinishReasonSUCCEEDED = "SUCCEEDED"
+)
+
+// Enum values for RoleName
+const (
+	RoleNamePLAYER    = "PLAYER"
+	RoleNameMODERATOR = "MODERATOR"
+	RoleNameADMIN     = "ADMIN"
 )
 
 // Enum values for SyndicateElectionType
