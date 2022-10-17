@@ -2295,7 +2295,7 @@ func (btl *Battle) AISpawned(payload *AISpawnedRequest) error {
 	btl.SpawnedAI = append(btl.SpawnedAI, spawnedAI)
 
 	// Broadcast spawn event
-	ws.PublishMessage(fmt.Sprintf("/public/arena/%s/minimap", btl.ArenaID), HubKeyBattleAISpawned, btl.SpawnedAI)
+	ws.PublishMessage(fmt.Sprintf("/mini_map/arena/%s/public/minimap", btl.ArenaID), HubKeyBattleAISpawned, btl.SpawnedAI)
 
 	return nil
 }
