@@ -132,6 +132,7 @@ func FiatProduct(conn boil.Executor, id string) (*server.FiatProduct, error) {
 		return nil, err
 	}
 
+	// Get pricing
 	pricing, err := boiler.FiatProductPricings(
 		boiler.FiatProductPricingWhere.FiatProductID.EQ(output.ID),
 	).All(conn)
@@ -146,6 +147,57 @@ func FiatProduct(conn boil.Executor, id string) (*server.FiatProduct, error) {
 			Amount:       p.Amount,
 		}
 		output.Pricing = append(output.Pricing, item)
+	}
+
+	// Get product items
+	productItems, err := boiler.FiatProductItems(
+		boiler.FiatProductItemWhere.ProductID.EQ(output.ID),
+		qm.Load(boiler.FiatProductItemRels.ProductItemFiatProductItemBlueprints),
+	).All(conn)
+	if err != nil {
+		return nil, err
+	}
+
+	output.Items = []*server.FiatProductItem{}
+	for _, pi := range productItems {
+		item := &server.FiatProductItem{
+			ID:         pi.ID,
+			Name:       pi.Name,
+			ItemType:   pi.ItemType,
+			Blueprints: []*server.FiatProductItemBlueprint{},
+		}
+		for _, bp := range pi.R.ProductItemFiatProductItemBlueprints {
+			bpItem := &server.FiatProductItemBlueprint{
+				ID: bp.ID,
+			}
+			if bp.MechBlueprintID.Valid {
+				bpItem.MechBlueprintID = bp.MechBlueprintID.String
+			}
+			if bp.MechAnimationBlueprintID.Valid {
+				bpItem.MechAnimationBlueprintID = bp.MechAnimationBlueprintID.String
+			}
+			if bp.MechSkinBlueprintID.Valid {
+				bpItem.MechSkinBlueprintID = bp.MechSkinBlueprintID.String
+			}
+			if bp.UtilityBlueprintID.Valid {
+				bpItem.UtilityBlueprintID = bp.UtilityBlueprintID.String
+			}
+			if bp.WeaponBlueprintID.Valid {
+				bpItem.WeaponBlueprintID = bp.WeaponBlueprintID.String
+			}
+			if bp.AmmoBlueprintID.Valid {
+				bpItem.AmmoBlueprintID = bp.AmmoBlueprintID.String
+			}
+			if bp.PowerCoreBlueprintID.Valid {
+				bpItem.PowerCoreBlueprintID = bp.PowerCoreBlueprintID.String
+			}
+			if bp.PlayerAbilityBlueprintID.Valid {
+				bpItem.PlayerAbilityBlueprintID = bp.PlayerAbilityBlueprintID.String
+			}
+			item.Blueprints = append(item.Blueprints, bpItem)
+		}
+
+		output.Items = append(output.Items, item)
 	}
 
 	return output, nil
