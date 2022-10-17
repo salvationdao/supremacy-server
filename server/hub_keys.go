@@ -2,7 +2,6 @@ package server
 
 // player_abilities
 const HubKeyPlayerAbilitiesList = "PLAYER:ABILITIES:LIST:SUBSCRIBE"
-const HubKeyMechMoveCommandSubscribe = "MECH:MOVE:COMMAND:SUBSCRIBE"
 
 const HubKeySaleAbilitiesPriceSubscribe = "SALE:ABILITIES:PRICE:SUBSCRIBE"
 const HubKeySaleAbilitiesListSubscribe = "SALE:ABILITIES:LIST:SUBSCRIBE"
@@ -10,8 +9,6 @@ const HubKeySaleAbilitiesList = "SALE:ABILITIES:LIST"
 const HubKeySaleAbilityPurchase = "SALE:ABILITY:PURCHASE"
 
 const HubKeyGlobalAnnouncementSubscribe = "GLOBAL_ANNOUNCEMENT:SUBSCRIBE"
-
-const WarMachineRepairStatusSubscribe = "WAR:MACHINE:REPAIR:STATUS:SUBSCRIBE"
 
 const HubKeySyndicateGeneralDetailSubscribe = "SYNDICATE:GENERAL:DETAIL:SUBSCRIBE"
 const HubKeySyndicateDirectorsSubscribe = "SYNDICATE:DIRECTORS:SUBSCRIBE"
@@ -64,6 +61,20 @@ const HubKeyChallengeFundSubscribe = "CHALLENGE:FUND"
 const HubKeyBattleArenaListSubscribe = "BATTLE:ARENA:LIST"
 const HubKeyBattleArenaClosedSubscribe = "BATTLE:ARENA:CLOSED"
 
-// battle abilities
+const HubKeyMiniMapAbilityContentSubscribe = "MINI:MAP:ABILITY:CONTENT"
+const HubKeyMechCommandUpdateSubscribe = "MECH:COMMAND:UPDATE"
+const HubKeyFactionMechCommandUpdateSubscribe = "FACTION:MECH:COMMANDS:UPDATE"
+const HubKeyMiniMapUpdateSubscribe = "MINIMAP:UPDATES:SUBSCRIBE"
 
-const HubKeyMiniMapAbilityDisplayList = "MINI:MAP:ABILITY:DISPLAY:LIST"
+// binary key
+const (
+	BinaryKeyWarMachineStats byte = 1
+	BinaryKeyMiniMapEvents   byte = 2
+)
+
+// json binary
+
+type JsonBinaryData struct {
+	Key  string      `json:"key"`
+	Data interface{} `json:"data"`
+}
