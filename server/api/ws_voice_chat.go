@@ -31,6 +31,7 @@ func NewVoiceStreamController(api *API) {
 
 	api.SecureUserFactionCommand(server.HubKeyVoiceStreamConnect, api.VoiceChatConnect)
 	api.SecureUserFactionCommand(server.HubKeyVoiceStreamDisconnect, api.VoiceChatDisconnect)
+	api.SecureUserFactionCommand(server.HubKeyVoiceStreamGetListeners, api.VoiceChatGetListeners)
 
 }
 
@@ -67,6 +68,34 @@ func (api *API) VoiceStreamListenersSubscribe(ctx context.Context, user *boiler.
 	resp := api.VoiceChatListeners.CurrentVoiceChatListeners()
 	reply(resp)
 
+	return nil
+}
+
+func (api *API) VoiceChatGetListeners(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
+	req := &VoiceStreamReq{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return terror.Error(err, "Invalid request received")
+	}
+
+	// loop through listeners
+	for _, vl := range api.VoiceChatListeners.Listeners {
+		// check active ~ 2 mins ago
+		pvl, err := boiler.PlayerActiveLogs(
+			boiler.PlayerActiveLogWhere.PlayerID.EQ(vl.ID),
+			qm.OrderBy(boiler.PlayerActiveLogColumns.ActiveAt+" DESC"),
+		).One(gamedb.StdConn)
+		if err != nil || pvl == nil {
+			gamelog.L.Error().Str("player id", vl.ID).Err(err).Msg("Failed to get player active log")
+		}
+
+		// not active then remove listener
+		if pvl.InactiveAt.Valid {
+			api.VoiceChatListeners.RemoveListener(pvl.PlayerID)
+		}
+	}
+
+	reply(api.VoiceChatListeners.CurrentVoiceChatListeners())
 	return nil
 }
 

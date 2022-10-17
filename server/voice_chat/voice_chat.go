@@ -145,11 +145,15 @@ func (vc *VoiceChannel) UpdateAllVoiceChannel(warMachineIDs []string, arenaID st
 
 	for _, p := range ps {
 		vcs := []*server.VoiceStreamResp{}
+
+		// active voice chat
 		vcs, err = db.GetActiveVoiceChat(p.ID, p.FactionID.String, arenaID)
 		if err != nil {
 			return terror.Error(err, "Failed to get active voice chat")
 
 		}
+
+		// active voice chat listeners
 
 		ws.PublishMessage(fmt.Sprintf("/secure/user/%s/arena/%s", p.ID, arenaID), server.HubKeyVoiceStreams, vcs)
 	}

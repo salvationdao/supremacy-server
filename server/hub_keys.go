@@ -94,6 +94,7 @@ const HubKeyVoiceStreamLeaveFactionCommander = "VOICE:LEAVE:FACTION:COMMANDER"
 const HubKeyVoiceStreamVoteKick = "VOICE:VOTE:KICK"
 const HubKeyVoiceStreamConnect = "VOICE:STREAM:CONNECT"
 const HubKeyVoiceStreamDisconnect = "VOICE:STREAM:DISCONNECT"
+const HubKeyVoiceStreamGetListeners = "VOICE:STREAM:GET:LISTENERS"
 
 // battle queue
 
