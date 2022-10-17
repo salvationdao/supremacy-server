@@ -42,17 +42,31 @@ func InsertNewWeaponSkin(tx *sql.Tx, ownerID uuid.UUID, blueprintWeaponSkin *ser
 }
 
 func WeaponSkin(tx boil.Executor, id string, blueprintID *string) (*server.WeaponSkin, error) {
+	L := gamelog.L.With().Str("func", "WeaponSkin").Str("id", id).Logger()
+
+	if blueprintID != nil {
+		L = L.With().Str("blueprintID", *blueprintID).Logger()
+	}
+
 	boilerWeaponSkin, err := boiler.WeaponSkins(
 		boiler.WeaponSkinWhere.ID.EQ(id),
 		qm.Load(boiler.WeaponSkinRels.Blueprint),
 	).One(tx)
 	if err != nil {
+		L.Error().Err(err).Msg("failed to get weapon skin object")
 		return nil, err
 	}
+
+	L = L.With().Interface("boilerWeaponSkin", boilerWeaponSkin).Logger()
+
 	boilerWeaponCollectionDetails, err := boiler.CollectionItems(boiler.CollectionItemWhere.ItemID.EQ(id)).One(tx)
 	if err != nil {
+		L.Error().Err(err).Msg("failed to get weapon skin collection object")
 		return nil, err
 	}
+
+	L = L.With().Interface("boilerWeaponCollectionDetails", boilerWeaponCollectionDetails).Logger()
+
 
 	queryMods := []qm.QueryMod{
 		boiler.WeaponModelSkinCompatibilityWhere.BlueprintWeaponSkinID.EQ(boilerWeaponSkin.BlueprintID),
@@ -66,8 +80,12 @@ func WeaponSkin(tx boil.Executor, id string, blueprintID *string) (*server.Weapo
 		queryMods...,
 	).One(tx)
 	if err != nil {
+		L.Error().Err(err).Msg("failed to get weapon skin compatability matrix")
 		return nil, err
 	}
+
+	L = L.With().Interface("weaponSkinCompatMatrix", weaponSkinCompatMatrix).Logger()
+
 	return server.WeaponSkinFromBoiler(boilerWeaponSkin, boilerWeaponCollectionDetails, weaponSkinCompatMatrix, boilerWeaponSkin.R.Blueprint), nil
 }
 

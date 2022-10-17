@@ -44,7 +44,7 @@ func (api *API) MechDestroyedDetail(w http.ResponseWriter, r *http.Request) (int
 
 func (api *API) ChallengeFundAmount(w http.ResponseWriter, r *http.Request) (int, error) {
 	challengeFundBalance := api.Passport.UserBalanceGet(uuid.FromStringOrNil(server.SupremacyChallengeFundUserID))
-	bonusSupPerWinner := db.GetDecimalWithDefault(db.KeyBattleSupsRewardBonus, decimal.New(330, 18))
+	bonusSupPerWinner := db.GetDecimalWithDefault(db.KeyBattleSupsRewardBonus, decimal.New(45, 18))
 
 	return helpers.EncodeJSON(w, struct {
 		ChallengeFundBalance decimal.Decimal `json:"challenge_fund_balance"`

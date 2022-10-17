@@ -74,22 +74,29 @@ WHERE w.id = to_update.weapon_id;
 
 -- after the above update all skins on the weapons we changed will be invalid, causing issues, so now we need to update the skins that are equipped on the weapons we changed
 -- update all weapons that do not have a valid skin, set as a valid one (rocket pods only have one skin each, so the set sub select should only return one row)
+-- 17/10/2022 had to update this query due to static data changes
 WITH to_update AS (
 -- this returns all weapons that have an invalid skin equipped
+-- added `AND bms.blueprint_weapon_skin_id IS NOT NULL` and `SET blueprint_id = to_update.new_id`
     SELECT ws.id          AS skin_id,
-           w.blueprint_id AS weapon_blueprint_id
+           w.blueprint_id AS weapon_blueprint_id,
+           bw.label as weapon_label,
+           bws.label as weapon_skin_label,
+           bms.label as mech_skin_label,
+           bms.blueprint_weapon_skin_id as new_id
     FROM weapon_skin ws
              INNER JOIN weapons w ON ws.equipped_on = w.id
              INNER JOIN mech_weapons mw ON mw.weapon_id = w.id
              INNER JOIN blueprint_weapons bw ON bw.id = w.blueprint_id
              INNER JOIN blueprint_weapon_skin bws ON bws.id = ws.blueprint_id
+             INNER JOIN mechs m ON m.id = mw.chassis_id
+             INNER JOIN mech_skin ms ON ms.equipped_on = m.id
+             INNER JOIN blueprint_mech_skin bms ON bms.id = ms.blueprint_id
         -- this will be null if there isn't a entry in weapon_model_skin_compatibilities for this weapon/skin
              LEFT OUTER JOIN weapon_model_skin_compatibilities wmsc
                              ON wmsc.weapon_model_id = w.blueprint_id AND wmsc.blueprint_weapon_skin_id = ws.blueprint_id
-    WHERE wmsc.blueprint_weapon_skin_id IS NULL) -- only return null entries
+    WHERE wmsc.blueprint_weapon_skin_id IS NULL AND bms.blueprint_weapon_skin_id IS NOT NULL) -- only return null entries
 UPDATE weapon_skin _ws
-SET blueprint_id = (SELECT blueprint_weapon_skin_id
-                    FROM weapon_model_skin_compatibilities
-                    WHERE to_update.weapon_blueprint_id = weapon_model_id)
+SET blueprint_id = to_update.new_id
 FROM to_update
 WHERE _ws.id = to_update.skin_id;

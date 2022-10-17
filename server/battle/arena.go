@@ -349,6 +349,11 @@ func (am *ArenaManager) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				go a.BeginBattle()
 			}
 		}
+
+		select {
+		case arena.WarMachineStatBroadcastStopChan <- true:
+		case <-time.After(1 * time.Second): // timeout
+		}
 	}()
 
 	arena.Start()
@@ -368,6 +373,12 @@ func (am *ArenaManager) NewArena(battleArena *boiler.BattleArena, wsConn *websoc
 		a.Stage.Store(ArenaStageHijacked)
 
 		// stop recording from previous arena
+		// stop war machine stat broadcast
+		select {
+		case a.WarMachineStatBroadcastStopChan <- true:
+		case <-time.After(1 * time.Second): // timeout
+		}
+
 		if btl := a.CurrentBattle(); btl != nil && btl.replaySession.ReplaySession != nil {
 			err = replay.RecordReplayRequest(btl.Battle, btl.replaySession.ReplaySession.ID, replay.StopRecording)
 			if err != nil {
@@ -391,17 +402,22 @@ func (am *ArenaManager) NewArena(battleArena *boiler.BattleArena, wsConn *websoc
 	}
 
 	arena := &Arena{
-		BattleArena:            battleArena,
-		currentLobbyID:         atomic.NewString(""),
-		Name:                   helpers.GenerateAdjectiveName(),
-		Stage:                  atomic.NewString(ArenaStageIdle),
-		socket:                 wsConn,
-		connected:              atomic.NewBool(true),
-		gameClientJsonDataChan: make(chan []byte, 3),
+		BattleArena:                     battleArena,
+		currentLobbyID:                  atomic.NewString(""),
+		Name:                            helpers.GenerateAdjectiveName(),
+		Stage:                           atomic.NewString(ArenaStageIdle),
+		socket:                          wsConn,
+		connected:                       atomic.NewBool(true),
+		gameClientBattleRoutineDataChan: make(chan []byte),
+		gameClientAbilityDataChan:       make(chan []byte, 1000),
 		MechCommandCheckMap: &MechCommandCheckMap{
 			m: make(map[string]chan bool),
 		},
 		VoiceChannel: &voice_chat.VoiceChannel{},
+
+		WarMachineStatBroadcastChan:      make(chan []*WarMachineStat, 10),
+		WarMachineStatBroadcastStopChan:  make(chan bool),
+		WarMachineStatBroadcastResetChan: make(chan bool),
 
 		// objects inherited from arena manager
 		Manager: am,
@@ -418,6 +434,10 @@ func (am *ArenaManager) NewArena(battleArena *boiler.BattleArena, wsConn *websoc
 
 	// speed up mech stat broadcast by separate json data and binary data
 	go arena.GameClientJsonDataParser()
+
+	go arena.AbilityRelatedChan()
+
+	go arena.warMachinePositionBroadcaster()
 
 	am.arenas[arena.ID] = arena
 
@@ -442,9 +462,15 @@ type Arena struct {
 	timeout          time.Duration
 	_currentBattle   *Battle
 	LastBattleResult *BattleEndDetail
-	AIPlayers        map[string]db.PlayerWithFaction
 
-	gameClientJsonDataChan chan []byte
+	WarMachineStatBroadcastChan      chan []*WarMachineStat
+	WarMachineStatBroadcastStopChan  chan bool
+	WarMachineStatBroadcastResetChan chan bool
+
+	AIPlayers map[string]db.PlayerWithFaction
+
+	gameClientBattleRoutineDataChan chan []byte
+	gameClientAbilityDataChan       chan []byte
 
 	MechCommandCheckMap *MechCommandCheckMap
 	deadlock.RWMutex
@@ -748,8 +774,6 @@ type MinimapEvent struct {
 	Coords        server.CellLocation `json:"coords"`
 }
 
-const HubKeyMinimapUpdatesSubscribe = "MINIMAP:UPDATES:SUBSCRIBE"
-
 func (am *ArenaManager) MinimapUpdatesSubscribeHandler(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
 	arena, err := am.GetArenaFromContext(ctx)
 	if err != nil {
@@ -780,8 +804,6 @@ func (am *ArenaManager) MinimapUpdatesSubscribeHandler(ctx context.Context, key 
 	return nil
 }
 
-const HubKeyMinimapEventsSubscribe = "MINIMAP:EVENTS:SUBSCRIBE"
-
 func (am *ArenaManager) MinimapEventsSubscribeHandler(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
 	arena, err := am.GetArenaFromContext(ctx)
 	if err != nil {
@@ -797,7 +819,7 @@ func (am *ArenaManager) MinimapEventsSubscribeHandler(ctx context.Context, key s
 	// send landmine, pickup locations and the hive map state
 	hasMessages, mapEventsPacked := btl.MapEventList.Pack()
 	if hasMessages {
-		reply(mapEventsPacked)
+		reply(append([]byte{server.BinaryKeyMiniMapEvents}, mapEventsPacked...))
 	}
 
 	return nil
@@ -950,30 +972,23 @@ type WarMachineStat struct {
 	IsHidden      bool            `json:"is_hidden"`
 }
 
-const HubKeyWarMachineStatUpdated = "WAR:MACHINE:STAT:UPDATED"
-
-// WarMachineStatSubscribe subscribe on bribing state change
-func (am *ArenaManager) WarMachineStatSubscribe(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
+func (am *ArenaManager) WarMachineStatsSubscribe(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
 	arena, err := am.GetArenaFromContext(ctx)
 	if err != nil {
 		return err
 	}
 
-	slotNumber := chi.RouteContext(ctx).URLParam("slotNumber")
-	if slotNumber == "" {
-		return fmt.Errorf("slot number is required")
+	battle := arena.CurrentBattle()
+	if battle == nil || battle.state.Load() != BattlingState {
+		return terror.Error(fmt.Errorf("battle not started yet"), "Battle is ended.")
 	}
 
-	participantID, err := strconv.Atoi(slotNumber)
-	if err != nil || participantID == 0 {
-		return fmt.Errorf("invlid participant id")
-	}
+	pam := battle.playerAbilityManager()
 
-	// return data if, current battle is not null
-	wm := arena.CurrentBattleWarMachine(participantID)
-	if wm != nil {
-		wStat := &WarMachineStat{
-			ParticipantID: participantID,
+	var wmss []*WarMachineStat
+	for _, wm := range append(battle.WarMachines, battle.SpawnedAI...) {
+		wms := &WarMachineStat{
+			ParticipantID: int(wm.ParticipantID),
 			Health:        wm.Health,
 			Position:      wm.Position,
 			Rotation:      wm.Rotation,
@@ -982,24 +997,28 @@ func (am *ArenaManager) WarMachineStatSubscribe(ctx context.Context, key string,
 		}
 
 		// Hidden/Incognito
-		if wStat.Position != nil {
-			hideMech := arena.CurrentBattle().playerAbilityManager().IsWarMachineHidden(wm.Hash)
-			hideMech = hideMech || arena.CurrentBattle().playerAbilityManager().IsWarMachineInBlackout(server.GameLocation{
-				X: wStat.Position.X,
-				Y: wStat.Position.Y,
-			})
-			if hideMech {
-				wStat.IsHidden = true
-				wStat.Position = &server.Vector3{
-					X: -1,
-					Y: -1,
-					Z: -1,
+		if wms.Position != nil {
+			if pam != nil {
+				hideMech := pam.IsWarMachineHidden(wm.Hash)
+				hideMech = hideMech || pam.IsWarMachineInBlackout(server.GameLocation{
+					X: wms.Position.X,
+					Y: wms.Position.Y,
+				})
+				if hideMech {
+					wms.IsHidden = true
+					wms.Position = &server.Vector3{
+						X: -1,
+						Y: -1,
+						Z: -1,
+					}
 				}
 			}
 		}
 
-		reply(wStat)
+		wmss = append(wmss, wms)
 	}
+
+	reply(append([]byte{server.BinaryKeyWarMachineStats}, PackWarMachineStatsInBytes(wmss)...))
 	return nil
 }
 
@@ -1191,11 +1210,20 @@ func (arena *Arena) start() {
 				btl.state.Store(EndState)
 				ws.PublishMessage(fmt.Sprintf("/public/arena/%s/battle_state", btl.ArenaID), server.HubKeyBattleState, EndState)
 			}
-			// handle message through channel
-			arena.gameClientJsonDataChan <- data
+
+			switch msg.BattleCommand {
+			case "BATTLE:MAP_DETAILS", "BATTLE:START", "BATTLE:INTRO_FINISHED", "BATTLE:WAR_MACHINE_DESTROYED", "BATTLE:END", "BATTLE:OUTRO_FINISHED":
+				// handle message through channel
+				arena.gameClientBattleRoutineDataChan <- data
+
+			default:
+				// handle all the ability related data
+				arena.gameClientAbilityDataChan <- data
+			}
+
 		case Tick:
 			if btl := arena.CurrentBattle(); btl != nil && btl.state.Load() == BattlingState {
-				btl.Tick(payload)
+				go btl.Tick(payload)
 			}
 
 		default:
@@ -1211,7 +1239,7 @@ func (arena *Arena) GameClientJsonDataParser() {
 		}
 	}()
 	for {
-		data := <-arena.gameClientJsonDataChan
+		data := <-arena.gameClientBattleRoutineDataChan
 		msg := &BattleMsg{}
 		err := json.Unmarshal(data, msg)
 		if err != nil {
@@ -1263,6 +1291,42 @@ func (arena *Arena) GameClientJsonDataParser() {
 			}
 
 			arena.Manager.NewBattleChan <- &NewBattleChan{btl.ID, btl.BattleNumber}
+		case "BATTLE:INTRO_FINISHED":
+			if btl.replaySession.ReplaySession != nil {
+				btl.replaySession.ReplaySession.IntroEndedAt = null.TimeFrom(time.Now())
+			}
+
+			// record into finished time for tracking AFK
+			btl.introEndedAt = time.Now()
+
+			btl.start()
+
+		case "BATTLE:WAR_MACHINE_DESTROYED":
+			// do not process, if battle already ended
+			if btl.state.Load() == EndState {
+				continue
+			}
+
+			var dataPayload BattleWMDestroyedPayload
+			if err := json.Unmarshal(msg.Payload, &dataPayload); err != nil {
+				L.Warn().Err(err).Msg("unable to unmarshal battle message warmachine destroyed payload")
+				continue
+			}
+			btl.Destroyed(&dataPayload)
+
+			arena.Manager.BattleLobbyDebounceBroadcastChan <- []string{btl.lobby.ID}
+
+		case "BATTLE:END":
+			var dataPayload *BattleEndPayload
+			if err := json.Unmarshal(msg.Payload, &dataPayload); err != nil {
+				L.Warn().Err(err).Msg("unable to unmarshal battle message warmachine destroyed payload")
+				continue
+			}
+			btl.end(dataPayload)
+
+			// reset war machine broadcast
+			btl.arena.WarMachineStatBroadcastResetChan <- true
+
 		case "BATTLE:OUTRO_FINISHED":
 			if btl.replaySession.ReplaySession != nil {
 				err = replay.RecordReplayRequest(btl.Battle, btl.replaySession.ReplaySession.ID, replay.StopRecording)
@@ -1294,32 +1358,38 @@ func (arena *Arena) GameClientJsonDataParser() {
 			// begin battle
 			arena.BeginBattle()
 
-		case "BATTLE:INTRO_FINISHED":
-			if btl.replaySession.ReplaySession != nil {
-				btl.replaySession.ReplaySession.IntroEndedAt = null.TimeFrom(time.Now())
-			}
-			btl.start()
-		case "BATTLE:WAR_MACHINE_DESTROYED":
-			// do not process, if battle already ended
-			if btl.state.Load() != BattlingState {
-				continue
-			}
+		default:
+			L.Warn().Err(err).Msg("Battle Arena WS: no command response")
+		}
+		L.Debug().Msg("game client message handled")
+	}
+}
 
-			var dataPayload BattleWMDestroyedPayload
-			if err := json.Unmarshal(msg.Payload, &dataPayload); err != nil {
-				L.Warn().Err(err).Msg("unable to unmarshal battle message warmachine destroyed payload")
-				continue
-			}
-			btl.Destroyed(&dataPayload)
+func (arena *Arena) AbilityRelatedChan() {
+	defer func() {
+		if r := recover(); r != nil {
+			gamelog.LogPanicRecovery("Panic! Panic! Panic! Panic on GameClientJsonDataParser!", r)
+		}
+	}()
+	for {
+		data := <-arena.gameClientAbilityDataChan
+		msg := &BattleMsg{}
+		err := json.Unmarshal(data, msg)
+		if err != nil {
+			gamelog.L.Warn().Str("msg", string(data)).Err(err).Msg("unable to unmarshal battle message")
+			continue
+		}
 
-			arena.Manager.BattleLobbyDebounceBroadcastChan <- []string{btl.lobby.ID}
-		case "BATTLE:END":
-			var dataPayload *BattleEndPayload
-			if err := json.Unmarshal(msg.Payload, &dataPayload); err != nil {
-				L.Warn().Err(err).Msg("unable to unmarshal battle message warmachine destroyed payload")
-				continue
-			}
-			btl.end(dataPayload)
+		btl := arena.CurrentBattle()
+		if btl == nil || btl.state.Load() != BattlingState {
+			continue
+		}
+
+		L := gamelog.L.With().Str("game_client_data", string(data)).Int("message_type", int(JSON)).Str("battleCommand", msg.BattleCommand).Logger()
+		L.Info().Msg("game client message received")
+
+		command := strings.TrimSpace(msg.BattleCommand) // temp fix for issue on gameclient
+		switch command {
 		case "BATTLE:AI_SPAWNED":
 			var dataPayload *AISpawnedRequest
 			if err := json.Unmarshal(msg.Payload, &dataPayload); err != nil {
@@ -1372,8 +1442,8 @@ func (arena *Arena) GameClientJsonDataParser() {
 
 			// remove repair from pending list, and broadcast
 			ws.PublishMessage(
-				fmt.Sprintf("/public/arena/%s/mini_map_ability_display_list", btl.ArenaID),
-				server.HubKeyMiniMapAbilityDisplayList,
+				fmt.Sprintf("/mini_map/arena/%s/public/mini_map_ability_display_list", btl.ArenaID),
+				server.HubKeyMiniMapAbilityContentSubscribe,
 				btl.MiniMapAbilityDisplayList.Remove(dataPayload.EventID),
 			)
 
@@ -1422,30 +1492,30 @@ func (arena *Arena) GameClientJsonDataParser() {
 					if wm.Status.IsStunned {
 						// add ability onto pending list, and broadcast
 						ws.PublishMessage(
-							fmt.Sprintf("/public/arena/%s/mini_map_ability_display_list", btl.ArenaID),
-							server.HubKeyMiniMapAbilityDisplayList,
+							fmt.Sprintf("/mini_map/arena/%s/public/mini_map_ability_display_list", btl.ArenaID),
+							server.HubKeyMiniMapAbilityContentSubscribe,
 							btl.MiniMapAbilityDisplayList.Add(offeringID, mma),
 						)
 						continue
 					}
 					ws.PublishMessage(
-						fmt.Sprintf("/public/arena/%s/mini_map_ability_display_list", btl.ArenaID),
-						server.HubKeyMiniMapAbilityDisplayList,
+						fmt.Sprintf("/mini_map/arena/%s/public/mini_map_ability_display_list", btl.ArenaID),
+						server.HubKeyMiniMapAbilityContentSubscribe,
 						btl.MiniMapAbilityDisplayList.Remove(offeringID),
 					)
 				case 13: // HACKER DRONE
 					if wm.Status.IsHacked {
 						// add ability onto pending list, and broadcast
 						ws.PublishMessage(
-							fmt.Sprintf("/public/arena/%s/mini_map_ability_display_list", btl.ArenaID),
-							server.HubKeyMiniMapAbilityDisplayList,
+							fmt.Sprintf("/mini_map/arena/%s/public/mini_map_ability_display_list", btl.ArenaID),
+							server.HubKeyMiniMapAbilityContentSubscribe,
 							btl.MiniMapAbilityDisplayList.Add(offeringID, mma),
 						)
 						continue
 					}
 					ws.PublishMessage(
-						fmt.Sprintf("/public/arena/%s/mini_map_ability_display_list", btl.ArenaID),
-						server.HubKeyMiniMapAbilityDisplayList,
+						fmt.Sprintf("/mini_map/arena/%s/public/mini_map_ability_display_list", btl.ArenaID),
+						server.HubKeyMiniMapAbilityContentSubscribe,
 						btl.MiniMapAbilityDisplayList.Remove(offeringID),
 					)
 				}
@@ -1486,8 +1556,8 @@ func (arena *Arena) GameClientJsonDataParser() {
 
 			// remove ability from pending list, and broadcast
 			ws.PublishMessage(
-				fmt.Sprintf("/public/arena/%s/mini_map_ability_display_list", btl.ArenaID),
-				server.HubKeyMiniMapAbilityDisplayList,
+				fmt.Sprintf("/mini_map/arena/%s/public/mini_map_ability_display_list", btl.ArenaID),
+				server.HubKeyMiniMapAbilityContentSubscribe,
 				btl.MiniMapAbilityDisplayList.Remove(eventID),
 			)
 		default:
@@ -2390,6 +2460,10 @@ func (btl *Battle) AISpawned(payload *AISpawnedRequest) error {
 		Status:        &Status{},
 	}
 
+	if spawnedAI.Position == nil {
+		spawnedAI.Position = &server.Vector3{}
+	}
+
 	gamelog.L.Info().Msgf("Battle Update: %s - AI Spawned: %d", payload.BattleID, spawnedAI.ParticipantID)
 
 	btl.spawnedAIMux.Lock()
@@ -2399,7 +2473,7 @@ func (btl *Battle) AISpawned(payload *AISpawnedRequest) error {
 	btl.SpawnedAI = append(btl.SpawnedAI, spawnedAI)
 
 	// Broadcast spawn event
-	ws.PublishMessage(fmt.Sprintf("/public/arena/%s/minimap", btl.ArenaID), HubKeyBattleAISpawned, btl.SpawnedAI)
+	ws.PublishMessage(fmt.Sprintf("/mini_map/arena/%s/public/minimap", btl.ArenaID), HubKeyBattleAISpawned, btl.SpawnedAI)
 
 	return nil
 }
@@ -2423,10 +2497,17 @@ func (btl *Battle) CompleteWarMachineMoveCommand(payload *AbilityMoveCommandComp
 		return terror.Error(fmt.Errorf("war machine not exists"))
 	}
 
+	mmc := &MechMoveCommandResponse{}
+	// record for faction move command
+	fmc := &FactionMechCommand{
+		BattleID: btl.ID,
+		IsEnded:  true,
+	}
+
 	isMiniMech := wm.AIType != nil && *wm.AIType == MiniMech
 	if !isMiniMech {
 		// get the last move command of the mech
-		mmc, err := boiler.MechMoveCommandLogs(
+		mechMoveCommand, err := boiler.MechMoveCommandLogs(
 			boiler.MechMoveCommandLogWhere.MechID.EQ(wm.ID),
 			boiler.MechMoveCommandLogWhere.BattleID.EQ(btl.ID),
 			qm.OrderBy(boiler.MechMoveCommandLogColumns.CreatedAt+" DESC"),
@@ -2436,41 +2517,51 @@ func (btl *Battle) CompleteWarMachineMoveCommand(payload *AbilityMoveCommandComp
 		}
 
 		// update completed_at
-		mmc.ReachedAt = null.TimeFrom(time.Now())
-		mmc.IsMoving = false
-		_, err = mmc.Update(gamedb.StdConn, boil.Whitelist(boiler.MechMoveCommandLogColumns.ReachedAt))
+		mechMoveCommand.ReachedAt = null.TimeFrom(time.Now())
+		mechMoveCommand.IsMoving = false
+		_, err = mechMoveCommand.Update(gamedb.StdConn, boil.Whitelist(boiler.MechMoveCommandLogColumns.ReachedAt))
 		if err != nil {
 			return terror.Error(err, "Failed to update mech move command")
 		}
 
-		ws.PublishMessage(fmt.Sprintf("/faction/%s/arena/%s/mech_command/%s", wm.FactionID, btl.ArenaID, wm.Hash), server.HubKeyMechMoveCommandSubscribe, &MechMoveCommandResponse{
-			MechMoveCommandLog: mmc,
-		})
+		mmc = &MechMoveCommandResponse{MechMoveCommandLog: mechMoveCommand}
+		mmc.ID = btl.ID + wm.ID
+
+		// broadcast faction mech move command
+		fmc.ID = mmc.ID
+		fmc.IsMiniMech = false
+
 	} else {
 		mmmc, err := btl.arena._currentBattle.playerAbilityManager().CompleteMiniMechMove(wm.Hash)
-		if err == nil && mmmc != nil {
-			ws.PublishMessage(fmt.Sprintf("/faction/%s/arena/%s/mech_command/%s", wm.FactionID, btl.ArenaID, wm.Hash), server.HubKeyMechMoveCommandSubscribe, &MechMoveCommandResponse{
-				MechMoveCommandLog: &boiler.MechMoveCommandLog{
-					ID:            fmt.Sprintf("%s_%s", mmmc.BattleID, mmmc.MechHash),
-					BattleID:      mmmc.BattleID,
-					MechID:        mmmc.MechHash,
-					TriggeredByID: mmmc.TriggeredByID,
-					CellX:         mmmc.CellX,
-					CellY:         mmmc.CellY,
-					CancelledAt:   mmmc.CancelledAt,
-					ReachedAt:     mmmc.ReachedAt,
-					CreatedAt:     mmmc.CreatedAt,
-					IsMoving:      mmmc.IsMoving,
-				},
-				IsMiniMech: true,
-			})
+		if err != nil {
+			gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("Failed to get mini mech move command")
+			return terror.Error(err, "Failed to record mech move command.")
 		}
+
+		mmc = &MechMoveCommandResponse{
+			MechMoveCommandLog: &boiler.MechMoveCommandLog{
+				ID:            btl.ID + mmmc.MechHash,
+				BattleID:      mmmc.BattleID,
+				MechID:        mmmc.MechHash,
+				TriggeredByID: mmmc.TriggeredByID,
+				CellX:         mmmc.CellX,
+				CellY:         mmmc.CellY,
+				CancelledAt:   mmmc.CancelledAt,
+				ReachedAt:     mmmc.ReachedAt,
+				CreatedAt:     mmmc.CreatedAt,
+				IsMoving:      mmmc.IsMoving,
+			},
+			IsMiniMech: true,
+		}
+
+		// broadcast faction mech move command
+		fmc.ID = mmc.ID
+		fmc.IsMiniMech = true
 	}
 
-	err := btl.arena.BroadcastFactionMechCommands(wm.FactionID)
-	if err != nil {
-		gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("Failed to broadcast faction mech commands")
-	}
+	ws.PublishMessage(fmt.Sprintf("/mini_map/arena/%s/faction/%s/mech_command/%s", btl.ArenaID, wm.FactionID, wm.Hash), server.HubKeyMechCommandUpdateSubscribe, mmc)
+	ws.PublishMessage(fmt.Sprintf("/mini_map/arena/%s/faction/%s/mech_commands", btl.ArenaID, wm.FactionID), server.HubKeyFactionMechCommandUpdateSubscribe, []*FactionMechCommand{fmc})
+
 	return nil
 }
 

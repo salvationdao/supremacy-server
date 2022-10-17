@@ -289,6 +289,13 @@ const (
 	MarketplaceEventCancelled = "cancelled"
 )
 
+// Enum values for ModActionType
+const (
+	ModActionTypeBAN     = "BAN"
+	ModActionTypeUNBAN   = "UNBAN"
+	ModActionTypeRESTART = "RESTART"
+)
+
 // Enum values for MultiplierTypeEnum
 const (
 	MultiplierTypeEnumSpendAverage = "spend_average"
