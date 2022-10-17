@@ -117,7 +117,7 @@ type MiniMapAbilityContent struct {
 	LocationSelectType       string              `json:"location_select_type"`
 	Radius                   null.Int            `json:"radius,omitempty"`
 	LaunchingAt              null.Time           `json:"launching_at,omitempty"`
-	UpdatedAt                time.Time           `json:"updated_at"`
+	UpdatedAt                time.Time           `json:"-"`
 }
 
 // Add new pending ability and return a copy of current list
@@ -1731,48 +1731,65 @@ func (btl *Battle) Tick(payload []byte) {
 func (arena *Arena) warMachinePositionBroadcaster() {
 
 	// broadcast war machine stat every 250 millisecond
-	ticker := time.NewTicker(250 * time.Millisecond)
+	ticker := time.NewTicker(330 * time.Millisecond)
 	var warMachineStats []*WarMachineStat
+
+	exitChan := make(chan bool, 2)
+	l := deadlock.RWMutex{}
+
+	go func() {
+		for {
+			select {
+			case stats := <-arena.WarMachineStatBroadcastChan:
+				l.Lock()
+				// update war machine stats
+				for _, stat := range stats {
+					index := slices.IndexFunc(warMachineStats, func(wms *WarMachineStat) bool {
+						return wms.ParticipantID == stat.ParticipantID
+					})
+
+					// append, if not exists
+					if index == -1 {
+						warMachineStats = append(warMachineStats, stat)
+						continue
+					}
+
+					// replace, if exits
+					warMachineStats[index] = stat
+				}
+				l.Unlock()
+
+				// trigger everytime when a battle is ended
+			case <-arena.WarMachineStatBroadcastResetChan:
+				l.Lock()
+				warMachineStats = []*WarMachineStat{}
+				l.Unlock()
+			case <-exitChan:
+				return
+			}
+		}
+	}()
 
 	for {
 		select {
-		case stats := <-arena.WarMachineStatBroadcastChan:
-			// update war machine stats
-			for _, stat := range stats {
-				index := slices.IndexFunc(warMachineStats, func(wms *WarMachineStat) bool {
-					return wms.ParticipantID == stat.ParticipantID
-				})
-
-				// append, if not exists
-				if index == -1 {
-					warMachineStats = append(warMachineStats, stat)
-					continue
-				}
-
-				// replace, if exits
-				warMachineStats[index] = stat
-			}
-
 		case <-ticker.C:
+			l.RLock()
 			if warMachineStats == nil || len(warMachineStats) == 0 {
+				l.RUnlock()
 				continue
 			}
 
 			// otherwise broadcast current data
 			ws.PublishBytes(fmt.Sprintf("/mini_map/arena/%s/public/mech_stats", arena.ID), server.BinaryKeyWarMachineStats, PackWarMachineStatsInBytes(warMachineStats))
-
-			// clear war machine stat
-			warMachineStats = []*WarMachineStat{}
-
-			// trigger everytime when a battle is ended
-		case <-arena.WarMachineStatBroadcastResetChan:
-			warMachineStats = []*WarMachineStat{}
+			l.RUnlock()
 
 			// triggered when arena is disconnected
 		case <-arena.WarMachineStatBroadcastStopChan:
+			exitChan <- true
 			return
 		}
 	}
+
 }
 
 func PackWarMachineStatsInBytes(warMachineStats []*WarMachineStat) []byte {

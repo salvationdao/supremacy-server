@@ -64,7 +64,7 @@ const HubKeyBattleArenaClosedSubscribe = "BATTLE:ARENA:CLOSED"
 const HubKeyMiniMapAbilityContentSubscribe = "MINI:MAP:ABILITY:CONTENT"
 const HubKeyMechCommandUpdateSubscribe = "MECH:COMMAND:UPDATE"
 const HubKeyFactionMechCommandUpdateSubscribe = "FACTION:MECH:COMMANDS:UPDATE"
-const HubKeyMiniMapUpdateSubscribe = "MINI:MAP:UPDATE"
+const HubKeyMiniMapUpdateSubscribe = "MINIMAP:UPDATES:SUBSCRIBE"
 
 // binary key
 const (
