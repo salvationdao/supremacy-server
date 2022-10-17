@@ -363,6 +363,10 @@ func (api *API) MiniMapAbilityDisplayList(ctx context.Context, key string, paylo
 
 	// if current battle still running
 	btl := arena.CurrentBattle()
+	if btl == nil {
+		return nil
+	}
+
 	if btl != nil {
 		reply(btl.MiniMapAbilityDisplayList.List())
 	}
