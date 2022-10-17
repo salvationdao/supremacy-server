@@ -162,7 +162,7 @@ func NewAPI(
 		},
 		questManager: questManager,
 
-		VoiceChatListeners: NewVoiceChatListeners(),
+		VoiceChatListeners: &VoiceChatListeners{},
 
 		ViewerUpdateChan: make(chan bool),
 	}

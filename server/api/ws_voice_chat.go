@@ -80,7 +80,6 @@ func (api *API) VoiceChatGetListeners(ctx context.Context, user *boiler.Player, 
 
 	// loop through listeners
 	for _, vl := range api.VoiceChatListeners.Listeners {
-		// check active ~ 2 mins ago
 		pvl, err := boiler.PlayerActiveLogs(
 			boiler.PlayerActiveLogWhere.PlayerID.EQ(vl.ID),
 			qm.OrderBy(boiler.PlayerActiveLogColumns.ActiveAt+" DESC"),
@@ -356,14 +355,11 @@ func (api *API) VoiceChatConnect(ctx context.Context, user *boiler.Player, facti
 
 	// add
 	api.VoiceChatListeners.AddListener(p)
-
-	listeners := api.VoiceChatListeners.CurrentVoiceChatListeners()
-	reply(true)
-
-	err = voice_chat.UpdateFactionVoiceStreamListeners(user.FactionID.String, req.Payload.ArenaID, listeners)
+	err = voice_chat.UpdateFactionVoiceStreamListeners(user.FactionID.String, req.Payload.ArenaID, api.VoiceChatListeners.CurrentVoiceChatListeners())
 	if err != nil {
 		return terror.Error(err, "failed to update voice stream listeners")
 	}
+	reply(true)
 
 	return nil
 }
@@ -377,10 +373,7 @@ func (api *API) VoiceChatDisconnect(ctx context.Context, user *boiler.Player, fa
 
 	// remove
 	api.VoiceChatListeners.RemoveListener(user.ID)
-
-	listeners := api.VoiceChatListeners.CurrentVoiceChatListeners()
-
-	err = voice_chat.UpdateFactionVoiceStreamListeners(user.FactionID.String, req.Payload.ArenaID, listeners)
+	err = voice_chat.UpdateFactionVoiceStreamListeners(user.FactionID.String, req.Payload.ArenaID, api.VoiceChatListeners.CurrentVoiceChatListeners())
 	if err != nil {
 		return terror.Error(err, "failed to update voice stream listeners")
 	}
@@ -392,11 +385,6 @@ func (api *API) VoiceChatDisconnect(ctx context.Context, user *boiler.Player, fa
 type VoiceChatListeners struct {
 	Listeners []*server.PublicPlayer
 	deadlock.RWMutex
-}
-
-func NewVoiceChatListeners() *VoiceChatListeners {
-	vcl := &VoiceChatListeners{}
-	return vcl
 }
 
 // CurrentVoiceChatListeners return a copy of current voice stream listeners

@@ -152,9 +152,6 @@ func (vc *VoiceChannel) UpdateAllVoiceChannel(warMachineIDs []string, arenaID st
 			return terror.Error(err, "Failed to get active voice chat")
 
 		}
-
-		// active voice chat listeners
-
 		ws.PublishMessage(fmt.Sprintf("/secure/user/%s/arena/%s", p.ID, arenaID), server.HubKeyVoiceStreams, vcs)
 	}
 
