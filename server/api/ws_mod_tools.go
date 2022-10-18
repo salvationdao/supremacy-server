@@ -30,6 +30,7 @@ func NewModToolsController(api *API) {
 	api.SecureAdminCommand(HubKeyModToolRestartServer, api.ModToolRestartServer)
 	api.SecureAdminCommand(HubKeyModToolLookupHistory, api.ModToolLookupHistory)
 	api.SecureAdminCommand(HubKeyModToolRenameMech, api.ModToolRenameMech)
+	api.SecureAdminCommand(HubKeyModToolRenamePlayer, api.ModToolRenamePlayer)
 }
 
 const HubKeyModToolsGetUser = "MOD:GET:USER"
@@ -432,7 +433,7 @@ func (api *API) ModToolRenameMech(ctx context.Context, user *boiler.Player, key 
 		return terror.Error(err, "Failed to find mech")
 	}
 
-	reason := fmt.Sprintf("Reason: %s \n Previous name: %s \n New name: %s", req.Payload.Reason, req.Payload.NewMechName, mech.Name)
+	reason := fmt.Sprintf("Reason: %s \n Previous name: %s \n New name: %s", req.Payload.Reason, mech.Name, req.Payload.NewMechName)
 
 	action := &boiler.ModActionAudit{
 		AffectedPlayerID: null.StringFrom(req.Payload.OwnerID),
@@ -473,6 +474,85 @@ func (api *API) ModToolRenameMech(ctx context.Context, user *boiler.Player, key 
 	ws.PublishMessage(fmt.Sprintf("/secure/user/%s/system_messages", req.Payload.OwnerID), server.HubKeySystemMessageListUpdatedSubscribe, true)
 
 	reply(newName)
+
+	return nil
+}
+
+const HubKeyModToolRenamePlayer = "MOD:RENAME:PLAYER"
+
+type ModToolRenamePlayerReq struct {
+	Payload struct {
+		PlayerID    string `json:"player_id"`
+		NewUsername string `json:"new_username"`
+		Reason      string `json:"reason"`
+	} `json:"payload"`
+}
+
+func (api *API) ModToolRenamePlayer(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
+	req := &ModToolRenamePlayerReq{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return terror.Error(err, "Invalid request received.")
+	}
+
+	player, err := boiler.FindPlayer(gamedb.StdConn, req.Payload.PlayerID)
+	if err != nil {
+		return terror.Error(err, "Failed to find player")
+	}
+
+	if !player.Username.Valid {
+		return terror.Error(fmt.Errorf("user has invalid username"), "User has invalid username")
+	}
+
+	oldName := player.Username.String
+
+	reason := fmt.Sprintf("Reason: %s \n Previous name: %s \n New name: %s", req.Payload.Reason, oldName, req.Payload.NewUsername)
+
+	action := &boiler.ModActionAudit{
+		AffectedPlayerID: null.StringFrom(req.Payload.PlayerID),
+		ActionType:       boiler.ModActionTypeMECH_RENAME,
+		ModID:            user.ID,
+		Reason:           reason,
+	}
+
+	err = action.Insert(gamedb.StdConn, boil.Infer())
+	if err != nil {
+		return terror.Error(err, "Failed to insert mod audit action")
+	}
+
+	player.Username = null.StringFrom(req.Payload.NewUsername)
+	player.UpdatedAt = time.Now()
+
+	_, err = player.Update(gamedb.StdConn, boil.Infer())
+	if err != nil {
+		return terror.Error(err, "Failed to update users name on ")
+	}
+
+	// update in xsyn
+	err = api.Passport.UserUpdateUsername(player.ID, req.Payload.NewUsername)
+	if err != nil {
+		return terror.Error(err, "Failed to update users name on XSYN")
+	}
+	reply(player.Username.String)
+	err = player.L.LoadRole(gamedb.StdConn, true, player, nil)
+	if err != nil {
+		return terror.Error(err, "Failed to update player's marketing preferences.")
+	}
+
+	ws.PublishMessage(fmt.Sprintf("/secure/player/%s", player.ID), server.HubKeyUserSubscribe, server.PlayerFromBoiler(player))
+
+	msg := &boiler.SystemMessage{
+		PlayerID: req.Payload.PlayerID,
+		SenderID: server.SupremacySystemModeratorUserID,
+		Title:    "Your username has been modified by a moderator",
+		Message:  fmt.Sprintf("Your username \"%s\" has been renamed to \"%s\" by a moderator for the following reasons: %s", oldName, req.Payload.NewUsername, req.Payload.Reason),
+	}
+	err = msg.Insert(gamedb.StdConn, boil.Infer())
+	if err != nil {
+		return err
+	}
+
+	ws.PublishMessage(fmt.Sprintf("/secure/user/%s/system_messages", player.ID), server.HubKeySystemMessageListUpdatedSubscribe, true)
 
 	return nil
 }
