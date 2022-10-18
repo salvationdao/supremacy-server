@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/volatiletech/null/v8"
+	"github.com/volatiletech/sqlboiler/v4/boil"
 	"server"
 	"server/db/boiler"
 	"server/gamedb"
@@ -178,6 +179,39 @@ func ModToolGetUserData(userID string, isAdmin bool, supsAmount decimal.Decimal)
 	}
 
 	return adminToolResponse, nil
+}
+
+var ErrModLookupDuplicate = errors.New("mod lookup duplicate")
+
+func UpdateLookupHistory(userID, lookupPlayerID string) error {
+	action, err := boiler.ModActionAudits(
+		boiler.ModActionAuditWhere.ModID.EQ(userID),
+		boiler.ModActionAuditWhere.ActionType.EQ(boiler.ModActionTypeLOOKUP),
+		qm.OrderBy(fmt.Sprintf("%s DESC", boiler.ModActionAuditColumns.CreatedAt)),
+	).One(gamedb.StdConn)
+	if err != nil && errors.Is(err, sql.ErrNoRows) {
+		return terror.Error(err, "Failed to get mod action audit")
+	}
+
+	if action != nil && action.LookupPlayerID.Valid {
+		if action.LookupPlayerID.String == lookupPlayerID {
+			return terror.Error(ErrModLookupDuplicate, "Mod last lookup was same user")
+		}
+	}
+
+	newAction := boiler.ModActionAudit{
+		ActionType:     boiler.ModActionTypeLOOKUP,
+		ModID:          userID,
+		Reason:         "Player Lookup",
+		LookupPlayerID: null.StringFrom(lookupPlayerID),
+	}
+
+	err = newAction.Insert(gamedb.StdConn, boil.Infer())
+	if err != nil {
+		return terror.Error(err, "Failed to insert new mod action audit")
+	}
+
+	return nil
 }
 
 func getPlayerRelatedAccounts(userID string) ([]*server.Player, error) {

@@ -282,6 +282,7 @@ const (
 	ModActionTypeBAN     = "BAN"
 	ModActionTypeUNBAN   = "UNBAN"
 	ModActionTypeRESTART = "RESTART"
+	ModActionTypeLOOKUP  = "LOOKUP"
 )
 
 // Enum values for MultiplierTypeEnum

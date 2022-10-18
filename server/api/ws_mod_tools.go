@@ -2,8 +2,11 @@ package api
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"fmt"
+	"github.com/friendsofgo/errors"
+	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 	"os"
 	"server"
 	"server/db"
@@ -47,6 +50,11 @@ func (api *API) ModToolsGetUser(ctx context.Context, user *boiler.Player, key st
 	).One(gamedb.StdConn)
 	if err != nil {
 		return terror.Error(err, "Failed to find player")
+	}
+
+	err = db.UpdateLookupHistory(user.ID, player.ID)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) && !errors.Is(err, db.ErrModLookupDuplicate) {
+		return terror.Error(err, "Failed to update lookup history")
 	}
 
 	supsAmount := api.Passport.UserBalanceGet(uuid.FromStringOrNil(player.ID))
@@ -343,6 +351,56 @@ func (api *API) ModToolRestartServer(ctx context.Context, user *boiler.Player, k
 	gamelog.L.Warn().Str("Mod Action", "Restart").Interface("Mod Audit", audit).Msg("Mod tool event")
 
 	os.Exit(1)
+
+	return nil
+}
+
+const HubKeyModToolLookupHistory = "MOD:LOOKUP:HISTORY"
+
+type ModLookupHistoryResp struct {
+	Username  string    `json:"username"`
+	GID       int       `json:"gid"`
+	FactionID string    `json:"faction_id"`
+	VisitedOn time.Time `json:"visited_on"`
+}
+
+func (api *API) ModToolLookupHistory(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
+	actions, err := boiler.ModActionAudits(
+		boiler.ModActionAuditWhere.ModID.EQ(user.ID),
+		boiler.ModActionAuditWhere.ActionType.EQ(boiler.ModActionTypeLOOKUP),
+		qm.OrderBy(fmt.Sprintf("%s DESC", boiler.ModActionAuditColumns.CreatedAt)),
+		qm.Load(boiler.ModActionAuditRels.LookupPlayer),
+	).All(gamedb.StdConn)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return terror.Error(err, "error finding mod lookup actions")
+	}
+
+	modLookupHistoryResp := []*ModLookupHistoryResp{}
+
+	if len(actions) <= 0 {
+		reply(modLookupHistoryResp)
+		return nil
+	}
+
+	for _, action := range actions {
+		if action.R == nil || action.R.LookupPlayer == nil {
+			continue
+		}
+
+		lookupHistory := &ModLookupHistoryResp{
+			Username:  action.R.LookupPlayer.Username.String,
+			GID:       action.R.LookupPlayer.Gid,
+			VisitedOn: action.CreatedAt,
+		}
+
+		if action.R.LookupPlayer.FactionID.Valid {
+			lookupHistory.FactionID = action.R.LookupPlayer.FactionID.String
+		}
+
+		modLookupHistoryResp = append(modLookupHistoryResp, lookupHistory)
+	}
+
+	reply(modLookupHistoryResp)
 
 	return nil
 }
