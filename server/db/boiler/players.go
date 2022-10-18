@@ -210,7 +210,7 @@ var PlayerRels = struct {
 	TriggeredByMechAbilityTriggerLogsOlds    string
 	TriggeredByMechMoveCommandLogs           string
 	OwnerMechsOlds                           string
-	LookupPlayerModActionAudits              string
+	AffectedPlayerModActionAudits            string
 	ModModActionAudits                       string
 	OwnerPlayerAbilities                     string
 	PlayerActiveLogs                         string
@@ -284,7 +284,7 @@ var PlayerRels = struct {
 	TriggeredByMechAbilityTriggerLogsOlds:    "TriggeredByMechAbilityTriggerLogsOlds",
 	TriggeredByMechMoveCommandLogs:           "TriggeredByMechMoveCommandLogs",
 	OwnerMechsOlds:                           "OwnerMechsOlds",
-	LookupPlayerModActionAudits:              "LookupPlayerModActionAudits",
+	AffectedPlayerModActionAudits:            "AffectedPlayerModActionAudits",
 	ModModActionAudits:                       "ModModActionAudits",
 	OwnerPlayerAbilities:                     "OwnerPlayerAbilities",
 	PlayerActiveLogs:                         "PlayerActiveLogs",
@@ -361,7 +361,7 @@ type playerR struct {
 	TriggeredByMechAbilityTriggerLogsOlds    MechAbilityTriggerLogsOldSlice   `boiler:"TriggeredByMechAbilityTriggerLogsOlds" boil:"TriggeredByMechAbilityTriggerLogsOlds" json:"TriggeredByMechAbilityTriggerLogsOlds" toml:"TriggeredByMechAbilityTriggerLogsOlds" yaml:"TriggeredByMechAbilityTriggerLogsOlds"`
 	TriggeredByMechMoveCommandLogs           MechMoveCommandLogSlice          `boiler:"TriggeredByMechMoveCommandLogs" boil:"TriggeredByMechMoveCommandLogs" json:"TriggeredByMechMoveCommandLogs" toml:"TriggeredByMechMoveCommandLogs" yaml:"TriggeredByMechMoveCommandLogs"`
 	OwnerMechsOlds                           MechsOldSlice                    `boiler:"OwnerMechsOlds" boil:"OwnerMechsOlds" json:"OwnerMechsOlds" toml:"OwnerMechsOlds" yaml:"OwnerMechsOlds"`
-	LookupPlayerModActionAudits              ModActionAuditSlice              `boiler:"LookupPlayerModActionAudits" boil:"LookupPlayerModActionAudits" json:"LookupPlayerModActionAudits" toml:"LookupPlayerModActionAudits" yaml:"LookupPlayerModActionAudits"`
+	AffectedPlayerModActionAudits            ModActionAuditSlice              `boiler:"AffectedPlayerModActionAudits" boil:"AffectedPlayerModActionAudits" json:"AffectedPlayerModActionAudits" toml:"AffectedPlayerModActionAudits" yaml:"AffectedPlayerModActionAudits"`
 	ModModActionAudits                       ModActionAuditSlice              `boiler:"ModModActionAudits" boil:"ModModActionAudits" json:"ModModActionAudits" toml:"ModModActionAudits" yaml:"ModModActionAudits"`
 	OwnerPlayerAbilities                     PlayerAbilitySlice               `boiler:"OwnerPlayerAbilities" boil:"OwnerPlayerAbilities" json:"OwnerPlayerAbilities" toml:"OwnerPlayerAbilities" yaml:"OwnerPlayerAbilities"`
 	PlayerActiveLogs                         PlayerActiveLogSlice             `boiler:"PlayerActiveLogs" boil:"PlayerActiveLogs" json:"PlayerActiveLogs" toml:"PlayerActiveLogs" yaml:"PlayerActiveLogs"`
@@ -1302,15 +1302,15 @@ func (o *Player) OwnerMechsOlds(mods ...qm.QueryMod) mechsOldQuery {
 	return query
 }
 
-// LookupPlayerModActionAudits retrieves all the mod_action_audit's ModActionAudits with an executor via lookup_player_id column.
-func (o *Player) LookupPlayerModActionAudits(mods ...qm.QueryMod) modActionAuditQuery {
+// AffectedPlayerModActionAudits retrieves all the mod_action_audit's ModActionAudits with an executor via affected_player_id column.
+func (o *Player) AffectedPlayerModActionAudits(mods ...qm.QueryMod) modActionAuditQuery {
 	var queryMods []qm.QueryMod
 	if len(mods) != 0 {
 		queryMods = append(queryMods, mods...)
 	}
 
 	queryMods = append(queryMods,
-		qm.Where("\"mod_action_audit\".\"lookup_player_id\"=?", o.ID),
+		qm.Where("\"mod_action_audit\".\"affected_player_id\"=?", o.ID),
 	)
 
 	query := ModActionAudits(queryMods...)
@@ -5410,9 +5410,9 @@ func (playerL) LoadOwnerMechsOlds(e boil.Executor, singular bool, maybePlayer in
 	return nil
 }
 
-// LoadLookupPlayerModActionAudits allows an eager lookup of values, cached into the
+// LoadAffectedPlayerModActionAudits allows an eager lookup of values, cached into the
 // loaded structs of the objects. This is for a 1-M or N-M relationship.
-func (playerL) LoadLookupPlayerModActionAudits(e boil.Executor, singular bool, maybePlayer interface{}, mods queries.Applicator) error {
+func (playerL) LoadAffectedPlayerModActionAudits(e boil.Executor, singular bool, maybePlayer interface{}, mods queries.Applicator) error {
 	var slice []*Player
 	var object *Player
 
@@ -5451,7 +5451,7 @@ func (playerL) LoadLookupPlayerModActionAudits(e boil.Executor, singular bool, m
 
 	query := NewQuery(
 		qm.From(`mod_action_audit`),
-		qm.WhereIn(`mod_action_audit.lookup_player_id in ?`, args...),
+		qm.WhereIn(`mod_action_audit.affected_player_id in ?`, args...),
 	)
 	if mods != nil {
 		mods.Apply(query)
@@ -5482,24 +5482,24 @@ func (playerL) LoadLookupPlayerModActionAudits(e boil.Executor, singular bool, m
 		}
 	}
 	if singular {
-		object.R.LookupPlayerModActionAudits = resultSlice
+		object.R.AffectedPlayerModActionAudits = resultSlice
 		for _, foreign := range resultSlice {
 			if foreign.R == nil {
 				foreign.R = &modActionAuditR{}
 			}
-			foreign.R.LookupPlayer = object
+			foreign.R.AffectedPlayer = object
 		}
 		return nil
 	}
 
 	for _, foreign := range resultSlice {
 		for _, local := range slice {
-			if queries.Equal(local.ID, foreign.LookupPlayerID) {
-				local.R.LookupPlayerModActionAudits = append(local.R.LookupPlayerModActionAudits, foreign)
+			if queries.Equal(local.ID, foreign.AffectedPlayerID) {
+				local.R.AffectedPlayerModActionAudits = append(local.R.AffectedPlayerModActionAudits, foreign)
 				if foreign.R == nil {
 					foreign.R = &modActionAuditR{}
 				}
-				foreign.R.LookupPlayer = local
+				foreign.R.AffectedPlayer = local
 				break
 			}
 		}
@@ -11597,22 +11597,22 @@ func (o *Player) AddOwnerMechsOlds(exec boil.Executor, insert bool, related ...*
 	return nil
 }
 
-// AddLookupPlayerModActionAudits adds the given related objects to the existing relationships
+// AddAffectedPlayerModActionAudits adds the given related objects to the existing relationships
 // of the player, optionally inserting them as new records.
-// Appends related to o.R.LookupPlayerModActionAudits.
-// Sets related.R.LookupPlayer appropriately.
-func (o *Player) AddLookupPlayerModActionAudits(exec boil.Executor, insert bool, related ...*ModActionAudit) error {
+// Appends related to o.R.AffectedPlayerModActionAudits.
+// Sets related.R.AffectedPlayer appropriately.
+func (o *Player) AddAffectedPlayerModActionAudits(exec boil.Executor, insert bool, related ...*ModActionAudit) error {
 	var err error
 	for _, rel := range related {
 		if insert {
-			queries.Assign(&rel.LookupPlayerID, o.ID)
+			queries.Assign(&rel.AffectedPlayerID, o.ID)
 			if err = rel.Insert(exec, boil.Infer()); err != nil {
 				return errors.Wrap(err, "failed to insert into foreign table")
 			}
 		} else {
 			updateQuery := fmt.Sprintf(
 				"UPDATE \"mod_action_audit\" SET %s WHERE %s",
-				strmangle.SetParamNames("\"", "\"", 1, []string{"lookup_player_id"}),
+				strmangle.SetParamNames("\"", "\"", 1, []string{"affected_player_id"}),
 				strmangle.WhereClause("\"", "\"", 2, modActionAuditPrimaryKeyColumns),
 			)
 			values := []interface{}{o.ID, rel.ID}
@@ -11625,38 +11625,38 @@ func (o *Player) AddLookupPlayerModActionAudits(exec boil.Executor, insert bool,
 				return errors.Wrap(err, "failed to update foreign table")
 			}
 
-			queries.Assign(&rel.LookupPlayerID, o.ID)
+			queries.Assign(&rel.AffectedPlayerID, o.ID)
 		}
 	}
 
 	if o.R == nil {
 		o.R = &playerR{
-			LookupPlayerModActionAudits: related,
+			AffectedPlayerModActionAudits: related,
 		}
 	} else {
-		o.R.LookupPlayerModActionAudits = append(o.R.LookupPlayerModActionAudits, related...)
+		o.R.AffectedPlayerModActionAudits = append(o.R.AffectedPlayerModActionAudits, related...)
 	}
 
 	for _, rel := range related {
 		if rel.R == nil {
 			rel.R = &modActionAuditR{
-				LookupPlayer: o,
+				AffectedPlayer: o,
 			}
 		} else {
-			rel.R.LookupPlayer = o
+			rel.R.AffectedPlayer = o
 		}
 	}
 	return nil
 }
 
-// SetLookupPlayerModActionAudits removes all previously related items of the
+// SetAffectedPlayerModActionAudits removes all previously related items of the
 // player replacing them completely with the passed
 // in related items, optionally inserting them as new records.
-// Sets o.R.LookupPlayer's LookupPlayerModActionAudits accordingly.
-// Replaces o.R.LookupPlayerModActionAudits with related.
-// Sets related.R.LookupPlayer's LookupPlayerModActionAudits accordingly.
-func (o *Player) SetLookupPlayerModActionAudits(exec boil.Executor, insert bool, related ...*ModActionAudit) error {
-	query := "update \"mod_action_audit\" set \"lookup_player_id\" = null where \"lookup_player_id\" = $1"
+// Sets o.R.AffectedPlayer's AffectedPlayerModActionAudits accordingly.
+// Replaces o.R.AffectedPlayerModActionAudits with related.
+// Sets related.R.AffectedPlayer's AffectedPlayerModActionAudits accordingly.
+func (o *Player) SetAffectedPlayerModActionAudits(exec boil.Executor, insert bool, related ...*ModActionAudit) error {
+	query := "update \"mod_action_audit\" set \"affected_player_id\" = null where \"affected_player_id\" = $1"
 	values := []interface{}{o.ID}
 	if boil.DebugMode {
 		fmt.Fprintln(boil.DebugWriter, query)
@@ -11668,35 +11668,35 @@ func (o *Player) SetLookupPlayerModActionAudits(exec boil.Executor, insert bool,
 	}
 
 	if o.R != nil {
-		for _, rel := range o.R.LookupPlayerModActionAudits {
-			queries.SetScanner(&rel.LookupPlayerID, nil)
+		for _, rel := range o.R.AffectedPlayerModActionAudits {
+			queries.SetScanner(&rel.AffectedPlayerID, nil)
 			if rel.R == nil {
 				continue
 			}
 
-			rel.R.LookupPlayer = nil
+			rel.R.AffectedPlayer = nil
 		}
 
-		o.R.LookupPlayerModActionAudits = nil
+		o.R.AffectedPlayerModActionAudits = nil
 	}
-	return o.AddLookupPlayerModActionAudits(exec, insert, related...)
+	return o.AddAffectedPlayerModActionAudits(exec, insert, related...)
 }
 
-// RemoveLookupPlayerModActionAudits relationships from objects passed in.
-// Removes related items from R.LookupPlayerModActionAudits (uses pointer comparison, removal does not keep order)
-// Sets related.R.LookupPlayer.
-func (o *Player) RemoveLookupPlayerModActionAudits(exec boil.Executor, related ...*ModActionAudit) error {
+// RemoveAffectedPlayerModActionAudits relationships from objects passed in.
+// Removes related items from R.AffectedPlayerModActionAudits (uses pointer comparison, removal does not keep order)
+// Sets related.R.AffectedPlayer.
+func (o *Player) RemoveAffectedPlayerModActionAudits(exec boil.Executor, related ...*ModActionAudit) error {
 	if len(related) == 0 {
 		return nil
 	}
 
 	var err error
 	for _, rel := range related {
-		queries.SetScanner(&rel.LookupPlayerID, nil)
+		queries.SetScanner(&rel.AffectedPlayerID, nil)
 		if rel.R != nil {
-			rel.R.LookupPlayer = nil
+			rel.R.AffectedPlayer = nil
 		}
-		if _, err = rel.Update(exec, boil.Whitelist("lookup_player_id")); err != nil {
+		if _, err = rel.Update(exec, boil.Whitelist("affected_player_id")); err != nil {
 			return err
 		}
 	}
@@ -11705,16 +11705,16 @@ func (o *Player) RemoveLookupPlayerModActionAudits(exec boil.Executor, related .
 	}
 
 	for _, rel := range related {
-		for i, ri := range o.R.LookupPlayerModActionAudits {
+		for i, ri := range o.R.AffectedPlayerModActionAudits {
 			if rel != ri {
 				continue
 			}
 
-			ln := len(o.R.LookupPlayerModActionAudits)
+			ln := len(o.R.AffectedPlayerModActionAudits)
 			if ln > 1 && i < ln-1 {
-				o.R.LookupPlayerModActionAudits[i] = o.R.LookupPlayerModActionAudits[ln-1]
+				o.R.AffectedPlayerModActionAudits[i] = o.R.AffectedPlayerModActionAudits[ln-1]
 			}
-			o.R.LookupPlayerModActionAudits = o.R.LookupPlayerModActionAudits[:ln-1]
+			o.R.AffectedPlayerModActionAudits = o.R.AffectedPlayerModActionAudits[:ln-1]
 			break
 		}
 	}

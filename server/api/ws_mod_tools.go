@@ -179,10 +179,11 @@ func (api *API) ModToolBanUser(ctx context.Context, user *boiler.Player, key str
 		}
 
 		audit := &boiler.ModActionAudit{
-			ActionType:  boiler.ModActionTypeBAN,
-			ModID:       user.ID,
-			Reason:      req.Payload.BanReason,
-			PlayerBanID: null.StringFrom(playerBan.ID),
+			AffectedPlayerID: null.StringFrom(playerBan.BannedPlayerID),
+			ActionType:       boiler.ModActionTypeBAN,
+			ModID:            user.ID,
+			Reason:           req.Payload.BanReason,
+			PlayerBanID:      null.StringFrom(playerBan.ID),
 		}
 
 		err = audit.Insert(gamedb.StdConn, boil.Infer())
@@ -261,10 +262,11 @@ func (api *API) ModToolUnbanUser(ctx context.Context, user *boiler.Player, key s
 		}
 
 		audit := &boiler.ModActionAudit{
-			ActionType:  boiler.ModActionTypeUNBAN,
-			ModID:       user.ID,
-			Reason:      req.Payload.UnbanReason,
-			PlayerBanID: null.StringFrom(playerBan.ID),
+			AffectedPlayerID: null.StringFrom(playerBan.BannedPlayerID),
+			ActionType:       boiler.ModActionTypeUNBAN,
+			ModID:            user.ID,
+			Reason:           req.Payload.UnbanReason,
+			PlayerBanID:      null.StringFrom(playerBan.ID),
 		}
 
 		err = audit.Insert(gamedb.StdConn, boil.Infer())
@@ -371,7 +373,7 @@ func (api *API) ModToolLookupHistory(ctx context.Context, user *boiler.Player, k
 		boiler.ModActionAuditWhere.ModID.EQ(user.ID),
 		boiler.ModActionAuditWhere.ActionType.EQ(boiler.ModActionTypeLOOKUP),
 		qm.OrderBy(fmt.Sprintf("%s DESC", boiler.ModActionAuditColumns.CreatedAt)),
-		qm.Load(boiler.ModActionAuditRels.LookupPlayer),
+		qm.Load(boiler.ModActionAuditRels.AffectedPlayer),
 	).All(gamedb.StdConn)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return terror.Error(err, "error finding mod lookup actions")
@@ -385,18 +387,18 @@ func (api *API) ModToolLookupHistory(ctx context.Context, user *boiler.Player, k
 	}
 
 	for _, action := range actions {
-		if action.R == nil || action.R.LookupPlayer == nil {
+		if action.R == nil || action.R.AffectedPlayer == nil {
 			continue
 		}
 
 		lookupHistory := &ModLookupHistoryResp{
-			Username:  action.R.LookupPlayer.Username.String,
-			GID:       action.R.LookupPlayer.Gid,
+			Username:  action.R.AffectedPlayer.Username.String,
+			GID:       action.R.AffectedPlayer.Gid,
 			VisitedOn: action.CreatedAt,
 		}
 
-		if action.R.LookupPlayer.FactionID.Valid {
-			lookupHistory.FactionID = action.R.LookupPlayer.FactionID.String
+		if action.R.AffectedPlayer.FactionID.Valid {
+			lookupHistory.FactionID = action.R.AffectedPlayer.FactionID.String
 		}
 
 		modLookupHistoryResp = append(modLookupHistoryResp, lookupHistory)
@@ -433,9 +435,10 @@ func (api *API) ModToolRenameMech(ctx context.Context, user *boiler.Player, key 
 	reason := fmt.Sprintf("Reason: %s \n Previous name: %s \n New name: %s", req.Payload.Reason, req.Payload.NewMechName, mech.Name)
 
 	action := &boiler.ModActionAudit{
-		ActionType: boiler.ModActionTypeMECH_RENAME,
-		ModID:      user.ID,
-		Reason:     reason,
+		AffectedPlayerID: null.StringFrom(req.Payload.OwnerID),
+		ActionType:       boiler.ModActionTypeMECH_RENAME,
+		ModID:            user.ID,
+		Reason:           reason,
 	}
 
 	err = action.Insert(gamedb.StdConn, boil.Infer())

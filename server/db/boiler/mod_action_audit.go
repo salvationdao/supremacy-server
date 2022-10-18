@@ -23,90 +23,90 @@ import (
 
 // ModActionAudit is an object representing the database table.
 type ModActionAudit struct {
-	ID             string      `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
-	ActionType     string      `boiler:"action_type" boil:"action_type" json:"action_type" toml:"action_type" yaml:"action_type"`
-	ModID          string      `boiler:"mod_id" boil:"mod_id" json:"mod_id" toml:"mod_id" yaml:"mod_id"`
-	Reason         string      `boiler:"reason" boil:"reason" json:"reason" toml:"reason" yaml:"reason"`
-	PlayerBanID    null.String `boiler:"player_ban_id" boil:"player_ban_id" json:"player_ban_id,omitempty" toml:"player_ban_id" yaml:"player_ban_id,omitempty"`
-	CreatedAt      time.Time   `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
-	LookupPlayerID null.String `boiler:"lookup_player_id" boil:"lookup_player_id" json:"lookup_player_id,omitempty" toml:"lookup_player_id" yaml:"lookup_player_id,omitempty"`
+	ID               string      `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
+	ActionType       string      `boiler:"action_type" boil:"action_type" json:"action_type" toml:"action_type" yaml:"action_type"`
+	ModID            string      `boiler:"mod_id" boil:"mod_id" json:"mod_id" toml:"mod_id" yaml:"mod_id"`
+	Reason           string      `boiler:"reason" boil:"reason" json:"reason" toml:"reason" yaml:"reason"`
+	PlayerBanID      null.String `boiler:"player_ban_id" boil:"player_ban_id" json:"player_ban_id,omitempty" toml:"player_ban_id" yaml:"player_ban_id,omitempty"`
+	CreatedAt        time.Time   `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
+	AffectedPlayerID null.String `boiler:"affected_player_id" boil:"affected_player_id" json:"affected_player_id,omitempty" toml:"affected_player_id" yaml:"affected_player_id,omitempty"`
 
 	R *modActionAuditR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L modActionAuditL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 }
 
 var ModActionAuditColumns = struct {
-	ID             string
-	ActionType     string
-	ModID          string
-	Reason         string
-	PlayerBanID    string
-	CreatedAt      string
-	LookupPlayerID string
+	ID               string
+	ActionType       string
+	ModID            string
+	Reason           string
+	PlayerBanID      string
+	CreatedAt        string
+	AffectedPlayerID string
 }{
-	ID:             "id",
-	ActionType:     "action_type",
-	ModID:          "mod_id",
-	Reason:         "reason",
-	PlayerBanID:    "player_ban_id",
-	CreatedAt:      "created_at",
-	LookupPlayerID: "lookup_player_id",
+	ID:               "id",
+	ActionType:       "action_type",
+	ModID:            "mod_id",
+	Reason:           "reason",
+	PlayerBanID:      "player_ban_id",
+	CreatedAt:        "created_at",
+	AffectedPlayerID: "affected_player_id",
 }
 
 var ModActionAuditTableColumns = struct {
-	ID             string
-	ActionType     string
-	ModID          string
-	Reason         string
-	PlayerBanID    string
-	CreatedAt      string
-	LookupPlayerID string
+	ID               string
+	ActionType       string
+	ModID            string
+	Reason           string
+	PlayerBanID      string
+	CreatedAt        string
+	AffectedPlayerID string
 }{
-	ID:             "mod_action_audit.id",
-	ActionType:     "mod_action_audit.action_type",
-	ModID:          "mod_action_audit.mod_id",
-	Reason:         "mod_action_audit.reason",
-	PlayerBanID:    "mod_action_audit.player_ban_id",
-	CreatedAt:      "mod_action_audit.created_at",
-	LookupPlayerID: "mod_action_audit.lookup_player_id",
+	ID:               "mod_action_audit.id",
+	ActionType:       "mod_action_audit.action_type",
+	ModID:            "mod_action_audit.mod_id",
+	Reason:           "mod_action_audit.reason",
+	PlayerBanID:      "mod_action_audit.player_ban_id",
+	CreatedAt:        "mod_action_audit.created_at",
+	AffectedPlayerID: "mod_action_audit.affected_player_id",
 }
 
 // Generated where
 
 var ModActionAuditWhere = struct {
-	ID             whereHelperstring
-	ActionType     whereHelperstring
-	ModID          whereHelperstring
-	Reason         whereHelperstring
-	PlayerBanID    whereHelpernull_String
-	CreatedAt      whereHelpertime_Time
-	LookupPlayerID whereHelpernull_String
+	ID               whereHelperstring
+	ActionType       whereHelperstring
+	ModID            whereHelperstring
+	Reason           whereHelperstring
+	PlayerBanID      whereHelpernull_String
+	CreatedAt        whereHelpertime_Time
+	AffectedPlayerID whereHelpernull_String
 }{
-	ID:             whereHelperstring{field: "\"mod_action_audit\".\"id\""},
-	ActionType:     whereHelperstring{field: "\"mod_action_audit\".\"action_type\""},
-	ModID:          whereHelperstring{field: "\"mod_action_audit\".\"mod_id\""},
-	Reason:         whereHelperstring{field: "\"mod_action_audit\".\"reason\""},
-	PlayerBanID:    whereHelpernull_String{field: "\"mod_action_audit\".\"player_ban_id\""},
-	CreatedAt:      whereHelpertime_Time{field: "\"mod_action_audit\".\"created_at\""},
-	LookupPlayerID: whereHelpernull_String{field: "\"mod_action_audit\".\"lookup_player_id\""},
+	ID:               whereHelperstring{field: "\"mod_action_audit\".\"id\""},
+	ActionType:       whereHelperstring{field: "\"mod_action_audit\".\"action_type\""},
+	ModID:            whereHelperstring{field: "\"mod_action_audit\".\"mod_id\""},
+	Reason:           whereHelperstring{field: "\"mod_action_audit\".\"reason\""},
+	PlayerBanID:      whereHelpernull_String{field: "\"mod_action_audit\".\"player_ban_id\""},
+	CreatedAt:        whereHelpertime_Time{field: "\"mod_action_audit\".\"created_at\""},
+	AffectedPlayerID: whereHelpernull_String{field: "\"mod_action_audit\".\"affected_player_id\""},
 }
 
 // ModActionAuditRels is where relationship names are stored.
 var ModActionAuditRels = struct {
-	LookupPlayer string
-	Mod          string
-	PlayerBan    string
+	AffectedPlayer string
+	Mod            string
+	PlayerBan      string
 }{
-	LookupPlayer: "LookupPlayer",
-	Mod:          "Mod",
-	PlayerBan:    "PlayerBan",
+	AffectedPlayer: "AffectedPlayer",
+	Mod:            "Mod",
+	PlayerBan:      "PlayerBan",
 }
 
 // modActionAuditR is where relationships are stored.
 type modActionAuditR struct {
-	LookupPlayer *Player    `boiler:"LookupPlayer" boil:"LookupPlayer" json:"LookupPlayer" toml:"LookupPlayer" yaml:"LookupPlayer"`
-	Mod          *Player    `boiler:"Mod" boil:"Mod" json:"Mod" toml:"Mod" yaml:"Mod"`
-	PlayerBan    *PlayerBan `boiler:"PlayerBan" boil:"PlayerBan" json:"PlayerBan" toml:"PlayerBan" yaml:"PlayerBan"`
+	AffectedPlayer *Player    `boiler:"AffectedPlayer" boil:"AffectedPlayer" json:"AffectedPlayer" toml:"AffectedPlayer" yaml:"AffectedPlayer"`
+	Mod            *Player    `boiler:"Mod" boil:"Mod" json:"Mod" toml:"Mod" yaml:"Mod"`
+	PlayerBan      *PlayerBan `boiler:"PlayerBan" boil:"PlayerBan" json:"PlayerBan" toml:"PlayerBan" yaml:"PlayerBan"`
 }
 
 // NewStruct creates a new relationship struct
@@ -118,9 +118,9 @@ func (*modActionAuditR) NewStruct() *modActionAuditR {
 type modActionAuditL struct{}
 
 var (
-	modActionAuditAllColumns            = []string{"id", "action_type", "mod_id", "reason", "player_ban_id", "created_at", "lookup_player_id"}
+	modActionAuditAllColumns            = []string{"id", "action_type", "mod_id", "reason", "player_ban_id", "created_at", "affected_player_id"}
 	modActionAuditColumnsWithoutDefault = []string{"action_type", "mod_id", "reason"}
-	modActionAuditColumnsWithDefault    = []string{"id", "player_ban_id", "created_at", "lookup_player_id"}
+	modActionAuditColumnsWithDefault    = []string{"id", "player_ban_id", "created_at", "affected_player_id"}
 	modActionAuditPrimaryKeyColumns     = []string{"id"}
 	modActionAuditGeneratedColumns      = []string{}
 )
@@ -367,10 +367,10 @@ func (q modActionAuditQuery) Exists(exec boil.Executor) (bool, error) {
 	return count > 0, nil
 }
 
-// LookupPlayer pointed to by the foreign key.
-func (o *ModActionAudit) LookupPlayer(mods ...qm.QueryMod) playerQuery {
+// AffectedPlayer pointed to by the foreign key.
+func (o *ModActionAudit) AffectedPlayer(mods ...qm.QueryMod) playerQuery {
 	queryMods := []qm.QueryMod{
-		qm.Where("\"id\" = ?", o.LookupPlayerID),
+		qm.Where("\"id\" = ?", o.AffectedPlayerID),
 		qmhelper.WhereIsNull("deleted_at"),
 	}
 
@@ -412,9 +412,9 @@ func (o *ModActionAudit) PlayerBan(mods ...qm.QueryMod) playerBanQuery {
 	return query
 }
 
-// LoadLookupPlayer allows an eager lookup of values, cached into the
+// LoadAffectedPlayer allows an eager lookup of values, cached into the
 // loaded structs of the objects. This is for an N-1 relationship.
-func (modActionAuditL) LoadLookupPlayer(e boil.Executor, singular bool, maybeModActionAudit interface{}, mods queries.Applicator) error {
+func (modActionAuditL) LoadAffectedPlayer(e boil.Executor, singular bool, maybeModActionAudit interface{}, mods queries.Applicator) error {
 	var slice []*ModActionAudit
 	var object *ModActionAudit
 
@@ -429,8 +429,8 @@ func (modActionAuditL) LoadLookupPlayer(e boil.Executor, singular bool, maybeMod
 		if object.R == nil {
 			object.R = &modActionAuditR{}
 		}
-		if !queries.IsNil(object.LookupPlayerID) {
-			args = append(args, object.LookupPlayerID)
+		if !queries.IsNil(object.AffectedPlayerID) {
+			args = append(args, object.AffectedPlayerID)
 		}
 
 	} else {
@@ -441,13 +441,13 @@ func (modActionAuditL) LoadLookupPlayer(e boil.Executor, singular bool, maybeMod
 			}
 
 			for _, a := range args {
-				if queries.Equal(a, obj.LookupPlayerID) {
+				if queries.Equal(a, obj.AffectedPlayerID) {
 					continue Outer
 				}
 			}
 
-			if !queries.IsNil(obj.LookupPlayerID) {
-				args = append(args, obj.LookupPlayerID)
+			if !queries.IsNil(obj.AffectedPlayerID) {
+				args = append(args, obj.AffectedPlayerID)
 			}
 
 		}
@@ -497,22 +497,22 @@ func (modActionAuditL) LoadLookupPlayer(e boil.Executor, singular bool, maybeMod
 
 	if singular {
 		foreign := resultSlice[0]
-		object.R.LookupPlayer = foreign
+		object.R.AffectedPlayer = foreign
 		if foreign.R == nil {
 			foreign.R = &playerR{}
 		}
-		foreign.R.LookupPlayerModActionAudits = append(foreign.R.LookupPlayerModActionAudits, object)
+		foreign.R.AffectedPlayerModActionAudits = append(foreign.R.AffectedPlayerModActionAudits, object)
 		return nil
 	}
 
 	for _, local := range slice {
 		for _, foreign := range resultSlice {
-			if queries.Equal(local.LookupPlayerID, foreign.ID) {
-				local.R.LookupPlayer = foreign
+			if queries.Equal(local.AffectedPlayerID, foreign.ID) {
+				local.R.AffectedPlayer = foreign
 				if foreign.R == nil {
 					foreign.R = &playerR{}
 				}
-				foreign.R.LookupPlayerModActionAudits = append(foreign.R.LookupPlayerModActionAudits, local)
+				foreign.R.AffectedPlayerModActionAudits = append(foreign.R.AffectedPlayerModActionAudits, local)
 				break
 			}
 		}
@@ -735,10 +735,10 @@ func (modActionAuditL) LoadPlayerBan(e boil.Executor, singular bool, maybeModAct
 	return nil
 }
 
-// SetLookupPlayer of the modActionAudit to the related item.
-// Sets o.R.LookupPlayer to related.
-// Adds o to related.R.LookupPlayerModActionAudits.
-func (o *ModActionAudit) SetLookupPlayer(exec boil.Executor, insert bool, related *Player) error {
+// SetAffectedPlayer of the modActionAudit to the related item.
+// Sets o.R.AffectedPlayer to related.
+// Adds o to related.R.AffectedPlayerModActionAudits.
+func (o *ModActionAudit) SetAffectedPlayer(exec boil.Executor, insert bool, related *Player) error {
 	var err error
 	if insert {
 		if err = related.Insert(exec, boil.Infer()); err != nil {
@@ -748,7 +748,7 @@ func (o *ModActionAudit) SetLookupPlayer(exec boil.Executor, insert bool, relate
 
 	updateQuery := fmt.Sprintf(
 		"UPDATE \"mod_action_audit\" SET %s WHERE %s",
-		strmangle.SetParamNames("\"", "\"", 1, []string{"lookup_player_id"}),
+		strmangle.SetParamNames("\"", "\"", 1, []string{"affected_player_id"}),
 		strmangle.WhereClause("\"", "\"", 2, modActionAuditPrimaryKeyColumns),
 	)
 	values := []interface{}{related.ID, o.ID}
@@ -761,54 +761,54 @@ func (o *ModActionAudit) SetLookupPlayer(exec boil.Executor, insert bool, relate
 		return errors.Wrap(err, "failed to update local table")
 	}
 
-	queries.Assign(&o.LookupPlayerID, related.ID)
+	queries.Assign(&o.AffectedPlayerID, related.ID)
 	if o.R == nil {
 		o.R = &modActionAuditR{
-			LookupPlayer: related,
+			AffectedPlayer: related,
 		}
 	} else {
-		o.R.LookupPlayer = related
+		o.R.AffectedPlayer = related
 	}
 
 	if related.R == nil {
 		related.R = &playerR{
-			LookupPlayerModActionAudits: ModActionAuditSlice{o},
+			AffectedPlayerModActionAudits: ModActionAuditSlice{o},
 		}
 	} else {
-		related.R.LookupPlayerModActionAudits = append(related.R.LookupPlayerModActionAudits, o)
+		related.R.AffectedPlayerModActionAudits = append(related.R.AffectedPlayerModActionAudits, o)
 	}
 
 	return nil
 }
 
-// RemoveLookupPlayer relationship.
-// Sets o.R.LookupPlayer to nil.
+// RemoveAffectedPlayer relationship.
+// Sets o.R.AffectedPlayer to nil.
 // Removes o from all passed in related items' relationships struct (Optional).
-func (o *ModActionAudit) RemoveLookupPlayer(exec boil.Executor, related *Player) error {
+func (o *ModActionAudit) RemoveAffectedPlayer(exec boil.Executor, related *Player) error {
 	var err error
 
-	queries.SetScanner(&o.LookupPlayerID, nil)
-	if _, err = o.Update(exec, boil.Whitelist("lookup_player_id")); err != nil {
+	queries.SetScanner(&o.AffectedPlayerID, nil)
+	if _, err = o.Update(exec, boil.Whitelist("affected_player_id")); err != nil {
 		return errors.Wrap(err, "failed to update local table")
 	}
 
 	if o.R != nil {
-		o.R.LookupPlayer = nil
+		o.R.AffectedPlayer = nil
 	}
 	if related == nil || related.R == nil {
 		return nil
 	}
 
-	for i, ri := range related.R.LookupPlayerModActionAudits {
-		if queries.Equal(o.LookupPlayerID, ri.LookupPlayerID) {
+	for i, ri := range related.R.AffectedPlayerModActionAudits {
+		if queries.Equal(o.AffectedPlayerID, ri.AffectedPlayerID) {
 			continue
 		}
 
-		ln := len(related.R.LookupPlayerModActionAudits)
+		ln := len(related.R.AffectedPlayerModActionAudits)
 		if ln > 1 && i < ln-1 {
-			related.R.LookupPlayerModActionAudits[i] = related.R.LookupPlayerModActionAudits[ln-1]
+			related.R.AffectedPlayerModActionAudits[i] = related.R.AffectedPlayerModActionAudits[ln-1]
 		}
-		related.R.LookupPlayerModActionAudits = related.R.LookupPlayerModActionAudits[:ln-1]
+		related.R.AffectedPlayerModActionAudits = related.R.AffectedPlayerModActionAudits[:ln-1]
 		break
 	}
 	return nil

@@ -3,4 +3,4 @@ ALTER TYPE MOD_ACTION_TYPE ADD VALUE 'MECH_RENAME';
 ALTER TYPE MOD_ACTION_TYPE ADD VALUE 'USER_RENAME';
 
 ALTER TABLE mod_action_audit
-    ADD COLUMN lookup_player_id UUID references players(id) NULL;
+    ADD COLUMN affected_player_id UUID references players (id) NULL;

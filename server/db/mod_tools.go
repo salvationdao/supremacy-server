@@ -224,17 +224,17 @@ func UpdateLookupHistory(userID, lookupPlayerID string) error {
 		return terror.Error(err, "Failed to get mod action audit")
 	}
 
-	if action != nil && action.LookupPlayerID.Valid {
-		if action.LookupPlayerID.String == lookupPlayerID {
+	if action != nil && action.AffectedPlayerID.Valid {
+		if action.AffectedPlayerID.String == lookupPlayerID {
 			return terror.Error(ErrModLookupDuplicate, "Mod last lookup was same user")
 		}
 	}
 
 	newAction := boiler.ModActionAudit{
-		ActionType:     boiler.ModActionTypeLOOKUP,
-		ModID:          userID,
-		Reason:         "Player Lookup",
-		LookupPlayerID: null.StringFrom(lookupPlayerID),
+		ActionType:       boiler.ModActionTypeLOOKUP,
+		ModID:            userID,
+		Reason:           "Player Lookup",
+		AffectedPlayerID: null.StringFrom(lookupPlayerID),
 	}
 
 	err = newAction.Insert(gamedb.StdConn, boil.Infer())
