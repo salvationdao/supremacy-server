@@ -136,13 +136,13 @@ type PowerCore struct {
 
 type PowerCoreGameClient struct {
 	ID                       string  `json:"id"`
-	BlueprintID              string  `json:"blueprint_id"`
-	PowerCapacity            float32 `json:"power_capacity"`
-	RechargeRate             float32 `json:"recharge_rate"`
-	MaxDrawRate              float32 `json:"max_draw_rate"`
-	WeaponSystemAllocation   float32 `json:"weapon_system_allocation"`
-	MovementSystemAllocation float32 `json:"movement_system_allocation"`
-	UtilitySystemAllocation  float32 `json:"utility_system_allocation"`
+	ModelID                  string  `json:"model_id"`
+	PowerCapacity            float64 `json:"power_capacity"`
+	RechargeRate             float64 `json:"recharge_rate"`
+	MaxDrawRate              float64 `json:"max_draw_rate"`
+	WeaponSystemAllocation   float64 `json:"weapon_system_allocation"`
+	MovementSystemAllocation float64 `json:"movement_system_allocation"`
+	UtilitySystemAllocation  float64 `json:"utility_system_allocation"`
 }
 
 type WarMachinePowerStats struct {
@@ -195,6 +195,7 @@ type Weapon struct {
 	IsArced             bool       `json:"is_arced"`
 	ChargeTimeSeconds   float64    `json:"charge_time"`
 	BurstRateOfFire     float64    `json:"burst_rate_of_fire"`
+	SocketIndex         int        `json:"socket_index"`
 }
 
 type Utility struct {
@@ -246,7 +247,7 @@ func WarMachinesToClient(wms []*WarMachine) []*WarMachineGameClient {
 }
 
 func WarMachineToClient(wm *WarMachine) *WarMachineGameClient {
-	return &WarMachineGameClient{
+	wmgc := &WarMachineGameClient{
 		Hash:      wm.Hash,
 		Name:      wm.Name,
 		OwnerName: wm.OwnerUsername,
@@ -276,6 +277,21 @@ func WarMachineToClient(wm *WarMachine) *WarMachineGameClient {
 
 		Stats: wm.Stats,
 	}
+
+	if wm.PowerCore != nil {
+		wmgc.PowerCore = PowerCoreGameClient{
+			ID:                       wm.PowerCore.ID,
+			ModelID:                  wm.PowerCore.ModelID,
+			PowerCapacity:            wm.PowerCore.Capacity.InexactFloat64(),
+			RechargeRate:             wm.PowerCore.RechargeRate.InexactFloat64(),
+			MaxDrawRate:              wm.PowerCore.MaxDrawRate.InexactFloat64(),
+			WeaponSystemAllocation:   100, // todo: wut this aye
+			MovementSystemAllocation: 0,
+			UtilitySystemAllocation:  0,
+		}
+	}
+
+	return wmgc
 }
 
 func WeaponsFromServer(wpns []*server.Weapon) []*Weapon {
@@ -293,6 +309,7 @@ func WeaponFromServer(weapon *server.Weapon) *Weapon {
 		Name:    weapon.Label,
 		ModelID: weapon.BlueprintID,
 		SkinID:  weapon.WeaponSkin.BlueprintID,
+		SocketIndex: weapon.SlotNumber.Int,
 		//stats
 		Damage:              weapon.Damage,
 		DamageFalloff:       weapon.DamageFalloff.Int,
