@@ -254,15 +254,11 @@ func NewAPI(
 				s.WS("/arena/{arena_id}/status", server.HubKeyArenaStatusSubscribe, api.ArenaManager.ArenaStatusSubscribeHandler)
 				s.WS("/arena/{arena_id}/notification", battle.HubKeyGameNotification, nil)
 				s.WS("/arena/{arena_id}/battle_ability", battle.HubKeyBattleAbilityUpdated, api.ArenaManager.PublicBattleAbilityUpdateSubscribeHandler)
-				s.WS("/arena/{arena_id}/minimap", battle.HubKeyMinimapUpdatesSubscribe, api.ArenaManager.MinimapUpdatesSubscribeHandler)
-				s.WS("/arena/{arena_id}/minimap_events", battle.HubKeyMinimapEventsSubscribe, api.ArenaManager.MinimapEventsSubscribeHandler)
 				s.WS("/arena/{arena_id}/game_settings", battle.HubKeyGameSettingsUpdated, api.ArenaManager.SendSettings)
 				s.WS("/arena/{arena_id}/battle_end_result", battle.HubKeyBattleEndDetailUpdated, api.BattleEndDetail)
 				s.WS("/arena/upcomming_battle", battle.HubKeyNextBattleDetails, api.NextBattleDetails)
 
-				s.WS("/arena/{arena_id}/mech_stats", battle.HubKeyWarMachineStatUpdated, api.ArenaManager.WarMachineStatsSubscribe)
 				s.WS("/arena/{arena_id}/bribe_stage", battle.HubKeyBribeStageUpdateSubscribe, api.ArenaManager.BribeStageSubscribe)
-				s.WS("/arena/{arena_id}/mini_map_ability_display_list", server.HubKeyMiniMapAbilityDisplayList, api.MiniMapAbilityDisplayList)
 				s.WS("/live_viewer_count", HubKeyViewerLiveCountUpdated, api.LiveViewerCount)
 			}))
 
@@ -318,8 +314,6 @@ func NewAPI(
 				s.WS("/queue/{mech_id}", battle.WSPlayerAssetMechQueueSubscribe, server.MustSecureFaction(api.PlayerAssetMechQueueSubscribeHandler))
 
 				// subscription from battle
-				s.WS("/arena/{arena_id}/mech_command/{hash}", server.HubKeyMechMoveCommandSubscribe, server.MustSecureFaction(api.ArenaManager.MechMoveCommandSubscriber))
-				s.WS("/arena/{arena_id}/mech_commands", battle.HubKeyMechCommandsSubscribe, server.MustSecureFaction(api.ArenaManager.MechCommandsSubscriber))
 				s.WS("/arena/{arena_id}/mech/{slotNumber}/abilities", battle.HubKeyWarMachineAbilitiesUpdated, server.MustSecureFaction(api.ArenaManager.WarMachineAbilitiesUpdateSubscribeHandler))
 				s.WS("/arena/{arena_id}/mech/{slotNumber}/abilities/{mech_ability_id}/cool_down_seconds", battle.HubKeyWarMachineAbilitySubscribe, server.MustSecureFaction(api.ArenaManager.WarMachineAbilitySubscribe))
 
@@ -330,6 +324,23 @@ func NewAPI(
 				s.WS("/syndicate/{syndicate_id}/ongoing_motions", server.HubKeySyndicateOngoingMotionSubscribe, server.MustSecureFaction(api.SyndicateOngoingMotionSubscribeHandler), MustMatchSyndicate)
 				s.WS("/syndicate/{syndicate_id}/ongoing_election", server.HubKeySyndicateOngoingElectionSubscribe, server.MustSecureFaction(api.SyndicateOngoingElectionSubscribeHandler), MustMatchSyndicate)
 			}))
+
+			// mini map related
+			r.Route("/mini_map/arena/{arena_id}", func(r chi.Router) {
+				r.Mount("/public", ws.NewServer(func(s *ws.Server) {
+					s.WSBinary("/minimap_events", api.ArenaManager.MinimapEventsSubscribeHandler)
+					s.WSBinary("/mech_stats", api.ArenaManager.WarMachineStatsSubscribe)
+					s.WS("/mini_map_ability_display_list", server.HubKeyMiniMapAbilityContentSubscribe, api.MiniMapAbilityDisplayList)
+					s.WS("/minimap", server.HubKeyMiniMapUpdateSubscribe, api.ArenaManager.MinimapUpdatesSubscribeHandler)
+				}))
+
+				r.Mount("/faction/{faction_id}", ws.NewServer(func(s *ws.Server) {
+					s.Use(api.AuthUserFactionWS(true))
+					s.WS("/mech_command/{hash}", server.HubKeyMechCommandUpdateSubscribe, server.MustSecureFaction(api.ArenaManager.MechMoveCommandSubscriber))
+					s.WS("/mech_commands", server.HubKeyFactionMechCommandUpdateSubscribe, server.MustSecureFaction(api.ArenaManager.MechCommandsSubscriber))
+				}))
+			})
+
 		})
 	})
 

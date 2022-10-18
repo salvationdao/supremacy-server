@@ -117,7 +117,7 @@ type MiniMapAbilityContent struct {
 	LocationSelectType       string              `json:"location_select_type"`
 	Radius                   null.Int            `json:"radius,omitempty"`
 	LaunchingAt              null.Time           `json:"launching_at,omitempty"`
-	UpdatedAt                time.Time           `json:"updated_at"`
+	UpdatedAt                time.Time           `json:"-"`
 }
 
 // Add new pending ability and return a copy of current list
@@ -1710,7 +1710,8 @@ func (btl *Battle) Tick(payload []byte) {
 		}
 
 		btl.playerAbilityManager().ResetHasBlackoutsUpdated()
-		ws.PublishMessage(fmt.Sprintf("/public/arena/%s/minimap", btl.ArenaID), HubKeyMinimapUpdatesSubscribe, minimapUpdates)
+
+		ws.PublishMessage(fmt.Sprintf("/mini_map/arena/%s/public/minimap", btl.ArenaID), server.HubKeyMiniMapUpdateSubscribe, minimapUpdates)
 	}
 
 	// Map Events
@@ -1719,7 +1720,7 @@ func (btl *Battle) Tick(payload []byte) {
 		if mapEventCount > 0 {
 			// Pass map events straight to frontend clients
 			mapEvents := payload[offset:]
-			ws.PublishMessage(fmt.Sprintf("/public/arena/%s/minimap_events", btl.ArenaID), HubKeyMinimapEventsSubscribe, mapEvents)
+			ws.PublishBytes(fmt.Sprintf("/mini_map/arena/%s/public/minimap_events", btl.ArenaID), server.BinaryKeyMiniMapEvents, mapEvents)
 
 			// Unpack and save static events for sending to newly joined frontend clients (ie: landmine, pickup locations and the hive status)
 			btl.MapEventList.MapEventsUnpack(mapEvents)
@@ -1730,48 +1731,105 @@ func (btl *Battle) Tick(payload []byte) {
 func (arena *Arena) warMachinePositionBroadcaster() {
 
 	// broadcast war machine stat every 250 millisecond
-	ticker := time.NewTicker(250 * time.Millisecond)
+	ticker := time.NewTicker(330 * time.Millisecond)
 	var warMachineStats []*WarMachineStat
+
+	exitChan := make(chan bool, 2)
+	l := deadlock.RWMutex{}
+
+	go func() {
+		for {
+			select {
+			case stats := <-arena.WarMachineStatBroadcastChan:
+				l.Lock()
+				// update war machine stats
+				for _, stat := range stats {
+					index := slices.IndexFunc(warMachineStats, func(wms *WarMachineStat) bool {
+						return wms.ParticipantID == stat.ParticipantID
+					})
+
+					// append, if not exists
+					if index == -1 {
+						warMachineStats = append(warMachineStats, stat)
+						continue
+					}
+
+					// replace, if exits
+					warMachineStats[index] = stat
+				}
+				l.Unlock()
+
+				// trigger everytime when a battle is ended
+			case <-arena.WarMachineStatBroadcastResetChan:
+				l.Lock()
+				warMachineStats = []*WarMachineStat{}
+				l.Unlock()
+			case <-exitChan:
+				return
+			}
+		}
+	}()
 
 	for {
 		select {
-		case stats := <-arena.WarMachineStatBroadcastChan:
-			// update war machine stats
-			for _, stat := range stats {
-				index := slices.IndexFunc(warMachineStats, func(wms *WarMachineStat) bool {
-					return wms.ParticipantID == stat.ParticipantID
-				})
-
-				// append, if not exists
-				if index == -1 {
-					warMachineStats = append(warMachineStats, stat)
-					continue
-				}
-
-				// replace, if exits
-				warMachineStats[index] = stat
-			}
-
 		case <-ticker.C:
+			l.RLock()
 			if warMachineStats == nil || len(warMachineStats) == 0 {
+				l.RUnlock()
 				continue
 			}
 
 			// otherwise broadcast current data
-			ws.PublishMessage(fmt.Sprintf("/public/arena/%s/mech_stats", arena.ID), HubKeyWarMachineStatUpdated, warMachineStats)
-
-			// clear war machine stat
-			warMachineStats = []*WarMachineStat{}
-
-			// trigger everytime when a battle is ended
-		case <-arena.WarMachineStatBroadcastResetChan:
-			warMachineStats = []*WarMachineStat{}
+			ws.PublishBytes(fmt.Sprintf("/mini_map/arena/%s/public/mech_stats", arena.ID), server.BinaryKeyWarMachineStats, PackWarMachineStatsInBytes(warMachineStats))
+			l.RUnlock()
 
 			// triggered when arena is disconnected
 		case <-arena.WarMachineStatBroadcastStopChan:
+			exitChan <- true
 			return
 		}
 	}
+
+}
+
+func PackWarMachineStatsInBytes(warMachineStats []*WarMachineStat) []byte {
+	payload := []byte{byte(len(warMachineStats))}
+
+	// repack current data
+	for _, wms := range warMachineStats {
+		// push participant id into the array
+		payload = append(payload, byte(wms.ParticipantID))
+
+		// push location x into the array
+		payload = append(payload, helpers.IntToBytes(int32(wms.Position.X))...)
+
+		// push location x into the array
+		payload = append(payload, helpers.IntToBytes(int32(wms.Position.Y))...)
+
+		// push location x into the array
+		payload = append(payload, helpers.IntToBytes(int32(wms.Rotation))...)
+
+		// push current health into the array
+		health := make([]byte, 4)
+		binary.BigEndian.PutUint32(health, wms.Health)
+		payload = append(payload, health...)
+
+		// push current shield into the array
+		shield := make([]byte, 4)
+		binary.BigEndian.PutUint32(shield, wms.Shield)
+		payload = append(payload, shield...)
+
+		// is hidden
+		if wms.IsHidden {
+			payload = append(payload, byte(1))
+			continue
+		}
+
+		// not hidden
+		payload = append(payload, byte(0))
+	}
+
+	return payload
 }
 
 func tickSkipToWarmachineEnd(offset *int, booleans []bool) {
@@ -2214,15 +2272,41 @@ func (btl *Battle) Destroyed(dp *BattleWMDestroyedPayload) {
 		}
 	}
 
-	if isAI && *destroyedWarMachine.AIType == MiniMech {
-		btl.arena._currentBattle.playerAbilityManager().DeleteMiniMechMove(destroyedWarMachine.Hash)
+	// tell frontend to cancel mech move command
+	mmc := &MechMoveCommandResponse{
+		MechMoveCommandLog: &boiler.MechMoveCommandLog{
+			ID:          btl.ID + destroyedWarMachine.Hash,
+			BattleID:    btl.ID,
+			MechID:      destroyedWarMachine.ID,
+			CancelledAt: null.TimeFrom(time.Now()),
+		},
+		IsMiniMech: false,
 	}
 
-	// broadcast changes
-	err := btl.arena.BroadcastFactionMechCommands(destroyedWarMachine.FactionID)
-	if err != nil {
-		gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("Failed to broadcast faction mech commands")
+	fmc := &FactionMechCommand{
+		ID:         mmc.ID,
+		BattleID:   btl.ID,
+		IsMiniMech: false,
+		IsEnded:    true,
 	}
+	if isAI && *destroyedWarMachine.AIType == MiniMech {
+		btl.arena._currentBattle.playerAbilityManager().DeleteMiniMechMove(destroyedWarMachine.Hash)
+		fmc.IsMiniMech = true
+
+		// tell frontend to cancel mech move command
+		mmc = &MechMoveCommandResponse{
+			MechMoveCommandLog: &boiler.MechMoveCommandLog{
+				ID:          btl.ID + destroyedWarMachine.Hash,
+				BattleID:    btl.ID,
+				CancelledAt: null.TimeFrom(time.Now()),
+			},
+			IsMiniMech: false,
+		}
+	}
+
+	// broadcast faction mech commands
+	ws.PublishMessage(fmt.Sprintf("/mini_map/arena/%s/faction/%s/mech_command/%s", btl.ArenaID, destroyedWarMachine.FactionID, destroyedWarMachine.Hash), server.HubKeyMechCommandUpdateSubscribe, mmc)
+	ws.PublishMessage(fmt.Sprintf("/mini_map/arena/%s/faction/%s/mech_commands", btl.ArenaID, destroyedWarMachine.FactionID), server.HubKeyFactionMechCommandUpdateSubscribe, []*FactionMechCommand{fmc})
 }
 
 func (btl *Battle) Load() error {
