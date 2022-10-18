@@ -29,6 +29,7 @@ func NewModToolsController(api *API) {
 	api.SecureAdminCommand(HubKeyModToolsUnbanUser, api.ModToolUnbanUser)
 	api.SecureAdminCommand(HubKeyModToolRestartServer, api.ModToolRestartServer)
 	api.SecureAdminCommand(HubKeyModToolLookupHistory, api.ModToolLookupHistory)
+	api.SecureAdminCommand(HubKeyModToolRenameMech, api.ModToolRenameMech)
 }
 
 const HubKeyModToolsGetUser = "MOD:GET:USER"
@@ -402,6 +403,73 @@ func (api *API) ModToolLookupHistory(ctx context.Context, user *boiler.Player, k
 	}
 
 	reply(modLookupHistoryResp)
+
+	return nil
+}
+
+const HubKeyModToolRenameMech = "MOD:RENAME:MECH"
+
+type ModToolRenameMechReq struct {
+	Payload struct {
+		MechID      string `json:"mech_id"`
+		OwnerID     string `json:"owner_id"`
+		NewMechName string `json:"new_mech_name"`
+		Reason      string `json:"reason"`
+	} `json:"payload"`
+}
+
+func (api *API) ModToolRenameMech(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
+	req := &ModToolRenameMechReq{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return terror.Error(err, "Invalid request received.")
+	}
+
+	mech, err := boiler.FindMech(gamedb.StdConn, req.Payload.MechID)
+	if err != nil {
+		return terror.Error(err, "Failed to find mech")
+	}
+
+	reason := fmt.Sprintf("Reason: %s \n Previous name: %s \n New name: %s", req.Payload.Reason, req.Payload.NewMechName, mech.Name)
+
+	action := &boiler.ModActionAudit{
+		ActionType: boiler.ModActionTypeMECH_RENAME,
+		ModID:      user.ID,
+		Reason:     reason,
+	}
+
+	err = action.Insert(gamedb.StdConn, boil.Infer())
+	if err != nil {
+		return terror.Error(err, "Failed to insert mod audit action")
+	}
+
+	oldName := mech.Name
+	newName, err := db.MechRename(mech.ID, req.Payload.OwnerID, req.Payload.NewMechName)
+	if err != nil {
+		return terror.Error(err, "Failed to rename mech")
+	}
+
+	slackMessage := fmt.Sprintf("<!subteam^S03GCC87CD7>\n\n:information_source: `%s#%d` has renamed a mech :information_source: \n\n```Reason: %s```", user.Username.String, user.Gid, reason)
+
+	err = slack.SendSlackNotification(slackMessage, db.GetStrWithDefault(db.KeySlackModChannelID, "C03GDHLV9FE"), slack.ModToolsAppToken)
+	if err != nil {
+		gamelog.L.Err(err).Msg("Failed to send slack notification for banning user")
+	}
+
+	msg := &boiler.SystemMessage{
+		PlayerID: req.Payload.OwnerID,
+		SenderID: server.SupremacySystemModeratorUserID,
+		Title:    "One of your mechs has been renamed by Moderator",
+		Message:  fmt.Sprintf("Your mech \"%s\" has been renamed to \"%s\" by a moderator for the following reasons: %s", oldName, newName, req.Payload.Reason),
+	}
+	err = msg.Insert(gamedb.StdConn, boil.Infer())
+	if err != nil {
+		return err
+	}
+
+	ws.PublishMessage(fmt.Sprintf("/secure/user/%s/system_messages", req.Payload.OwnerID), server.HubKeySystemMessageListUpdatedSubscribe, true)
+
+	reply(newName)
 
 	return nil
 }
