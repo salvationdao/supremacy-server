@@ -35,10 +35,6 @@ func ServerMechsToXsynAsset(mechs []*server.Mech) []*XsynAsset {
 			AssetType:      null.StringFrom(i.ItemType),
 		}
 
-		if isGenesisOrLimited && i.ChassisSkin != nil {
-			asset.Tier = i.ChassisSkin.Tier
-		}
-
 		// convert stats to attributes to
 		asset.Attributes = []*Attribute{
 			{
@@ -153,6 +149,22 @@ func ServerMechsToXsynAsset(mechs []*server.Mech) []*XsynAsset {
 				Value:     i.ChassisSkin.Tier,
 			},
 		)
+
+		if isGenesisOrLimited {
+			if i.GenesisTokenID.Valid {
+				asset.TokenID = i.GenesisTokenID.Int64
+				asset.CollectionSlug = "supremacy-genesis"
+			}
+			if i.LimitedReleaseTokenID.Valid {
+				asset.TokenID = i.LimitedReleaseTokenID.Int64
+				asset.CollectionSlug = "supremacy-limited-release"
+			}
+
+			if i.ChassisSkin != nil {
+				asset.Tier = i.ChassisSkin.Tier
+			}
+		}
+
 
 		err = asset.Attributes.AreValid()
 		if err != nil {

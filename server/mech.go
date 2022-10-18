@@ -175,47 +175,69 @@ func (m *Mech) CheckAndSetAsGenesisOrLimited() (genesisID null.Int64, limitedID 
 	return
 }
 
-// IsCompleteGenesis returns true if all parts of this mech are genesis with matching genesis token IDs
+// IsCompleteGenesis returns true if all parts of this mech are genesis
 func (m *Mech) IsCompleteGenesis() bool {
 	if !m.GenesisTokenID.Valid {
 		return false
 	}
-	// this checks if mech is complete genesis
-	// the shield and skins are locked to genesis, so they are true
-	// we just need to check the first 2 weapons, since rocket pods are also locked
-	if m.Weapons[0] == nil || !m.Weapons[0].GenesisTokenID.Valid ||
-		m.Weapons[0].GenesisTokenID.Int64 != m.GenesisTokenID.Int64 {
+
+	// check weapons
+	if m.Weapons[0] == nil ||
+		!m.Weapons[0].GenesisTokenID.Valid {
 		return false
 	}
-	if m.Weapons[1] == nil || !m.Weapons[1].GenesisTokenID.Valid ||
-		m.Weapons[1].GenesisTokenID.Int64 != m.GenesisTokenID.Int64 {
+	if m.Weapons[1] == nil ||
+		!m.Weapons[1].GenesisTokenID.Valid {
 		return false
 	}
-	if m.Weapons[2] == nil || !m.Weapons[2].GenesisTokenID.Valid ||
-		m.Weapons[2].GenesisTokenID.Int64 != m.GenesisTokenID.Int64 {
+	if m.Weapons[2] == nil ||
+		!m.Weapons[2].GenesisTokenID.Valid {
+		return false
+	}
+
+	// check power core
+	if m.PowerCore == nil ||
+		!m.PowerCore.GenesisTokenID.Valid {
+		return false
+	}
+
+	// check skin
+	if m.ChassisSkin == nil ||
+		!m.ChassisSkin.GenesisTokenID.Valid {
 		return false
 	}
 	return true
 }
 
-// IsCompleteLimited returns true if all parts of this mech are limited with matching limited token IDs
+// IsCompleteLimited returns true if all parts of this mech are limited
 func (m *Mech) IsCompleteLimited() bool {
 	if !m.LimitedReleaseTokenID.Valid {
 		return false
 	}
-	// this checks if mech is complete genesis
-	// the shield and skins are locked to genesis, so they are true
-	// we just need to check the first 2 weapons, since rocket pods are also locked
-	if m.Weapons[0] == nil || !m.Weapons[0].LimitedReleaseTokenID.Valid ||
-		m.Weapons[0].LimitedReleaseTokenID.Int64 != m.LimitedReleaseTokenID.Int64 {
+
+	// check weapons
+	if m.Weapons[0] == nil ||
+		!m.Weapons[0].LimitedReleaseTokenID.Valid {
 		return false
 	}
-	if m.Weapons[1] == nil || !m.Weapons[1].LimitedReleaseTokenID.Valid ||
-		m.Weapons[1].LimitedReleaseTokenID.Int64 != m.LimitedReleaseTokenID.Int64 {
+	if m.Weapons[1] == nil ||
+		!m.Weapons[1].LimitedReleaseTokenID.Valid {
 		return false
 	}
-	if m.Weapons[2] == nil || !m.Weapons[2].LimitedReleaseTokenID.Valid ||
-		m.Weapons[2].LimitedReleaseTokenID.Int64 != m.LimitedReleaseTokenID.Int64 {
+	if m.Weapons[2] == nil ||
+		!m.Weapons[2].LimitedReleaseTokenID.Valid {
+		return false
+	}
+
+	// check power core
+	if m.PowerCore == nil ||
+		!m.PowerCore.LimitedReleaseTokenID.Valid {
+		return false
+	}
+
+	// check skin
+	if m.ChassisSkin == nil ||
+		!m.ChassisSkin.LimitedReleaseTokenID.Valid {
 		return false
 	}
 	return true
@@ -246,8 +268,4 @@ func (m *Mech) SetBoostedStats() error {
 	}
 
 	return nil
-}
-
-func MechToGenesisOrLimited() {
-
 }
