@@ -195,6 +195,7 @@ type Weapon struct {
 	IsArced             bool       `json:"is_arced"`
 	ChargeTimeSeconds   float64    `json:"charge_time"`
 	BurstRateOfFire     float64    `json:"burst_rate_of_fire"`
+	SocketIndex         int        `json:"socket_index"`
 }
 
 type Utility struct {
@@ -308,6 +309,7 @@ func WeaponFromServer(weapon *server.Weapon) *Weapon {
 		Name:    weapon.Label,
 		ModelID: weapon.BlueprintID,
 		SkinID:  weapon.WeaponSkin.BlueprintID,
+		SocketIndex: weapon.SlotNumber.Int,
 		//stats
 		Damage:              weapon.Damage,
 		DamageFalloff:       weapon.DamageFalloff.Int,
