@@ -9,6 +9,7 @@ import (
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 	"golang.org/x/exp/slices"
+	"math/rand"
 	"server"
 	"server/db"
 	"server/db/boiler"
@@ -298,38 +299,26 @@ func GenerateAIDrivenBattle() (*boiler.BattleLobby, error) {
 		return nil, terror.Error(err, "Failed to insert AI driven battle.")
 	}
 
-	// get default mechs
-	rows, err := boiler.NewQuery(
-		qm.Select(
-			boiler.MechTableColumns.ID,
-			boiler.CollectionItemTableColumns.OwnerID,
-			fmt.Sprintf(
-				"(SELECT %s FROM %s WHERE %s = %s)",
-				boiler.PlayerTableColumns.FactionID,
-				boiler.TableNames.Players,
-				boiler.PlayerTableColumns.ID,
-				boiler.CollectionItemTableColumns.OwnerID,
-			),
-		),
-
-		qm.From(fmt.Sprintf(
-			"(SELECT %s FROM %s WHERE %s = TRUE) %s",
-			boiler.MechTableColumns.ID,
-			boiler.TableNames.Mechs,
-			boiler.MechTableColumns.IsDefault,
-			boiler.TableNames.Mechs,
+	// get mechs from staked pool
+	sms, err := boiler.StakedMechs(
+		qm.Where(fmt.Sprintf(
+			"NOT EXISTS (SELECT 1 FROM %s WHERE %s = %s AND %s ISNULL)",
+			boiler.TableNames.RepairCases,
+			boiler.RepairCaseTableColumns.MechID,
+			boiler.StakedMechTableColumns.MechID,
+			boiler.RepairCaseTableColumns.CompletedAt,
 		)),
-
-		qm.InnerJoin(fmt.Sprintf(
-			"%s ON %s = %s",
-			boiler.TableNames.CollectionItems,
-			boiler.CollectionItemTableColumns.ItemID,
-			boiler.MechTableColumns.ID,
-		)),
-	).Query(tx)
+	).All(tx)
 	if err != nil {
-		l.Error().Err(err).Msg("Failed to load default mechs.")
-		return nil, terror.Error(err, "Failed to load default mechs.")
+		l.Error().Err(err).Msg("Failed to load staked mechs")
+		return nil, terror.Error(err, "Failed to load staked mechs.")
+	}
+
+	// shuffle list
+	rand.Seed(time.Now().UnixNano())
+	for i := range sms {
+		j := rand.Intn(i + 1)
+		sms[i], sms[j] = sms[j], sms[i]
 	}
 
 	// control insert mech amount
@@ -338,18 +327,8 @@ func GenerateAIDrivenBattle() (*boiler.BattleLobby, error) {
 	zaiCount := 0
 
 	var blms []*boiler.BattleLobbiesMech
-	for rows.Next() {
-		mechID := ""
-		ownerID := ""
-		factionID := ""
-
-		err = rows.Scan(&mechID, &ownerID, &factionID)
-		if err != nil {
-			l.Error().Err(err).Msg("Failed to scan mech info.")
-			return nil, terror.Error(err, "Failed to scan mech info.")
-		}
-
-		switch factionID {
+	for _, sm := range sms {
+		switch sm.FactionID {
 		case server.RedMountainFactionID:
 			if rmCount == bl.EachFactionMechAmount {
 				continue
@@ -369,9 +348,9 @@ func GenerateAIDrivenBattle() (*boiler.BattleLobby, error) {
 
 		blms = append(blms, &boiler.BattleLobbiesMech{
 			BattleLobbyID: bl.ID,
-			MechID:        mechID,
-			OwnerID:       ownerID,
-			FactionID:     factionID,
+			MechID:        sm.MechID,
+			OwnerID:       sm.OwnerID,
+			FactionID:     sm.FactionID,
 			LockedAt:      bl.ReadyAt,
 		})
 	}

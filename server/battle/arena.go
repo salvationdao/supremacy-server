@@ -120,6 +120,11 @@ func NewArenaManager(opts *Opts) (*ArenaManager, error) {
 		return nil, terror.Error(err, "Failed to delete unfinished AI battles.")
 	}
 
+	err = stackedAIMechsCheck()
+	if err != nil {
+		return nil, err
+	}
+
 	return am, nil
 }
 

@@ -21,8 +21,8 @@ import (
 	"github.com/volatiletech/strmangle"
 )
 
-// StackedMechBattleLog is an object representing the database table.
-type StackedMechBattleLog struct {
+// StakedMechBattleLog is an object representing the database table.
+type StakedMechBattleLog struct {
 	ID           string    `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
 	BattleID     string    `boiler:"battle_id" boil:"battle_id" json:"battle_id" toml:"battle_id" yaml:"battle_id"`
 	StakedMechID string    `boiler:"staked_mech_id" boil:"staked_mech_id" json:"staked_mech_id" toml:"staked_mech_id" yaml:"staked_mech_id"`
@@ -32,11 +32,11 @@ type StackedMechBattleLog struct {
 	UpdatedAt    time.Time `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
 	DeletedAt    null.Time `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
 
-	R *stackedMechBattleLogR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
-	L stackedMechBattleLogL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
+	R *stakedMechBattleLogR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
+	L stakedMechBattleLogL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 }
 
-var StackedMechBattleLogColumns = struct {
+var StakedMechBattleLogColumns = struct {
 	ID           string
 	BattleID     string
 	StakedMechID string
@@ -56,7 +56,7 @@ var StackedMechBattleLogColumns = struct {
 	DeletedAt:    "deleted_at",
 }
 
-var StackedMechBattleLogTableColumns = struct {
+var StakedMechBattleLogTableColumns = struct {
 	ID           string
 	BattleID     string
 	StakedMechID string
@@ -66,19 +66,19 @@ var StackedMechBattleLogTableColumns = struct {
 	UpdatedAt    string
 	DeletedAt    string
 }{
-	ID:           "stacked_mech_battle_logs.id",
-	BattleID:     "stacked_mech_battle_logs.battle_id",
-	StakedMechID: "stacked_mech_battle_logs.staked_mech_id",
-	OwnerID:      "stacked_mech_battle_logs.owner_id",
-	FactionID:    "stacked_mech_battle_logs.faction_id",
-	CreatedAt:    "stacked_mech_battle_logs.created_at",
-	UpdatedAt:    "stacked_mech_battle_logs.updated_at",
-	DeletedAt:    "stacked_mech_battle_logs.deleted_at",
+	ID:           "staked_mech_battle_logs.id",
+	BattleID:     "staked_mech_battle_logs.battle_id",
+	StakedMechID: "staked_mech_battle_logs.staked_mech_id",
+	OwnerID:      "staked_mech_battle_logs.owner_id",
+	FactionID:    "staked_mech_battle_logs.faction_id",
+	CreatedAt:    "staked_mech_battle_logs.created_at",
+	UpdatedAt:    "staked_mech_battle_logs.updated_at",
+	DeletedAt:    "staked_mech_battle_logs.deleted_at",
 }
 
 // Generated where
 
-var StackedMechBattleLogWhere = struct {
+var StakedMechBattleLogWhere = struct {
 	ID           whereHelperstring
 	BattleID     whereHelperstring
 	StakedMechID whereHelperstring
@@ -88,18 +88,18 @@ var StackedMechBattleLogWhere = struct {
 	UpdatedAt    whereHelpertime_Time
 	DeletedAt    whereHelpernull_Time
 }{
-	ID:           whereHelperstring{field: "\"stacked_mech_battle_logs\".\"id\""},
-	BattleID:     whereHelperstring{field: "\"stacked_mech_battle_logs\".\"battle_id\""},
-	StakedMechID: whereHelperstring{field: "\"stacked_mech_battle_logs\".\"staked_mech_id\""},
-	OwnerID:      whereHelperstring{field: "\"stacked_mech_battle_logs\".\"owner_id\""},
-	FactionID:    whereHelperstring{field: "\"stacked_mech_battle_logs\".\"faction_id\""},
-	CreatedAt:    whereHelpertime_Time{field: "\"stacked_mech_battle_logs\".\"created_at\""},
-	UpdatedAt:    whereHelpertime_Time{field: "\"stacked_mech_battle_logs\".\"updated_at\""},
-	DeletedAt:    whereHelpernull_Time{field: "\"stacked_mech_battle_logs\".\"deleted_at\""},
+	ID:           whereHelperstring{field: "\"staked_mech_battle_logs\".\"id\""},
+	BattleID:     whereHelperstring{field: "\"staked_mech_battle_logs\".\"battle_id\""},
+	StakedMechID: whereHelperstring{field: "\"staked_mech_battle_logs\".\"staked_mech_id\""},
+	OwnerID:      whereHelperstring{field: "\"staked_mech_battle_logs\".\"owner_id\""},
+	FactionID:    whereHelperstring{field: "\"staked_mech_battle_logs\".\"faction_id\""},
+	CreatedAt:    whereHelpertime_Time{field: "\"staked_mech_battle_logs\".\"created_at\""},
+	UpdatedAt:    whereHelpertime_Time{field: "\"staked_mech_battle_logs\".\"updated_at\""},
+	DeletedAt:    whereHelpernull_Time{field: "\"staked_mech_battle_logs\".\"deleted_at\""},
 }
 
-// StackedMechBattleLogRels is where relationship names are stored.
-var StackedMechBattleLogRels = struct {
+// StakedMechBattleLogRels is where relationship names are stored.
+var StakedMechBattleLogRels = struct {
 	Battle     string
 	Faction    string
 	Owner      string
@@ -111,8 +111,8 @@ var StackedMechBattleLogRels = struct {
 	StakedMech: "StakedMech",
 }
 
-// stackedMechBattleLogR is where relationships are stored.
-type stackedMechBattleLogR struct {
+// stakedMechBattleLogR is where relationships are stored.
+type stakedMechBattleLogR struct {
 	Battle     *Battle  `boiler:"Battle" boil:"Battle" json:"Battle" toml:"Battle" yaml:"Battle"`
 	Faction    *Faction `boiler:"Faction" boil:"Faction" json:"Faction" toml:"Faction" yaml:"Faction"`
 	Owner      *Player  `boiler:"Owner" boil:"Owner" json:"Owner" toml:"Owner" yaml:"Owner"`
@@ -120,44 +120,44 @@ type stackedMechBattleLogR struct {
 }
 
 // NewStruct creates a new relationship struct
-func (*stackedMechBattleLogR) NewStruct() *stackedMechBattleLogR {
-	return &stackedMechBattleLogR{}
+func (*stakedMechBattleLogR) NewStruct() *stakedMechBattleLogR {
+	return &stakedMechBattleLogR{}
 }
 
-// stackedMechBattleLogL is where Load methods for each relationship are stored.
-type stackedMechBattleLogL struct{}
+// stakedMechBattleLogL is where Load methods for each relationship are stored.
+type stakedMechBattleLogL struct{}
 
 var (
-	stackedMechBattleLogAllColumns            = []string{"id", "battle_id", "staked_mech_id", "owner_id", "faction_id", "created_at", "updated_at", "deleted_at"}
-	stackedMechBattleLogColumnsWithoutDefault = []string{"battle_id", "staked_mech_id", "owner_id", "faction_id"}
-	stackedMechBattleLogColumnsWithDefault    = []string{"id", "created_at", "updated_at", "deleted_at"}
-	stackedMechBattleLogPrimaryKeyColumns     = []string{"id"}
-	stackedMechBattleLogGeneratedColumns      = []string{}
+	stakedMechBattleLogAllColumns            = []string{"id", "battle_id", "staked_mech_id", "owner_id", "faction_id", "created_at", "updated_at", "deleted_at"}
+	stakedMechBattleLogColumnsWithoutDefault = []string{"battle_id", "staked_mech_id", "owner_id", "faction_id"}
+	stakedMechBattleLogColumnsWithDefault    = []string{"id", "created_at", "updated_at", "deleted_at"}
+	stakedMechBattleLogPrimaryKeyColumns     = []string{"id"}
+	stakedMechBattleLogGeneratedColumns      = []string{}
 )
 
 type (
-	// StackedMechBattleLogSlice is an alias for a slice of pointers to StackedMechBattleLog.
-	// This should almost always be used instead of []StackedMechBattleLog.
-	StackedMechBattleLogSlice []*StackedMechBattleLog
-	// StackedMechBattleLogHook is the signature for custom StackedMechBattleLog hook methods
-	StackedMechBattleLogHook func(boil.Executor, *StackedMechBattleLog) error
+	// StakedMechBattleLogSlice is an alias for a slice of pointers to StakedMechBattleLog.
+	// This should almost always be used instead of []StakedMechBattleLog.
+	StakedMechBattleLogSlice []*StakedMechBattleLog
+	// StakedMechBattleLogHook is the signature for custom StakedMechBattleLog hook methods
+	StakedMechBattleLogHook func(boil.Executor, *StakedMechBattleLog) error
 
-	stackedMechBattleLogQuery struct {
+	stakedMechBattleLogQuery struct {
 		*queries.Query
 	}
 )
 
 // Cache for insert, update and upsert
 var (
-	stackedMechBattleLogType                 = reflect.TypeOf(&StackedMechBattleLog{})
-	stackedMechBattleLogMapping              = queries.MakeStructMapping(stackedMechBattleLogType)
-	stackedMechBattleLogPrimaryKeyMapping, _ = queries.BindMapping(stackedMechBattleLogType, stackedMechBattleLogMapping, stackedMechBattleLogPrimaryKeyColumns)
-	stackedMechBattleLogInsertCacheMut       sync.RWMutex
-	stackedMechBattleLogInsertCache          = make(map[string]insertCache)
-	stackedMechBattleLogUpdateCacheMut       sync.RWMutex
-	stackedMechBattleLogUpdateCache          = make(map[string]updateCache)
-	stackedMechBattleLogUpsertCacheMut       sync.RWMutex
-	stackedMechBattleLogUpsertCache          = make(map[string]insertCache)
+	stakedMechBattleLogType                 = reflect.TypeOf(&StakedMechBattleLog{})
+	stakedMechBattleLogMapping              = queries.MakeStructMapping(stakedMechBattleLogType)
+	stakedMechBattleLogPrimaryKeyMapping, _ = queries.BindMapping(stakedMechBattleLogType, stakedMechBattleLogMapping, stakedMechBattleLogPrimaryKeyColumns)
+	stakedMechBattleLogInsertCacheMut       sync.RWMutex
+	stakedMechBattleLogInsertCache          = make(map[string]insertCache)
+	stakedMechBattleLogUpdateCacheMut       sync.RWMutex
+	stakedMechBattleLogUpdateCache          = make(map[string]updateCache)
+	stakedMechBattleLogUpsertCacheMut       sync.RWMutex
+	stakedMechBattleLogUpsertCache          = make(map[string]insertCache)
 )
 
 var (
@@ -168,23 +168,23 @@ var (
 	_ = qmhelper.Where
 )
 
-var stackedMechBattleLogAfterSelectHooks []StackedMechBattleLogHook
+var stakedMechBattleLogAfterSelectHooks []StakedMechBattleLogHook
 
-var stackedMechBattleLogBeforeInsertHooks []StackedMechBattleLogHook
-var stackedMechBattleLogAfterInsertHooks []StackedMechBattleLogHook
+var stakedMechBattleLogBeforeInsertHooks []StakedMechBattleLogHook
+var stakedMechBattleLogAfterInsertHooks []StakedMechBattleLogHook
 
-var stackedMechBattleLogBeforeUpdateHooks []StackedMechBattleLogHook
-var stackedMechBattleLogAfterUpdateHooks []StackedMechBattleLogHook
+var stakedMechBattleLogBeforeUpdateHooks []StakedMechBattleLogHook
+var stakedMechBattleLogAfterUpdateHooks []StakedMechBattleLogHook
 
-var stackedMechBattleLogBeforeDeleteHooks []StackedMechBattleLogHook
-var stackedMechBattleLogAfterDeleteHooks []StackedMechBattleLogHook
+var stakedMechBattleLogBeforeDeleteHooks []StakedMechBattleLogHook
+var stakedMechBattleLogAfterDeleteHooks []StakedMechBattleLogHook
 
-var stackedMechBattleLogBeforeUpsertHooks []StackedMechBattleLogHook
-var stackedMechBattleLogAfterUpsertHooks []StackedMechBattleLogHook
+var stakedMechBattleLogBeforeUpsertHooks []StakedMechBattleLogHook
+var stakedMechBattleLogAfterUpsertHooks []StakedMechBattleLogHook
 
 // doAfterSelectHooks executes all "after Select" hooks.
-func (o *StackedMechBattleLog) doAfterSelectHooks(exec boil.Executor) (err error) {
-	for _, hook := range stackedMechBattleLogAfterSelectHooks {
+func (o *StakedMechBattleLog) doAfterSelectHooks(exec boil.Executor) (err error) {
+	for _, hook := range stakedMechBattleLogAfterSelectHooks {
 		if err := hook(exec, o); err != nil {
 			return err
 		}
@@ -194,8 +194,8 @@ func (o *StackedMechBattleLog) doAfterSelectHooks(exec boil.Executor) (err error
 }
 
 // doBeforeInsertHooks executes all "before insert" hooks.
-func (o *StackedMechBattleLog) doBeforeInsertHooks(exec boil.Executor) (err error) {
-	for _, hook := range stackedMechBattleLogBeforeInsertHooks {
+func (o *StakedMechBattleLog) doBeforeInsertHooks(exec boil.Executor) (err error) {
+	for _, hook := range stakedMechBattleLogBeforeInsertHooks {
 		if err := hook(exec, o); err != nil {
 			return err
 		}
@@ -205,8 +205,8 @@ func (o *StackedMechBattleLog) doBeforeInsertHooks(exec boil.Executor) (err erro
 }
 
 // doAfterInsertHooks executes all "after Insert" hooks.
-func (o *StackedMechBattleLog) doAfterInsertHooks(exec boil.Executor) (err error) {
-	for _, hook := range stackedMechBattleLogAfterInsertHooks {
+func (o *StakedMechBattleLog) doAfterInsertHooks(exec boil.Executor) (err error) {
+	for _, hook := range stakedMechBattleLogAfterInsertHooks {
 		if err := hook(exec, o); err != nil {
 			return err
 		}
@@ -216,8 +216,8 @@ func (o *StackedMechBattleLog) doAfterInsertHooks(exec boil.Executor) (err error
 }
 
 // doBeforeUpdateHooks executes all "before Update" hooks.
-func (o *StackedMechBattleLog) doBeforeUpdateHooks(exec boil.Executor) (err error) {
-	for _, hook := range stackedMechBattleLogBeforeUpdateHooks {
+func (o *StakedMechBattleLog) doBeforeUpdateHooks(exec boil.Executor) (err error) {
+	for _, hook := range stakedMechBattleLogBeforeUpdateHooks {
 		if err := hook(exec, o); err != nil {
 			return err
 		}
@@ -227,8 +227,8 @@ func (o *StackedMechBattleLog) doBeforeUpdateHooks(exec boil.Executor) (err erro
 }
 
 // doAfterUpdateHooks executes all "after Update" hooks.
-func (o *StackedMechBattleLog) doAfterUpdateHooks(exec boil.Executor) (err error) {
-	for _, hook := range stackedMechBattleLogAfterUpdateHooks {
+func (o *StakedMechBattleLog) doAfterUpdateHooks(exec boil.Executor) (err error) {
+	for _, hook := range stakedMechBattleLogAfterUpdateHooks {
 		if err := hook(exec, o); err != nil {
 			return err
 		}
@@ -238,8 +238,8 @@ func (o *StackedMechBattleLog) doAfterUpdateHooks(exec boil.Executor) (err error
 }
 
 // doBeforeDeleteHooks executes all "before Delete" hooks.
-func (o *StackedMechBattleLog) doBeforeDeleteHooks(exec boil.Executor) (err error) {
-	for _, hook := range stackedMechBattleLogBeforeDeleteHooks {
+func (o *StakedMechBattleLog) doBeforeDeleteHooks(exec boil.Executor) (err error) {
+	for _, hook := range stakedMechBattleLogBeforeDeleteHooks {
 		if err := hook(exec, o); err != nil {
 			return err
 		}
@@ -249,8 +249,8 @@ func (o *StackedMechBattleLog) doBeforeDeleteHooks(exec boil.Executor) (err erro
 }
 
 // doAfterDeleteHooks executes all "after Delete" hooks.
-func (o *StackedMechBattleLog) doAfterDeleteHooks(exec boil.Executor) (err error) {
-	for _, hook := range stackedMechBattleLogAfterDeleteHooks {
+func (o *StakedMechBattleLog) doAfterDeleteHooks(exec boil.Executor) (err error) {
+	for _, hook := range stakedMechBattleLogAfterDeleteHooks {
 		if err := hook(exec, o); err != nil {
 			return err
 		}
@@ -260,8 +260,8 @@ func (o *StackedMechBattleLog) doAfterDeleteHooks(exec boil.Executor) (err error
 }
 
 // doBeforeUpsertHooks executes all "before Upsert" hooks.
-func (o *StackedMechBattleLog) doBeforeUpsertHooks(exec boil.Executor) (err error) {
-	for _, hook := range stackedMechBattleLogBeforeUpsertHooks {
+func (o *StakedMechBattleLog) doBeforeUpsertHooks(exec boil.Executor) (err error) {
+	for _, hook := range stakedMechBattleLogBeforeUpsertHooks {
 		if err := hook(exec, o); err != nil {
 			return err
 		}
@@ -271,8 +271,8 @@ func (o *StackedMechBattleLog) doBeforeUpsertHooks(exec boil.Executor) (err erro
 }
 
 // doAfterUpsertHooks executes all "after Upsert" hooks.
-func (o *StackedMechBattleLog) doAfterUpsertHooks(exec boil.Executor) (err error) {
-	for _, hook := range stackedMechBattleLogAfterUpsertHooks {
+func (o *StakedMechBattleLog) doAfterUpsertHooks(exec boil.Executor) (err error) {
+	for _, hook := range stakedMechBattleLogAfterUpsertHooks {
 		if err := hook(exec, o); err != nil {
 			return err
 		}
@@ -281,33 +281,33 @@ func (o *StackedMechBattleLog) doAfterUpsertHooks(exec boil.Executor) (err error
 	return nil
 }
 
-// AddStackedMechBattleLogHook registers your hook function for all future operations.
-func AddStackedMechBattleLogHook(hookPoint boil.HookPoint, stackedMechBattleLogHook StackedMechBattleLogHook) {
+// AddStakedMechBattleLogHook registers your hook function for all future operations.
+func AddStakedMechBattleLogHook(hookPoint boil.HookPoint, stakedMechBattleLogHook StakedMechBattleLogHook) {
 	switch hookPoint {
 	case boil.AfterSelectHook:
-		stackedMechBattleLogAfterSelectHooks = append(stackedMechBattleLogAfterSelectHooks, stackedMechBattleLogHook)
+		stakedMechBattleLogAfterSelectHooks = append(stakedMechBattleLogAfterSelectHooks, stakedMechBattleLogHook)
 	case boil.BeforeInsertHook:
-		stackedMechBattleLogBeforeInsertHooks = append(stackedMechBattleLogBeforeInsertHooks, stackedMechBattleLogHook)
+		stakedMechBattleLogBeforeInsertHooks = append(stakedMechBattleLogBeforeInsertHooks, stakedMechBattleLogHook)
 	case boil.AfterInsertHook:
-		stackedMechBattleLogAfterInsertHooks = append(stackedMechBattleLogAfterInsertHooks, stackedMechBattleLogHook)
+		stakedMechBattleLogAfterInsertHooks = append(stakedMechBattleLogAfterInsertHooks, stakedMechBattleLogHook)
 	case boil.BeforeUpdateHook:
-		stackedMechBattleLogBeforeUpdateHooks = append(stackedMechBattleLogBeforeUpdateHooks, stackedMechBattleLogHook)
+		stakedMechBattleLogBeforeUpdateHooks = append(stakedMechBattleLogBeforeUpdateHooks, stakedMechBattleLogHook)
 	case boil.AfterUpdateHook:
-		stackedMechBattleLogAfterUpdateHooks = append(stackedMechBattleLogAfterUpdateHooks, stackedMechBattleLogHook)
+		stakedMechBattleLogAfterUpdateHooks = append(stakedMechBattleLogAfterUpdateHooks, stakedMechBattleLogHook)
 	case boil.BeforeDeleteHook:
-		stackedMechBattleLogBeforeDeleteHooks = append(stackedMechBattleLogBeforeDeleteHooks, stackedMechBattleLogHook)
+		stakedMechBattleLogBeforeDeleteHooks = append(stakedMechBattleLogBeforeDeleteHooks, stakedMechBattleLogHook)
 	case boil.AfterDeleteHook:
-		stackedMechBattleLogAfterDeleteHooks = append(stackedMechBattleLogAfterDeleteHooks, stackedMechBattleLogHook)
+		stakedMechBattleLogAfterDeleteHooks = append(stakedMechBattleLogAfterDeleteHooks, stakedMechBattleLogHook)
 	case boil.BeforeUpsertHook:
-		stackedMechBattleLogBeforeUpsertHooks = append(stackedMechBattleLogBeforeUpsertHooks, stackedMechBattleLogHook)
+		stakedMechBattleLogBeforeUpsertHooks = append(stakedMechBattleLogBeforeUpsertHooks, stakedMechBattleLogHook)
 	case boil.AfterUpsertHook:
-		stackedMechBattleLogAfterUpsertHooks = append(stackedMechBattleLogAfterUpsertHooks, stackedMechBattleLogHook)
+		stakedMechBattleLogAfterUpsertHooks = append(stakedMechBattleLogAfterUpsertHooks, stakedMechBattleLogHook)
 	}
 }
 
-// One returns a single stackedMechBattleLog record from the query.
-func (q stackedMechBattleLogQuery) One(exec boil.Executor) (*StackedMechBattleLog, error) {
-	o := &StackedMechBattleLog{}
+// One returns a single stakedMechBattleLog record from the query.
+func (q stakedMechBattleLogQuery) One(exec boil.Executor) (*StakedMechBattleLog, error) {
+	o := &StakedMechBattleLog{}
 
 	queries.SetLimit(q.Query, 1)
 
@@ -316,7 +316,7 @@ func (q stackedMechBattleLogQuery) One(exec boil.Executor) (*StackedMechBattleLo
 		if errors.Cause(err) == sql.ErrNoRows {
 			return nil, sql.ErrNoRows
 		}
-		return nil, errors.Wrap(err, "boiler: failed to execute a one query for stacked_mech_battle_logs")
+		return nil, errors.Wrap(err, "boiler: failed to execute a one query for staked_mech_battle_logs")
 	}
 
 	if err := o.doAfterSelectHooks(exec); err != nil {
@@ -326,16 +326,16 @@ func (q stackedMechBattleLogQuery) One(exec boil.Executor) (*StackedMechBattleLo
 	return o, nil
 }
 
-// All returns all StackedMechBattleLog records from the query.
-func (q stackedMechBattleLogQuery) All(exec boil.Executor) (StackedMechBattleLogSlice, error) {
-	var o []*StackedMechBattleLog
+// All returns all StakedMechBattleLog records from the query.
+func (q stakedMechBattleLogQuery) All(exec boil.Executor) (StakedMechBattleLogSlice, error) {
+	var o []*StakedMechBattleLog
 
 	err := q.Bind(nil, exec, &o)
 	if err != nil {
-		return nil, errors.Wrap(err, "boiler: failed to assign all query results to StackedMechBattleLog slice")
+		return nil, errors.Wrap(err, "boiler: failed to assign all query results to StakedMechBattleLog slice")
 	}
 
-	if len(stackedMechBattleLogAfterSelectHooks) != 0 {
+	if len(stakedMechBattleLogAfterSelectHooks) != 0 {
 		for _, obj := range o {
 			if err := obj.doAfterSelectHooks(exec); err != nil {
 				return o, err
@@ -346,8 +346,8 @@ func (q stackedMechBattleLogQuery) All(exec boil.Executor) (StackedMechBattleLog
 	return o, nil
 }
 
-// Count returns the count of all StackedMechBattleLog records in the query.
-func (q stackedMechBattleLogQuery) Count(exec boil.Executor) (int64, error) {
+// Count returns the count of all StakedMechBattleLog records in the query.
+func (q stakedMechBattleLogQuery) Count(exec boil.Executor) (int64, error) {
 	var count int64
 
 	queries.SetSelect(q.Query, nil)
@@ -355,14 +355,14 @@ func (q stackedMechBattleLogQuery) Count(exec boil.Executor) (int64, error) {
 
 	err := q.Query.QueryRow(exec).Scan(&count)
 	if err != nil {
-		return 0, errors.Wrap(err, "boiler: failed to count stacked_mech_battle_logs rows")
+		return 0, errors.Wrap(err, "boiler: failed to count staked_mech_battle_logs rows")
 	}
 
 	return count, nil
 }
 
 // Exists checks if the row exists in the table.
-func (q stackedMechBattleLogQuery) Exists(exec boil.Executor) (bool, error) {
+func (q stakedMechBattleLogQuery) Exists(exec boil.Executor) (bool, error) {
 	var count int64
 
 	queries.SetSelect(q.Query, nil)
@@ -371,14 +371,14 @@ func (q stackedMechBattleLogQuery) Exists(exec boil.Executor) (bool, error) {
 
 	err := q.Query.QueryRow(exec).Scan(&count)
 	if err != nil {
-		return false, errors.Wrap(err, "boiler: failed to check if stacked_mech_battle_logs exists")
+		return false, errors.Wrap(err, "boiler: failed to check if staked_mech_battle_logs exists")
 	}
 
 	return count > 0, nil
 }
 
 // Battle pointed to by the foreign key.
-func (o *StackedMechBattleLog) Battle(mods ...qm.QueryMod) battleQuery {
+func (o *StakedMechBattleLog) Battle(mods ...qm.QueryMod) battleQuery {
 	queryMods := []qm.QueryMod{
 		qm.Where("\"id\" = ?", o.BattleID),
 	}
@@ -392,7 +392,7 @@ func (o *StackedMechBattleLog) Battle(mods ...qm.QueryMod) battleQuery {
 }
 
 // Faction pointed to by the foreign key.
-func (o *StackedMechBattleLog) Faction(mods ...qm.QueryMod) factionQuery {
+func (o *StakedMechBattleLog) Faction(mods ...qm.QueryMod) factionQuery {
 	queryMods := []qm.QueryMod{
 		qm.Where("\"id\" = ?", o.FactionID),
 		qmhelper.WhereIsNull("deleted_at"),
@@ -407,7 +407,7 @@ func (o *StackedMechBattleLog) Faction(mods ...qm.QueryMod) factionQuery {
 }
 
 // Owner pointed to by the foreign key.
-func (o *StackedMechBattleLog) Owner(mods ...qm.QueryMod) playerQuery {
+func (o *StakedMechBattleLog) Owner(mods ...qm.QueryMod) playerQuery {
 	queryMods := []qm.QueryMod{
 		qm.Where("\"id\" = ?", o.OwnerID),
 		qmhelper.WhereIsNull("deleted_at"),
@@ -422,7 +422,7 @@ func (o *StackedMechBattleLog) Owner(mods ...qm.QueryMod) playerQuery {
 }
 
 // StakedMech pointed to by the foreign key.
-func (o *StackedMechBattleLog) StakedMech(mods ...qm.QueryMod) mechQuery {
+func (o *StakedMechBattleLog) StakedMech(mods ...qm.QueryMod) mechQuery {
 	queryMods := []qm.QueryMod{
 		qm.Where("\"id\" = ?", o.StakedMechID),
 		qmhelper.WhereIsNull("deleted_at"),
@@ -438,20 +438,20 @@ func (o *StackedMechBattleLog) StakedMech(mods ...qm.QueryMod) mechQuery {
 
 // LoadBattle allows an eager lookup of values, cached into the
 // loaded structs of the objects. This is for an N-1 relationship.
-func (stackedMechBattleLogL) LoadBattle(e boil.Executor, singular bool, maybeStackedMechBattleLog interface{}, mods queries.Applicator) error {
-	var slice []*StackedMechBattleLog
-	var object *StackedMechBattleLog
+func (stakedMechBattleLogL) LoadBattle(e boil.Executor, singular bool, maybeStakedMechBattleLog interface{}, mods queries.Applicator) error {
+	var slice []*StakedMechBattleLog
+	var object *StakedMechBattleLog
 
 	if singular {
-		object = maybeStackedMechBattleLog.(*StackedMechBattleLog)
+		object = maybeStakedMechBattleLog.(*StakedMechBattleLog)
 	} else {
-		slice = *maybeStackedMechBattleLog.(*[]*StackedMechBattleLog)
+		slice = *maybeStakedMechBattleLog.(*[]*StakedMechBattleLog)
 	}
 
 	args := make([]interface{}, 0, 1)
 	if singular {
 		if object.R == nil {
-			object.R = &stackedMechBattleLogR{}
+			object.R = &stakedMechBattleLogR{}
 		}
 		args = append(args, object.BattleID)
 
@@ -459,7 +459,7 @@ func (stackedMechBattleLogL) LoadBattle(e boil.Executor, singular bool, maybeSta
 	Outer:
 		for _, obj := range slice {
 			if obj.R == nil {
-				obj.R = &stackedMechBattleLogR{}
+				obj.R = &stakedMechBattleLogR{}
 			}
 
 			for _, a := range args {
@@ -502,7 +502,7 @@ func (stackedMechBattleLogL) LoadBattle(e boil.Executor, singular bool, maybeSta
 		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for battles")
 	}
 
-	if len(stackedMechBattleLogAfterSelectHooks) != 0 {
+	if len(stakedMechBattleLogAfterSelectHooks) != 0 {
 		for _, obj := range resultSlice {
 			if err := obj.doAfterSelectHooks(e); err != nil {
 				return err
@@ -520,7 +520,7 @@ func (stackedMechBattleLogL) LoadBattle(e boil.Executor, singular bool, maybeSta
 		if foreign.R == nil {
 			foreign.R = &battleR{}
 		}
-		foreign.R.StackedMechBattleLogs = append(foreign.R.StackedMechBattleLogs, object)
+		foreign.R.StakedMechBattleLogs = append(foreign.R.StakedMechBattleLogs, object)
 		return nil
 	}
 
@@ -531,7 +531,7 @@ func (stackedMechBattleLogL) LoadBattle(e boil.Executor, singular bool, maybeSta
 				if foreign.R == nil {
 					foreign.R = &battleR{}
 				}
-				foreign.R.StackedMechBattleLogs = append(foreign.R.StackedMechBattleLogs, local)
+				foreign.R.StakedMechBattleLogs = append(foreign.R.StakedMechBattleLogs, local)
 				break
 			}
 		}
@@ -542,20 +542,20 @@ func (stackedMechBattleLogL) LoadBattle(e boil.Executor, singular bool, maybeSta
 
 // LoadFaction allows an eager lookup of values, cached into the
 // loaded structs of the objects. This is for an N-1 relationship.
-func (stackedMechBattleLogL) LoadFaction(e boil.Executor, singular bool, maybeStackedMechBattleLog interface{}, mods queries.Applicator) error {
-	var slice []*StackedMechBattleLog
-	var object *StackedMechBattleLog
+func (stakedMechBattleLogL) LoadFaction(e boil.Executor, singular bool, maybeStakedMechBattleLog interface{}, mods queries.Applicator) error {
+	var slice []*StakedMechBattleLog
+	var object *StakedMechBattleLog
 
 	if singular {
-		object = maybeStackedMechBattleLog.(*StackedMechBattleLog)
+		object = maybeStakedMechBattleLog.(*StakedMechBattleLog)
 	} else {
-		slice = *maybeStackedMechBattleLog.(*[]*StackedMechBattleLog)
+		slice = *maybeStakedMechBattleLog.(*[]*StakedMechBattleLog)
 	}
 
 	args := make([]interface{}, 0, 1)
 	if singular {
 		if object.R == nil {
-			object.R = &stackedMechBattleLogR{}
+			object.R = &stakedMechBattleLogR{}
 		}
 		args = append(args, object.FactionID)
 
@@ -563,7 +563,7 @@ func (stackedMechBattleLogL) LoadFaction(e boil.Executor, singular bool, maybeSt
 	Outer:
 		for _, obj := range slice {
 			if obj.R == nil {
-				obj.R = &stackedMechBattleLogR{}
+				obj.R = &stakedMechBattleLogR{}
 			}
 
 			for _, a := range args {
@@ -607,7 +607,7 @@ func (stackedMechBattleLogL) LoadFaction(e boil.Executor, singular bool, maybeSt
 		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for factions")
 	}
 
-	if len(stackedMechBattleLogAfterSelectHooks) != 0 {
+	if len(stakedMechBattleLogAfterSelectHooks) != 0 {
 		for _, obj := range resultSlice {
 			if err := obj.doAfterSelectHooks(e); err != nil {
 				return err
@@ -625,7 +625,7 @@ func (stackedMechBattleLogL) LoadFaction(e boil.Executor, singular bool, maybeSt
 		if foreign.R == nil {
 			foreign.R = &factionR{}
 		}
-		foreign.R.StackedMechBattleLogs = append(foreign.R.StackedMechBattleLogs, object)
+		foreign.R.StakedMechBattleLogs = append(foreign.R.StakedMechBattleLogs, object)
 		return nil
 	}
 
@@ -636,7 +636,7 @@ func (stackedMechBattleLogL) LoadFaction(e boil.Executor, singular bool, maybeSt
 				if foreign.R == nil {
 					foreign.R = &factionR{}
 				}
-				foreign.R.StackedMechBattleLogs = append(foreign.R.StackedMechBattleLogs, local)
+				foreign.R.StakedMechBattleLogs = append(foreign.R.StakedMechBattleLogs, local)
 				break
 			}
 		}
@@ -647,20 +647,20 @@ func (stackedMechBattleLogL) LoadFaction(e boil.Executor, singular bool, maybeSt
 
 // LoadOwner allows an eager lookup of values, cached into the
 // loaded structs of the objects. This is for an N-1 relationship.
-func (stackedMechBattleLogL) LoadOwner(e boil.Executor, singular bool, maybeStackedMechBattleLog interface{}, mods queries.Applicator) error {
-	var slice []*StackedMechBattleLog
-	var object *StackedMechBattleLog
+func (stakedMechBattleLogL) LoadOwner(e boil.Executor, singular bool, maybeStakedMechBattleLog interface{}, mods queries.Applicator) error {
+	var slice []*StakedMechBattleLog
+	var object *StakedMechBattleLog
 
 	if singular {
-		object = maybeStackedMechBattleLog.(*StackedMechBattleLog)
+		object = maybeStakedMechBattleLog.(*StakedMechBattleLog)
 	} else {
-		slice = *maybeStackedMechBattleLog.(*[]*StackedMechBattleLog)
+		slice = *maybeStakedMechBattleLog.(*[]*StakedMechBattleLog)
 	}
 
 	args := make([]interface{}, 0, 1)
 	if singular {
 		if object.R == nil {
-			object.R = &stackedMechBattleLogR{}
+			object.R = &stakedMechBattleLogR{}
 		}
 		args = append(args, object.OwnerID)
 
@@ -668,7 +668,7 @@ func (stackedMechBattleLogL) LoadOwner(e boil.Executor, singular bool, maybeStac
 	Outer:
 		for _, obj := range slice {
 			if obj.R == nil {
-				obj.R = &stackedMechBattleLogR{}
+				obj.R = &stakedMechBattleLogR{}
 			}
 
 			for _, a := range args {
@@ -712,7 +712,7 @@ func (stackedMechBattleLogL) LoadOwner(e boil.Executor, singular bool, maybeStac
 		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for players")
 	}
 
-	if len(stackedMechBattleLogAfterSelectHooks) != 0 {
+	if len(stakedMechBattleLogAfterSelectHooks) != 0 {
 		for _, obj := range resultSlice {
 			if err := obj.doAfterSelectHooks(e); err != nil {
 				return err
@@ -730,7 +730,7 @@ func (stackedMechBattleLogL) LoadOwner(e boil.Executor, singular bool, maybeStac
 		if foreign.R == nil {
 			foreign.R = &playerR{}
 		}
-		foreign.R.OwnerStackedMechBattleLogs = append(foreign.R.OwnerStackedMechBattleLogs, object)
+		foreign.R.OwnerStakedMechBattleLogs = append(foreign.R.OwnerStakedMechBattleLogs, object)
 		return nil
 	}
 
@@ -741,7 +741,7 @@ func (stackedMechBattleLogL) LoadOwner(e boil.Executor, singular bool, maybeStac
 				if foreign.R == nil {
 					foreign.R = &playerR{}
 				}
-				foreign.R.OwnerStackedMechBattleLogs = append(foreign.R.OwnerStackedMechBattleLogs, local)
+				foreign.R.OwnerStakedMechBattleLogs = append(foreign.R.OwnerStakedMechBattleLogs, local)
 				break
 			}
 		}
@@ -752,20 +752,20 @@ func (stackedMechBattleLogL) LoadOwner(e boil.Executor, singular bool, maybeStac
 
 // LoadStakedMech allows an eager lookup of values, cached into the
 // loaded structs of the objects. This is for an N-1 relationship.
-func (stackedMechBattleLogL) LoadStakedMech(e boil.Executor, singular bool, maybeStackedMechBattleLog interface{}, mods queries.Applicator) error {
-	var slice []*StackedMechBattleLog
-	var object *StackedMechBattleLog
+func (stakedMechBattleLogL) LoadStakedMech(e boil.Executor, singular bool, maybeStakedMechBattleLog interface{}, mods queries.Applicator) error {
+	var slice []*StakedMechBattleLog
+	var object *StakedMechBattleLog
 
 	if singular {
-		object = maybeStackedMechBattleLog.(*StackedMechBattleLog)
+		object = maybeStakedMechBattleLog.(*StakedMechBattleLog)
 	} else {
-		slice = *maybeStackedMechBattleLog.(*[]*StackedMechBattleLog)
+		slice = *maybeStakedMechBattleLog.(*[]*StakedMechBattleLog)
 	}
 
 	args := make([]interface{}, 0, 1)
 	if singular {
 		if object.R == nil {
-			object.R = &stackedMechBattleLogR{}
+			object.R = &stakedMechBattleLogR{}
 		}
 		args = append(args, object.StakedMechID)
 
@@ -773,7 +773,7 @@ func (stackedMechBattleLogL) LoadStakedMech(e boil.Executor, singular bool, mayb
 	Outer:
 		for _, obj := range slice {
 			if obj.R == nil {
-				obj.R = &stackedMechBattleLogR{}
+				obj.R = &stakedMechBattleLogR{}
 			}
 
 			for _, a := range args {
@@ -817,7 +817,7 @@ func (stackedMechBattleLogL) LoadStakedMech(e boil.Executor, singular bool, mayb
 		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for mechs")
 	}
 
-	if len(stackedMechBattleLogAfterSelectHooks) != 0 {
+	if len(stakedMechBattleLogAfterSelectHooks) != 0 {
 		for _, obj := range resultSlice {
 			if err := obj.doAfterSelectHooks(e); err != nil {
 				return err
@@ -835,7 +835,7 @@ func (stackedMechBattleLogL) LoadStakedMech(e boil.Executor, singular bool, mayb
 		if foreign.R == nil {
 			foreign.R = &mechR{}
 		}
-		foreign.R.StakedMechStackedMechBattleLogs = append(foreign.R.StakedMechStackedMechBattleLogs, object)
+		foreign.R.StakedMechStakedMechBattleLogs = append(foreign.R.StakedMechStakedMechBattleLogs, object)
 		return nil
 	}
 
@@ -846,7 +846,7 @@ func (stackedMechBattleLogL) LoadStakedMech(e boil.Executor, singular bool, mayb
 				if foreign.R == nil {
 					foreign.R = &mechR{}
 				}
-				foreign.R.StakedMechStackedMechBattleLogs = append(foreign.R.StakedMechStackedMechBattleLogs, local)
+				foreign.R.StakedMechStakedMechBattleLogs = append(foreign.R.StakedMechStakedMechBattleLogs, local)
 				break
 			}
 		}
@@ -855,10 +855,10 @@ func (stackedMechBattleLogL) LoadStakedMech(e boil.Executor, singular bool, mayb
 	return nil
 }
 
-// SetBattle of the stackedMechBattleLog to the related item.
+// SetBattle of the stakedMechBattleLog to the related item.
 // Sets o.R.Battle to related.
-// Adds o to related.R.StackedMechBattleLogs.
-func (o *StackedMechBattleLog) SetBattle(exec boil.Executor, insert bool, related *Battle) error {
+// Adds o to related.R.StakedMechBattleLogs.
+func (o *StakedMechBattleLog) SetBattle(exec boil.Executor, insert bool, related *Battle) error {
 	var err error
 	if insert {
 		if err = related.Insert(exec, boil.Infer()); err != nil {
@@ -867,9 +867,9 @@ func (o *StackedMechBattleLog) SetBattle(exec boil.Executor, insert bool, relate
 	}
 
 	updateQuery := fmt.Sprintf(
-		"UPDATE \"stacked_mech_battle_logs\" SET %s WHERE %s",
+		"UPDATE \"staked_mech_battle_logs\" SET %s WHERE %s",
 		strmangle.SetParamNames("\"", "\"", 1, []string{"battle_id"}),
-		strmangle.WhereClause("\"", "\"", 2, stackedMechBattleLogPrimaryKeyColumns),
+		strmangle.WhereClause("\"", "\"", 2, stakedMechBattleLogPrimaryKeyColumns),
 	)
 	values := []interface{}{related.ID, o.ID}
 
@@ -883,7 +883,7 @@ func (o *StackedMechBattleLog) SetBattle(exec boil.Executor, insert bool, relate
 
 	o.BattleID = related.ID
 	if o.R == nil {
-		o.R = &stackedMechBattleLogR{
+		o.R = &stakedMechBattleLogR{
 			Battle: related,
 		}
 	} else {
@@ -892,19 +892,19 @@ func (o *StackedMechBattleLog) SetBattle(exec boil.Executor, insert bool, relate
 
 	if related.R == nil {
 		related.R = &battleR{
-			StackedMechBattleLogs: StackedMechBattleLogSlice{o},
+			StakedMechBattleLogs: StakedMechBattleLogSlice{o},
 		}
 	} else {
-		related.R.StackedMechBattleLogs = append(related.R.StackedMechBattleLogs, o)
+		related.R.StakedMechBattleLogs = append(related.R.StakedMechBattleLogs, o)
 	}
 
 	return nil
 }
 
-// SetFaction of the stackedMechBattleLog to the related item.
+// SetFaction of the stakedMechBattleLog to the related item.
 // Sets o.R.Faction to related.
-// Adds o to related.R.StackedMechBattleLogs.
-func (o *StackedMechBattleLog) SetFaction(exec boil.Executor, insert bool, related *Faction) error {
+// Adds o to related.R.StakedMechBattleLogs.
+func (o *StakedMechBattleLog) SetFaction(exec boil.Executor, insert bool, related *Faction) error {
 	var err error
 	if insert {
 		if err = related.Insert(exec, boil.Infer()); err != nil {
@@ -913,9 +913,9 @@ func (o *StackedMechBattleLog) SetFaction(exec boil.Executor, insert bool, relat
 	}
 
 	updateQuery := fmt.Sprintf(
-		"UPDATE \"stacked_mech_battle_logs\" SET %s WHERE %s",
+		"UPDATE \"staked_mech_battle_logs\" SET %s WHERE %s",
 		strmangle.SetParamNames("\"", "\"", 1, []string{"faction_id"}),
-		strmangle.WhereClause("\"", "\"", 2, stackedMechBattleLogPrimaryKeyColumns),
+		strmangle.WhereClause("\"", "\"", 2, stakedMechBattleLogPrimaryKeyColumns),
 	)
 	values := []interface{}{related.ID, o.ID}
 
@@ -929,7 +929,7 @@ func (o *StackedMechBattleLog) SetFaction(exec boil.Executor, insert bool, relat
 
 	o.FactionID = related.ID
 	if o.R == nil {
-		o.R = &stackedMechBattleLogR{
+		o.R = &stakedMechBattleLogR{
 			Faction: related,
 		}
 	} else {
@@ -938,19 +938,19 @@ func (o *StackedMechBattleLog) SetFaction(exec boil.Executor, insert bool, relat
 
 	if related.R == nil {
 		related.R = &factionR{
-			StackedMechBattleLogs: StackedMechBattleLogSlice{o},
+			StakedMechBattleLogs: StakedMechBattleLogSlice{o},
 		}
 	} else {
-		related.R.StackedMechBattleLogs = append(related.R.StackedMechBattleLogs, o)
+		related.R.StakedMechBattleLogs = append(related.R.StakedMechBattleLogs, o)
 	}
 
 	return nil
 }
 
-// SetOwner of the stackedMechBattleLog to the related item.
+// SetOwner of the stakedMechBattleLog to the related item.
 // Sets o.R.Owner to related.
-// Adds o to related.R.OwnerStackedMechBattleLogs.
-func (o *StackedMechBattleLog) SetOwner(exec boil.Executor, insert bool, related *Player) error {
+// Adds o to related.R.OwnerStakedMechBattleLogs.
+func (o *StakedMechBattleLog) SetOwner(exec boil.Executor, insert bool, related *Player) error {
 	var err error
 	if insert {
 		if err = related.Insert(exec, boil.Infer()); err != nil {
@@ -959,9 +959,9 @@ func (o *StackedMechBattleLog) SetOwner(exec boil.Executor, insert bool, related
 	}
 
 	updateQuery := fmt.Sprintf(
-		"UPDATE \"stacked_mech_battle_logs\" SET %s WHERE %s",
+		"UPDATE \"staked_mech_battle_logs\" SET %s WHERE %s",
 		strmangle.SetParamNames("\"", "\"", 1, []string{"owner_id"}),
-		strmangle.WhereClause("\"", "\"", 2, stackedMechBattleLogPrimaryKeyColumns),
+		strmangle.WhereClause("\"", "\"", 2, stakedMechBattleLogPrimaryKeyColumns),
 	)
 	values := []interface{}{related.ID, o.ID}
 
@@ -975,7 +975,7 @@ func (o *StackedMechBattleLog) SetOwner(exec boil.Executor, insert bool, related
 
 	o.OwnerID = related.ID
 	if o.R == nil {
-		o.R = &stackedMechBattleLogR{
+		o.R = &stakedMechBattleLogR{
 			Owner: related,
 		}
 	} else {
@@ -984,19 +984,19 @@ func (o *StackedMechBattleLog) SetOwner(exec boil.Executor, insert bool, related
 
 	if related.R == nil {
 		related.R = &playerR{
-			OwnerStackedMechBattleLogs: StackedMechBattleLogSlice{o},
+			OwnerStakedMechBattleLogs: StakedMechBattleLogSlice{o},
 		}
 	} else {
-		related.R.OwnerStackedMechBattleLogs = append(related.R.OwnerStackedMechBattleLogs, o)
+		related.R.OwnerStakedMechBattleLogs = append(related.R.OwnerStakedMechBattleLogs, o)
 	}
 
 	return nil
 }
 
-// SetStakedMech of the stackedMechBattleLog to the related item.
+// SetStakedMech of the stakedMechBattleLog to the related item.
 // Sets o.R.StakedMech to related.
-// Adds o to related.R.StakedMechStackedMechBattleLogs.
-func (o *StackedMechBattleLog) SetStakedMech(exec boil.Executor, insert bool, related *Mech) error {
+// Adds o to related.R.StakedMechStakedMechBattleLogs.
+func (o *StakedMechBattleLog) SetStakedMech(exec boil.Executor, insert bool, related *Mech) error {
 	var err error
 	if insert {
 		if err = related.Insert(exec, boil.Infer()); err != nil {
@@ -1005,9 +1005,9 @@ func (o *StackedMechBattleLog) SetStakedMech(exec boil.Executor, insert bool, re
 	}
 
 	updateQuery := fmt.Sprintf(
-		"UPDATE \"stacked_mech_battle_logs\" SET %s WHERE %s",
+		"UPDATE \"staked_mech_battle_logs\" SET %s WHERE %s",
 		strmangle.SetParamNames("\"", "\"", 1, []string{"staked_mech_id"}),
-		strmangle.WhereClause("\"", "\"", 2, stackedMechBattleLogPrimaryKeyColumns),
+		strmangle.WhereClause("\"", "\"", 2, stakedMechBattleLogPrimaryKeyColumns),
 	)
 	values := []interface{}{related.ID, o.ID}
 
@@ -1021,7 +1021,7 @@ func (o *StackedMechBattleLog) SetStakedMech(exec boil.Executor, insert bool, re
 
 	o.StakedMechID = related.ID
 	if o.R == nil {
-		o.R = &stackedMechBattleLogR{
+		o.R = &stakedMechBattleLogR{
 			StakedMech: related,
 		}
 	} else {
@@ -1030,56 +1030,56 @@ func (o *StackedMechBattleLog) SetStakedMech(exec boil.Executor, insert bool, re
 
 	if related.R == nil {
 		related.R = &mechR{
-			StakedMechStackedMechBattleLogs: StackedMechBattleLogSlice{o},
+			StakedMechStakedMechBattleLogs: StakedMechBattleLogSlice{o},
 		}
 	} else {
-		related.R.StakedMechStackedMechBattleLogs = append(related.R.StakedMechStackedMechBattleLogs, o)
+		related.R.StakedMechStakedMechBattleLogs = append(related.R.StakedMechStakedMechBattleLogs, o)
 	}
 
 	return nil
 }
 
-// StackedMechBattleLogs retrieves all the records using an executor.
-func StackedMechBattleLogs(mods ...qm.QueryMod) stackedMechBattleLogQuery {
-	mods = append(mods, qm.From("\"stacked_mech_battle_logs\""), qmhelper.WhereIsNull("\"stacked_mech_battle_logs\".\"deleted_at\""))
-	return stackedMechBattleLogQuery{NewQuery(mods...)}
+// StakedMechBattleLogs retrieves all the records using an executor.
+func StakedMechBattleLogs(mods ...qm.QueryMod) stakedMechBattleLogQuery {
+	mods = append(mods, qm.From("\"staked_mech_battle_logs\""), qmhelper.WhereIsNull("\"staked_mech_battle_logs\".\"deleted_at\""))
+	return stakedMechBattleLogQuery{NewQuery(mods...)}
 }
 
-// FindStackedMechBattleLog retrieves a single record by ID with an executor.
+// FindStakedMechBattleLog retrieves a single record by ID with an executor.
 // If selectCols is empty Find will return all columns.
-func FindStackedMechBattleLog(exec boil.Executor, iD string, selectCols ...string) (*StackedMechBattleLog, error) {
-	stackedMechBattleLogObj := &StackedMechBattleLog{}
+func FindStakedMechBattleLog(exec boil.Executor, iD string, selectCols ...string) (*StakedMechBattleLog, error) {
+	stakedMechBattleLogObj := &StakedMechBattleLog{}
 
 	sel := "*"
 	if len(selectCols) > 0 {
 		sel = strings.Join(strmangle.IdentQuoteSlice(dialect.LQ, dialect.RQ, selectCols), ",")
 	}
 	query := fmt.Sprintf(
-		"select %s from \"stacked_mech_battle_logs\" where \"id\"=$1 and \"deleted_at\" is null", sel,
+		"select %s from \"staked_mech_battle_logs\" where \"id\"=$1 and \"deleted_at\" is null", sel,
 	)
 
 	q := queries.Raw(query, iD)
 
-	err := q.Bind(nil, exec, stackedMechBattleLogObj)
+	err := q.Bind(nil, exec, stakedMechBattleLogObj)
 	if err != nil {
 		if errors.Cause(err) == sql.ErrNoRows {
 			return nil, sql.ErrNoRows
 		}
-		return nil, errors.Wrap(err, "boiler: unable to select from stacked_mech_battle_logs")
+		return nil, errors.Wrap(err, "boiler: unable to select from staked_mech_battle_logs")
 	}
 
-	if err = stackedMechBattleLogObj.doAfterSelectHooks(exec); err != nil {
-		return stackedMechBattleLogObj, err
+	if err = stakedMechBattleLogObj.doAfterSelectHooks(exec); err != nil {
+		return stakedMechBattleLogObj, err
 	}
 
-	return stackedMechBattleLogObj, nil
+	return stakedMechBattleLogObj, nil
 }
 
 // Insert a single record using an executor.
 // See boil.Columns.InsertColumnSet documentation to understand column list inference for inserts.
-func (o *StackedMechBattleLog) Insert(exec boil.Executor, columns boil.Columns) error {
+func (o *StakedMechBattleLog) Insert(exec boil.Executor, columns boil.Columns) error {
 	if o == nil {
-		return errors.New("boiler: no stacked_mech_battle_logs provided for insertion")
+		return errors.New("boiler: no staked_mech_battle_logs provided for insertion")
 	}
 
 	var err error
@@ -1096,33 +1096,33 @@ func (o *StackedMechBattleLog) Insert(exec boil.Executor, columns boil.Columns) 
 		return err
 	}
 
-	nzDefaults := queries.NonZeroDefaultSet(stackedMechBattleLogColumnsWithDefault, o)
+	nzDefaults := queries.NonZeroDefaultSet(stakedMechBattleLogColumnsWithDefault, o)
 
 	key := makeCacheKey(columns, nzDefaults)
-	stackedMechBattleLogInsertCacheMut.RLock()
-	cache, cached := stackedMechBattleLogInsertCache[key]
-	stackedMechBattleLogInsertCacheMut.RUnlock()
+	stakedMechBattleLogInsertCacheMut.RLock()
+	cache, cached := stakedMechBattleLogInsertCache[key]
+	stakedMechBattleLogInsertCacheMut.RUnlock()
 
 	if !cached {
 		wl, returnColumns := columns.InsertColumnSet(
-			stackedMechBattleLogAllColumns,
-			stackedMechBattleLogColumnsWithDefault,
-			stackedMechBattleLogColumnsWithoutDefault,
+			stakedMechBattleLogAllColumns,
+			stakedMechBattleLogColumnsWithDefault,
+			stakedMechBattleLogColumnsWithoutDefault,
 			nzDefaults,
 		)
 
-		cache.valueMapping, err = queries.BindMapping(stackedMechBattleLogType, stackedMechBattleLogMapping, wl)
+		cache.valueMapping, err = queries.BindMapping(stakedMechBattleLogType, stakedMechBattleLogMapping, wl)
 		if err != nil {
 			return err
 		}
-		cache.retMapping, err = queries.BindMapping(stackedMechBattleLogType, stackedMechBattleLogMapping, returnColumns)
+		cache.retMapping, err = queries.BindMapping(stakedMechBattleLogType, stakedMechBattleLogMapping, returnColumns)
 		if err != nil {
 			return err
 		}
 		if len(wl) != 0 {
-			cache.query = fmt.Sprintf("INSERT INTO \"stacked_mech_battle_logs\" (\"%s\") %%sVALUES (%s)%%s", strings.Join(wl, "\",\""), strmangle.Placeholders(dialect.UseIndexPlaceholders, len(wl), 1, 1))
+			cache.query = fmt.Sprintf("INSERT INTO \"staked_mech_battle_logs\" (\"%s\") %%sVALUES (%s)%%s", strings.Join(wl, "\",\""), strmangle.Placeholders(dialect.UseIndexPlaceholders, len(wl), 1, 1))
 		} else {
-			cache.query = "INSERT INTO \"stacked_mech_battle_logs\" %sDEFAULT VALUES%s"
+			cache.query = "INSERT INTO \"staked_mech_battle_logs\" %sDEFAULT VALUES%s"
 		}
 
 		var queryOutput, queryReturning string
@@ -1149,22 +1149,22 @@ func (o *StackedMechBattleLog) Insert(exec boil.Executor, columns boil.Columns) 
 	}
 
 	if err != nil {
-		return errors.Wrap(err, "boiler: unable to insert into stacked_mech_battle_logs")
+		return errors.Wrap(err, "boiler: unable to insert into staked_mech_battle_logs")
 	}
 
 	if !cached {
-		stackedMechBattleLogInsertCacheMut.Lock()
-		stackedMechBattleLogInsertCache[key] = cache
-		stackedMechBattleLogInsertCacheMut.Unlock()
+		stakedMechBattleLogInsertCacheMut.Lock()
+		stakedMechBattleLogInsertCache[key] = cache
+		stakedMechBattleLogInsertCacheMut.Unlock()
 	}
 
 	return o.doAfterInsertHooks(exec)
 }
 
-// Update uses an executor to update the StackedMechBattleLog.
+// Update uses an executor to update the StakedMechBattleLog.
 // See boil.Columns.UpdateColumnSet documentation to understand column list inference for updates.
 // Update does not automatically update the record in case of default values. Use .Reload() to refresh the records.
-func (o *StackedMechBattleLog) Update(exec boil.Executor, columns boil.Columns) (int64, error) {
+func (o *StakedMechBattleLog) Update(exec boil.Executor, columns boil.Columns) (int64, error) {
 	currTime := time.Now().In(boil.GetLocation())
 
 	o.UpdatedAt = currTime
@@ -1174,28 +1174,28 @@ func (o *StackedMechBattleLog) Update(exec boil.Executor, columns boil.Columns) 
 		return 0, err
 	}
 	key := makeCacheKey(columns, nil)
-	stackedMechBattleLogUpdateCacheMut.RLock()
-	cache, cached := stackedMechBattleLogUpdateCache[key]
-	stackedMechBattleLogUpdateCacheMut.RUnlock()
+	stakedMechBattleLogUpdateCacheMut.RLock()
+	cache, cached := stakedMechBattleLogUpdateCache[key]
+	stakedMechBattleLogUpdateCacheMut.RUnlock()
 
 	if !cached {
 		wl := columns.UpdateColumnSet(
-			stackedMechBattleLogAllColumns,
-			stackedMechBattleLogPrimaryKeyColumns,
+			stakedMechBattleLogAllColumns,
+			stakedMechBattleLogPrimaryKeyColumns,
 		)
 
 		if !columns.IsWhitelist() {
 			wl = strmangle.SetComplement(wl, []string{"created_at"})
 		}
 		if len(wl) == 0 {
-			return 0, errors.New("boiler: unable to update stacked_mech_battle_logs, could not build whitelist")
+			return 0, errors.New("boiler: unable to update staked_mech_battle_logs, could not build whitelist")
 		}
 
-		cache.query = fmt.Sprintf("UPDATE \"stacked_mech_battle_logs\" SET %s WHERE %s",
+		cache.query = fmt.Sprintf("UPDATE \"staked_mech_battle_logs\" SET %s WHERE %s",
 			strmangle.SetParamNames("\"", "\"", 1, wl),
-			strmangle.WhereClause("\"", "\"", len(wl)+1, stackedMechBattleLogPrimaryKeyColumns),
+			strmangle.WhereClause("\"", "\"", len(wl)+1, stakedMechBattleLogPrimaryKeyColumns),
 		)
-		cache.valueMapping, err = queries.BindMapping(stackedMechBattleLogType, stackedMechBattleLogMapping, append(wl, stackedMechBattleLogPrimaryKeyColumns...))
+		cache.valueMapping, err = queries.BindMapping(stakedMechBattleLogType, stakedMechBattleLogMapping, append(wl, stakedMechBattleLogPrimaryKeyColumns...))
 		if err != nil {
 			return 0, err
 		}
@@ -1210,42 +1210,42 @@ func (o *StackedMechBattleLog) Update(exec boil.Executor, columns boil.Columns) 
 	var result sql.Result
 	result, err = exec.Exec(cache.query, values...)
 	if err != nil {
-		return 0, errors.Wrap(err, "boiler: unable to update stacked_mech_battle_logs row")
+		return 0, errors.Wrap(err, "boiler: unable to update staked_mech_battle_logs row")
 	}
 
 	rowsAff, err := result.RowsAffected()
 	if err != nil {
-		return 0, errors.Wrap(err, "boiler: failed to get rows affected by update for stacked_mech_battle_logs")
+		return 0, errors.Wrap(err, "boiler: failed to get rows affected by update for staked_mech_battle_logs")
 	}
 
 	if !cached {
-		stackedMechBattleLogUpdateCacheMut.Lock()
-		stackedMechBattleLogUpdateCache[key] = cache
-		stackedMechBattleLogUpdateCacheMut.Unlock()
+		stakedMechBattleLogUpdateCacheMut.Lock()
+		stakedMechBattleLogUpdateCache[key] = cache
+		stakedMechBattleLogUpdateCacheMut.Unlock()
 	}
 
 	return rowsAff, o.doAfterUpdateHooks(exec)
 }
 
 // UpdateAll updates all rows with the specified column values.
-func (q stackedMechBattleLogQuery) UpdateAll(exec boil.Executor, cols M) (int64, error) {
+func (q stakedMechBattleLogQuery) UpdateAll(exec boil.Executor, cols M) (int64, error) {
 	queries.SetUpdate(q.Query, cols)
 
 	result, err := q.Query.Exec(exec)
 	if err != nil {
-		return 0, errors.Wrap(err, "boiler: unable to update all for stacked_mech_battle_logs")
+		return 0, errors.Wrap(err, "boiler: unable to update all for staked_mech_battle_logs")
 	}
 
 	rowsAff, err := result.RowsAffected()
 	if err != nil {
-		return 0, errors.Wrap(err, "boiler: unable to retrieve rows affected for stacked_mech_battle_logs")
+		return 0, errors.Wrap(err, "boiler: unable to retrieve rows affected for staked_mech_battle_logs")
 	}
 
 	return rowsAff, nil
 }
 
 // UpdateAll updates all rows with the specified column values, using an executor.
-func (o StackedMechBattleLogSlice) UpdateAll(exec boil.Executor, cols M) (int64, error) {
+func (o StakedMechBattleLogSlice) UpdateAll(exec boil.Executor, cols M) (int64, error) {
 	ln := int64(len(o))
 	if ln == 0 {
 		return 0, nil
@@ -1267,13 +1267,13 @@ func (o StackedMechBattleLogSlice) UpdateAll(exec boil.Executor, cols M) (int64,
 
 	// Append all of the primary key values for each column
 	for _, obj := range o {
-		pkeyArgs := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(obj)), stackedMechBattleLogPrimaryKeyMapping)
+		pkeyArgs := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(obj)), stakedMechBattleLogPrimaryKeyMapping)
 		args = append(args, pkeyArgs...)
 	}
 
-	sql := fmt.Sprintf("UPDATE \"stacked_mech_battle_logs\" SET %s WHERE %s",
+	sql := fmt.Sprintf("UPDATE \"staked_mech_battle_logs\" SET %s WHERE %s",
 		strmangle.SetParamNames("\"", "\"", 1, colNames),
-		strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), len(colNames)+1, stackedMechBattleLogPrimaryKeyColumns, len(o)))
+		strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), len(colNames)+1, stakedMechBattleLogPrimaryKeyColumns, len(o)))
 
 	if boil.DebugMode {
 		fmt.Fprintln(boil.DebugWriter, sql)
@@ -1281,21 +1281,21 @@ func (o StackedMechBattleLogSlice) UpdateAll(exec boil.Executor, cols M) (int64,
 	}
 	result, err := exec.Exec(sql, args...)
 	if err != nil {
-		return 0, errors.Wrap(err, "boiler: unable to update all in stackedMechBattleLog slice")
+		return 0, errors.Wrap(err, "boiler: unable to update all in stakedMechBattleLog slice")
 	}
 
 	rowsAff, err := result.RowsAffected()
 	if err != nil {
-		return 0, errors.Wrap(err, "boiler: unable to retrieve rows affected all in update all stackedMechBattleLog")
+		return 0, errors.Wrap(err, "boiler: unable to retrieve rows affected all in update all stakedMechBattleLog")
 	}
 	return rowsAff, nil
 }
 
 // Upsert attempts an insert using an executor, and does an update or ignore on conflict.
 // See boil.Columns documentation for how to properly use updateColumns and insertColumns.
-func (o *StackedMechBattleLog) Upsert(exec boil.Executor, updateOnConflict bool, conflictColumns []string, updateColumns, insertColumns boil.Columns) error {
+func (o *StakedMechBattleLog) Upsert(exec boil.Executor, updateOnConflict bool, conflictColumns []string, updateColumns, insertColumns boil.Columns) error {
 	if o == nil {
-		return errors.New("boiler: no stacked_mech_battle_logs provided for upsert")
+		return errors.New("boiler: no staked_mech_battle_logs provided for upsert")
 	}
 	currTime := time.Now().In(boil.GetLocation())
 
@@ -1308,7 +1308,7 @@ func (o *StackedMechBattleLog) Upsert(exec boil.Executor, updateOnConflict bool,
 		return err
 	}
 
-	nzDefaults := queries.NonZeroDefaultSet(stackedMechBattleLogColumnsWithDefault, o)
+	nzDefaults := queries.NonZeroDefaultSet(stakedMechBattleLogColumnsWithDefault, o)
 
 	// Build cache key in-line uglily - mysql vs psql problems
 	buf := strmangle.GetBuffer()
@@ -1338,42 +1338,42 @@ func (o *StackedMechBattleLog) Upsert(exec boil.Executor, updateOnConflict bool,
 	key := buf.String()
 	strmangle.PutBuffer(buf)
 
-	stackedMechBattleLogUpsertCacheMut.RLock()
-	cache, cached := stackedMechBattleLogUpsertCache[key]
-	stackedMechBattleLogUpsertCacheMut.RUnlock()
+	stakedMechBattleLogUpsertCacheMut.RLock()
+	cache, cached := stakedMechBattleLogUpsertCache[key]
+	stakedMechBattleLogUpsertCacheMut.RUnlock()
 
 	var err error
 
 	if !cached {
 		insert, ret := insertColumns.InsertColumnSet(
-			stackedMechBattleLogAllColumns,
-			stackedMechBattleLogColumnsWithDefault,
-			stackedMechBattleLogColumnsWithoutDefault,
+			stakedMechBattleLogAllColumns,
+			stakedMechBattleLogColumnsWithDefault,
+			stakedMechBattleLogColumnsWithoutDefault,
 			nzDefaults,
 		)
 
 		update := updateColumns.UpdateColumnSet(
-			stackedMechBattleLogAllColumns,
-			stackedMechBattleLogPrimaryKeyColumns,
+			stakedMechBattleLogAllColumns,
+			stakedMechBattleLogPrimaryKeyColumns,
 		)
 
 		if updateOnConflict && len(update) == 0 {
-			return errors.New("boiler: unable to upsert stacked_mech_battle_logs, could not build update column list")
+			return errors.New("boiler: unable to upsert staked_mech_battle_logs, could not build update column list")
 		}
 
 		conflict := conflictColumns
 		if len(conflict) == 0 {
-			conflict = make([]string, len(stackedMechBattleLogPrimaryKeyColumns))
-			copy(conflict, stackedMechBattleLogPrimaryKeyColumns)
+			conflict = make([]string, len(stakedMechBattleLogPrimaryKeyColumns))
+			copy(conflict, stakedMechBattleLogPrimaryKeyColumns)
 		}
-		cache.query = buildUpsertQueryPostgres(dialect, "\"stacked_mech_battle_logs\"", updateOnConflict, ret, update, conflict, insert)
+		cache.query = buildUpsertQueryPostgres(dialect, "\"staked_mech_battle_logs\"", updateOnConflict, ret, update, conflict, insert)
 
-		cache.valueMapping, err = queries.BindMapping(stackedMechBattleLogType, stackedMechBattleLogMapping, insert)
+		cache.valueMapping, err = queries.BindMapping(stakedMechBattleLogType, stakedMechBattleLogMapping, insert)
 		if err != nil {
 			return err
 		}
 		if len(ret) != 0 {
-			cache.retMapping, err = queries.BindMapping(stackedMechBattleLogType, stackedMechBattleLogMapping, ret)
+			cache.retMapping, err = queries.BindMapping(stakedMechBattleLogType, stakedMechBattleLogMapping, ret)
 			if err != nil {
 				return err
 			}
@@ -1400,23 +1400,23 @@ func (o *StackedMechBattleLog) Upsert(exec boil.Executor, updateOnConflict bool,
 		_, err = exec.Exec(cache.query, vals...)
 	}
 	if err != nil {
-		return errors.Wrap(err, "boiler: unable to upsert stacked_mech_battle_logs")
+		return errors.Wrap(err, "boiler: unable to upsert staked_mech_battle_logs")
 	}
 
 	if !cached {
-		stackedMechBattleLogUpsertCacheMut.Lock()
-		stackedMechBattleLogUpsertCache[key] = cache
-		stackedMechBattleLogUpsertCacheMut.Unlock()
+		stakedMechBattleLogUpsertCacheMut.Lock()
+		stakedMechBattleLogUpsertCache[key] = cache
+		stakedMechBattleLogUpsertCacheMut.Unlock()
 	}
 
 	return o.doAfterUpsertHooks(exec)
 }
 
-// Delete deletes a single StackedMechBattleLog record with an executor.
+// Delete deletes a single StakedMechBattleLog record with an executor.
 // Delete will match against the primary key column to find the record to delete.
-func (o *StackedMechBattleLog) Delete(exec boil.Executor, hardDelete bool) (int64, error) {
+func (o *StakedMechBattleLog) Delete(exec boil.Executor, hardDelete bool) (int64, error) {
 	if o == nil {
-		return 0, errors.New("boiler: no StackedMechBattleLog provided for delete")
+		return 0, errors.New("boiler: no StakedMechBattleLog provided for delete")
 	}
 
 	if err := o.doBeforeDeleteHooks(exec); err != nil {
@@ -1428,16 +1428,16 @@ func (o *StackedMechBattleLog) Delete(exec boil.Executor, hardDelete bool) (int6
 		args []interface{}
 	)
 	if hardDelete {
-		args = queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(o)), stackedMechBattleLogPrimaryKeyMapping)
-		sql = "DELETE FROM \"stacked_mech_battle_logs\" WHERE \"id\"=$1"
+		args = queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(o)), stakedMechBattleLogPrimaryKeyMapping)
+		sql = "DELETE FROM \"staked_mech_battle_logs\" WHERE \"id\"=$1"
 	} else {
 		currTime := time.Now().In(boil.GetLocation())
 		o.DeletedAt = null.TimeFrom(currTime)
 		wl := []string{"deleted_at"}
-		sql = fmt.Sprintf("UPDATE \"stacked_mech_battle_logs\" SET %s WHERE \"id\"=$2",
+		sql = fmt.Sprintf("UPDATE \"staked_mech_battle_logs\" SET %s WHERE \"id\"=$2",
 			strmangle.SetParamNames("\"", "\"", 1, wl),
 		)
-		valueMapping, err := queries.BindMapping(stackedMechBattleLogType, stackedMechBattleLogMapping, append(wl, stackedMechBattleLogPrimaryKeyColumns...))
+		valueMapping, err := queries.BindMapping(stakedMechBattleLogType, stakedMechBattleLogMapping, append(wl, stakedMechBattleLogPrimaryKeyColumns...))
 		if err != nil {
 			return 0, err
 		}
@@ -1450,12 +1450,12 @@ func (o *StackedMechBattleLog) Delete(exec boil.Executor, hardDelete bool) (int6
 	}
 	result, err := exec.Exec(sql, args...)
 	if err != nil {
-		return 0, errors.Wrap(err, "boiler: unable to delete from stacked_mech_battle_logs")
+		return 0, errors.Wrap(err, "boiler: unable to delete from staked_mech_battle_logs")
 	}
 
 	rowsAff, err := result.RowsAffected()
 	if err != nil {
-		return 0, errors.Wrap(err, "boiler: failed to get rows affected by delete for stacked_mech_battle_logs")
+		return 0, errors.Wrap(err, "boiler: failed to get rows affected by delete for staked_mech_battle_logs")
 	}
 
 	if err := o.doAfterDeleteHooks(exec); err != nil {
@@ -1466,9 +1466,9 @@ func (o *StackedMechBattleLog) Delete(exec boil.Executor, hardDelete bool) (int6
 }
 
 // DeleteAll deletes all matching rows.
-func (q stackedMechBattleLogQuery) DeleteAll(exec boil.Executor, hardDelete bool) (int64, error) {
+func (q stakedMechBattleLogQuery) DeleteAll(exec boil.Executor, hardDelete bool) (int64, error) {
 	if q.Query == nil {
-		return 0, errors.New("boiler: no stackedMechBattleLogQuery provided for delete all")
+		return 0, errors.New("boiler: no stakedMechBattleLogQuery provided for delete all")
 	}
 
 	if hardDelete {
@@ -1480,24 +1480,24 @@ func (q stackedMechBattleLogQuery) DeleteAll(exec boil.Executor, hardDelete bool
 
 	result, err := q.Query.Exec(exec)
 	if err != nil {
-		return 0, errors.Wrap(err, "boiler: unable to delete all from stacked_mech_battle_logs")
+		return 0, errors.Wrap(err, "boiler: unable to delete all from staked_mech_battle_logs")
 	}
 
 	rowsAff, err := result.RowsAffected()
 	if err != nil {
-		return 0, errors.Wrap(err, "boiler: failed to get rows affected by deleteall for stacked_mech_battle_logs")
+		return 0, errors.Wrap(err, "boiler: failed to get rows affected by deleteall for staked_mech_battle_logs")
 	}
 
 	return rowsAff, nil
 }
 
 // DeleteAll deletes all rows in the slice, using an executor.
-func (o StackedMechBattleLogSlice) DeleteAll(exec boil.Executor, hardDelete bool) (int64, error) {
+func (o StakedMechBattleLogSlice) DeleteAll(exec boil.Executor, hardDelete bool) (int64, error) {
 	if len(o) == 0 {
 		return 0, nil
 	}
 
-	if len(stackedMechBattleLogBeforeDeleteHooks) != 0 {
+	if len(stakedMechBattleLogBeforeDeleteHooks) != 0 {
 		for _, obj := range o {
 			if err := obj.doBeforeDeleteHooks(exec); err != nil {
 				return 0, err
@@ -1511,21 +1511,21 @@ func (o StackedMechBattleLogSlice) DeleteAll(exec boil.Executor, hardDelete bool
 	)
 	if hardDelete {
 		for _, obj := range o {
-			pkeyArgs := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(obj)), stackedMechBattleLogPrimaryKeyMapping)
+			pkeyArgs := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(obj)), stakedMechBattleLogPrimaryKeyMapping)
 			args = append(args, pkeyArgs...)
 		}
-		sql = "DELETE FROM \"stacked_mech_battle_logs\" WHERE " +
-			strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), 1, stackedMechBattleLogPrimaryKeyColumns, len(o))
+		sql = "DELETE FROM \"staked_mech_battle_logs\" WHERE " +
+			strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), 1, stakedMechBattleLogPrimaryKeyColumns, len(o))
 	} else {
 		currTime := time.Now().In(boil.GetLocation())
 		for _, obj := range o {
-			pkeyArgs := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(obj)), stackedMechBattleLogPrimaryKeyMapping)
+			pkeyArgs := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(obj)), stakedMechBattleLogPrimaryKeyMapping)
 			args = append(args, pkeyArgs...)
 			obj.DeletedAt = null.TimeFrom(currTime)
 		}
 		wl := []string{"deleted_at"}
-		sql = fmt.Sprintf("UPDATE \"stacked_mech_battle_logs\" SET %s WHERE "+
-			strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), 2, stackedMechBattleLogPrimaryKeyColumns, len(o)),
+		sql = fmt.Sprintf("UPDATE \"staked_mech_battle_logs\" SET %s WHERE "+
+			strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), 2, stakedMechBattleLogPrimaryKeyColumns, len(o)),
 			strmangle.SetParamNames("\"", "\"", 1, wl),
 		)
 		args = append([]interface{}{currTime}, args...)
@@ -1537,15 +1537,15 @@ func (o StackedMechBattleLogSlice) DeleteAll(exec boil.Executor, hardDelete bool
 	}
 	result, err := exec.Exec(sql, args...)
 	if err != nil {
-		return 0, errors.Wrap(err, "boiler: unable to delete all from stackedMechBattleLog slice")
+		return 0, errors.Wrap(err, "boiler: unable to delete all from stakedMechBattleLog slice")
 	}
 
 	rowsAff, err := result.RowsAffected()
 	if err != nil {
-		return 0, errors.Wrap(err, "boiler: failed to get rows affected by deleteall for stacked_mech_battle_logs")
+		return 0, errors.Wrap(err, "boiler: failed to get rows affected by deleteall for staked_mech_battle_logs")
 	}
 
-	if len(stackedMechBattleLogAfterDeleteHooks) != 0 {
+	if len(stakedMechBattleLogAfterDeleteHooks) != 0 {
 		for _, obj := range o {
 			if err := obj.doAfterDeleteHooks(exec); err != nil {
 				return 0, err
@@ -1558,8 +1558,8 @@ func (o StackedMechBattleLogSlice) DeleteAll(exec boil.Executor, hardDelete bool
 
 // Reload refetches the object from the database
 // using the primary keys with an executor.
-func (o *StackedMechBattleLog) Reload(exec boil.Executor) error {
-	ret, err := FindStackedMechBattleLog(exec, o.ID)
+func (o *StakedMechBattleLog) Reload(exec boil.Executor) error {
+	ret, err := FindStakedMechBattleLog(exec, o.ID)
 	if err != nil {
 		return err
 	}
@@ -1570,27 +1570,27 @@ func (o *StackedMechBattleLog) Reload(exec boil.Executor) error {
 
 // ReloadAll refetches every row with matching primary key column values
 // and overwrites the original object slice with the newly updated slice.
-func (o *StackedMechBattleLogSlice) ReloadAll(exec boil.Executor) error {
+func (o *StakedMechBattleLogSlice) ReloadAll(exec boil.Executor) error {
 	if o == nil || len(*o) == 0 {
 		return nil
 	}
 
-	slice := StackedMechBattleLogSlice{}
+	slice := StakedMechBattleLogSlice{}
 	var args []interface{}
 	for _, obj := range *o {
-		pkeyArgs := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(obj)), stackedMechBattleLogPrimaryKeyMapping)
+		pkeyArgs := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(obj)), stakedMechBattleLogPrimaryKeyMapping)
 		args = append(args, pkeyArgs...)
 	}
 
-	sql := "SELECT \"stacked_mech_battle_logs\".* FROM \"stacked_mech_battle_logs\" WHERE " +
-		strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), 1, stackedMechBattleLogPrimaryKeyColumns, len(*o)) +
+	sql := "SELECT \"staked_mech_battle_logs\".* FROM \"staked_mech_battle_logs\" WHERE " +
+		strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), 1, stakedMechBattleLogPrimaryKeyColumns, len(*o)) +
 		"and \"deleted_at\" is null"
 
 	q := queries.Raw(sql, args...)
 
 	err := q.Bind(nil, exec, &slice)
 	if err != nil {
-		return errors.Wrap(err, "boiler: unable to reload all in StackedMechBattleLogSlice")
+		return errors.Wrap(err, "boiler: unable to reload all in StakedMechBattleLogSlice")
 	}
 
 	*o = slice
@@ -1598,10 +1598,10 @@ func (o *StackedMechBattleLogSlice) ReloadAll(exec boil.Executor) error {
 	return nil
 }
 
-// StackedMechBattleLogExists checks if the StackedMechBattleLog row exists.
-func StackedMechBattleLogExists(exec boil.Executor, iD string) (bool, error) {
+// StakedMechBattleLogExists checks if the StakedMechBattleLog row exists.
+func StakedMechBattleLogExists(exec boil.Executor, iD string) (bool, error) {
 	var exists bool
-	sql := "select exists(select 1 from \"stacked_mech_battle_logs\" where \"id\"=$1 and \"deleted_at\" is null limit 1)"
+	sql := "select exists(select 1 from \"staked_mech_battle_logs\" where \"id\"=$1 and \"deleted_at\" is null limit 1)"
 
 	if boil.DebugMode {
 		fmt.Fprintln(boil.DebugWriter, sql)
@@ -1611,7 +1611,7 @@ func StackedMechBattleLogExists(exec boil.Executor, iD string) (bool, error) {
 
 	err := row.Scan(&exists)
 	if err != nil {
-		return false, errors.Wrap(err, "boiler: unable to check if stacked_mech_battle_logs exists")
+		return false, errors.Wrap(err, "boiler: unable to check if staked_mech_battle_logs exists")
 	}
 
 	return exists, nil
