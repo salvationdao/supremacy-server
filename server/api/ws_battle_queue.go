@@ -30,6 +30,7 @@ func BattleQueueController(api *API) {
 	api.SecureUserFactionCommand(HubKeyBattleLobbyCreate, api.BattleLobbyCreate)
 	api.SecureUserFactionCommand(HubKeyBattleLobbyJoin, api.BattleLobbyJoin)
 	api.SecureUserFactionCommand(HubKeyBattleLobbyLeave, api.BattleLobbyLeave)
+	api.SecureUserCommand(HubKeyBattleLobbyTopUpReward, api.BattleLobbyTopUpReward)
 
 	api.SecureUserFactionCommand(HubKeyMechStake, api.MechStake)
 	api.SecureUserFactionCommand(HubKeyMechUnstake, api.MechUnstake)
@@ -168,10 +169,6 @@ func (api *API) BattleLobbyCreate(ctx context.Context, user *boiler.Player, fact
 				Description:          "adding extra sups reward for battle lobby.",
 			})
 			if err != nil {
-				gamelog.L.Error().
-					Str("player_id", user.ID).
-					Str("amount", bl.EntryFee.StringFixed(0)).
-					Err(err).Msg("Failed to pay sups on entering battle lobby.")
 				return terror.Error(err, "Failed to pay sups on entering battle lobby.")
 			}
 
@@ -1384,6 +1381,84 @@ func (api *API) PlayerInvolvedBattleLobbies(ctx context.Context, user *boiler.Pl
 	}
 
 	reply(server.BattleLobbiesFactionFilter(resp, factionID, user.ID))
+
+	return nil
+}
+
+type BattleLobbyTopUpRewardRequest struct {
+	Payload struct {
+		BattleLobbyID string          `json:"battle_lobby_id"`
+		Amount        decimal.Decimal `json:"amount"`
+	} `json:"payload"`
+}
+
+const HubKeyBattleLobbyTopUpReward = "BATTLE:LOBBY:TOP:UP:REWARD"
+
+func (api *API) BattleLobbyTopUpReward(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
+	req := &BattleLobbyTopUpRewardRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return terror.Error(err, "Invalid request received.")
+	}
+
+	if !req.Payload.Amount.IsPositive() {
+		return terror.Error(fmt.Errorf("amount less than zero"), "Reward must be greater than zero.")
+	}
+
+	l := gamelog.L.With().Str("func", "BattleLobbyTopUpReward").Str("user id", user.ID).Str("battle lobby id", req.Payload.BattleLobbyID).Str("amount", req.Payload.Amount.Mul(decimal.New(1, 18)).String()).Logger()
+
+	err = api.ArenaManager.SendBattleQueueFunc(func() error {
+		var bl *boiler.BattleLobby
+		bl, err = boiler.BattleLobbies(
+			boiler.BattleLobbyWhere.ID.EQ(req.Payload.BattleLobbyID),
+		).One(gamedb.StdConn)
+		if err != nil {
+			return terror.Error(err, "Failed to load battle lobby.")
+		}
+
+		if bl.EndedAt.Valid {
+			return terror.Error(fmt.Errorf("battle already ended"), "Failed to battle is already ended.")
+		}
+
+		if bl.AssignedToBattleID.Valid {
+			return terror.Error(fmt.Errorf("battle has already started"), "The battle has already started.")
+		}
+
+		amount := req.Payload.Amount.Mul(decimal.New(1, 18))
+
+		var paidTxID string
+		paidTxID, err = api.Passport.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
+			FromUserID:           uuid.Must(uuid.FromString(user.ID)),
+			ToUserID:             uuid.Must(uuid.FromString(server.SupremacyBattleUserID)),
+			Amount:               amount.StringFixed(0),
+			TransactionReference: server.TransactionReference(fmt.Sprintf("battle_lobby_extra_reward|%s|%d", bl.ID, time.Now().UnixNano())),
+			Group:                string(server.TransactionGroupSupremacy),
+			SubGroup:             string(server.TransactionGroupBattle),
+			Description:          "adding extra sups reward for battle lobby.",
+		})
+		if err != nil {
+			return terror.Error(err, "Failed to add sups reward, check your balance and try again.")
+		}
+
+		blr := &boiler.BattleLobbyExtraSupsReward{
+			BattleLobbyID: bl.ID,
+			OfferedByID:   user.ID,
+			Amount:        req.Payload.Amount.Mul(decimal.New(1, 18)),
+			PaidTXID:      paidTxID,
+		}
+
+		err = blr.Insert(gamedb.StdConn, boil.Infer())
+		if err != nil {
+			l.Error().Err(err).Interface("battle lobby reward", blr).Msg("Failed to add battle lobby reward.")
+			return terror.Error(err, "Failed to add battle lobby reward.")
+		}
+
+		api.ArenaManager.BattleLobbyDebounceBroadcastChan <- []string{bl.ID}
+
+		return nil
+	})
+
+	reply(true)
 
 	return nil
 }
