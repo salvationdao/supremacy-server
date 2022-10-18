@@ -428,6 +428,11 @@ func (api *API) ModToolRenameMech(ctx context.Context, user *boiler.Player, key 
 		return terror.Error(err, "Invalid request received.")
 	}
 
+	err = IsValidUsername(req.Payload.NewMechName)
+	if err != nil {
+		return terror.Error(err, "Invalid username, must be between 3 - 15 characters long, cannot contain profanities.")
+	}
+
 	mech, err := boiler.FindMech(gamedb.StdConn, req.Payload.MechID)
 	if err != nil {
 		return terror.Error(err, "Failed to find mech")
@@ -493,6 +498,11 @@ func (api *API) ModToolRenamePlayer(ctx context.Context, user *boiler.Player, ke
 	err := json.Unmarshal(payload, req)
 	if err != nil {
 		return terror.Error(err, "Invalid request received.")
+	}
+
+	err = IsValidUsername(req.Payload.NewUsername)
+	if err != nil {
+		return terror.Error(err, "Invalid username, must be between 3 - 15 characters long, cannot contain profanities.")
 	}
 
 	player, err := boiler.FindPlayer(gamedb.StdConn, req.Payload.PlayerID)
