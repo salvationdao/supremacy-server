@@ -28,6 +28,7 @@ func NewModToolsController(api *API) {
 	api.SecureAdminCommand(HubKeyModToolsBanUser, api.ModToolBanUser)
 	api.SecureAdminCommand(HubKeyModToolsUnbanUser, api.ModToolUnbanUser)
 	api.SecureAdminCommand(HubKeyModToolRestartServer, api.ModToolRestartServer)
+	api.SecureAdminCommand(HubKeyModToolLookupHistory, api.ModToolLookupHistory)
 }
 
 const HubKeyModToolsGetUser = "MOD:GET:USER"
