@@ -554,5 +554,12 @@ func (api *API) ModToolRenamePlayer(ctx context.Context, user *boiler.Player, ke
 
 	ws.PublishMessage(fmt.Sprintf("/secure/user/%s/system_messages", player.ID), server.HubKeySystemMessageListUpdatedSubscribe, true)
 
+	slackMessage := fmt.Sprintf("<!subteam^S03GCC87CD7>\n\n:information_source: `%s#%d` has renamed a user :information_source: \n\n```Reason: %s```", user.Username.String, user.Gid, reason)
+
+	err = slack.SendSlackNotification(slackMessage, db.GetStrWithDefault(db.KeySlackModChannelID, "C03GDHLV9FE"), slack.ModToolsAppToken)
+	if err != nil {
+		gamelog.L.Err(err).Msg("Failed to send slack notification for banning user")
+	}
+
 	return nil
 }
