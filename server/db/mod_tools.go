@@ -220,7 +220,7 @@ func UpdateLookupHistory(userID, lookupPlayerID string) error {
 		boiler.ModActionAuditWhere.ActionType.EQ(boiler.ModActionTypeLOOKUP),
 		qm.OrderBy(fmt.Sprintf("%s DESC", boiler.ModActionAuditColumns.CreatedAt)),
 	).One(gamedb.StdConn)
-	if err != nil && errors.Is(err, sql.ErrNoRows) {
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return terror.Error(err, "Failed to get mod action audit")
 	}
 
