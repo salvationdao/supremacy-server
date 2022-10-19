@@ -130,7 +130,7 @@ var TableNames = struct {
 	QuestionnaireAnswer                                string
 	QuestionnaireOptions                               string
 	Quests                                             string
-	RepairAgentLogs                                    string
+	RepairAgentLogsOld                                 string
 	RepairAgents                                       string
 	RepairBlocks                                       string
 	RepairCases                                        string
@@ -300,7 +300,7 @@ var TableNames = struct {
 	QuestionnaireAnswer:            "questionnaire_answer",
 	QuestionnaireOptions:           "questionnaire_options",
 	Quests:                         "quests",
-	RepairAgentLogs:                "repair_agent_logs",
+	RepairAgentLogsOld:             "repair_agent_logs_old",
 	RepairAgents:                   "repair_agents",
 	RepairBlocks:                   "repair_blocks",
 	RepairCases:                    "repair_cases",
