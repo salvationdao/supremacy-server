@@ -10,3 +10,4 @@ type VoiceStreamResp struct {
 	UserGID            int         `json:"user_gid"`
 	CurrentKickVote    int         `json:"current_kick_vote"`
 }
+
