@@ -26,7 +26,6 @@ const KeySaleAbilityInflationPercentage KVKey = "sale_ability_inflation_percenta
 
 const KeySaleAbilityTimeBetweenRefreshSeconds KVKey = "sale_ability_time_between_refresh_seconds"
 const KeySaleAbilityPurchaseLimit KVKey = "sale_ability_purchase_limit"
-const KeySaleAbilityClaimLimit KVKey = "sale_ability_claim_limit"
 const KeySaleAbilityPriceTickerIntervalSeconds KVKey = "sale_ability_price_ticker_interval_seconds"
 const KeySaleAbilityLimit KVKey = "sale_ability_limit"
 
@@ -79,8 +78,14 @@ const KeyCanRecordReplayStatus KVKey = "can_record_replay"
 const KeyVoiceExpiryTimeHours KVKey = "voice_expiry_time_hours"
 const KeyVoiceBanTimeHours KVKey = "voice_ban_time_hours"
 
+const KeySlackModChannelID KVKey = "slack_mod_channel_id"
+const KeySlackRapiChannelID KVKey = "slack_rapid_channel_id"
+const KeySlackDevChannelID KVKey = "slack_dev_channel_id"
+
 const KeyAutoRepairSlotCount KVKey = "auto_repair_slot_count"
 const KeyAutoRepairDurationSeconds KVKey = "auto_repair_duration_seconds"
+
+const KeyMinimumMechActionCount KVKey = "minimum_mech_action_count"
 
 const KeyFiatToSUPCut KVKey = "fiat_to_sup_cut" // TODO: find better name to describe: "20% cheaper than fiat pricing"
 

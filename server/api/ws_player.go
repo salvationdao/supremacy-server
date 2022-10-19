@@ -413,6 +413,9 @@ func PlayerBanRestrictions(pb *boiler.PlayerBan) []string {
 	if pb.BanSupsContribute {
 		restrictions = append(restrictions, RestrictionSupsContribute)
 	}
+	if pb.BanMechQueue {
+		restrictions = append(restrictions, RestrictionsMechQueuing)
+	}
 	return restrictions
 }
 
@@ -1375,7 +1378,6 @@ func (pc *PlayerController) PlayerUpdateUsernameHandler(ctx context.Context, use
 		return terror.Error(err, errMsg)
 	}
 	reply(user.Username.String)
-
 	err = user.L.LoadRole(gamedb.StdConn, true, user, nil)
 	if err != nil {
 		return terror.Error(err, "Failed to update player's marketing preferences.")

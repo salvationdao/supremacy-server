@@ -14,7 +14,6 @@ const HubKeyMechMoveCommandSubscribe = "MECH:MOVE:COMMAND:SUBSCRIBE"
 const HubKeySaleAbilitiesPriceSubscribe = "SALE:ABILITIES:PRICE:SUBSCRIBE"
 const HubKeySaleAbilitiesListSubscribe = "SALE:ABILITIES:LIST:SUBSCRIBE"
 const HubKeySaleAbilitiesList = "SALE:ABILITIES:LIST"
-const HubKeySaleAbilityClaim = "SALE:ABILITY:CLAIM"
 const HubKeySaleAbilityPurchase = "SALE:ABILITY:PURCHASE"
 
 const HubKeyGlobalAnnouncementSubscribe = "GLOBAL_ANNOUNCEMENT:SUBSCRIBE"
@@ -81,9 +80,23 @@ const HubKeyMysteryCrateSubscribe = "STORE:MYSTERY:CRATE:SUBSCRIBE"
 const HubKeyShoppingCartExpired = "FIAT:SHOPPING_CART:EXPIRED"
 const HubKeyShoppingCartUpdated = "FIAT:SHOPPING_CART:UPDATED"
 
-// battle abilities
+const HubKeyMiniMapAbilityContentSubscribe = "MINI:MAP:ABILITY:CONTENT"
+const HubKeyMechCommandUpdateSubscribe = "MECH:COMMAND:UPDATE"
+const HubKeyFactionMechCommandUpdateSubscribe = "FACTION:MECH:COMMANDS:UPDATE"
+const HubKeyMiniMapUpdateSubscribe = "MINIMAP:UPDATES:SUBSCRIBE"
 
-const HubKeyMiniMapAbilityDisplayList = "MINI:MAP:ABILITY:DISPLAY:LIST"
+// binary key
+const (
+	BinaryKeyWarMachineStats byte = 1
+	BinaryKeyMiniMapEvents   byte = 2
+)
+
+// json binary
+
+type JsonBinaryData struct {
+	Key  string      `json:"key"`
+	Data interface{} `json:"data"`
+}
 
 // voice streams
 
