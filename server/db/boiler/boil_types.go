@@ -291,9 +291,12 @@ const (
 
 // Enum values for ModActionType
 const (
-	ModActionTypeBAN     = "BAN"
-	ModActionTypeUNBAN   = "UNBAN"
-	ModActionTypeRESTART = "RESTART"
+	ModActionTypeBAN         = "BAN"
+	ModActionTypeUNBAN       = "UNBAN"
+	ModActionTypeRESTART     = "RESTART"
+	ModActionTypeLOOKUP      = "LOOKUP"
+	ModActionTypeMECH_RENAME = "MECH_RENAME"
+	ModActionTypeUSER_RENAME = "USER_RENAME"
 )
 
 // Enum values for MultiplierTypeEnum

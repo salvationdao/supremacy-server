@@ -13,6 +13,7 @@ import (
 	"server/voice_chat"
 	"time"
 
+	"github.com/sasha-s/go-deadlock"
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 
@@ -27,6 +28,11 @@ func NewVoiceStreamController(api *API) {
 	api.SecureUserFactionCommand(server.HubKeyVoiceStreamJoinFactionCommander, api.JoinFactionCommander)
 	api.SecureUserFactionCommand(server.HubKeyVoiceStreamLeaveFactionCommander, api.LeaveFactionCommander)
 	api.SecureUserFactionCommand(server.HubKeyVoiceStreamVoteKick, api.VoteKickFactionCommander)
+
+	api.SecureUserFactionCommand(server.HubKeyVoiceStreamConnect, api.VoiceChatConnect)
+	api.SecureUserFactionCommand(server.HubKeyVoiceStreamDisconnect, api.VoiceChatDisconnect)
+	api.SecureUserFactionCommand(server.HubKeyVoiceStreamGetListeners, api.VoiceChatGetListeners)
+
 }
 
 func (api *API) VoiceStreamSubscribe(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
@@ -46,6 +52,49 @@ func (api *API) VoiceStreamSubscribe(ctx context.Context, user *boiler.Player, k
 
 	reply(rvs)
 
+	return nil
+}
+
+func (api *API) VoiceStreamListenersSubscribe(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
+	if !user.FactionID.Valid {
+		return fmt.Errorf("faction id not found")
+	}
+
+	arenaID := chi.RouteContext(ctx).URLParam("arena_id")
+	if arenaID == "" {
+		return terror.Error(fmt.Errorf("missing arena id"), "Missing arena id")
+	}
+
+	resp := api.VoiceChatListeners.CurrentVoiceChatListeners()
+	reply(resp)
+
+	return nil
+}
+
+func (api *API) VoiceChatGetListeners(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
+	req := &VoiceStreamReq{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return terror.Error(err, "Invalid request received")
+	}
+
+	// loop through listeners
+	for _, vl := range api.VoiceChatListeners.Listeners {
+		pvl, err := boiler.PlayerActiveLogs(
+			boiler.PlayerActiveLogWhere.PlayerID.EQ(vl.ID),
+			qm.OrderBy(boiler.PlayerActiveLogColumns.ActiveAt+" DESC"),
+		).One(gamedb.StdConn)
+		if err != nil || pvl == nil {
+			gamelog.L.Error().Str("player id", vl.ID).Err(err).Msg("Failed to get player active log")
+		}
+
+		// not active then remove listener
+		if pvl.InactiveAt.Valid {
+			api.VoiceChatListeners.RemoveListener(pvl.PlayerID)
+		}
+	}
+
+	reply(api.VoiceChatListeners.CurrentVoiceChatListeners())
 	return nil
 }
 
@@ -163,7 +212,6 @@ func (api *API) JoinFactionCommander(ctx context.Context, user *boiler.Player, f
 	}
 
 	reply(true)
-
 	return nil
 }
 
@@ -205,7 +253,6 @@ func (api *API) LeaveFactionCommander(ctx context.Context, user *boiler.Player, 
 	}
 
 	reply(true)
-
 	return nil
 }
 
@@ -290,6 +337,90 @@ func (api *API) VoteKickFactionCommander(ctx context.Context, user *boiler.Playe
 	}
 
 	reply(true)
+	return nil
+}
+
+func (api *API) VoiceChatConnect(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
+	req := &VoiceStreamReq{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return terror.Error(err, "Invalid request received")
+	}
+	p := &server.PublicPlayer{
+		ID:        user.ID,
+		Username:  user.Username,
+		Gid:       user.Gid,
+		FactionID: user.FactionID,
+	}
+
+	// add
+	api.VoiceChatListeners.AddListener(p)
+	err = voice_chat.UpdateFactionVoiceStreamListeners(user.FactionID.String, req.Payload.ArenaID, api.VoiceChatListeners.CurrentVoiceChatListeners())
+	if err != nil {
+		return terror.Error(err, "failed to update voice stream listeners")
+	}
+	reply(true)
 
 	return nil
+}
+
+func (api *API) VoiceChatDisconnect(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
+	req := &VoiceStreamReq{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return terror.Error(err, "Invalid request received")
+	}
+
+	// remove
+	api.VoiceChatListeners.RemoveListener(user.ID)
+	err = voice_chat.UpdateFactionVoiceStreamListeners(user.FactionID.String, req.Payload.ArenaID, api.VoiceChatListeners.CurrentVoiceChatListeners())
+	if err != nil {
+		return terror.Error(err, "failed to update voice stream listeners")
+	}
+
+	reply(true)
+	return nil
+}
+
+type VoiceChatListeners struct {
+	Listeners []*server.PublicPlayer
+	deadlock.RWMutex
+}
+
+// CurrentVoiceChatListeners return a copy of current voice stream listeners
+func (vcl *VoiceChatListeners) CurrentVoiceChatListeners() []*server.PublicPlayer {
+	vcl.RLock()
+	defer vcl.RUnlock()
+
+	return vcl.Listeners
+}
+
+func (vcl *VoiceChatListeners) AddListener(newListener *server.PublicPlayer) {
+	vcl.Lock()
+	found := false
+	for _, l := range vcl.Listeners {
+		if l.ID == newListener.ID {
+			found = true
+		}
+	}
+
+	if !found {
+		vcl.Listeners = append(vcl.Listeners, newListener)
+	}
+	vcl.Unlock()
+}
+
+func (vcl *VoiceChatListeners) RemoveListener(listenerID string) {
+	vcl.Lock()
+
+	newSlice := []*server.PublicPlayer{}
+	for _, v := range vcl.Listeners {
+		if v.ID != listenerID {
+			newSlice = append(newSlice, v)
+		}
+	}
+
+	vcl.Listeners = newSlice
+	vcl.Unlock()
+
 }
