@@ -385,6 +385,22 @@ const (
 	RepairAgentFinishReasonSUCCEEDED = "SUCCEEDED"
 )
 
+// Enum values for RepairGameBlockType
+const (
+	RepairGameBlockTypeNORMAL = "NORMAL"
+	RepairGameBlockTypeSHRINK = "SHRINK"
+	RepairGameBlockTypeFAST   = "FAST"
+	RepairGameBlockTypeBOMB   = "BOMB"
+	RepairGameBlockTypeEND    = "END"
+)
+
+// Enum values for RepairGameBlockTriggerKey
+const (
+	RepairGameBlockTriggerKeyM        = "M"
+	RepairGameBlockTriggerKeyN        = "N"
+	RepairGameBlockTriggerKeySPACEBAR = "SPACEBAR"
+)
+
 // Enum values for RepairFinishReason
 const (
 	RepairFinishReasonEXPIRED   = "EXPIRED"

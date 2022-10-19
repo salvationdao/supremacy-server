@@ -308,6 +308,8 @@ func NewAPI(
 
 				// user repair bay
 				s.WS("/user/{user_id}/repair_bay", server.HubKeyMechRepairSlots, server.MustSecure(api.PlayerMechRepairSlots), MustMatchUserID)
+
+				s.WS("/user/{user_id}/repair_agent/{repair_agent_id}/next_block", server.HubKeyNextRepairGameBlock, server.MustSecure(api.NextRepairBlock), MustMatchUserID)
 			}))
 
 			// secured user commander

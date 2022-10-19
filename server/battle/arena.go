@@ -71,6 +71,8 @@ type ArenaManager struct {
 	ChallengeFundUpdateChan          chan bool
 	BattleLobbyDebounceBroadcastChan chan []string
 	LobbyFuncMx                      *deadlock.Mutex
+
+	RepairGameBlockMx deadlock.RWMutex
 }
 
 type Opts struct {
@@ -101,6 +103,7 @@ func NewArenaManager(opts *Opts) (*ArenaManager, error) {
 		ChallengeFundUpdateChan:          make(chan bool),
 		BattleLobbyDebounceBroadcastChan: make(chan []string, 10),
 		LobbyFuncMx:                      &deadlock.Mutex{},
+		RepairGameBlockMx:                deadlock.RWMutex{},
 	}
 
 	am.server = &http.Server{
