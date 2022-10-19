@@ -685,6 +685,12 @@ func (am *ArenaManager) RepairGameBlockProcesser(repairAgentID string, repairGam
 	bombReduceBlockCount := db.GetIntWithDefault(db.KeyDeductBlockCountFromBomb, 3)
 	requiredScore := db.GetIntWithDefault(db.KeyRequiredRepairStacks, 50)
 
+	keys := []string{
+		boiler.RepairGameBlockTriggerKeyM,
+		boiler.RepairGameBlockTriggerKeyN,
+		boiler.RepairGameBlockTriggerKeySPACEBAR,
+	}
+
 	// pre-load repair game block to shorten the process time
 	repairGameBlocks, err := boiler.RepairGameBlocks(
 		boiler.RepairGameBlockWhere.Type.NEQ(boiler.RepairGameBlockTypeEND),
@@ -721,15 +727,16 @@ func (am *ArenaManager) RepairGameBlockProcesser(repairAgentID string, repairGam
 	}
 
 	// check, if the block size grow
-	if lastBlock.Width.LessThan(stackedBlockDimension.Width) || lastBlock.Depth.LessThan(stackedBlockDimension.Depth) {
+	if lastBlock.Width.LessThan(stackedBlockDimension.Width.Round(6)) || lastBlock.Depth.LessThan(stackedBlockDimension.Depth.Round(6)) {
+		l.Warn().Interface("lastBlock", lastBlock).Interface("dimesion", stackedBlockDimension).Msg("The block")
 		return nil, terror.Error(fmt.Errorf("cheat detected"), "The block grow bigger!")
 	}
 
 	// update the latest block
 	lastBlock.IsFailed = isFailed
 	lastBlock.StackedAt = null.TimeFrom(time.Now())
-	lastBlock.StackedWidth = decimal.NewNullDecimal(stackedBlockDimension.Width)
-	lastBlock.StackedDepth = decimal.NewNullDecimal(stackedBlockDimension.Depth)
+	lastBlock.StackedWidth = decimal.NewNullDecimal(stackedBlockDimension.Width.Round(5))
+	lastBlock.StackedDepth = decimal.NewNullDecimal(stackedBlockDimension.Depth.Round(5))
 
 	tx, err := gamedb.StdConn.Begin()
 	if err != nil {
@@ -819,18 +826,23 @@ func (am *ArenaManager) RepairGameBlockProcesser(repairAgentID string, repairGam
 			rand.Seed(time.Now().UnixNano())
 			rand.Shuffle(len(pool), func(i, j int) { pool[i], pool[j] = pool[j], pool[i] })
 
+			rand.Seed(time.Now().UnixNano())
+			rand.Shuffle(len(keys), func(i, j int) { keys[i], keys[j] = keys[j], keys[i] })
+
 			block := pool[0]
-			sizeMultiplier := block.MinSizeMultiplier
-			speedMulitplier := block.MinSpeedMultiplier.Mul(block.MaxSpeedMultiplier)
+			sizeMultiDiff := block.MaxSizeMultiplier.Sub(block.MinSizeMultiplier).Mul(decimal.NewFromFloat(rand.Float64()))
+			sizeMultiplier := block.MaxSizeMultiplier.Sub(sizeMultiDiff)
+			speedMultiDiff := block.MaxSpeedMultiplier.Sub(block.MinSpeedMultiplier).Mul(decimal.NewFromFloat(rand.Float64()))
+			speedMulitplier := block.MinSpeedMultiplier.Add(speedMultiDiff).Mul(block.MaxSpeedMultiplier)
 
 			nextRepairBlock = &boiler.RepairGameBlockLog{
 				RepairAgentID:       repairAgentID,
 				RepairGameBlockType: block.Type,
 				SizeMultiplier:      sizeMultiplier,
 				SpeedMultiplier:     speedMulitplier,
-				TriggerKey:          boiler.RepairGameBlockTriggerKeySPACEBAR,
-				Width:               stackedBlockDimension.Width,
-				Depth:               stackedBlockDimension.Depth,
+				TriggerKey:          keys[0],
+				Width:               stackedBlockDimension.Width.Mul(sizeMultiplier).Round(5),
+				Depth:               stackedBlockDimension.Depth.Mul(sizeMultiplier).Round(5),
 			}
 
 			err = nextRepairBlock.Insert(tx, boil.Infer())
