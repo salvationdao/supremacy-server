@@ -4,12 +4,12 @@ import (
 	"context"
 	"fmt"
 	"github.com/volatiletech/null/v8"
+	"github.com/volatiletech/sqlboiler/v4/boil"
 	"server"
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
-
-	"github.com/volatiletech/sqlboiler/v4/boil"
+	"sort"
 
 	"github.com/gofrs/uuid"
 	"github.com/ninja-software/terror/v2"
@@ -331,6 +331,11 @@ func TemplateRegister(templateID uuid.UUID, ownerID uuid.UUID) (
 		// join animations
 		// TODO: no animations yet
 		// join weapons
+
+		// sort slice to make rocket pods last
+		sort.Slice(weapons, func(i, j int) bool {
+			return weapons[i].ID == server.WeaponRocketPodsZai || weapons[i].ID == server.WeaponRocketPodsRM || weapons[i].ID == server.WeaponRocketPodsBC
+		})
 		for i := 0; i < mechs[0].WeaponHardpoints; i++ {
 			if len(weapons) > i {
 				err = AttachWeaponToMech(tx, ownerID.String(), mechs[0].ID, weapons[i].ID)
