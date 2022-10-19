@@ -752,7 +752,7 @@ func (am *ArenaManager) RepairGameBlockProcesser(repairAgentID string, repairGam
 
 	var result *server.RepairGameBlock
 	// if the block does not failed and the block is not a bomb
-	if !isFailed {
+	if !isFailed || lastBlock.RepairGameBlockType == boiler.RepairGameBlockTypeBOMB {
 		// generate next block
 		var nextRepairBlock *boiler.RepairGameBlockLog
 
@@ -810,17 +810,14 @@ func (am *ArenaManager) RepairGameBlockProcesser(repairAgentID string, repairGam
 			// random select a block
 			var pool []*boiler.RepairGameBlock
 			for _, rgb := range repairGameBlocks {
-				for i := decimal.Zero; i.LessThan(rgb.Probability.Mul(decimal.NewFromInt(100))); i.Add(decimal.NewFromInt(1)) {
+				for i := decimal.Zero; i.LessThan(rgb.Probability.Mul(decimal.NewFromInt(100))); i = i.Add(decimal.NewFromInt(1)) {
 					pool = append(pool, rgb)
 				}
 			}
 
 			// shuffle the slice of opted in supporters
 			rand.Seed(time.Now().UnixNano())
-			for i := range pool {
-				j := rand.Intn(i + 1)
-				pool[i], pool[j] = pool[j], pool[i]
-			}
+			rand.Shuffle(len(pool), func(i, j int) { pool[i], pool[j] = pool[j], pool[i] })
 
 			block := pool[0]
 			sizeMultiplier := block.MinSizeMultiplier

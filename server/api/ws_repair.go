@@ -1166,7 +1166,7 @@ func (api *API) RepairAgentRecord(ctx context.Context, user *boiler.Player, key 
 		}
 	}
 
-	ws.PublishMessage(fmt.Sprintf("/user/%s/repair_agent/%s/next_block", user.ID, ra.ID), server.HubKeyNextRepairGameBlock, nextBlock)
+	ws.PublishMessage(fmt.Sprintf("/secure/user/%s/repair_agent/%s/next_block", user.ID, ra.ID), server.HubKeyNextRepairGameBlock, nextBlock)
 
 	return nil
 }
