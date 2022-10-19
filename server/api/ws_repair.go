@@ -1489,6 +1489,10 @@ func (api *API) NextRepairBlock(ctx context.Context, user *boiler.Player, key st
 		TotalScore: totalScore,
 	}
 
-	reply(nextBlock)
+	reply(nextBlock) // initial block
+	go func() {
+		time.Sleep(250 * time.Millisecond)
+		reply(nextBlock)
+	}()
 	return nil
 }
