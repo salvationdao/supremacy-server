@@ -16,6 +16,7 @@ import (
 	"github.com/shopspring/decimal"
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
+	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 )
 
 type AdminController struct {
@@ -30,6 +31,7 @@ func NewAdminController(api *API) *AdminController {
 	api.SecureAdminCommand(HubKeyAdminFiatProductGet, adminHub.FiatProductGet)
 	api.SecureAdminCommand(HubKeyAdminFiatProductList, adminHub.FiatProductList)
 	api.SecureAdminCommand(HubKeyAdminFiatProductCreate, adminHub.FiatProductCreate)
+	api.SecureAdminCommand(HubKeyAdminFiatProductUpdate, adminHub.FiatProductUpdate)
 	api.SecureAdminCommand(HubKeyAdminFiatBlueprintMechList, adminHub.FiatBlueprintMechList)
 
 	return adminHub
@@ -223,6 +225,89 @@ func (ac *AdminController) FiatProductCreate(ctx context.Context, user *boiler.P
 	err = tx.Commit()
 	if err != nil {
 		return terror.Error(err, errMsg)
+	}
+
+	reply(true)
+	return nil
+}
+
+type AdminFiatProductUpdateRequest struct {
+	Payload struct {
+		ID               string   `json:"id"`
+		Name             string   `json:"name"`
+		Description      string   `json:"description"`
+		MechBlueprintIDs []string `json:"mech_blueprint_ids"`
+		PriceDollars     int64    `json:"price_dollars"`
+		PriceCents       int64    `json:"price_cents"`
+	} `json:"payload"`
+}
+
+const HubKeyAdminFiatProductUpdate = "ADMIN:FIAT:PRODUCT:UPDATE"
+
+func (ac *AdminController) FiatProductUpdate(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
+	errMsg := "Failed to update product, please try again."
+
+	req := &AdminFiatProductUpdateRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return terror.Error(err, "Invalid request received.")
+	}
+	if req.Payload.ID == "" {
+		return terror.Error(fmt.Errorf("product id is required"), "Product id is required.")
+	}
+	if req.Payload.Name == "" {
+		return terror.Error(fmt.Errorf("name is required"), "Name is required.")
+	}
+	if req.Payload.Description == "" {
+		return terror.Error(fmt.Errorf("description is required"), "Description is required.")
+	}
+	if req.Payload.PriceDollars <= 0 && req.Payload.PriceCents <= 0 {
+		return terror.Error(fmt.Errorf("pricing is required"), "At least one pricing is required.")
+	}
+
+	// Get product
+	product, err := boiler.FiatProducts(
+		boiler.FiatProductWhere.ID.EQ(req.Payload.ID),
+		qm.Load(boiler.FiatProductRels.FiatProductPricings),
+	).One(gamedb.StdConn)
+	if errors.Is(err, sql.ErrNoRows) {
+		return terror.Error(fmt.Errorf("product not found"), "Unable to find product, please try again.")
+	}
+	if err != nil {
+		return terror.Error(err, errMsg)
+	}
+
+	// Update Product
+	tx, err := gamedb.StdConn.Begin()
+	if err != nil {
+		return terror.Error(fmt.Errorf("unable to start db transaction"), errMsg)
+	}
+	defer tx.Rollback()
+
+	product.Name = req.Payload.Name
+	product.Description = req.Payload.Description
+
+	_, err = product.Update(tx, boil.Infer())
+	if err != nil {
+		return terror.Error(err, errMsg)
+	}
+
+	var pricingUSD *boiler.FiatProductPricing
+	for _, p := range product.R.FiatProductPricings {
+		if p.CurrencyCode == server.FiatCurrencyCodeUSD {
+			pricingUSD = p
+			pricingUSD.Amount = decimal.NewFromInt(req.Payload.PriceDollars*100 + req.Payload.PriceCents)
+			_, err = pricingUSD.Update(tx, boil.Whitelist(boiler.FiatProductPricingColumns.Amount))
+			if err != nil {
+				return terror.Error(err, errMsg)
+			}
+			break
+		}
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		return terror.Error(fmt.Errorf("unable to commit db transaction"), errMsg)
 	}
 
 	reply(true)
