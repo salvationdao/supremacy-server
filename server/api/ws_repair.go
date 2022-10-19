@@ -495,12 +495,6 @@ func (api *API) broadcastRepairOffer(repairOfferID string) error {
 	return nil
 }
 
-type RepairAgentCompleteRequest struct {
-	Payload struct {
-		RepairAgentID string `json:"repair_agent_id"`
-	} `json:"payload"`
-}
-
 // BroadcastMechQueueStat broadcast current mech queue stat
 func BroadcastMechQueueStat(mechID string) {
 	ci, err := boiler.CollectionItems(
