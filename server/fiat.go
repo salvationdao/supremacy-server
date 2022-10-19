@@ -69,6 +69,7 @@ type FiatProductItemBlueprint struct {
 	MechSkinBlueprintID      string `json:"mech_skin_blueprint_id,omitempty"`
 	UtilityBlueprintID       string `json:"utility_blueprint_id,omitempty"`
 	WeaponBlueprintID        string `json:"weapon_blueprint_id,omitempty"`
+	WeaponSkinBlueprintID    string `json:"weapon_skin_blueprint_id,omitempty"`
 	AmmoBlueprintID          string `json:"ammo_blueprint_id,omitempty"`
 	PowerCoreBlueprintID     string `json:"power_corer_blueprint_id,omitempty"`
 	PlayerAbilityBlueprintID string `json:"player_ability_blueprint_id,omitempty"`

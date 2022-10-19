@@ -185,6 +185,9 @@ func FiatProduct(conn boil.Executor, id string) (*server.FiatProduct, error) {
 			if bp.WeaponBlueprintID.Valid {
 				bpItem.WeaponBlueprintID = bp.WeaponBlueprintID.String
 			}
+			if bp.WeaponSkinBlueprintID.Valid {
+				bpItem.WeaponSkinBlueprintID = bp.WeaponSkinBlueprintID.String
+			}
 			if bp.AmmoBlueprintID.Valid {
 				bpItem.AmmoBlueprintID = bp.AmmoBlueprintID.String
 			}
