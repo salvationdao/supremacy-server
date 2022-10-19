@@ -46,3 +46,8 @@ CREATE TABLE repair_game_block_logs (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     deleted_at TIMESTAMPTZ
 );
+
+CREATE INDEX IF NOT EXISTS idx_repair_game_block_log_repair_agent_id ON repair_game_block_logs (repair_agent_id);
+
+ALTER TABLE repair_agent_logs
+    RENAME TO repair_agent_logs_old;
