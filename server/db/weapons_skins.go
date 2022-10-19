@@ -126,6 +126,8 @@ func WeaponSkinListDetailed(opts *WeaponSkinListOpts) (int64, []*server.WeaponSk
 	var queryMods []qm.QueryMod
 
 	queryMods = append(queryMods,
+		// hide hidden assets
+		boiler.CollectionItemWhere.AssetHidden.IsNull(),
 		// where owner id = ?
 		GenerateListFilterQueryMod(ListFilterRequestItem{
 			Table:    boiler.TableNames.CollectionItems,
