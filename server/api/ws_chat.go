@@ -55,6 +55,7 @@ const (
 	ChatMessageTypeText       ChatMessageType = "TEXT"
 	ChatMessageTypePunishVote ChatMessageType = "PUNISH_VOTE"
 	ChatMessageTypeSystemBan  ChatMessageType = "SYSTEM_BAN"
+	ChatMessageTypeModBan     ChatMessageType = "MOD_BAN"
 	ChatMessageTypeNewBattle  ChatMessageType = "NEW_BATTLE"
 )
 
@@ -304,6 +305,7 @@ const (
 	RestrictionChatSend       = "Send chat"
 	RestrictionChatView       = "Receive chat"
 	RestrictionSupsContribute = "Contribute sups"
+	RestrictionsMechQueuing   = "Mech queuing"
 )
 
 func (api *API) MessageBroadcaster() {
