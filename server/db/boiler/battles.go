@@ -2752,7 +2752,7 @@ func (battleL) LoadPlayers(e boil.Executor, singular bool, maybeBattle interface
 	}
 
 	query := NewQuery(
-		qm.Select("\"players\".id, \"players\".faction_id, \"players\".username, \"players\".public_address, \"players\".is_ai, \"players\".deleted_at, \"players\".updated_at, \"players\".created_at, \"players\".mobile_number, \"players\".issue_punish_fee, \"players\".reported_cost, \"players\".gid, \"players\".rank, \"players\".sent_message_count, \"players\".about_me, \"players\".profile_avatar_id, \"players\".syndicate_id, \"players\".custom_avatar_id, \"players\".stripe_customer_id, \"players\".accepts_marketing, \"players\".role_id, \"a\".\"battle_id\""),
+		qm.Select("\"players\".id, \"players\".faction_id, \"players\".username, \"players\".public_address, \"players\".is_ai, \"players\".deleted_at, \"players\".updated_at, \"players\".created_at, \"players\".mobile_number, \"players\".issue_punish_fee, \"players\".reported_cost, \"players\".gid, \"players\".rank, \"players\".sent_message_count, \"players\".about_me, \"players\".profile_avatar_id, \"players\".syndicate_id, \"players\".custom_avatar_id, \"players\".role_id, \"players\".stripe_customer_id, \"players\".accepts_marketing, \"a\".\"battle_id\""),
 		qm.From("\"players\""),
 		qm.InnerJoin("\"battle_viewers\" as \"a\" on \"players\".\"id\" = \"a\".\"player_id\""),
 		qm.WhereIn("\"a\".\"battle_id\" in ?", args...),
@@ -2774,7 +2774,7 @@ func (battleL) LoadPlayers(e boil.Executor, singular bool, maybeBattle interface
 		one := new(Player)
 		var localJoinCol string
 
-		err = results.Scan(&one.ID, &one.FactionID, &one.Username, &one.PublicAddress, &one.IsAi, &one.DeletedAt, &one.UpdatedAt, &one.CreatedAt, &one.MobileNumber, &one.IssuePunishFee, &one.ReportedCost, &one.Gid, &one.Rank, &one.SentMessageCount, &one.AboutMe, &one.ProfileAvatarID, &one.SyndicateID, &one.CustomAvatarID, &one.StripeCustomerID, &one.AcceptsMarketing, &one.RoleID, &localJoinCol)
+		err = results.Scan(&one.ID, &one.FactionID, &one.Username, &one.PublicAddress, &one.IsAi, &one.DeletedAt, &one.UpdatedAt, &one.CreatedAt, &one.MobileNumber, &one.IssuePunishFee, &one.ReportedCost, &one.Gid, &one.Rank, &one.SentMessageCount, &one.AboutMe, &one.ProfileAvatarID, &one.SyndicateID, &one.CustomAvatarID, &one.RoleID, &one.StripeCustomerID, &one.AcceptsMarketing, &localJoinCol)
 		if err != nil {
 			return errors.Wrap(err, "failed to scan eager loaded results for players")
 		}

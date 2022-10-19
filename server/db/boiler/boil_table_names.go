@@ -92,6 +92,7 @@ var TableNames = struct {
 	MechWeapons                                        string
 	Mechs                                              string
 	MechsOld                                           string
+	ModActionAudit                                     string
 	Multipliers                                        string
 	MysteryCrate                                       string
 	MysteryCrateBlueprints                             string
@@ -259,6 +260,7 @@ var TableNames = struct {
 	MechWeapons:                    "mech_weapons",
 	Mechs:                          "mechs",
 	MechsOld:                       "mechs_old",
+	ModActionAudit:                 "mod_action_audit",
 	Multipliers:                    "multipliers",
 	MysteryCrate:                   "mystery_crate",
 	MysteryCrateBlueprints:         "mystery_crate_blueprints",
