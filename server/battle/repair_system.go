@@ -728,7 +728,7 @@ func (am *ArenaManager) RepairGameBlockProcesser(repairAgentID string, repairGam
 
 	// check, if the block size grow
 	if lastBlock.Width.LessThan(stackedBlockDimension.Width.Round(6)) || lastBlock.Depth.LessThan(stackedBlockDimension.Depth.Round(6)) {
-		l.Warn().Interface("lastBlock", lastBlock).Interface("dimesion", stackedBlockDimension).Msg("The block")
+		l.Warn().Interface("lastBlock", lastBlock).Interface("dimesion", stackedBlockDimension).Msg("The block grow bigger than original.")
 		return nil, terror.Error(fmt.Errorf("cheat detected"), "The block grow bigger!")
 	}
 
