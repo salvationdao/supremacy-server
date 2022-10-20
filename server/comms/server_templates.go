@@ -34,7 +34,7 @@ func (s *S) TemplateRegisterHandler(req rpctypes.TemplateRegisterReq, resp *rpct
 	}
 
 	assets = append(assets, rpctypes.ServerMechsToXsynAsset(loadedMechs)...)
-	if loadedMechs != nil && !loadedMechs[0].GenesisTokenID.Valid && !loadedMechs[0].LimitedReleaseTokenID.Valid {
+	if loadedMechs != nil {
 		assets = append(assets, rpctypes.ServerMechAnimationsToXsynAsset(mechAnimations)...)
 		assets = append(assets, rpctypes.ServerMechSkinsToXsynAsset(gamedb.StdConn, mechSkins)...)
 		assets = append(assets, rpctypes.ServerPowerCoresToXsynAsset(powerCores)...)
