@@ -1306,7 +1306,7 @@ func (arena *Arena) GameClientJsonDataParser() {
 			}
 
 			var dataPayload BattleWMDestroyedPayload
-			if err := json.Unmarshal(msg.Payload, &dataPayload); err != nil {
+			if err = json.Unmarshal(msg.Payload, &dataPayload); err != nil {
 				L.Warn().Err(err).Msg("unable to unmarshal battle message warmachine destroyed payload")
 				continue
 			}
@@ -1315,13 +1315,13 @@ func (arena *Arena) GameClientJsonDataParser() {
 			arena.Manager.BattleLobbyDebounceBroadcastChan <- []string{btl.lobby.ID}
 
 		case "BATTLE:END":
+			btl.state.Store(EndState)
+
 			var dataPayload *BattleEndPayload
 			if err = json.Unmarshal(msg.Payload, &dataPayload); err != nil {
 				L.Warn().Err(err).Msg("unable to unmarshal battle message warmachine destroyed payload")
 				continue
 			}
-
-			btl.state.Store(EndState)
 
 			btl.end(dataPayload)
 
