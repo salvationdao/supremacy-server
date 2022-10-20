@@ -165,13 +165,3 @@ func (s *StreamsWS) GlobalAnnouncementSubscribe(ctx context.Context, key string,
 
 	return nil
 }
-
-// oven media
-func (api *API) GetOvenStreamsHandler(w http.ResponseWriter, r *http.Request) (int, error) {
-	streams, err := boiler.OvenStreams(boiler.OvenStreamWhere.Active.EQ(true)).All(gamedb.StdConn)
-	if err != nil {
-		return http.StatusInternalServerError, err
-	}
-
-	return helpers.EncodeJSON(w, streams)
-}

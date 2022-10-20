@@ -98,7 +98,6 @@ var TableNames = struct {
 	MysteryCrateBlueprints                             string
 	OrderItems                                         string
 	Orders                                             string
-	OvenStreams                                        string
 	PlayerAbilities                                    string
 	PlayerActiveLogs                                   string
 	PlayerBans                                         string
@@ -268,7 +267,6 @@ var TableNames = struct {
 	MysteryCrateBlueprints:         "mystery_crate_blueprints",
 	OrderItems:                     "order_items",
 	Orders:                         "orders",
-	OvenStreams:                    "oven_streams",
 	PlayerAbilities:                "player_abilities",
 	PlayerActiveLogs:               "player_active_logs",
 	PlayerBans:                     "player_bans",

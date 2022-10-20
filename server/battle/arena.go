@@ -15,6 +15,7 @@ import (
 	"server/gamedb"
 	"server/gamelog"
 	"server/helpers"
+	"server/oven_stream"
 	"server/quest"
 	"server/replay"
 	"server/system_messages"
@@ -166,10 +167,11 @@ func (am *ArenaManager) KickIdleArenas() {
 }
 
 type ArenaBrief struct {
-	ID    string `json:"id"`
-	Gid   int    `json:"gid"`
-	Name  string `json:"name"`
-	Stage string `json:"state"`
+	ID         string                  `json:"id"`
+	Gid        int                     `json:"gid"`
+	Name       string                  `json:"name"`
+	Stage      string                  `json:"state"`
+	OvenStream *oven_stream.OvenStream `json:"oven_stream"`
 }
 
 func (am *ArenaManager) AvailableBattleArenas() []*ArenaBrief {
@@ -180,10 +182,11 @@ func (am *ArenaManager) AvailableBattleArenas() []*ArenaBrief {
 	for _, arena := range am.arenas {
 		if arena.Stage.Load() != ArenaStageHijacked && arena.connected.Load() {
 			resp = append(resp, &ArenaBrief{
-				ID:    arena.ID,
-				Gid:   arena.Gid,
-				Name:  arena.Name,
-				Stage: arena.Stage.Load(),
+				ID:         arena.ID,
+				Gid:        arena.Gid,
+				Name:       arena.Name,
+				Stage:      arena.Stage.Load(),
+				OvenStream: oven_stream.GetStreamDetails(arena.Name, arena.ID),
 			})
 		}
 	}
@@ -292,10 +295,18 @@ func (am *ArenaManager) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			ws.PublishMessage(fmt.Sprintf("/public/arena/%s/closed", arena.ID), server.HubKeyBattleArenaClosedSubscribe, true)
 
 			// broadcast a new arena list to frontend
-			arenaList := []*boiler.BattleArena{}
+			arenaList := []*ArenaBrief{}
 			for _, a := range am.arenas {
 				if a.connected.Load() {
-					arenaList = append(arenaList, a.BattleArena)
+
+					aBrief := &ArenaBrief{
+						ID:         a.BattleArena.ID,
+						Gid:        a.BattleArena.Gid,
+						Name:       a.Name,
+						Stage:      a.Stage.Load(),
+						OvenStream: oven_stream.GetStreamDetails(a.Name, a.BattleArena.ID),
+					}
+					arenaList = append(arenaList, aBrief)
 				}
 			}
 
