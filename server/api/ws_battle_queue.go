@@ -1019,10 +1019,13 @@ func (api *API) MechStake(ctx context.Context, user *boiler.Player, factionID st
 		ws.PublishMessage(fmt.Sprintf("/public/mech/%s/is_staked", mechID), HubKeyMechIsStaked, true)
 	}
 
+	// broadcast staked mech list
 	lms, err := db.LobbyMechsBrief(user.ID, stakedMechIDs...)
 	if err == nil {
-		ws.PublishMessage(fmt.Sprintf("/faction/%s/staked_mechs", factionID), server.HubKeyFactionStakedMechs, lms)
 	}
+	// broadcast both mech list
+	ws.PublishMessage(fmt.Sprintf("/faction/%s/staked_mechs", factionID), server.HubKeyFactionStakedMechs, lms)
+	ws.PublishMessage(fmt.Sprintf("/secure/user/%s/owned_mechs", user.ID), server.HubKeyPlayerMechsBrief, lms)
 
 	reply(true)
 	return nil
@@ -1174,17 +1177,17 @@ func (api *API) MechUnstake(ctx context.Context, user *boiler.Player, factionID 
 		// load changed battle lobbies
 		api.ArenaManager.BattleLobbyDebounceBroadcastChan <- changedBattleLobbyIDs
 
-		lms := []*db.MechBrief{}
 		for _, mechID := range stakedMechIDs {
 			ws.PublishMessage(fmt.Sprintf("/public/mech/%s/is_staked", mechID), HubKeyMechIsStaked, false)
-
-			lms = append(lms, &db.MechBrief{
-				ID:       mechID,
-				IsStaked: false,
-			})
 		}
 
+		// broadcast staked mech list
+		lms, err := db.LobbyMechsBrief(user.ID, stakedMechIDs...)
+		if err == nil {
+		}
+		// broadcast both mech list
 		ws.PublishMessage(fmt.Sprintf("/faction/%s/staked_mechs", factionID), server.HubKeyFactionStakedMechs, lms)
+		ws.PublishMessage(fmt.Sprintf("/secure/user/%s/owned_mechs", user.ID), server.HubKeyPlayerMechsBrief, lms)
 
 		return nil
 	})
