@@ -1,0 +1,1 @@
+DROP TABLE oven_streams;
