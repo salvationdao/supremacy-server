@@ -166,11 +166,10 @@ func (am *ArenaManager) KickIdleArenas() {
 }
 
 type ArenaBrief struct {
-	ID         string             `json:"id"`
-	Gid        int                `json:"gid"`
-	Name       string             `json:"name"`
-	Stage      string             `json:"state"`
-	OvenStream *boiler.OvenStream `json:"oven_stream"`
+	ID    string `json:"id"`
+	Gid   int    `json:"gid"`
+	Name  string `json:"name"`
+	Stage string `json:"state"`
 }
 
 func (am *ArenaManager) AvailableBattleArenas() []*ArenaBrief {
@@ -180,22 +179,12 @@ func (am *ArenaManager) AvailableBattleArenas() []*ArenaBrief {
 	resp := []*ArenaBrief{}
 	for _, arena := range am.arenas {
 		if arena.Stage.Load() != ArenaStageHijacked && arena.connected.Load() {
-			err := arena.L.LoadOvenStream(gamedb.StdConn, true, arena.BattleArena, nil)
-			if err != nil {
-				gamelog.L.Error().Err(err).Str("arena_id", arena.ID).Msg("failed to load arena streams")
-			}
-			aBrief := &ArenaBrief{
+			resp = append(resp, &ArenaBrief{
 				ID:    arena.ID,
 				Gid:   arena.Gid,
 				Name:  arena.Name,
 				Stage: arena.Stage.Load(),
-			}
-
-			if arena.R != nil && arena.R.OvenStream != nil {
-				aBrief.OvenStream = arena.R.OvenStream
-			}
-
-			resp = append(resp, aBrief)
+			})
 		}
 	}
 	return resp
@@ -303,26 +292,10 @@ func (am *ArenaManager) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			ws.PublishMessage(fmt.Sprintf("/public/arena/%s/closed", arena.ID), server.HubKeyBattleArenaClosedSubscribe, true)
 
 			// broadcast a new arena list to frontend
-			arenaList := []*ArenaBrief{}
+			arenaList := []*boiler.BattleArena{}
 			for _, a := range am.arenas {
 				if a.connected.Load() {
-					err := a.BattleArena.L.LoadOvenStream(gamedb.StdConn, true, a.BattleArena, nil)
-					if err != nil {
-						gamelog.L.Error().Err(err).Str("arena_id", a.BattleArena.ID).Msg("failed to load arena streams")
-					}
-
-					aBrief := &ArenaBrief{
-						ID:    a.BattleArena.ID,
-						Gid:   a.BattleArena.Gid,
-						Name:  a.Name,
-						Stage: a.Stage.Load(),
-					}
-
-					if a.BattleArena.R != nil && a.BattleArena.R.OvenStream != nil {
-						aBrief.OvenStream = a.BattleArena.R.OvenStream
-					}
-
-					arenaList = append(arenaList, aBrief)
+					arenaList = append(arenaList, a.BattleArena)
 				}
 			}
 
