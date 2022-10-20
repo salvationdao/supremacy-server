@@ -236,7 +236,7 @@ func BroadcastMechQueueStatus(playerID string, mechIDs ...string) {
 		return
 	}
 
-	mechInfo, err := db.OwnedMechsBrief(playerID, mechIDs...)
+	mechInfo, err := db.LobbyMechsBrief(playerID, mechIDs...)
 	if err != nil {
 		return
 	}
@@ -251,7 +251,7 @@ func BroadcastPlayerQueueStatus(playerID string) {
 	}
 
 	blms, err := boiler.BattleLobbiesMechs(
-		boiler.BattleLobbiesMechWhere.OwnerID.EQ(playerID),
+		boiler.BattleLobbiesMechWhere.QueuedByID.EQ(playerID),
 		boiler.BattleLobbiesMechWhere.RefundTXID.IsNull(),
 		boiler.BattleLobbiesMechWhere.EndedAt.IsNull(),
 	).All(gamedb.StdConn)
@@ -349,7 +349,7 @@ func GenerateAIDrivenBattle() (*boiler.BattleLobby, error) {
 		blms = append(blms, &boiler.BattleLobbiesMech{
 			BattleLobbyID: bl.ID,
 			MechID:        sm.MechID,
-			OwnerID:       sm.OwnerID,
+			QueuedByID:    sm.OwnerID,
 			FactionID:     sm.FactionID,
 			LockedAt:      bl.ReadyAt,
 		})

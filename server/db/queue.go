@@ -3,7 +3,9 @@ package db
 import (
 	"database/sql"
 	"fmt"
+	"github.com/gofrs/uuid"
 	"github.com/ninja-software/terror/v2"
+	"github.com/volatiletech/null/v8"
 	"golang.org/x/exp/slices"
 	"server"
 	"server/db/boiler"
@@ -173,50 +175,153 @@ func FilterOutMechAlreadyInQueue(mechIDs []string) ([]string, error) {
 	return remainMechIDs, nil
 }
 
-// CheckMechOwnership return error if any mechs is not available to queue
-func CheckMechOwnership(playerID string, mechIDs []string) error {
-	// ownership check
-	mcis, err := boiler.CollectionItems(
-		boiler.CollectionItemWhere.ItemID.IN(mechIDs),
-		boiler.CollectionItemWhere.ItemType.EQ(boiler.ItemTypeMech),
-	).All(gamedb.StdConn)
-	if err != nil {
-		gamelog.L.Error().Str("log_name", "battle arena").Strs("mech ids", mechIDs).Err(err).Msg("unable to retrieve mech collection item from hash")
-		return err
+// CheckMechQueueAuthorisation return error if any mechs is not available to queue
+func CheckMechQueueAuthorisation(playerID string, factionID string, mechIDs []string) ([]string, error) {
+	if len(mechIDs) == 0 {
+		return []string{}, nil
 	}
 
-	if len(mcis) != len(mechIDs) {
-		return terror.Error(fmt.Errorf("contain non-mech assest"), "The list contains non-mech asset.")
-	}
-
-	for _, mci := range mcis {
-		if mci.XsynLocked {
-			err := fmt.Errorf("mech is locked to xsyn locked")
-			gamelog.L.Error().Str("log_name", "battle arena").Str("mech_id", mci.ItemID).Err(err).Msg("war machine is xsyn locked")
-			return err
-		}
-
-		if mci.LockedToMarketplace {
-			err := fmt.Errorf("mech is listed in marketplace")
-			gamelog.L.Error().Str("log_name", "battle arena").Str("mech_id", mci.ItemID).Err(err).Msg("war machine is listed in marketplace")
-			return err
-		}
-
-		battleReady, err := MechBattleReady(mci.ItemID)
+	mechIDWhereIn := fmt.Sprintf(" AND %s IN (", boiler.CollectionItemTableColumns.ItemID)
+	for i, mechID := range mechIDs {
+		_, err := uuid.FromString(mechID)
 		if err != nil {
-			gamelog.L.Error().Err(err).Msg("Failed to load battle ready status")
-			return err
+			return nil, terror.Error(err, "Invalid mech id")
 		}
 
-		if !battleReady {
-			gamelog.L.Error().Str("log_name", "battle arena").Str("mech_id", mci.ItemID).Msg("war machine is not available for queuing")
-			return fmt.Errorf("mech is cannot be used")
+		mechIDWhereIn += "'" + mechID + "'"
+
+		if i < len(mechIDs)-1 {
+			mechIDWhereIn += ","
+			continue
 		}
 
-		if mci.OwnerID != playerID {
-			return terror.Error(fmt.Errorf("does not own the mech"), "This mech is not owned by you")
-		}
+		mechIDWhereIn += ")"
 	}
 
-	return nil
+	queries := []qm.QueryMod{
+		qm.Select(
+			boiler.MechTableColumns.ID,
+			boiler.CollectionItemTableColumns.OwnerID,
+			boiler.CollectionItemTableColumns.LockedToMarketplace,
+			boiler.CollectionItemTableColumns.MarketLocked,
+			boiler.CollectionItemTableColumns.XsynLocked,
+			boiler.MechTableColumns.PowerCoreID,
+			fmt.Sprintf(
+				"COALESCE((SELECT COUNT(*) > 0 FROM %s WHERE %s = %s), FALSE) AS has_weapon",
+				boiler.TableNames.MechWeapons,
+				boiler.MechWeaponTableColumns.ChassisID,
+				boiler.MechTableColumns.ID,
+			),
+			fmt.Sprintf(
+				"COALESCE((SELECT %s <= NOW() FROM %s WHERE %s = %s), TRUE) AS is_available",
+				boiler.AvailabilityTableColumns.AvailableAt,
+				boiler.TableNames.Availabilities,
+				boiler.AvailabilityTableColumns.ID,
+				boiler.BlueprintMechTableColumns.AvailabilityID,
+			),
+			fmt.Sprintf(
+				"(SELECT %s FROM %s WHERE %s = %s) AS staked_on_faction_id",
+				boiler.StakedMechTableColumns.FactionID,
+				boiler.TableNames.StakedMechs,
+				boiler.StakedMechTableColumns.MechID,
+				boiler.CollectionItemTableColumns.ItemID,
+			),
+		),
+		qm.From(fmt.Sprintf(
+			"(SELECT * FROM %s WHERE %s = '%s' %s) %s",
+			boiler.TableNames.CollectionItems,
+			boiler.CollectionItemTableColumns.ItemType,
+			boiler.ItemTypeMech,
+			mechIDWhereIn,
+			boiler.TableNames.CollectionItems,
+		)),
+
+		qm.InnerJoin(fmt.Sprintf(
+			"%s ON %s = %s",
+			boiler.TableNames.Mechs,
+			boiler.MechTableColumns.ID,
+			boiler.CollectionItemTableColumns.ItemID,
+		)),
+
+		qm.InnerJoin(fmt.Sprintf(
+			"%s ON %s = %s",
+			boiler.TableNames.BlueprintMechs,
+			boiler.MechTableColumns.BlueprintID,
+			boiler.BlueprintMechTableColumns.ID,
+		)),
+	}
+
+	rows, err := boiler.NewQuery(queries...).Query(gamedb.StdConn)
+	if err != nil {
+		gamelog.L.Error().Str("log_name", "battle arena").Strs("mech ids", mechIDs).Err(err).Msg("unable to load mech detail")
+		return nil, err
+	}
+
+	availableList := []string{}
+
+	for rows.Next() {
+		mechID := ""
+		ownerID := ""
+		lockedToMarketplace := false
+		marketLocked := false
+		xsynLocked := false
+		powerCoreID := null.StringFromPtr(nil)
+		hasWeapon := false
+		isAvailable := false
+		stakedOnFactionID := null.StringFromPtr(nil)
+
+		err = rows.Scan(
+			&mechID,
+			&ownerID,
+			&lockedToMarketplace,
+			&marketLocked,
+			&xsynLocked,
+			&powerCoreID,
+			&hasWeapon,
+			&isAvailable,
+			&stakedOnFactionID,
+		)
+		if err != nil {
+			return nil, terror.Error(err, "Failed to scan mech queue check")
+		}
+
+		if lockedToMarketplace {
+			continue
+		}
+
+		if marketLocked {
+			continue
+		}
+
+		if xsynLocked {
+			continue
+		}
+
+		if !isAvailable {
+			continue
+		}
+
+		if !powerCoreID.Valid {
+			continue
+		}
+
+		if !hasWeapon {
+			continue
+		}
+
+		if stakedOnFactionID.Valid {
+			// check faction id if the mech is staked in faction list
+			if stakedOnFactionID.String != factionID {
+				continue
+			}
+		} else {
+			// otherwise, check owner id
+			if ownerID != playerID {
+				continue
+			}
+		}
+
+		availableList = append(availableList, mechID)
+	}
+	return availableList, nil
 }

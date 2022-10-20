@@ -816,7 +816,7 @@ func (btl *Battle) RewardBattleMechOwners(winningFactionOrder []string) {
 	blms, err := boiler.BattleLobbiesMechs(
 		boiler.BattleLobbiesMechWhere.BattleLobbyID.EQ(btl.lobby.ID),
 		boiler.BattleLobbiesMechWhere.MechID.IN(btl.warMachineIDs),
-		qm.Load(boiler.BattleLobbiesMechRels.Owner),
+		qm.Load(boiler.BattleLobbiesMechRels.QueuedBy),
 	).All(gamedb.StdConn)
 	if err != nil {
 		gamelog.L.Error().Err(err).Str("battle lobby id", btl.lobby.ID).Strs("mech id list", btl.warMachineIDs).Msg("Failed to load mechs from battle lobby")
@@ -831,10 +831,10 @@ func (btl *Battle) RewardBattleMechOwners(winningFactionOrder []string) {
 		}
 
 		// if owner is not AI
-		if blm.R != nil && blm.R.Owner != nil {
+		if blm.R != nil && blm.R.QueuedBy != nil {
 
 			// skip AI player, when it is in production
-			if server.IsProductionEnv() && blm.R.Owner.IsAi {
+			if server.IsProductionEnv() && blm.R.QueuedBy.IsAi {
 				continue
 			}
 
@@ -879,8 +879,8 @@ func (btl *Battle) RewardBattleMechOwners(winningFactionOrder []string) {
 		switch i {
 		case 0: // winning faction
 			for _, blm := range blms {
-				if blm.FactionID == factionID && blm.R != nil && blm.R.Owner != nil {
-					player := blm.R.Owner
+				if blm.FactionID == factionID && blm.R != nil && blm.R.QueuedBy != nil {
+					player := blm.R.QueuedBy
 					// skip AI player, when it is in production
 					if server.IsProductionEnv() && player.IsAi {
 						continue
@@ -901,8 +901,8 @@ func (btl *Battle) RewardBattleMechOwners(winningFactionOrder []string) {
 
 		case 1: // second faction
 			for _, blm := range blms {
-				if blm.FactionID == factionID && blm.R != nil && blm.R.Owner != nil {
-					player := blm.R.Owner
+				if blm.FactionID == factionID && blm.R != nil && blm.R.QueuedBy != nil {
+					player := blm.R.QueuedBy
 					// skip AI player, when it is in production
 					if server.IsProductionEnv() && player.IsAi {
 						continue
@@ -923,8 +923,8 @@ func (btl *Battle) RewardBattleMechOwners(winningFactionOrder []string) {
 
 		case 2: // lose faction
 			for _, blm := range blms {
-				if blm.FactionID == factionID && blm.R != nil && blm.R.Owner != nil {
-					player := blm.R.Owner
+				if blm.FactionID == factionID && blm.R != nil && blm.R.QueuedBy != nil {
+					player := blm.R.QueuedBy
 
 					// skip AI player, when it is in production
 					if server.IsProductionEnv() && player.IsAi {
@@ -2275,7 +2275,7 @@ func (btl *Battle) Load(battleLobby *boiler.BattleLobby) error {
 		bmd := boiler.BattleMech{
 			BattleID:  btl.ID,
 			MechID:    blm.MechID,
-			OwnerID:   blm.OwnerID,
+			OwnerID:   blm.QueuedByID,
 			FactionID: blm.FactionID,
 		}
 		err = bmd.Insert(gamedb.StdConn, boil.Infer())

@@ -1801,7 +1801,7 @@ func (arena *Arena) assignSupporters() {
 			case server.BostonCyberneticsFactionID:
 				if bcSupporterCount == 0 {
 					selectedSupporter = &boiler.BattleLobbySupporter{
-						SupporterID:   mech.OwnerID,
+						SupporterID:   mech.QueuedByID,
 						FactionID:     mech.FactionID,
 						BattleLobbyID: mech.BattleLobbyID,
 					}
@@ -1809,7 +1809,7 @@ func (arena *Arena) assignSupporters() {
 			case server.RedMountainFactionID:
 				if rmSupporterCount == 0 {
 					selectedSupporter = &boiler.BattleLobbySupporter{
-						SupporterID:   mech.OwnerID,
+						SupporterID:   mech.QueuedByID,
 						FactionID:     mech.FactionID,
 						BattleLobbyID: mech.BattleLobbyID,
 					}
@@ -1817,7 +1817,7 @@ func (arena *Arena) assignSupporters() {
 			case server.ZaibatsuFactionID:
 				if zaiSupporterCount == 0 {
 					selectedSupporter = &boiler.BattleLobbySupporter{
-						SupporterID:   mech.OwnerID,
+						SupporterID:   mech.QueuedByID,
 						FactionID:     mech.FactionID,
 						BattleLobbyID: mech.BattleLobbyID,
 					}

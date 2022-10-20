@@ -1560,17 +1560,27 @@ type MechBrief struct {
 	WeaponSlots []*server.WeaponSlot `json:"weapon_slots"`
 }
 
-// OwnedMechsBrief return list for mech for quick deploy
-func OwnedMechsBrief(playerID string, mechIDs ...string) ([]*MechBrief, error) {
+// LobbyMechsBrief return list for mech for quick deploy
+func LobbyMechsBrief(playerID string, mechIDs ...string) ([]*MechBrief, error) {
 	// prevent sql injection, check player id is in uuid format
-	_, err := uuid.FromString(playerID)
-	if err != nil {
-		return nil, terror.Error(err, "The player id is not in uuid format.")
+	playerIDQuery := ""
+	if playerID != "" {
+		_, err := uuid.FromString(playerID)
+		if err != nil {
+			return nil, terror.Error(err, "The player id is not in uuid format.")
+		}
+
+		playerIDQuery = fmt.Sprintf(
+			" AND %s = '%s'",
+			boiler.CollectionItemColumns.OwnerID,
+			playerID,
+		)
+
 	}
 
 	mechIDInQuery := ""
 	if len(mechIDs) > 0 {
-		mechIDInQuery += fmt.Sprintf("AND %s IN(", boiler.CollectionItemColumns.ItemID)
+		mechIDInQuery += fmt.Sprintf(" AND %s IN(", boiler.CollectionItemColumns.ItemID)
 
 		for i, mechID := range mechIDs {
 			// prevent sql injection, check each mech id is in uuid format
@@ -1664,7 +1674,7 @@ func OwnedMechsBrief(playerID string, mechIDs ...string) ([]*MechBrief, error) {
 		),
 
 		qm.From(fmt.Sprintf(
-			"(SELECT %s, %s, %s, %s, %s, %s FROM %s WHERE %s = 'mech' AND %s = '%s' AND %s IS NULL %s) _ci",
+			"(SELECT %s, %s, %s, %s, %s, %s FROM %s WHERE %s = 'mech' AND %s IS NULL %s %s) _ci",
 			boiler.CollectionItemColumns.ID,
 			boiler.CollectionItemColumns.ItemID,
 			boiler.CollectionItemColumns.OwnerID,
@@ -1673,9 +1683,8 @@ func OwnedMechsBrief(playerID string, mechIDs ...string) ([]*MechBrief, error) {
 			boiler.CollectionItemColumns.LockedToMarketplace,
 			boiler.TableNames.CollectionItems,
 			boiler.CollectionItemColumns.ItemType,
-			boiler.CollectionItemColumns.OwnerID,
-			playerID,
 			boiler.CollectionItemColumns.DeletedAt,
+			playerIDQuery,
 			mechIDInQuery,
 		)),
 
