@@ -175,10 +175,21 @@ func FilterOutMechAlreadyInQueue(mechIDs []string) ([]string, error) {
 	return remainMechIDs, nil
 }
 
-// CheckMechQueueAuthorisation return error if any mechs is not available to queue
-func CheckMechQueueAuthorisation(playerID string, factionID string, mechIDs []string) ([]string, error) {
+type MechQueueAuthorisationData struct {
+	MechID              string      `db:"mech_id"`
+	OwnerID             string      `db:"owner_id"`
+	LockedToMarketplace bool        `db:"locked_to_marketplace"`
+	MarketLocked        bool        `db:"market_locked"`
+	XsynLocked          bool        `db:"xsyn_locked"`
+	PowerCoreID         null.String `db:"power_core_id"`
+	HasWeapon           bool        `db:"has_weapon"`
+	IsAvailable         bool        `db:"is_available"`
+	StakedOnFactionID   null.String `db:"staked_on_faction_id"`
+}
+
+func MechsQueueAuthorisationDataGet(mechIDs []string) ([]*MechQueueAuthorisationData, error) {
 	if len(mechIDs) == 0 {
-		return []string{}, nil
+		return []*MechQueueAuthorisationData{}, nil
 	}
 
 	mechIDWhereIn := fmt.Sprintf(" AND %s IN (", boiler.CollectionItemTableColumns.ItemID)
@@ -257,71 +268,25 @@ func CheckMechQueueAuthorisation(playerID string, factionID string, mechIDs []st
 		return nil, err
 	}
 
-	availableList := []string{}
-
+	result := []*MechQueueAuthorisationData{}
 	for rows.Next() {
-		mechID := ""
-		ownerID := ""
-		lockedToMarketplace := false
-		marketLocked := false
-		xsynLocked := false
-		powerCoreID := null.StringFromPtr(nil)
-		hasWeapon := false
-		isAvailable := false
-		stakedOnFactionID := null.StringFromPtr(nil)
-
+		mqa := &MechQueueAuthorisationData{}
 		err = rows.Scan(
-			&mechID,
-			&ownerID,
-			&lockedToMarketplace,
-			&marketLocked,
-			&xsynLocked,
-			&powerCoreID,
-			&hasWeapon,
-			&isAvailable,
-			&stakedOnFactionID,
+			&mqa.MechID,
+			&mqa.OwnerID,
+			&mqa.LockedToMarketplace,
+			&mqa.MarketLocked,
+			&mqa.XsynLocked,
+			&mqa.PowerCoreID,
+			&mqa.HasWeapon,
+			&mqa.IsAvailable,
+			&mqa.StakedOnFactionID,
 		)
 		if err != nil {
 			return nil, terror.Error(err, "Failed to scan mech queue check")
 		}
-
-		if lockedToMarketplace {
-			continue
-		}
-
-		if marketLocked {
-			continue
-		}
-
-		if xsynLocked {
-			continue
-		}
-
-		if !isAvailable {
-			continue
-		}
-
-		if !powerCoreID.Valid {
-			continue
-		}
-
-		if !hasWeapon {
-			continue
-		}
-
-		if stakedOnFactionID.Valid {
-			// check faction id if the mech is staked in faction list
-			if stakedOnFactionID.String != factionID {
-				continue
-			}
-		} else {
-			// otherwise, check owner id
-			if ownerID != playerID {
-				continue
-			}
-		}
-
-		availableList = append(availableList, mechID)
+		result = append(result, mqa)
 	}
-	return availableList, nil
+
+	return result, nil
 }

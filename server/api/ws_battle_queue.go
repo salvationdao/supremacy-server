@@ -70,7 +70,7 @@ func (api *API) BattleLobbyCreate(ctx context.Context, user *boiler.Player, fact
 		return terror.Error(fmt.Errorf("mech more than 3"), "Maximum 3 mech per faction.")
 	}
 
-	availableMechIDs, err := db.CheckMechQueueAuthorisation(user.ID, factionID, req.Payload.MechIDs)
+	availableMechIDs, err := CheckMechQueueAuthorisation(user.ID, factionID, req.Payload.MechIDs)
 	if err != nil {
 		return err
 	}
@@ -312,7 +312,7 @@ func (api *API) BattleLobbyJoin(ctx context.Context, user *boiler.Player, factio
 		return terror.Error(err, "Invalid request received.")
 	}
 
-	availableMechIDs, err := db.CheckMechQueueAuthorisation(user.ID, factionID, req.Payload.MechIDs)
+	availableMechIDs, err := CheckMechQueueAuthorisation(user.ID, factionID, req.Payload.MechIDs)
 	if err != nil {
 		return err
 	}
@@ -1008,30 +1008,47 @@ func (api *API) MechStake(ctx context.Context, user *boiler.Player, factionID st
 		return terror.Error(err, "Invalid request received.")
 	}
 
-	err = api.ArenaManager.SendBattleQueueFunc(func() error {
-		var ownedMechs []*db.MechBrief
-		ownedMechs, err = db.LobbyMechsBrief(user.ID, req.Payload.MechIDs...)
-		if err != nil {
-			return err
-		}
+	l := gamelog.L.With().Str("func", "MechStake").Str("player id", user.ID).Strs("staked mech id list", req.Payload.MechIDs).Logger()
 
-		stakedMechIDs := []string{}
-		for _, ownedMech := range ownedMechs {
-			if !ownedMech.IsBattleReady || ownedMech.IsStaked || ownedMech.Status == server.MechArenaStatusMarket || ownedMech.Status == server.MechArenaStatusSold {
-				continue
-			}
-
-			// stake the mech
-			stakedMechIDs = append(stakedMechIDs, ownedMech.ID)
-		}
-
-		// stake mech
-
-		return nil
-	})
+	mqas, err := db.MechsQueueAuthorisationDataGet(req.Payload.MechIDs)
 	if err != nil {
 		return err
 	}
+
+	tx, err := gamedb.StdConn.Begin()
+	if err != nil {
+		l.Error().Err(err).Msg("Failed to start db transaction.")
+		return terror.Error(err, "Failed to stake your mechs")
+	}
+
+	defer tx.Rollback()
+
+	for _, mqa := range mqas {
+		if mqa.OwnerID != user.ID || mqa.StakedOnFactionID.Valid || mqa.XsynLocked || mqa.LockedToMarketplace || mqa.MarketLocked || !mqa.PowerCoreID.Valid || !mqa.HasWeapon {
+			continue
+		}
+
+		// stake mech
+		sm := &boiler.StakedMech{
+			MechID:    mqa.MechID,
+			OwnerID:   user.ID,
+			FactionID: factionID,
+		}
+
+		err = sm.Insert(tx, boil.Infer())
+		if err != nil {
+			l.Error().Interface("mech", sm).Err(err).Msg("Failed to insert staked mech.")
+			return terror.Error(err, "Failed to insert staked mech")
+		}
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		l.Error().Err(err).Msg("Failed to commit db transaction.")
+		return terror.Error(err, "Failed to stake your mechs")
+	}
+
+	// TODO: broadcast staked mech list
 
 	return nil
 }
@@ -1050,23 +1067,23 @@ func (api *API) MechUnstake(ctx context.Context, user *boiler.Player, factionID 
 	err = api.ArenaManager.SendBattleQueueFunc(func() error {
 		now := time.Now()
 
-		// load owned mech
-		var ownedMechs []*db.MechBrief
-		ownedMechs, err = db.LobbyMechsBrief(user.ID, req.Payload.MechIDs...)
+		var stakedMechs []*boiler.StakedMech
+		stakedMechs, err = boiler.StakedMechs(
+			boiler.StakedMechWhere.OwnerID.EQ(user.ID),
+			boiler.StakedMechWhere.MechID.IN(req.Payload.MechIDs),
+		).All(gamedb.StdConn)
 		if err != nil {
-			return err
+			l.Error().Err(err).Msg("Failed to load staked mechs.")
+			return terror.Error(err, "Failed to load staked mechs.")
 		}
 
-		if len(ownedMechs) == 0 {
+		if len(stakedMechs) == 0 {
 			return nil
 		}
 
 		stakedMechIDs := []string{}
-		for _, ownedMech := range ownedMechs {
-			if ownedMech.IsStaked {
-				// get staked mech id
-				stakedMechIDs = append(stakedMechIDs, ownedMech.ID)
-			}
+		for _, stakedMech := range stakedMechs {
+			stakedMechIDs = append(stakedMechIDs, stakedMech.MechID)
 		}
 
 		var blms boiler.BattleLobbiesMechSlice
@@ -1461,4 +1478,58 @@ func (api *API) BattleLobbyTopUpReward(ctx context.Context, user *boiler.Player,
 	reply(true)
 
 	return nil
+}
+
+// CheckMechQueueAuthorisation return error if any mechs is not available to queue
+func CheckMechQueueAuthorisation(playerID string, factionID string, mechIDs []string) ([]string, error) {
+	if len(mechIDs) == 0 {
+		return []string{}, nil
+	}
+
+	mqas, err := db.MechsQueueAuthorisationDataGet(mechIDs)
+	if err != nil {
+		return nil, err
+	}
+
+	availableList := []string{}
+	for _, mqa := range mqas {
+		if mqa.LockedToMarketplace {
+			continue
+		}
+
+		if mqa.MarketLocked {
+			continue
+		}
+
+		if mqa.XsynLocked {
+			continue
+		}
+
+		if !mqa.IsAvailable {
+			continue
+		}
+
+		if !mqa.PowerCoreID.Valid {
+			continue
+		}
+
+		if !mqa.HasWeapon {
+			continue
+		}
+
+		if mqa.StakedOnFactionID.Valid {
+			// check faction id if the mech is staked in faction list
+			if mqa.StakedOnFactionID.String != factionID {
+				continue
+			}
+		} else {
+			// otherwise, check owner id
+			if mqa.OwnerID != playerID {
+				continue
+			}
+		}
+
+		availableList = append(availableList, mqa.MechID)
+	}
+	return availableList, nil
 }
