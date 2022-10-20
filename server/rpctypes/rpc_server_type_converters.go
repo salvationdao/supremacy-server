@@ -35,6 +35,10 @@ func ServerMechsToXsynAsset(mechs []*server.Mech) []*XsynAsset {
 			AssetType:      null.StringFrom(i.ItemType),
 		}
 
+		if !i.XsynLocked {
+			asset.Service = server.SupremacyGameUserID
+		}
+
 		// convert stats to attributes to
 		asset.Attributes = []*Attribute{
 			{
@@ -290,7 +294,6 @@ func ServerMechSkinsToXsynAsset(tx boil.Executor, mechSkins []*server.MechSkin) 
 			Name:             i.Label,
 			Attributes:       attributes,
 			AssetType:        null.StringFrom(i.ItemType),
-			XsynLocked:       i.XsynLocked,
 			ImageURL:         i.Images.ImageURL,
 			AnimationURL:     i.Images.AnimationURL,
 			LargeImageURL:    i.Images.LargeImageURL,
@@ -298,6 +301,10 @@ func ServerMechSkinsToXsynAsset(tx boil.Executor, mechSkins []*server.MechSkin) 
 			AvatarURL:        i.Images.AvatarURL,
 			BackgroundColor:  i.Images.BackgroundColor,
 			YoutubeURL:       i.Images.YoutubeURL,
+		}
+
+		if !i.XsynLocked {
+			asset.Service = server.SupremacyGameUserID
 		}
 
 		if i.SkinSwatch != nil {
@@ -397,7 +404,7 @@ func ServerPowerCoresToXsynAsset(powerCore []*server.PowerCore) []*XsynAsset {
 			gamelog.L.Error().Err(err).Msg("invalid asset attributes")
 		}
 
-		assets = append(assets, &XsynAsset{
+		asset := &XsynAsset{
 			ID:               i.ID,
 			CollectionSlug:   i.CollectionSlug,
 			TokenID:          i.TokenID,
@@ -407,7 +414,6 @@ func ServerPowerCoresToXsynAsset(powerCore []*server.PowerCore) []*XsynAsset {
 			Data:             asJson,
 			Name:             i.Label,
 			Attributes:       attributes,
-			XsynLocked:       i.XsynLocked,
 			ImageURL:         i.Images.ImageURL,
 			AnimationURL:     i.Images.AnimationURL,
 			LargeImageURL:    i.Images.LargeImageURL,
@@ -415,8 +421,13 @@ func ServerPowerCoresToXsynAsset(powerCore []*server.PowerCore) []*XsynAsset {
 			AvatarURL:        i.Images.AvatarURL,
 			BackgroundColor:  i.Images.BackgroundColor,
 			YoutubeURL:       i.Images.YoutubeURL,
-		})
+		}
 
+		if !i.XsynLocked {
+			asset.Service = server.SupremacyGameUserID
+		}
+
+		assets = append(assets, asset)
 	}
 
 	return assets
@@ -550,7 +561,10 @@ func ServerWeaponsToXsynAsset(weapons []*server.Weapon) []*XsynAsset {
 			Data:           asJson,
 			Name:           i.Label,
 			Attributes:     attributes,
-			XsynLocked:     i.XsynLocked,
+		}
+
+		if !i.XsynLocked {
+			asset.Service = server.SupremacyGameUserID
 		}
 
 		if i.WeaponSkin == nil {
@@ -662,7 +676,6 @@ func ServerWeaponSkinsToXsynAsset(tx boil.Executor, weaponSkins []*server.Weapon
 			Name:             i.Label,
 			Attributes:       attributes,
 			AssetType:        null.StringFrom(i.ItemType),
-			XsynLocked:       i.XsynLocked,
 			ImageURL:         i.ImageURL,
 			AnimationURL:     i.AnimationURL,
 			LargeImageURL:    i.LargeImageURL,
@@ -670,6 +683,10 @@ func ServerWeaponSkinsToXsynAsset(tx boil.Executor, weaponSkins []*server.Weapon
 			AvatarURL:        i.AvatarURL,
 			BackgroundColor:  i.BackgroundColor,
 			YoutubeURL:       i.YoutubeURL,
+		}
+
+		if !i.XsynLocked {
+			asset.Service = server.SupremacyGameUserID
 		}
 
 		if i.SkinSwatch != nil {
@@ -754,7 +771,7 @@ func ServerUtilitiesToXsynAsset(utils []*server.Utility) []*XsynAsset {
 			gamelog.L.Error().Err(err).Msg("invalid asset attributes")
 		}
 
-		assets = append(assets, &XsynAsset{
+		asset := &XsynAsset{
 			ID:               i.ID,
 			CollectionSlug:   i.CollectionSlug,
 			TokenID:          i.TokenID,
@@ -764,7 +781,6 @@ func ServerUtilitiesToXsynAsset(utils []*server.Utility) []*XsynAsset {
 			Data:             asJson,
 			Name:             i.Label,
 			Attributes:       attributes,
-			XsynLocked:       i.XsynLocked,
 			ImageURL:         i.Images.ImageURL,
 			AnimationURL:     i.Images.AnimationURL,
 			LargeImageURL:    i.Images.LargeImageURL,
@@ -772,7 +788,12 @@ func ServerUtilitiesToXsynAsset(utils []*server.Utility) []*XsynAsset {
 			AvatarURL:        i.Images.AvatarURL,
 			BackgroundColor:  i.Images.BackgroundColor,
 			YoutubeURL:       i.Images.YoutubeURL,
-		})
+		}
+
+		if !i.XsynLocked {
+			asset.Service = server.SupremacyGameUserID
+		}
+		assets = append(assets, asset)
 	}
 
 	return assets

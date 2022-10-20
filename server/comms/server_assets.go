@@ -82,31 +82,6 @@ func (s *S) AssetHandler(req rpctypes.AssetReq, resp *rpctypes.AssetResp) error 
 			return terror.Error(err)
 		}
 		resp.Asset = rpctypes.ServerMechsToXsynAsset([]*server.Mech{obj})[0]
-		if req.GetAttachedAssets {
-			if obj.IntroAnimation != nil {
-				resp.AttachedAssets = append(resp.AttachedAssets, rpctypes.ServerMechAnimationsToXsynAsset([]*server.MechAnimation{obj.IntroAnimation})...)
-			}
-			if obj.OutroAnimation != nil {
-				resp.AttachedAssets = append(resp.AttachedAssets, rpctypes.ServerMechAnimationsToXsynAsset([]*server.MechAnimation{obj.OutroAnimation})...)
-			}
-			if obj.ChassisSkin != nil {
-				resp.AttachedAssets = append(resp.AttachedAssets, rpctypes.ServerMechSkinsToXsynAsset(gamedb.StdConn, []*server.MechSkin{obj.ChassisSkin})...)
-			}
-			if obj.PowerCore != nil {
-				resp.AttachedAssets = append(resp.AttachedAssets, rpctypes.ServerPowerCoresToXsynAsset([]*server.PowerCore{obj.PowerCore})...)
-			}
-			if obj.Weapons != nil {
-				resp.AttachedAssets = append(resp.AttachedAssets, rpctypes.ServerWeaponsToXsynAsset(obj.Weapons)...)
-				for _, weapon := range obj.Weapons {
-					if weapon.WeaponSkin != nil {
-						resp.AttachedAssets = append(resp.AttachedAssets, rpctypes.ServerWeaponSkinsToXsynAsset(gamedb.StdConn, []*server.WeaponSkin{weapon.WeaponSkin})...)
-					}
-				}
-			}
-			if obj.Utility != nil {
-				resp.AttachedAssets = append(resp.AttachedAssets, rpctypes.ServerUtilitiesToXsynAsset(obj.Utility)...)
-			}
-		}
 	case boiler.ItemTypeMechSkin:
 		obj, err := db.MechSkin(gamedb.StdConn, ci.ItemID, nil)
 		if err != nil {

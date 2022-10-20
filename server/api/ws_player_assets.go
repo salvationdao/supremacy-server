@@ -2062,7 +2062,7 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetWeaponListHandler(ctx context.Co
 		Page:                          req.Payload.Page,
 		OwnerID:                       user.ID,
 		DisplayXsynMechs:              req.Payload.DisplayXsynMechs,
-		DisplayGenesisAndLimited:      req.Payload.DisplayGenesisAndLimited,
+		DisplayGenesisAndLimited:      true,
 		ExcludeMarketLocked:           req.Payload.ExcludeMarketLocked,
 		IncludeMarketListed:           req.Payload.IncludeMarketListed,
 		ExcludeMechLocked:             req.Payload.ExcludeMechLocked,

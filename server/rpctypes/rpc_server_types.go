@@ -21,12 +21,10 @@ import (
 
 type AssetReq struct {
 	AssetHash string `json:"asset_hash"`
-	GetAttachedAssets bool `json:"get_attached_assets"`
 }
 
 type AssetResp struct {
 	Asset *XsynAsset `json:"asset"`
-	AttachedAssets []*XsynAsset `json:"attached_assets"`
 }
 
 type TemplateRegisterReq struct {
@@ -99,5 +97,5 @@ type XsynAsset struct {
 	UnlockedAt       time.Time   `json:"unlocked_at,omitempty"`
 	MintedAt         null.Time   `json:"minted_at,omitempty"`
 	OnChainStatus    string      `json:"on_chain_status,omitempty"`
-	XsynLocked       bool        `json:"xsyn_locked,omitempty"`
+	Service          string                 `json:"xsyn_locked"`
 }

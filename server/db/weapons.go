@@ -574,12 +574,15 @@ func WeaponList(opts *WeaponListOpts) (int64, []*PlayerAsset, error) {
 		queryMods = append(queryMods, qm.OrderBy(fmt.Sprintf("%s ASC", qm.Rels(boiler.TableNames.BlueprintWeapons, boiler.BlueprintWeaponColumns.Label))))
 	}
 
+	boil.DebugMode = true
 	rows, err := boiler.NewQuery(
 		queryMods...,
 	).Query(gamedb.StdConn)
 	if err != nil {
+		boil.DebugMode = false
 		return 0, nil, err
 	}
+	boil.DebugMode = false
 	defer rows.Close()
 
 	weapons := make([]*PlayerAsset, 0)
