@@ -107,10 +107,14 @@ var OvenStreamWhere = struct {
 
 // OvenStreamRels is where relationship names are stored.
 var OvenStreamRels = struct {
-}{}
+	BattleArenas string
+}{
+	BattleArenas: "BattleArenas",
+}
 
 // ovenStreamR is where relationships are stored.
 type ovenStreamR struct {
+	BattleArenas BattleArenaSlice `boiler:"BattleArenas" boil:"BattleArenas" json:"BattleArenas" toml:"BattleArenas" yaml:"BattleArenas"`
 }
 
 // NewStruct creates a new relationship struct
@@ -369,6 +373,179 @@ func (q ovenStreamQuery) Exists(exec boil.Executor) (bool, error) {
 	}
 
 	return count > 0, nil
+}
+
+// BattleArenas retrieves all the battle_arena's BattleArenas with an executor.
+func (o *OvenStream) BattleArenas(mods ...qm.QueryMod) battleArenaQuery {
+	var queryMods []qm.QueryMod
+	if len(mods) != 0 {
+		queryMods = append(queryMods, mods...)
+	}
+
+	queryMods = append(queryMods,
+		qm.Where("\"battle_arena\".\"oven_stream_id\"=?", o.ID),
+		qmhelper.WhereIsNull("\"battle_arena\".\"deleted_at\""),
+	)
+
+	query := BattleArenas(queryMods...)
+	queries.SetFrom(query.Query, "\"battle_arena\"")
+
+	if len(queries.GetSelect(query.Query)) == 0 {
+		queries.SetSelect(query.Query, []string{"\"battle_arena\".*"})
+	}
+
+	return query
+}
+
+// LoadBattleArenas allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for a 1-M or N-M relationship.
+func (ovenStreamL) LoadBattleArenas(e boil.Executor, singular bool, maybeOvenStream interface{}, mods queries.Applicator) error {
+	var slice []*OvenStream
+	var object *OvenStream
+
+	if singular {
+		object = maybeOvenStream.(*OvenStream)
+	} else {
+		slice = *maybeOvenStream.(*[]*OvenStream)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &ovenStreamR{}
+		}
+		args = append(args, object.ID)
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &ovenStreamR{}
+			}
+
+			for _, a := range args {
+				if a == obj.ID {
+					continue Outer
+				}
+			}
+
+			args = append(args, obj.ID)
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`battle_arena`),
+		qm.WhereIn(`battle_arena.oven_stream_id in ?`, args...),
+		qmhelper.WhereIsNull(`battle_arena.deleted_at`),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load battle_arena")
+	}
+
+	var resultSlice []*BattleArena
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice battle_arena")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results in eager load on battle_arena")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for battle_arena")
+	}
+
+	if len(battleArenaAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+	if singular {
+		object.R.BattleArenas = resultSlice
+		for _, foreign := range resultSlice {
+			if foreign.R == nil {
+				foreign.R = &battleArenaR{}
+			}
+			foreign.R.OvenStream = object
+		}
+		return nil
+	}
+
+	for _, foreign := range resultSlice {
+		for _, local := range slice {
+			if local.ID == foreign.OvenStreamID {
+				local.R.BattleArenas = append(local.R.BattleArenas, foreign)
+				if foreign.R == nil {
+					foreign.R = &battleArenaR{}
+				}
+				foreign.R.OvenStream = local
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
+// AddBattleArenas adds the given related objects to the existing relationships
+// of the oven_stream, optionally inserting them as new records.
+// Appends related to o.R.BattleArenas.
+// Sets related.R.OvenStream appropriately.
+func (o *OvenStream) AddBattleArenas(exec boil.Executor, insert bool, related ...*BattleArena) error {
+	var err error
+	for _, rel := range related {
+		if insert {
+			rel.OvenStreamID = o.ID
+			if err = rel.Insert(exec, boil.Infer()); err != nil {
+				return errors.Wrap(err, "failed to insert into foreign table")
+			}
+		} else {
+			updateQuery := fmt.Sprintf(
+				"UPDATE \"battle_arena\" SET %s WHERE %s",
+				strmangle.SetParamNames("\"", "\"", 1, []string{"oven_stream_id"}),
+				strmangle.WhereClause("\"", "\"", 2, battleArenaPrimaryKeyColumns),
+			)
+			values := []interface{}{o.ID, rel.ID}
+
+			if boil.DebugMode {
+				fmt.Fprintln(boil.DebugWriter, updateQuery)
+				fmt.Fprintln(boil.DebugWriter, values)
+			}
+			if _, err = exec.Exec(updateQuery, values...); err != nil {
+				return errors.Wrap(err, "failed to update foreign table")
+			}
+
+			rel.OvenStreamID = o.ID
+		}
+	}
+
+	if o.R == nil {
+		o.R = &ovenStreamR{
+			BattleArenas: related,
+		}
+	} else {
+		o.R.BattleArenas = append(o.R.BattleArenas, related...)
+	}
+
+	for _, rel := range related {
+		if rel.R == nil {
+			rel.R = &battleArenaR{
+				OvenStream: o,
+			}
+		} else {
+			rel.R.OvenStream = o
+		}
+	}
+	return nil
 }
 
 // OvenStreams retrieves all the records using an executor.
