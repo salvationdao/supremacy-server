@@ -128,26 +128,29 @@ var RepairAgentWhere = struct {
 
 // RepairAgentRels is where relationship names are stored.
 var RepairAgentRels = struct {
-	Player          string
-	RepairCase      string
-	RepairOffer     string
-	RepairAgentLogs string
-	RepairBlocks    string
+	Player              string
+	RepairCase          string
+	RepairOffer         string
+	RepairAgentLogsOlds string
+	RepairBlocks        string
+	RepairGameBlockLogs string
 }{
-	Player:          "Player",
-	RepairCase:      "RepairCase",
-	RepairOffer:     "RepairOffer",
-	RepairAgentLogs: "RepairAgentLogs",
-	RepairBlocks:    "RepairBlocks",
+	Player:              "Player",
+	RepairCase:          "RepairCase",
+	RepairOffer:         "RepairOffer",
+	RepairAgentLogsOlds: "RepairAgentLogsOlds",
+	RepairBlocks:        "RepairBlocks",
+	RepairGameBlockLogs: "RepairGameBlockLogs",
 }
 
 // repairAgentR is where relationships are stored.
 type repairAgentR struct {
-	Player          *Player             `boiler:"Player" boil:"Player" json:"Player" toml:"Player" yaml:"Player"`
-	RepairCase      *RepairCase         `boiler:"RepairCase" boil:"RepairCase" json:"RepairCase" toml:"RepairCase" yaml:"RepairCase"`
-	RepairOffer     *RepairOffer        `boiler:"RepairOffer" boil:"RepairOffer" json:"RepairOffer" toml:"RepairOffer" yaml:"RepairOffer"`
-	RepairAgentLogs RepairAgentLogSlice `boiler:"RepairAgentLogs" boil:"RepairAgentLogs" json:"RepairAgentLogs" toml:"RepairAgentLogs" yaml:"RepairAgentLogs"`
-	RepairBlocks    RepairBlockSlice    `boiler:"RepairBlocks" boil:"RepairBlocks" json:"RepairBlocks" toml:"RepairBlocks" yaml:"RepairBlocks"`
+	Player              *Player                 `boiler:"Player" boil:"Player" json:"Player" toml:"Player" yaml:"Player"`
+	RepairCase          *RepairCase             `boiler:"RepairCase" boil:"RepairCase" json:"RepairCase" toml:"RepairCase" yaml:"RepairCase"`
+	RepairOffer         *RepairOffer            `boiler:"RepairOffer" boil:"RepairOffer" json:"RepairOffer" toml:"RepairOffer" yaml:"RepairOffer"`
+	RepairAgentLogsOlds RepairAgentLogsOldSlice `boiler:"RepairAgentLogsOlds" boil:"RepairAgentLogsOlds" json:"RepairAgentLogsOlds" toml:"RepairAgentLogsOlds" yaml:"RepairAgentLogsOlds"`
+	RepairBlocks        RepairBlockSlice        `boiler:"RepairBlocks" boil:"RepairBlocks" json:"RepairBlocks" toml:"RepairBlocks" yaml:"RepairBlocks"`
+	RepairGameBlockLogs RepairGameBlockLogSlice `boiler:"RepairGameBlockLogs" boil:"RepairGameBlockLogs" json:"RepairGameBlockLogs" toml:"RepairGameBlockLogs" yaml:"RepairGameBlockLogs"`
 }
 
 // NewStruct creates a new relationship struct
@@ -453,22 +456,22 @@ func (o *RepairAgent) RepairOffer(mods ...qm.QueryMod) repairOfferQuery {
 	return query
 }
 
-// RepairAgentLogs retrieves all the repair_agent_log's RepairAgentLogs with an executor.
-func (o *RepairAgent) RepairAgentLogs(mods ...qm.QueryMod) repairAgentLogQuery {
+// RepairAgentLogsOlds retrieves all the repair_agent_logs_old's RepairAgentLogsOlds with an executor.
+func (o *RepairAgent) RepairAgentLogsOlds(mods ...qm.QueryMod) repairAgentLogsOldQuery {
 	var queryMods []qm.QueryMod
 	if len(mods) != 0 {
 		queryMods = append(queryMods, mods...)
 	}
 
 	queryMods = append(queryMods,
-		qm.Where("\"repair_agent_logs\".\"repair_agent_id\"=?", o.ID),
+		qm.Where("\"repair_agent_logs_old\".\"repair_agent_id\"=?", o.ID),
 	)
 
-	query := RepairAgentLogs(queryMods...)
-	queries.SetFrom(query.Query, "\"repair_agent_logs\"")
+	query := RepairAgentLogsOlds(queryMods...)
+	queries.SetFrom(query.Query, "\"repair_agent_logs_old\"")
 
 	if len(queries.GetSelect(query.Query)) == 0 {
-		queries.SetSelect(query.Query, []string{"\"repair_agent_logs\".*"})
+		queries.SetSelect(query.Query, []string{"\"repair_agent_logs_old\".*"})
 	}
 
 	return query
@@ -490,6 +493,28 @@ func (o *RepairAgent) RepairBlocks(mods ...qm.QueryMod) repairBlockQuery {
 
 	if len(queries.GetSelect(query.Query)) == 0 {
 		queries.SetSelect(query.Query, []string{"\"repair_blocks\".*"})
+	}
+
+	return query
+}
+
+// RepairGameBlockLogs retrieves all the repair_game_block_log's RepairGameBlockLogs with an executor.
+func (o *RepairAgent) RepairGameBlockLogs(mods ...qm.QueryMod) repairGameBlockLogQuery {
+	var queryMods []qm.QueryMod
+	if len(mods) != 0 {
+		queryMods = append(queryMods, mods...)
+	}
+
+	queryMods = append(queryMods,
+		qm.Where("\"repair_game_block_logs\".\"repair_agent_id\"=?", o.ID),
+		qmhelper.WhereIsNull("\"repair_game_block_logs\".\"deleted_at\""),
+	)
+
+	query := RepairGameBlockLogs(queryMods...)
+	queries.SetFrom(query.Query, "\"repair_game_block_logs\"")
+
+	if len(queries.GetSelect(query.Query)) == 0 {
+		queries.SetSelect(query.Query, []string{"\"repair_game_block_logs\".*"})
 	}
 
 	return query
@@ -810,9 +835,9 @@ func (repairAgentL) LoadRepairOffer(e boil.Executor, singular bool, maybeRepairA
 	return nil
 }
 
-// LoadRepairAgentLogs allows an eager lookup of values, cached into the
+// LoadRepairAgentLogsOlds allows an eager lookup of values, cached into the
 // loaded structs of the objects. This is for a 1-M or N-M relationship.
-func (repairAgentL) LoadRepairAgentLogs(e boil.Executor, singular bool, maybeRepairAgent interface{}, mods queries.Applicator) error {
+func (repairAgentL) LoadRepairAgentLogsOlds(e boil.Executor, singular bool, maybeRepairAgent interface{}, mods queries.Applicator) error {
 	var slice []*RepairAgent
 	var object *RepairAgent
 
@@ -850,8 +875,8 @@ func (repairAgentL) LoadRepairAgentLogs(e boil.Executor, singular bool, maybeRep
 	}
 
 	query := NewQuery(
-		qm.From(`repair_agent_logs`),
-		qm.WhereIn(`repair_agent_logs.repair_agent_id in ?`, args...),
+		qm.From(`repair_agent_logs_old`),
+		qm.WhereIn(`repair_agent_logs_old.repair_agent_id in ?`, args...),
 	)
 	if mods != nil {
 		mods.Apply(query)
@@ -859,22 +884,22 @@ func (repairAgentL) LoadRepairAgentLogs(e boil.Executor, singular bool, maybeRep
 
 	results, err := query.Query(e)
 	if err != nil {
-		return errors.Wrap(err, "failed to eager load repair_agent_logs")
+		return errors.Wrap(err, "failed to eager load repair_agent_logs_old")
 	}
 
-	var resultSlice []*RepairAgentLog
+	var resultSlice []*RepairAgentLogsOld
 	if err = queries.Bind(results, &resultSlice); err != nil {
-		return errors.Wrap(err, "failed to bind eager loaded slice repair_agent_logs")
+		return errors.Wrap(err, "failed to bind eager loaded slice repair_agent_logs_old")
 	}
 
 	if err = results.Close(); err != nil {
-		return errors.Wrap(err, "failed to close results in eager load on repair_agent_logs")
+		return errors.Wrap(err, "failed to close results in eager load on repair_agent_logs_old")
 	}
 	if err = results.Err(); err != nil {
-		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for repair_agent_logs")
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for repair_agent_logs_old")
 	}
 
-	if len(repairAgentLogAfterSelectHooks) != 0 {
+	if len(repairAgentLogsOldAfterSelectHooks) != 0 {
 		for _, obj := range resultSlice {
 			if err := obj.doAfterSelectHooks(e); err != nil {
 				return err
@@ -882,10 +907,10 @@ func (repairAgentL) LoadRepairAgentLogs(e boil.Executor, singular bool, maybeRep
 		}
 	}
 	if singular {
-		object.R.RepairAgentLogs = resultSlice
+		object.R.RepairAgentLogsOlds = resultSlice
 		for _, foreign := range resultSlice {
 			if foreign.R == nil {
-				foreign.R = &repairAgentLogR{}
+				foreign.R = &repairAgentLogsOldR{}
 			}
 			foreign.R.RepairAgent = object
 		}
@@ -895,9 +920,9 @@ func (repairAgentL) LoadRepairAgentLogs(e boil.Executor, singular bool, maybeRep
 	for _, foreign := range resultSlice {
 		for _, local := range slice {
 			if local.ID == foreign.RepairAgentID {
-				local.R.RepairAgentLogs = append(local.R.RepairAgentLogs, foreign)
+				local.R.RepairAgentLogsOlds = append(local.R.RepairAgentLogsOlds, foreign)
 				if foreign.R == nil {
-					foreign.R = &repairAgentLogR{}
+					foreign.R = &repairAgentLogsOldR{}
 				}
 				foreign.R.RepairAgent = local
 				break
@@ -996,6 +1021,105 @@ func (repairAgentL) LoadRepairBlocks(e boil.Executor, singular bool, maybeRepair
 				local.R.RepairBlocks = append(local.R.RepairBlocks, foreign)
 				if foreign.R == nil {
 					foreign.R = &repairBlockR{}
+				}
+				foreign.R.RepairAgent = local
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
+// LoadRepairGameBlockLogs allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for a 1-M or N-M relationship.
+func (repairAgentL) LoadRepairGameBlockLogs(e boil.Executor, singular bool, maybeRepairAgent interface{}, mods queries.Applicator) error {
+	var slice []*RepairAgent
+	var object *RepairAgent
+
+	if singular {
+		object = maybeRepairAgent.(*RepairAgent)
+	} else {
+		slice = *maybeRepairAgent.(*[]*RepairAgent)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &repairAgentR{}
+		}
+		args = append(args, object.ID)
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &repairAgentR{}
+			}
+
+			for _, a := range args {
+				if a == obj.ID {
+					continue Outer
+				}
+			}
+
+			args = append(args, obj.ID)
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`repair_game_block_logs`),
+		qm.WhereIn(`repair_game_block_logs.repair_agent_id in ?`, args...),
+		qmhelper.WhereIsNull(`repair_game_block_logs.deleted_at`),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load repair_game_block_logs")
+	}
+
+	var resultSlice []*RepairGameBlockLog
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice repair_game_block_logs")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results in eager load on repair_game_block_logs")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for repair_game_block_logs")
+	}
+
+	if len(repairGameBlockLogAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+	if singular {
+		object.R.RepairGameBlockLogs = resultSlice
+		for _, foreign := range resultSlice {
+			if foreign.R == nil {
+				foreign.R = &repairGameBlockLogR{}
+			}
+			foreign.R.RepairAgent = object
+		}
+		return nil
+	}
+
+	for _, foreign := range resultSlice {
+		for _, local := range slice {
+			if local.ID == foreign.RepairAgentID {
+				local.R.RepairGameBlockLogs = append(local.R.RepairGameBlockLogs, foreign)
+				if foreign.R == nil {
+					foreign.R = &repairGameBlockLogR{}
 				}
 				foreign.R.RepairAgent = local
 				break
@@ -1144,11 +1268,11 @@ func (o *RepairAgent) SetRepairOffer(exec boil.Executor, insert bool, related *R
 	return nil
 }
 
-// AddRepairAgentLogs adds the given related objects to the existing relationships
+// AddRepairAgentLogsOlds adds the given related objects to the existing relationships
 // of the repair_agent, optionally inserting them as new records.
-// Appends related to o.R.RepairAgentLogs.
+// Appends related to o.R.RepairAgentLogsOlds.
 // Sets related.R.RepairAgent appropriately.
-func (o *RepairAgent) AddRepairAgentLogs(exec boil.Executor, insert bool, related ...*RepairAgentLog) error {
+func (o *RepairAgent) AddRepairAgentLogsOlds(exec boil.Executor, insert bool, related ...*RepairAgentLogsOld) error {
 	var err error
 	for _, rel := range related {
 		if insert {
@@ -1158,9 +1282,9 @@ func (o *RepairAgent) AddRepairAgentLogs(exec boil.Executor, insert bool, relate
 			}
 		} else {
 			updateQuery := fmt.Sprintf(
-				"UPDATE \"repair_agent_logs\" SET %s WHERE %s",
+				"UPDATE \"repair_agent_logs_old\" SET %s WHERE %s",
 				strmangle.SetParamNames("\"", "\"", 1, []string{"repair_agent_id"}),
-				strmangle.WhereClause("\"", "\"", 2, repairAgentLogPrimaryKeyColumns),
+				strmangle.WhereClause("\"", "\"", 2, repairAgentLogsOldPrimaryKeyColumns),
 			)
 			values := []interface{}{o.ID, rel.ID}
 
@@ -1178,15 +1302,15 @@ func (o *RepairAgent) AddRepairAgentLogs(exec boil.Executor, insert bool, relate
 
 	if o.R == nil {
 		o.R = &repairAgentR{
-			RepairAgentLogs: related,
+			RepairAgentLogsOlds: related,
 		}
 	} else {
-		o.R.RepairAgentLogs = append(o.R.RepairAgentLogs, related...)
+		o.R.RepairAgentLogsOlds = append(o.R.RepairAgentLogsOlds, related...)
 	}
 
 	for _, rel := range related {
 		if rel.R == nil {
-			rel.R = &repairAgentLogR{
+			rel.R = &repairAgentLogsOldR{
 				RepairAgent: o,
 			}
 		} else {
@@ -1239,6 +1363,58 @@ func (o *RepairAgent) AddRepairBlocks(exec boil.Executor, insert bool, related .
 	for _, rel := range related {
 		if rel.R == nil {
 			rel.R = &repairBlockR{
+				RepairAgent: o,
+			}
+		} else {
+			rel.R.RepairAgent = o
+		}
+	}
+	return nil
+}
+
+// AddRepairGameBlockLogs adds the given related objects to the existing relationships
+// of the repair_agent, optionally inserting them as new records.
+// Appends related to o.R.RepairGameBlockLogs.
+// Sets related.R.RepairAgent appropriately.
+func (o *RepairAgent) AddRepairGameBlockLogs(exec boil.Executor, insert bool, related ...*RepairGameBlockLog) error {
+	var err error
+	for _, rel := range related {
+		if insert {
+			rel.RepairAgentID = o.ID
+			if err = rel.Insert(exec, boil.Infer()); err != nil {
+				return errors.Wrap(err, "failed to insert into foreign table")
+			}
+		} else {
+			updateQuery := fmt.Sprintf(
+				"UPDATE \"repair_game_block_logs\" SET %s WHERE %s",
+				strmangle.SetParamNames("\"", "\"", 1, []string{"repair_agent_id"}),
+				strmangle.WhereClause("\"", "\"", 2, repairGameBlockLogPrimaryKeyColumns),
+			)
+			values := []interface{}{o.ID, rel.ID}
+
+			if boil.DebugMode {
+				fmt.Fprintln(boil.DebugWriter, updateQuery)
+				fmt.Fprintln(boil.DebugWriter, values)
+			}
+			if _, err = exec.Exec(updateQuery, values...); err != nil {
+				return errors.Wrap(err, "failed to update foreign table")
+			}
+
+			rel.RepairAgentID = o.ID
+		}
+	}
+
+	if o.R == nil {
+		o.R = &repairAgentR{
+			RepairGameBlockLogs: related,
+		}
+	} else {
+		o.R.RepairGameBlockLogs = append(o.R.RepairGameBlockLogs, related...)
+	}
+
+	for _, rel := range related {
+		if rel.R == nil {
+			rel.R = &repairGameBlockLogR{
 				RepairAgent: o,
 			}
 		} else {

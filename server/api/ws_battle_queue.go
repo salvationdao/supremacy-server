@@ -5,6 +5,16 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"server"
+	"server/battle"
+	"server/db"
+	"server/db/boiler"
+	"server/gamedb"
+	"server/gamelog"
+	"server/xsyn_rpcclient"
+	"strings"
+	"time"
+
 	"github.com/friendsofgo/errors"
 	"github.com/go-chi/chi/v5"
 	"github.com/gofrs/uuid"
@@ -15,15 +25,6 @@ import (
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 	"golang.org/x/exp/slices"
-	"server"
-	"server/battle"
-	"server/db"
-	"server/db/boiler"
-	"server/gamedb"
-	"server/gamelog"
-	"server/xsyn_rpcclient"
-	"strings"
-	"time"
 )
 
 func BattleQueueController(api *API) {
