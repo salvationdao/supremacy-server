@@ -92,7 +92,27 @@ type Mech struct {
 }
 
 type BlueprintMech struct {
-	*boiler.BlueprintMech
+	ID                      string          `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
+	Label                   string          `boiler:"label" boil:"label" json:"label" toml:"label" yaml:"label"`
+	CreatedAt               time.Time       `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
+	DefaultChassisSkinID    string          `boiler:"default_chassis_skin_id" boil:"default_chassis_skin_id" json:"default_chassis_skin_id" toml:"default_chassis_skin_id" yaml:"default_chassis_skin_id"`
+	BrandID                 string          `boiler:"brand_id" boil:"brand_id" json:"brand_id" toml:"brand_id" yaml:"brand_id"`
+	MechType                string          `boiler:"mech_type" boil:"mech_type" json:"mech_type" toml:"mech_type" yaml:"mech_type"`
+	RepairBlocks            int             `boiler:"repair_blocks" boil:"repair_blocks" json:"repair_blocks" toml:"repair_blocks" yaml:"repair_blocks"`
+	BoostStat               null.String     `boiler:"boost_stat" boil:"boost_stat" json:"boost_stat,omitempty" toml:"boost_stat" yaml:"boost_stat,omitempty"`
+	WeaponHardpoints        int             `boiler:"weapon_hardpoints" boil:"weapon_hardpoints" json:"weapon_hardpoints" toml:"weapon_hardpoints" yaml:"weapon_hardpoints"`
+	PowerCoreSize           string          `boiler:"power_core_size" boil:"power_core_size" json:"power_core_size" toml:"power_core_size" yaml:"power_core_size"`
+	UtilitySlots            int             `boiler:"utility_slots" boil:"utility_slots" json:"utility_slots" toml:"utility_slots" yaml:"utility_slots"`
+	Speed                   int             `boiler:"speed" boil:"speed" json:"speed" toml:"speed" yaml:"speed"`
+	MaxHitpoints            int             `boiler:"max_hitpoints" boil:"max_hitpoints" json:"max_hitpoints" toml:"max_hitpoints" yaml:"max_hitpoints"`
+	Collection              string          `boiler:"collection" boil:"collection" json:"collection" toml:"collection" yaml:"collection"`
+	AvailabilityID          null.String     `boiler:"availability_id" boil:"availability_id" json:"availability_id,omitempty" toml:"availability_id" yaml:"availability_id,omitempty"`
+	ShieldTypeID            string          `boiler:"shield_type_id" boil:"shield_type_id" json:"shield_type_id" toml:"shield_type_id" yaml:"shield_type_id"`
+	ShieldMax               int             `boiler:"shield_max" boil:"shield_max" json:"shield_max" toml:"shield_max" yaml:"shield_max"`
+	ShieldRechargeRate      int             `boiler:"shield_recharge_rate" boil:"shield_recharge_rate" json:"shield_recharge_rate" toml:"shield_recharge_rate" yaml:"shield_recharge_rate"`
+	ShieldRechargePowerCost int             `boiler:"shield_recharge_power_cost" boil:"shield_recharge_power_cost" json:"shield_recharge_power_cost" toml:"shield_recharge_power_cost" yaml:"shield_recharge_power_cost"`
+	ShieldRechargeDelay     decimal.Decimal `boiler:"shield_recharge_delay" boil:"shield_recharge_delay" json:"shield_recharge_delay" toml:"shield_recharge_delay" yaml:"shield_recharge_delay"`
+	HeightMeters            decimal.Decimal `boiler:"height_meters" boil:"height_meters" json:"height_meters" toml:"height_meters" yaml:"height_meters"`
 
 	BoostedSpeed              int64 `json:"boosted_speed"`
 	BoostedMaxHitpoints       int64 `json:"boosted_max_hitpoints"`
@@ -113,7 +133,27 @@ func (b *BlueprintMech) Scan(value interface{}) error {
 
 func BlueprintMechFromBoiler(mech *boiler.BlueprintMech) *BlueprintMech {
 	return &BlueprintMech{
-		BlueprintMech: mech,
+		ID: mech.ID,
+		Label: mech.Label,
+		CreatedAt: mech.CreatedAt,
+		DefaultChassisSkinID: mech.DefaultChassisSkinID,
+		BrandID: mech.BrandID,
+		MechType: mech.MechType,
+		RepairBlocks: mech.RepairBlocks,
+		BoostStat: mech.BoostStat,
+		WeaponHardpoints: mech.WeaponHardpoints,
+		PowerCoreSize: mech.PowerCoreSize,
+		UtilitySlots: mech.UtilitySlots,
+		Speed: mech.Speed,
+		MaxHitpoints: mech.MaxHitpoints,
+		Collection: mech.Collection,
+		AvailabilityID: mech.AvailabilityID,
+		ShieldTypeID: mech.ShieldTypeID,
+		ShieldMax: mech.ShieldMax,
+		ShieldRechargeRate: mech.ShieldRechargeRate,
+		ShieldRechargePowerCost: mech.ShieldRechargePowerCost,
+		ShieldRechargeDelay: mech.ShieldRechargeDelay,
+		HeightMeters: mech.HeightMeters,
 	}
 }
 

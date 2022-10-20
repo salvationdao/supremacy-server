@@ -334,9 +334,12 @@ func WeaponSkinListDetailed(opts *WeaponSkinListOpts) (int64, []*server.WeaponSk
 					qm.Rels(boiler.TableNames.BlueprintWeaponSkin, boiler.BlueprintWeaponSkinColumns.Label),
 				)))
 	}
+
+	boil.DebugMode = true
 	rows, err := boiler.NewQuery(
 		queryMods...,
 	).Query(gamedb.StdConn)
+	boil.DebugMode = false
 	if err != nil {
 		gamelog.L.Error().Err(err).Msg("failed to run dynamic weapon skin query")
 		return 0, nil, err

@@ -2222,7 +2222,7 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetMechSubmodelListDetailedHandler(
 		FilterEquippedStatuses:   req.Payload.FilterEquippedStatuses,
 		SortBy:                   req.Payload.SortBy,
 		SortDir:                  req.Payload.SortDir,
-		DisplayGenesisAndLimited: req.Payload.DisplayGenesisAndLimited,
+		DisplayGenesisAndLimited: true,
 		FilterSkinCompatibility:  req.Payload.FilterSkinCompatibility,
 	}
 
@@ -2298,7 +2298,7 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetWeaponSubmodelListDetailedHandle
 		FilterEquippedStatuses:   req.Payload.FilterEquippedStatuses,
 		SortBy:                   req.Payload.SortBy,
 		SortDir:                  req.Payload.SortDir,
-		DisplayGenesisAndLimited: req.Payload.DisplayGenesisAndLimited,
+		DisplayGenesisAndLimited: true,
 		FilterSkinCompatibility:  req.Payload.FilterSkinCompatibility,
 	}
 
@@ -2372,7 +2372,7 @@ func (pac *PlayerAssetsControllerWS) PlayerMechBlueprintListDetailedHandler(ctx 
 
 	for rows.Next() {
 		mbp := &server.BlueprintMech{}
-		err = rows.Scan(
+		err := rows.Scan(
 			&mbp.ID,
 			&mbp.Label,
 			&mbp.DefaultChassisSkinID,
