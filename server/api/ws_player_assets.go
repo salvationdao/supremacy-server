@@ -1317,10 +1317,16 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetMechEquipHandler(ctx context.Con
 		// Check if specified power core exists
 		powerCore, err := boiler.PowerCores(
 			boiler.PowerCoreWhere.ID.EQ(req.Payload.EquipPowerCore.PowerCoreID),
+			qm.Load(boiler.PowerCoreRels.Blueprint),
 		).One(tx)
 		if err != nil {
 			l.Error().Err(err).Msg("failed to get power core")
 			return terror.Error(err, errorMsg)
+		}
+
+		// Check if power core size is compatible with mech
+		if mech.PowerCoreSize != powerCore.R.Blueprint.Size {
+			return terror.Error(terror.ErrForbidden, fmt.Sprintf("This mech can only support a %s power core. The selected power core of size %s cannot be equipped", mech.PowerCoreSize, powerCore.R.Blueprint.Size))
 		}
 
 		if powerCore.EquippedOn.Valid {

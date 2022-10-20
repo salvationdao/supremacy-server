@@ -14,7 +14,6 @@ const HubKeyMechMoveCommandSubscribe = "MECH:MOVE:COMMAND:SUBSCRIBE"
 const HubKeySaleAbilitiesPriceSubscribe = "SALE:ABILITIES:PRICE:SUBSCRIBE"
 const HubKeySaleAbilitiesListSubscribe = "SALE:ABILITIES:LIST:SUBSCRIBE"
 const HubKeySaleAbilitiesList = "SALE:ABILITIES:LIST"
-const HubKeySaleAbilityClaim = "SALE:ABILITY:CLAIM"
 const HubKeySaleAbilityPurchase = "SALE:ABILITY:PURCHASE"
 
 const HubKeyGlobalAnnouncementSubscribe = "GLOBAL_ANNOUNCEMENT:SUBSCRIBE"
@@ -43,7 +42,6 @@ const HubKeyRepairOfferIssue = "MECH:REPAIR:OFFER:ISSUE"
 const HubKeyRepairOfferClose = "MECH:REPAIR:OFFER:CLOSE"
 const HubKeyRepairAgentRegister = "REPAIR:AGENT:REGISTER"
 const HubKeyRepairAgentRecord = "REPAIR:AGENT:RECORD"
-const HubKeyRepairAgentComplete = "REPAIR:AGENT:COMPLETE"
 const HubKeyRepairAgentAbandon = "REPAIR:AGENT:ABANDON"
 const HubKeyMechRepairCase = "MECH:REPAIR:CASE"
 const HubKeyMechActiveRepairOffer = "MECH:ACTIVE:REPAIR:OFFER"
@@ -55,13 +53,13 @@ const HubKeyMechRepairSlotRemove = "MECH:REPAIR:SLOT:REMOVE"
 const HubKeyMechRepairSlotSwap = "MECH:REPAIR:SLOT:SWAP"
 const HubKeyMechRepairSlots = "MECH:REPAIR:SLOTS"
 
+const HubKeyNextRepairGameBlock = "NEXT:REPAIR:GAME:BLOCK"
+
 const HubKeyTelegramShortcodeRegistered = "USER:TELEGRAM_SHORTCODE_REGISTERED"
 const HubKeySystemMessageSend = "SYSTEM:MESSAGE:SEND"
 
 const HubKeyPlayerQuestStats = "PLAYER:QUEST:STAT"
 const HubKeyPlayerQuestProgressions = "PLAYER:QUEST:PROGRESSIONS"
-
-const HubKeyVoiceStreams = "PLAYER:VOICE:STREAM"
 
 // battle arena
 
@@ -83,15 +81,34 @@ const HubKeyMysteryCrateSubscribe = "STORE:MYSTERY:CRATE:SUBSCRIBE"
 const HubKeyShoppingCartExpired = "FIAT:SHOPPING_CART:EXPIRED"
 const HubKeyShoppingCartUpdated = "FIAT:SHOPPING_CART:UPDATED"
 
-// battle abilities
+const HubKeyMiniMapAbilityContentSubscribe = "MINI:MAP:ABILITY:CONTENT"
+const HubKeyMechCommandUpdateSubscribe = "MECH:COMMAND:UPDATE"
+const HubKeyFactionMechCommandUpdateSubscribe = "FACTION:MECH:COMMANDS:UPDATE"
+const HubKeyMiniMapUpdateSubscribe = "MINIMAP:UPDATES:SUBSCRIBE"
 
-const HubKeyMiniMapAbilityDisplayList = "MINI:MAP:ABILITY:DISPLAY:LIST"
+// binary key
+const (
+	BinaryKeyWarMachineStats byte = 1
+	BinaryKeyMiniMapEvents   byte = 2
+)
+
+// json binary
+
+type JsonBinaryData struct {
+	Key  string      `json:"key"`
+	Data interface{} `json:"data"`
+}
 
 // voice streams
 
+const HubKeyVoiceStreams = "PLAYER:VOICE:STREAM"
+const HubKeyVoiceStreamsListeners = "PLAYER:VOICE:STREAM:LISTENERS"
 const HubKeyVoiceStreamJoinFactionCommander = "VOICE:JOIN:FACTION:COMMANDER"
 const HubKeyVoiceStreamLeaveFactionCommander = "VOICE:LEAVE:FACTION:COMMANDER"
 const HubKeyVoiceStreamVoteKick = "VOICE:VOTE:KICK"
+const HubKeyVoiceStreamConnect = "VOICE:STREAM:CONNECT"
+const HubKeyVoiceStreamDisconnect = "VOICE:STREAM:DISCONNECT"
+const HubKeyVoiceStreamGetListeners = "VOICE:STREAM:GET:LISTENERS"
 
 // battle queue
 

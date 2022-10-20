@@ -92,6 +92,7 @@ var TableNames = struct {
 	MechWeapons                                        string
 	Mechs                                              string
 	MechsOld                                           string
+	ModActionAudit                                     string
 	Multipliers                                        string
 	MysteryCrate                                       string
 	MysteryCrateBlueprints                             string
@@ -129,10 +130,12 @@ var TableNames = struct {
 	QuestionnaireAnswer                                string
 	QuestionnaireOptions                               string
 	Quests                                             string
-	RepairAgentLogs                                    string
+	RepairAgentLogsOld                                 string
 	RepairAgents                                       string
 	RepairBlocks                                       string
 	RepairCases                                        string
+	RepairGameBlockLogs                                string
+	RepairGameBlocks                                   string
 	RepairOffers                                       string
 	Roles                                              string
 	SalePlayerAbilities                                string
@@ -259,6 +262,7 @@ var TableNames = struct {
 	MechWeapons:                    "mech_weapons",
 	Mechs:                          "mechs",
 	MechsOld:                       "mechs_old",
+	ModActionAudit:                 "mod_action_audit",
 	Multipliers:                    "multipliers",
 	MysteryCrate:                   "mystery_crate",
 	MysteryCrateBlueprints:         "mystery_crate_blueprints",
@@ -296,10 +300,12 @@ var TableNames = struct {
 	QuestionnaireAnswer:            "questionnaire_answer",
 	QuestionnaireOptions:           "questionnaire_options",
 	Quests:                         "quests",
-	RepairAgentLogs:                "repair_agent_logs",
+	RepairAgentLogsOld:             "repair_agent_logs_old",
 	RepairAgents:                   "repair_agents",
 	RepairBlocks:                   "repair_blocks",
 	RepairCases:                    "repair_cases",
+	RepairGameBlockLogs:            "repair_game_block_logs",
+	RepairGameBlocks:               "repair_game_blocks",
 	RepairOffers:                   "repair_offers",
 	Roles:                          "roles",
 	SalePlayerAbilities:            "sale_player_abilities",
