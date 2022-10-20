@@ -23,62 +23,70 @@ import (
 
 // BattleArena is an object representing the database table.
 type BattleArena struct {
-	ID        string    `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
-	Gid       int       `boiler:"gid" boil:"gid" json:"gid" toml:"gid" yaml:"gid"`
-	CreatedAt time.Time `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
-	UpdatedAt time.Time `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
-	DeletedAt null.Time `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
+	ID           string    `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
+	Gid          int       `boiler:"gid" boil:"gid" json:"gid" toml:"gid" yaml:"gid"`
+	CreatedAt    time.Time `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
+	UpdatedAt    time.Time `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
+	DeletedAt    null.Time `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
+	OvenStreamID string    `boiler:"oven_stream_id" boil:"oven_stream_id" json:"oven_stream_id" toml:"oven_stream_id" yaml:"oven_stream_id"`
 
 	R *battleArenaR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L battleArenaL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 }
 
 var BattleArenaColumns = struct {
-	ID        string
-	Gid       string
-	CreatedAt string
-	UpdatedAt string
-	DeletedAt string
+	ID           string
+	Gid          string
+	CreatedAt    string
+	UpdatedAt    string
+	DeletedAt    string
+	OvenStreamID string
 }{
-	ID:        "id",
-	Gid:       "gid",
-	CreatedAt: "created_at",
-	UpdatedAt: "updated_at",
-	DeletedAt: "deleted_at",
+	ID:           "id",
+	Gid:          "gid",
+	CreatedAt:    "created_at",
+	UpdatedAt:    "updated_at",
+	DeletedAt:    "deleted_at",
+	OvenStreamID: "oven_stream_id",
 }
 
 var BattleArenaTableColumns = struct {
-	ID        string
-	Gid       string
-	CreatedAt string
-	UpdatedAt string
-	DeletedAt string
+	ID           string
+	Gid          string
+	CreatedAt    string
+	UpdatedAt    string
+	DeletedAt    string
+	OvenStreamID string
 }{
-	ID:        "battle_arena.id",
-	Gid:       "battle_arena.gid",
-	CreatedAt: "battle_arena.created_at",
-	UpdatedAt: "battle_arena.updated_at",
-	DeletedAt: "battle_arena.deleted_at",
+	ID:           "battle_arena.id",
+	Gid:          "battle_arena.gid",
+	CreatedAt:    "battle_arena.created_at",
+	UpdatedAt:    "battle_arena.updated_at",
+	DeletedAt:    "battle_arena.deleted_at",
+	OvenStreamID: "battle_arena.oven_stream_id",
 }
 
 // Generated where
 
 var BattleArenaWhere = struct {
-	ID        whereHelperstring
-	Gid       whereHelperint
-	CreatedAt whereHelpertime_Time
-	UpdatedAt whereHelpertime_Time
-	DeletedAt whereHelpernull_Time
+	ID           whereHelperstring
+	Gid          whereHelperint
+	CreatedAt    whereHelpertime_Time
+	UpdatedAt    whereHelpertime_Time
+	DeletedAt    whereHelpernull_Time
+	OvenStreamID whereHelperstring
 }{
-	ID:        whereHelperstring{field: "\"battle_arena\".\"id\""},
-	Gid:       whereHelperint{field: "\"battle_arena\".\"gid\""},
-	CreatedAt: whereHelpertime_Time{field: "\"battle_arena\".\"created_at\""},
-	UpdatedAt: whereHelpertime_Time{field: "\"battle_arena\".\"updated_at\""},
-	DeletedAt: whereHelpernull_Time{field: "\"battle_arena\".\"deleted_at\""},
+	ID:           whereHelperstring{field: "\"battle_arena\".\"id\""},
+	Gid:          whereHelperint{field: "\"battle_arena\".\"gid\""},
+	CreatedAt:    whereHelpertime_Time{field: "\"battle_arena\".\"created_at\""},
+	UpdatedAt:    whereHelpertime_Time{field: "\"battle_arena\".\"updated_at\""},
+	DeletedAt:    whereHelpernull_Time{field: "\"battle_arena\".\"deleted_at\""},
+	OvenStreamID: whereHelperstring{field: "\"battle_arena\".\"oven_stream_id\""},
 }
 
 // BattleArenaRels is where relationship names are stored.
 var BattleArenaRels = struct {
+	OvenStream                   string
 	AssignedToArenaBattleLobbies string
 	ArenaBattleReplays           string
 	ArenaBattles                 string
@@ -86,6 +94,7 @@ var BattleArenaRels = struct {
 	ArenaMechMoveCommandLogs     string
 	ArenaVoiceStreams            string
 }{
+	OvenStream:                   "OvenStream",
 	AssignedToArenaBattleLobbies: "AssignedToArenaBattleLobbies",
 	ArenaBattleReplays:           "ArenaBattleReplays",
 	ArenaBattles:                 "ArenaBattles",
@@ -96,6 +105,7 @@ var BattleArenaRels = struct {
 
 // battleArenaR is where relationships are stored.
 type battleArenaR struct {
+	OvenStream                   *OvenStream             `boiler:"OvenStream" boil:"OvenStream" json:"OvenStream" toml:"OvenStream" yaml:"OvenStream"`
 	AssignedToArenaBattleLobbies BattleLobbySlice        `boiler:"AssignedToArenaBattleLobbies" boil:"AssignedToArenaBattleLobbies" json:"AssignedToArenaBattleLobbies" toml:"AssignedToArenaBattleLobbies" yaml:"AssignedToArenaBattleLobbies"`
 	ArenaBattleReplays           BattleReplaySlice       `boiler:"ArenaBattleReplays" boil:"ArenaBattleReplays" json:"ArenaBattleReplays" toml:"ArenaBattleReplays" yaml:"ArenaBattleReplays"`
 	ArenaBattles                 BattleSlice             `boiler:"ArenaBattles" boil:"ArenaBattles" json:"ArenaBattles" toml:"ArenaBattles" yaml:"ArenaBattles"`
@@ -113,8 +123,8 @@ func (*battleArenaR) NewStruct() *battleArenaR {
 type battleArenaL struct{}
 
 var (
-	battleArenaAllColumns            = []string{"id", "gid", "created_at", "updated_at", "deleted_at"}
-	battleArenaColumnsWithoutDefault = []string{}
+	battleArenaAllColumns            = []string{"id", "gid", "created_at", "updated_at", "deleted_at", "oven_stream_id"}
+	battleArenaColumnsWithoutDefault = []string{"oven_stream_id"}
 	battleArenaColumnsWithDefault    = []string{"id", "gid", "created_at", "updated_at", "deleted_at"}
 	battleArenaPrimaryKeyColumns     = []string{"id"}
 	battleArenaGeneratedColumns      = []string{}
@@ -362,6 +372,20 @@ func (q battleArenaQuery) Exists(exec boil.Executor) (bool, error) {
 	return count > 0, nil
 }
 
+// OvenStream pointed to by the foreign key.
+func (o *BattleArena) OvenStream(mods ...qm.QueryMod) ovenStreamQuery {
+	queryMods := []qm.QueryMod{
+		qm.Where("\"id\" = ?", o.OvenStreamID),
+	}
+
+	queryMods = append(queryMods, mods...)
+
+	query := OvenStreams(queryMods...)
+	queries.SetFrom(query.Query, "\"oven_streams\"")
+
+	return query
+}
+
 // AssignedToArenaBattleLobbies retrieves all the battle_lobby's BattleLobbies with an executor via assigned_to_arena_id column.
 func (o *BattleArena) AssignedToArenaBattleLobbies(mods ...qm.QueryMod) battleLobbyQuery {
 	var queryMods []qm.QueryMod
@@ -488,6 +512,110 @@ func (o *BattleArena) ArenaVoiceStreams(mods ...qm.QueryMod) voiceStreamQuery {
 	}
 
 	return query
+}
+
+// LoadOvenStream allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for an N-1 relationship.
+func (battleArenaL) LoadOvenStream(e boil.Executor, singular bool, maybeBattleArena interface{}, mods queries.Applicator) error {
+	var slice []*BattleArena
+	var object *BattleArena
+
+	if singular {
+		object = maybeBattleArena.(*BattleArena)
+	} else {
+		slice = *maybeBattleArena.(*[]*BattleArena)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &battleArenaR{}
+		}
+		args = append(args, object.OvenStreamID)
+
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &battleArenaR{}
+			}
+
+			for _, a := range args {
+				if a == obj.OvenStreamID {
+					continue Outer
+				}
+			}
+
+			args = append(args, obj.OvenStreamID)
+
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`oven_streams`),
+		qm.WhereIn(`oven_streams.id in ?`, args...),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load OvenStream")
+	}
+
+	var resultSlice []*OvenStream
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice OvenStream")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results of eager load for oven_streams")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for oven_streams")
+	}
+
+	if len(battleArenaAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+
+	if len(resultSlice) == 0 {
+		return nil
+	}
+
+	if singular {
+		foreign := resultSlice[0]
+		object.R.OvenStream = foreign
+		if foreign.R == nil {
+			foreign.R = &ovenStreamR{}
+		}
+		foreign.R.BattleArenas = append(foreign.R.BattleArenas, object)
+		return nil
+	}
+
+	for _, local := range slice {
+		for _, foreign := range resultSlice {
+			if local.OvenStreamID == foreign.ID {
+				local.R.OvenStream = foreign
+				if foreign.R == nil {
+					foreign.R = &ovenStreamR{}
+				}
+				foreign.R.BattleArenas = append(foreign.R.BattleArenas, local)
+				break
+			}
+		}
+	}
+
+	return nil
 }
 
 // LoadAssignedToArenaBattleLobbies allows an eager lookup of values, cached into the
@@ -1075,6 +1203,52 @@ func (battleArenaL) LoadArenaVoiceStreams(e boil.Executor, singular bool, maybeB
 				break
 			}
 		}
+	}
+
+	return nil
+}
+
+// SetOvenStream of the battleArena to the related item.
+// Sets o.R.OvenStream to related.
+// Adds o to related.R.BattleArenas.
+func (o *BattleArena) SetOvenStream(exec boil.Executor, insert bool, related *OvenStream) error {
+	var err error
+	if insert {
+		if err = related.Insert(exec, boil.Infer()); err != nil {
+			return errors.Wrap(err, "failed to insert into foreign table")
+		}
+	}
+
+	updateQuery := fmt.Sprintf(
+		"UPDATE \"battle_arena\" SET %s WHERE %s",
+		strmangle.SetParamNames("\"", "\"", 1, []string{"oven_stream_id"}),
+		strmangle.WhereClause("\"", "\"", 2, battleArenaPrimaryKeyColumns),
+	)
+	values := []interface{}{related.ID, o.ID}
+
+	if boil.DebugMode {
+		fmt.Fprintln(boil.DebugWriter, updateQuery)
+		fmt.Fprintln(boil.DebugWriter, values)
+	}
+	if _, err = exec.Exec(updateQuery, values...); err != nil {
+		return errors.Wrap(err, "failed to update local table")
+	}
+
+	o.OvenStreamID = related.ID
+	if o.R == nil {
+		o.R = &battleArenaR{
+			OvenStream: related,
+		}
+	} else {
+		o.R.OvenStream = related
+	}
+
+	if related.R == nil {
+		related.R = &ovenStreamR{
+			BattleArenas: BattleArenaSlice{o},
+		}
+	} else {
+		related.R.BattleArenas = append(related.R.BattleArenas, o)
 	}
 
 	return nil
