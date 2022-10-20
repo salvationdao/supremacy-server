@@ -32,7 +32,6 @@ func NewMechRepairController(api *API) {
 	api.SecureUserCommand(server.HubKeyRepairOfferClose, api.RepairOfferClose)
 	api.SecureUserCommand(server.HubKeyRepairAgentRegister, api.RepairAgentRegister)
 	api.SecureUserCommand(server.HubKeyRepairAgentRecord, api.RepairAgentRecord)
-	api.SecureUserCommand(server.HubKeyRepairAgentComplete, api.RepairAgentComplete)
 	api.SecureUserCommand(server.HubKeyRepairAgentAbandon, api.RepairAgentAbandon)
 
 	api.SecureUserCommand(server.HubKeyMechRepairSlotInsert, api.MechRepairSlotInsert)
@@ -496,340 +495,6 @@ func (api *API) broadcastRepairOffer(repairOfferID string) error {
 	return nil
 }
 
-type RepairAgentRecordRequest struct {
-	Payload struct {
-		RepairAgentID string                 `json:"repair_agent_id"`
-		TriggerWith   string                 `json:"trigger_with"`
-		Score         int                    `json:"score"`
-		IsFailed      bool                   `json:"is_failed"`
-		Dimension     MiniGameStackDimension `json:"dimension"`
-	} `json:"payload"`
-}
-
-type MiniGameStackDimension struct {
-	Width decimal.Decimal `json:"width"`
-	Depth decimal.Decimal `json:"depth"`
-}
-
-func (api *API) RepairAgentRecord(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
-	req := &RepairAgentRecordRequest{}
-	err := json.Unmarshal(payload, req)
-	if err != nil {
-		return terror.Error(err, "Invalid request received.")
-	}
-
-	// skip, if it is an initial block
-	if req.Payload.Score == 0 {
-		reply(false)
-		return nil
-	}
-
-	switch req.Payload.TriggerWith {
-	case boiler.RepairTriggerWithTypeSPACE_BAR, boiler.RepairTriggerWithTypeLEFT_CLICK, boiler.RepairTriggerWithTypeTOUCH:
-	default:
-		gamelog.L.Debug().Str("repair agent id", req.Payload.RepairAgentID).Msg("Unknown trigger type is detected.")
-		return terror.Error(fmt.Errorf("invalid trigger type"), "Unknown trigger type is detected.")
-	}
-
-	// log record
-	ral := boiler.RepairAgentLog{
-		RepairAgentID: req.Payload.RepairAgentID,
-		TriggeredWith: req.Payload.TriggerWith,
-		Score:         req.Payload.Score,
-		BlockWidth:    req.Payload.Dimension.Width,
-		BlockDepth:    req.Payload.Dimension.Depth,
-		IsFailed:      req.Payload.IsFailed,
-	}
-
-	err = ral.Insert(gamedb.StdConn, boil.Infer())
-	if err != nil {
-		return terror.Error(err, "Failed to insert repair agent request")
-	}
-
-	if req.Payload.IsFailed {
-		reply(false)
-		return nil
-	}
-	reply(true)
-
-	return nil
-}
-
-type RepairAgentCompleteRequest struct {
-	Payload struct {
-		RepairAgentID string `json:"repair_agent_id"`
-	} `json:"payload"`
-}
-
-func (api *API) RepairAgentComplete(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
-	if mechRepairAgentBucket.Add(user.ID, 1) == 0 {
-		return nil
-	}
-	L := gamelog.L.With().Str("func", "RepairAgentComplete").Interface("user", user).Logger()
-
-	time.Sleep(1 * time.Second)
-
-	req := &RepairAgentCompleteRequest{}
-	err := json.Unmarshal(payload, req)
-	if err != nil {
-		return terror.Error(err, "Invalid request received.")
-	}
-
-	L = L.With().Interface("payload", req.Payload).Logger()
-
-	ra, err := boiler.RepairAgents(
-		boiler.RepairAgentWhere.ID.EQ(req.Payload.RepairAgentID),
-		qm.Load(boiler.RepairAgentRels.RepairOffer),
-	).One(gamedb.StdConn)
-	if err != nil {
-		L.Error().Err(err).Msg("failed to find repair agent")
-		return terror.Error(err, "Failed to load repair agent.")
-	}
-
-	L = L.With().Interface("repair agent", ra).Logger()
-
-	if ra.PlayerID != user.ID {
-		L.Error().Err(err).Msg(" wrong repair agent")
-		return terror.Error(fmt.Errorf("agnet id not match"), "Repair agent id mismatch")
-	}
-
-	if ra.FinishedAt.Valid {
-		L.Error().Err(err).Msg("already finished")
-		return terror.Error(fmt.Errorf("agent finalised"), "This repair agent is already finalised.")
-	}
-
-	err = BlockStackingGameVerification(ra)
-	if err != nil {
-		L.Error().Err(err).Msg("failed BlockStackingGameVerification")
-		return err
-	}
-
-	rb := boiler.RepairBlock{
-		RepairAgentID: ra.ID,
-		RepairCaseID:  ra.RepairCaseID,
-		RepairOfferID: ra.RepairOfferID,
-	}
-
-	err = rb.Insert(gamedb.StdConn, boil.Infer())
-	if err != nil {
-		L.Warn().Err(err).Msg("unable to write block")
-		if err.Error() == "unable to write block" {
-			return terror.Error(err, "repair offer is already closed.")
-		}
-
-		return terror.Error(err, "Failed to complete repair agent task.")
-	}
-
-	// check repair case after insert
-	rc, err := ra.RepairCase().One(gamedb.StdConn)
-	if err != nil {
-		L.Error().Err(err).Msg("failed to load repair case")
-		return terror.Error(err, "Failed to load repair case.")
-	}
-
-	L = L.With().Interface("repair case", rc).Logger()
-
-	// if it is not a self repair
-	if ra.R.RepairOffer.OfferedByID.Valid {
-		// claim sups
-		ro, err := db.RepairOfferDetail(ra.RepairOfferID)
-		if err != nil {
-			L.Error().Err(err).Msg("failed to load repair offer")
-			return terror.Error(err, "Failed to load repair offer")
-		}
-
-		L = L.With().Interface("repair offer", ro).Logger()
-
-		// if it is not a self offer, pay the agent
-		if ro.SupsWorthPerBlock.GreaterThan(decimal.Zero) {
-			// claim reward
-			payoutTXID, err := api.Passport.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
-				FromUserID:           uuid.Must(uuid.FromString(server.RepairCenterUserID)),
-				ToUserID:             uuid.Must(uuid.FromString(user.ID)),
-				Amount:               ro.SupsWorthPerBlock.StringFixed(0),
-				TransactionReference: server.TransactionReference(fmt.Sprintf("claim_repair_offer_reward|%s|%d", ro.ID, time.Now().UnixNano())),
-				Group:                string(server.TransactionGroupSupremacy),
-				SubGroup:             string(server.TransactionGroupRepair),
-				Description:          "claim repair offer reward.",
-			})
-			if err != nil {
-				L.Error().Err(err).Msg("failed to pay sups for offering repair job")
-				return terror.Error(err, "Failed to pay sups for offering repair job.")
-			}
-
-			ra.PayoutTXID = null.StringFrom(payoutTXID)
-			_, err = ra.Update(gamedb.StdConn, boil.Whitelist(boiler.RepairAgentColumns.PayoutTXID))
-			if err != nil {
-				L.Error().Err(err).Msg("failed to update repair agent payout tx id")
-			}
-
-		}
-
-		// broadcast result if repair is not completed
-		if rc.BlocksRepaired < rc.BlocksRequiredRepair {
-			ws.PublishMessage(fmt.Sprintf("/secure/repair_offer/%s", ro.ID), server.HubKeyRepairOfferSubscribe, ro)
-			ws.PublishMessage("/secure/repair_offer/update", server.HubKeyRepairOfferUpdateSubscribe, []*server.RepairOffer{ro})
-			ws.PublishMessage(fmt.Sprintf("/secure/mech/%s/active_repair_offer", ro.ID), server.HubKeyMechActiveRepairOffer, ro)
-		}
-
-		// if repair for others
-		if ra.R.RepairOffer.OfferedByID.String != user.ID {
-			api.questManager.RepairQuestCheck(user.ID)
-		}
-
-	}
-
-	// broadcast result if repair is not completed
-	if rc.BlocksRepaired < rc.BlocksRequiredRepair {
-		canDeployRatio := db.GetDecimalWithDefault(db.KeyCanDeployDamagedRatio, decimal.NewFromFloat(0.5))
-
-		totalBlocks := db.TotalRepairBlocks(rc.MechID)
-
-		// broadcast current mech stat if damage blocks is less than or equal to deploy ratio
-		if decimal.NewFromInt(int64(rc.BlocksRequiredRepair - rc.BlocksRepaired)).Div(decimal.NewFromInt(int64(totalBlocks))).LessThanOrEqual(canDeployRatio) {
-			go BroadcastMechQueueStat(rc.MechID)
-		}
-		ws.PublishMessage(fmt.Sprintf("/secure/mech/%s/repair_case", rc.MechID), server.HubKeyMechRepairCase, rc)
-		reply(true)
-		return nil
-	}
-
-	// clean up repair case if repair is completed
-	ws.PublishMessage(fmt.Sprintf("/secure/mech/%s/repair_case", rc.MechID), server.HubKeyMechRepairCase, nil)
-
-	// broadcast current mech stat
-	go BroadcastMechQueueStat(rc.MechID)
-
-	// close repair case
-	rc.CompletedAt = null.TimeFrom(time.Now())
-	_, err = rc.Update(gamedb.StdConn, boil.Whitelist(boiler.RepairCaseColumns.CompletedAt))
-	if err != nil {
-		L.Error().Err(err).Msg("failed to update repair case")
-		return terror.Error(err, "Failed to close repair case.")
-	}
-
-	// close offer, self and non-self
-	ros, err := rc.RepairOffers(
-		boiler.RepairOfferWhere.ClosedAt.IsNull(),
-	).All(gamedb.StdConn)
-	if err != nil {
-		L.Error().Err(err).Msg("failed to load incomplete repair offer")
-		return terror.Error(err, "Failed to load incomplete repair offer")
-	}
-
-	if len(ros) == 0 {
-		reply(true)
-		return nil
-	}
-
-	roIDs := []string{}
-	for _, ro := range ros {
-		roIDs = append(roIDs, ro.ID)
-	}
-
-	now := time.Now()
-	nextRepairDurationSeconds := db.GetIntWithDefault(db.KeyAutoRepairDurationSeconds, 600)
-
-	err = api.ArenaManager.SendRepairFunc(func() error {
-		// check current mech is in active repair slot
-		pmr, err := boiler.PlayerMechRepairSlots(
-			boiler.PlayerMechRepairSlotWhere.MechID.EQ(rc.MechID),
-			boiler.PlayerMechRepairSlotWhere.Status.NEQ(boiler.RepairSlotStatusDONE),
-		).One(gamedb.StdConn)
-		if err != nil && !errors.Is(err, sql.ErrNoRows) {
-			gamelog.L.Error().Err(err).Interface("repair case", rc).Msg("Failed to check repair slot from repair case.")
-			return terror.Error(err, "Failed to check repair slot")
-		}
-
-		// clean up repair slot, if exist
-		if pmr != nil {
-			func() {
-				tx, err := gamedb.StdConn.Begin()
-				if err != nil {
-					gamelog.L.Error().Err(err).Msg("Failed to start db transaction.")
-					return
-				}
-
-				defer tx.Rollback()
-
-				if pmr.Status == boiler.RepairSlotStatusREPAIRING {
-					// set next
-					nextSlot, err := boiler.PlayerMechRepairSlots(
-						boiler.PlayerMechRepairSlotWhere.PlayerID.EQ(pmr.PlayerID),
-						boiler.PlayerMechRepairSlotWhere.Status.EQ(boiler.RepairSlotStatusPENDING),
-						qm.OrderBy(boiler.PlayerMechRepairSlotColumns.SlotNumber),
-					).One(tx)
-					if err != nil && !errors.Is(err, sql.ErrNoRows) {
-						gamelog.L.Error().Str("player id", pmr.PlayerID).Err(err).Msg("Failed to load player mech repair bays.")
-						return
-					}
-
-					// upgrade next "PENDING" slot to "REPAIRING" slot
-					if nextSlot != nil {
-						nextSlot.Status = boiler.RepairSlotStatusREPAIRING
-						nextSlot.NextRepairTime = null.TimeFrom(now.Add(time.Duration(nextRepairDurationSeconds) * time.Second))
-						_, err = nextSlot.Update(tx, boil.Whitelist(
-							boiler.PlayerMechRepairSlotColumns.Status,
-							boiler.PlayerMechRepairSlotColumns.NextRepairTime,
-						))
-						if err != nil {
-							gamelog.L.Error().Interface("repair slot", nextSlot).Err(err).Msg("Failed to update next repair slot.")
-							return
-						}
-					}
-				}
-
-				// decrement slot number from current slot
-				err = db.DecrementRepairSlotNumber(tx, pmr.PlayerID, pmr.SlotNumber)
-				if err != nil {
-					gamelog.L.Error().Err(err).Str("player id", pmr.PlayerID).Msg("Failed to decrement slot number.")
-					return
-				}
-
-				// mark current slot as "DONE"
-				pmr.Status = boiler.RepairSlotStatusDONE
-				pmr.SlotNumber = 0
-				pmr.NextRepairTime = null.TimeFromPtr(nil)
-				_, err = pmr.Update(tx,
-					boil.Whitelist(
-						boiler.PlayerMechRepairSlotColumns.Status,
-						boiler.PlayerMechRepairSlotColumns.SlotNumber,
-						boiler.PlayerMechRepairSlotColumns.NextRepairTime,
-					),
-				)
-				if err != nil {
-					gamelog.L.Error().Err(err).Str("player id", pmr.PlayerID).Msg("Failed to decrement slot number.")
-					return
-				}
-
-				err = tx.Commit()
-				if err != nil {
-					gamelog.L.Error().Err(err).Msg("Failed to commit db transaction.")
-					return
-				}
-
-				// broadcast current repair bay
-				go battle.BroadcastRepairBay(pmr.PlayerID)
-			}()
-		}
-
-		// close repair offer
-		err = api.ArenaManager.CloseRepairOffers(roIDs, boiler.RepairAgentFinishReasonSUCCEEDED, boiler.RepairAgentFinishReasonEXPIRED)
-		if err != nil {
-			gamelog.L.Error().Err(err).Interface("repair offers", ros).Msg("Failed to close repair offer.")
-			return terror.Error(err, "Failed to close repair offer.")
-		}
-		return nil
-	})
-	if err != nil {
-		return err
-	}
-
-	reply(true)
-
-	return nil
-}
-
 // BroadcastMechQueueStat broadcast current mech queue stat
 func BroadcastMechQueueStat(mechID string) {
 	ci, err := boiler.CollectionItems(
@@ -853,97 +518,6 @@ func BroadcastMechQueueStat(mechID string) {
 
 		ws.PublishMessage(fmt.Sprintf("/faction/%s/queue/%s", owner.FactionID.String, mechID), server.HubKeyPlayerAssetMechQueueSubscribe, queueDetails)
 	}
-}
-
-func BlockStackingGameVerification(ra *boiler.RepairAgent) error {
-	// log path
-	gps, err := ra.RepairAgentLogs(
-		boiler.RepairAgentLogWhere.RepairAgentID.EQ(ra.ID),
-		boiler.RepairAgentLogWhere.Score.GT(0),
-		qm.OrderBy(boiler.RepairAgentLogColumns.CreatedAt),
-	).All(gamedb.StdConn)
-	if err != nil {
-		gamelog.L.Error().Err(err).Msg("failed to log mini-game records")
-		return terror.Error(err, "Failed to load repair records.")
-	}
-
-	startTime := ra.StartedAt
-	endTime := time.Now()
-
-	failedRate := db.GetDecimalWithDefault(db.KeyRepairMiniGameFailedRate, decimal.NewFromFloat(0.25))
-
-	// check each pattern is within the time frame
-	failedCount := 0
-
-	prevScore := 0
-	totalStack := 0
-	lastStackFailed := false
-	for i, gp := range gps {
-		if i > 0 {
-			// valid score pattern
-			// 1. current score equal to previous score + 1
-			// 2. current score equal to previous score, and current stack is failed
-			// 3. current score equal to 1, and last stack failed
-
-			isValidScorePattern := false
-			if gp.Score == prevScore+1 {
-				// meet RULE 1
-				isValidScorePattern = true
-
-			} else if gp.Score == prevScore && gp.IsFailed {
-				// meet RULE 2
-				isValidScorePattern = true
-
-			} else if gp.Score == 1 && lastStackFailed {
-				// meet RULE 3
-				isValidScorePattern = true
-
-			}
-
-			// if score pattern does not match
-			if !isValidScorePattern {
-				gamelog.L.Debug().Interface("current stack", gp).Int("prev score", prevScore).Msg("Invalid game pattern detected")
-				return terror.Error(fmt.Errorf("invalid game score, current score: %d, prev score: %d, current failed: %v, agent id: %s", gp.Score, prevScore, gp.IsFailed, gp.RepairAgentID), "Invalid game pattern detected.")
-			}
-		}
-
-		// set initial score and failed stat
-		prevScore = gp.Score
-		lastStackFailed = gp.IsFailed
-
-		if gp.CreatedAt.Before(startTime) || gp.CreatedAt.After(endTime) {
-			gamelog.L.Debug().Time("current stack time", gp.CreatedAt).Time("start time", startTime).Time("end time", endTime).Msg("Invalid game pattern detected")
-			return terror.Error(fmt.Errorf("pattern is outside of time frame, stack time: %v, start time: %v, end time: %v, agent id: %s", gp.CreatedAt, startTime, endTime, gp.RepairAgentID), "Game stack is outside of the time frame.")
-		}
-
-		// increase failed count, if failed
-		if gp.IsFailed {
-			failedCount += 1
-			continue
-		}
-
-		// increment score
-		totalStack += 1
-	}
-
-	// if player failed 25% of the clicks
-	if decimal.NewFromInt(int64(failedCount)).GreaterThanOrEqual(decimal.NewFromInt(int64(ra.RequiredStacks)).Mul(failedRate)) {
-		return terror.Error(fmt.Errorf("stack failed"), "Too many failed stacks.")
-	}
-
-	// check the stack amount match
-	if totalStack < ra.RequiredStacks {
-		gamelog.L.Warn().
-			Err(fmt.Errorf("stack not complete")).
-			Int("totalStack", totalStack).
-			Int("requiredStacks", ra.RequiredStacks).
-			Interface("gps", gps).
-			Interface("repair agent", ra).
-			Msg("totalStack less than required stacks")
-		return terror.Error(fmt.Errorf("stack not complete"), "The task is not completed.")
-	}
-
-	return nil
 }
 
 type RepairAgentAbandonRequest struct {
@@ -1533,5 +1107,386 @@ func (api *API) PlayerMechRepairSlots(ctx context.Context, user *boiler.Player, 
 
 	reply(resp)
 
+	return nil
+}
+
+type RepairAgentRecordRequest struct {
+	Payload struct {
+		ID        string                           `json:"id"`
+		IsFailed  bool                             `json:"is_failed"`
+		Dimension *server.RepairGameBlockDimension `json:"dimension"`
+	} `json:"payload"`
+}
+
+func (api *API) RepairAgentRecord(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
+	req := &RepairAgentRecordRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return terror.Error(err, "Invalid request received.")
+	}
+
+	// validate repair agent
+	ra, err := boiler.RepairAgents(
+		boiler.RepairAgentWhere.PlayerID.EQ(user.ID),
+		boiler.RepairAgentWhere.FinishedAt.IsNull(),
+		qm.Where(fmt.Sprintf(
+			"EXISTS (SELECT 1 FROM %s WHERE %s = %s AND %s = ? AND %s != ?)",
+			boiler.TableNames.RepairGameBlockLogs,
+			boiler.RepairGameBlockLogTableColumns.RepairAgentID,
+			boiler.RepairAgentTableColumns.ID,
+			boiler.RepairGameBlockLogTableColumns.ID,
+			boiler.RepairGameBlockLogTableColumns.RepairGameBlockType,
+		), req.Payload.ID, boiler.RepairGameBlockTypeEND),
+	).One(gamedb.StdConn)
+	if err != nil {
+		return terror.Error(err, "Failed to load repair game log.")
+	}
+
+	nextBlock, err := api.ArenaManager.RepairGameBlockProcesser(ra.ID, req.Payload.ID, req.Payload.Dimension, req.Payload.IsFailed)
+	if err != nil {
+		return err
+	}
+
+	// return directly if there is no next block
+	if nextBlock == nil {
+		return nil
+	}
+
+	// complete the agent
+	if nextBlock.Type == boiler.RepairGameBlockTypeEND {
+		err = api.completeRepairAgent(ra.ID, user.ID)
+		if err != nil {
+			return err
+		}
+	}
+
+	ws.PublishMessage(fmt.Sprintf("/secure/user/%s/repair_agent/%s/next_block", user.ID, ra.ID), server.HubKeyNextRepairGameBlock, nextBlock)
+
+	return nil
+}
+
+func (api *API) completeRepairAgent(repairAgentID string, userID string) error {
+	l := gamelog.L.With().Str("func", "completeRepairAgent").Str("user id", userID).Str("repair agent id", repairAgentID).Logger()
+
+	ra, err := boiler.RepairAgents(
+		boiler.RepairAgentWhere.ID.EQ(repairAgentID),
+		qm.Load(boiler.RepairAgentRels.RepairOffer),
+	).One(gamedb.StdConn)
+	if err != nil {
+		l.Error().Err(err).Msg("failed to find repair agent")
+		return terror.Error(err, "Failed to load repair agent.")
+	}
+
+	l = l.With().Interface("repair agent", ra).Logger()
+
+	if ra.PlayerID != userID {
+		l.Error().Err(err).Msg(" wrong repair agent")
+		return terror.Error(fmt.Errorf("agnet id not match"), "Repair agent id mismatch")
+	}
+
+	if ra.FinishedAt.Valid {
+		l.Error().Err(err).Msg("already finished")
+		return terror.Error(fmt.Errorf("agent finalised"), "This repair agent is already finalised.")
+	}
+
+	rb := boiler.RepairBlock{
+		RepairAgentID: ra.ID,
+		RepairCaseID:  ra.RepairCaseID,
+		RepairOfferID: ra.RepairOfferID,
+	}
+
+	err = rb.Insert(gamedb.StdConn, boil.Infer())
+	if err != nil {
+		l.Warn().Err(err).Msg("unable to write block")
+		if err.Error() == "unable to write block" {
+			return terror.Error(err, "repair offer is already closed.")
+		}
+
+		return terror.Error(err, "Failed to complete repair agent task.")
+	}
+
+	// check repair case after insert
+	rc, err := ra.RepairCase().One(gamedb.StdConn)
+	if err != nil {
+		l.Error().Err(err).Msg("failed to load repair case")
+		return terror.Error(err, "Failed to load repair case.")
+	}
+
+	l = l.With().Interface("repair case", rc).Logger()
+
+	// if it is not a self repair
+	if ra.R.RepairOffer.OfferedByID.Valid {
+		// claim sups
+		ro, err := db.RepairOfferDetail(ra.RepairOfferID)
+		if err != nil {
+			l.Error().Err(err).Msg("failed to load repair offer")
+			return terror.Error(err, "Failed to load repair offer")
+		}
+
+		l = l.With().Interface("repair offer", ro).Logger()
+
+		// if it is not a self offer, pay the agent
+		if ro.SupsWorthPerBlock.GreaterThan(decimal.Zero) {
+			// claim reward
+			payoutTXID, err := api.Passport.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
+				FromUserID:           uuid.Must(uuid.FromString(server.RepairCenterUserID)),
+				ToUserID:             uuid.Must(uuid.FromString(userID)),
+				Amount:               ro.SupsWorthPerBlock.StringFixed(0),
+				TransactionReference: server.TransactionReference(fmt.Sprintf("claim_repair_offer_reward|%s|%d", ro.ID, time.Now().UnixNano())),
+				Group:                string(server.TransactionGroupSupremacy),
+				SubGroup:             string(server.TransactionGroupRepair),
+				Description:          "claim repair offer reward.",
+			})
+			if err != nil {
+				l.Error().Err(err).Msg("failed to pay sups for offering repair job")
+				return terror.Error(err, "Failed to pay sups for offering repair job.")
+			}
+
+			ra.PayoutTXID = null.StringFrom(payoutTXID)
+			_, err = ra.Update(gamedb.StdConn, boil.Whitelist(boiler.RepairAgentColumns.PayoutTXID))
+			if err != nil {
+				l.Error().Err(err).Msg("failed to update repair agent payout tx id")
+			}
+
+		}
+
+		// broadcast result if repair is not completed
+		if rc.BlocksRepaired < rc.BlocksRequiredRepair {
+			ws.PublishMessage(fmt.Sprintf("/secure/repair_offer/%s", ro.ID), server.HubKeyRepairOfferSubscribe, ro)
+			ws.PublishMessage("/secure/repair_offer/update", server.HubKeyRepairOfferUpdateSubscribe, []*server.RepairOffer{ro})
+			ws.PublishMessage(fmt.Sprintf("/secure/mech/%s/active_repair_offer", ro.ID), server.HubKeyMechActiveRepairOffer, ro)
+		}
+
+		// if repair for others
+		if ra.R.RepairOffer.OfferedByID.String != userID {
+			api.questManager.RepairQuestCheck(userID)
+		}
+
+	}
+
+	// broadcast result if repair is not completed
+	if rc.BlocksRepaired < rc.BlocksRequiredRepair {
+		canDeployRatio := db.GetDecimalWithDefault(db.KeyCanDeployDamagedRatio, decimal.NewFromFloat(0.5))
+
+		totalBlocks := db.TotalRepairBlocks(rc.MechID)
+
+		// broadcast current mech stat if damage blocks is less than or equal to deploy ratio
+		if decimal.NewFromInt(int64(rc.BlocksRequiredRepair - rc.BlocksRepaired)).Div(decimal.NewFromInt(int64(totalBlocks))).LessThanOrEqual(canDeployRatio) {
+			go BroadcastMechQueueStat(rc.MechID)
+		}
+		ws.PublishMessage(fmt.Sprintf("/secure/mech/%s/repair_case", rc.MechID), server.HubKeyMechRepairCase, rc)
+		return nil
+	}
+
+	// clean up repair case if repair is completed
+	ws.PublishMessage(fmt.Sprintf("/secure/mech/%s/repair_case", rc.MechID), server.HubKeyMechRepairCase, nil)
+
+	// broadcast current mech stat
+	go BroadcastMechQueueStat(rc.MechID)
+
+	// close repair case
+	rc.CompletedAt = null.TimeFrom(time.Now())
+	_, err = rc.Update(gamedb.StdConn, boil.Whitelist(boiler.RepairCaseColumns.CompletedAt))
+	if err != nil {
+		l.Error().Err(err).Msg("failed to update repair case")
+		return terror.Error(err, "Failed to close repair case.")
+	}
+
+	// close offer, self and non-self
+	ros, err := rc.RepairOffers(
+		boiler.RepairOfferWhere.ClosedAt.IsNull(),
+	).All(gamedb.StdConn)
+	if err != nil {
+		l.Error().Err(err).Msg("failed to load incomplete repair offer")
+		return terror.Error(err, "Failed to load incomplete repair offer")
+	}
+
+	if len(ros) == 0 {
+		return nil
+	}
+
+	roIDs := []string{}
+	for _, ro := range ros {
+		roIDs = append(roIDs, ro.ID)
+	}
+
+	now := time.Now()
+	nextRepairDurationSeconds := db.GetIntWithDefault(db.KeyAutoRepairDurationSeconds, 600)
+
+	err = api.ArenaManager.SendRepairFunc(func() error {
+		// check current mech is in active repair slot
+		pmr, err := boiler.PlayerMechRepairSlots(
+			boiler.PlayerMechRepairSlotWhere.MechID.EQ(rc.MechID),
+			boiler.PlayerMechRepairSlotWhere.Status.NEQ(boiler.RepairSlotStatusDONE),
+		).One(gamedb.StdConn)
+		if err != nil && !errors.Is(err, sql.ErrNoRows) {
+			gamelog.L.Error().Err(err).Interface("repair case", rc).Msg("Failed to check repair slot from repair case.")
+			return terror.Error(err, "Failed to check repair slot")
+		}
+
+		// clean up repair slot, if exist
+		if pmr != nil {
+			func() {
+				tx, err := gamedb.StdConn.Begin()
+				if err != nil {
+					gamelog.L.Error().Err(err).Msg("Failed to start db transaction.")
+					return
+				}
+
+				defer tx.Rollback()
+
+				if pmr.Status == boiler.RepairSlotStatusREPAIRING {
+					// set next
+					nextSlot, err := boiler.PlayerMechRepairSlots(
+						boiler.PlayerMechRepairSlotWhere.PlayerID.EQ(pmr.PlayerID),
+						boiler.PlayerMechRepairSlotWhere.Status.EQ(boiler.RepairSlotStatusPENDING),
+						qm.OrderBy(boiler.PlayerMechRepairSlotColumns.SlotNumber),
+					).One(tx)
+					if err != nil && !errors.Is(err, sql.ErrNoRows) {
+						gamelog.L.Error().Str("player id", pmr.PlayerID).Err(err).Msg("Failed to load player mech repair bays.")
+						return
+					}
+
+					// upgrade next "PENDING" slot to "REPAIRING" slot
+					if nextSlot != nil {
+						nextSlot.Status = boiler.RepairSlotStatusREPAIRING
+						nextSlot.NextRepairTime = null.TimeFrom(now.Add(time.Duration(nextRepairDurationSeconds) * time.Second))
+						_, err = nextSlot.Update(tx, boil.Whitelist(
+							boiler.PlayerMechRepairSlotColumns.Status,
+							boiler.PlayerMechRepairSlotColumns.NextRepairTime,
+						))
+						if err != nil {
+							gamelog.L.Error().Interface("repair slot", nextSlot).Err(err).Msg("Failed to update next repair slot.")
+							return
+						}
+					}
+				}
+
+				// decrement slot number from current slot
+				err = db.DecrementRepairSlotNumber(tx, pmr.PlayerID, pmr.SlotNumber)
+				if err != nil {
+					gamelog.L.Error().Err(err).Str("player id", pmr.PlayerID).Msg("Failed to decrement slot number.")
+					return
+				}
+
+				// mark current slot as "DONE"
+				pmr.Status = boiler.RepairSlotStatusDONE
+				pmr.SlotNumber = 0
+				pmr.NextRepairTime = null.TimeFromPtr(nil)
+				_, err = pmr.Update(tx,
+					boil.Whitelist(
+						boiler.PlayerMechRepairSlotColumns.Status,
+						boiler.PlayerMechRepairSlotColumns.SlotNumber,
+						boiler.PlayerMechRepairSlotColumns.NextRepairTime,
+					),
+				)
+				if err != nil {
+					gamelog.L.Error().Err(err).Str("player id", pmr.PlayerID).Msg("Failed to decrement slot number.")
+					return
+				}
+
+				err = tx.Commit()
+				if err != nil {
+					gamelog.L.Error().Err(err).Msg("Failed to commit db transaction.")
+					return
+				}
+
+				// broadcast current repair bay
+				go battle.BroadcastRepairBay(pmr.PlayerID)
+			}()
+		}
+
+		// close repair offer
+		err = api.ArenaManager.CloseRepairOffers(roIDs, boiler.RepairAgentFinishReasonSUCCEEDED, boiler.RepairAgentFinishReasonEXPIRED)
+		if err != nil {
+			gamelog.L.Error().Err(err).Interface("repair offers", ros).Msg("Failed to close repair offer.")
+			return terror.Error(err, "Failed to close repair offer.")
+		}
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (api *API) NextRepairBlock(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
+	repairAgentID := chi.RouteContext(ctx).URLParam("repair_agent_id")
+	l := gamelog.L.With().Str("player id", user.ID).Str("func name", "NextRepairBlock").Str("repair agent id", repairAgentID).Logger()
+
+	bombReduceBlockCount := db.GetIntWithDefault(db.KeyDeductBlockCountFromBomb, 3)
+
+	// verify
+	ra, err := boiler.RepairAgents(
+		boiler.RepairAgentWhere.ID.EQ(repairAgentID),
+		boiler.RepairAgentWhere.PlayerID.EQ(user.ID),
+		boiler.RepairAgentWhere.FinishedAt.IsNull(),
+		qm.Where(fmt.Sprintf(
+			"EXISTS (SELECT 1 FROM %s WHERE %s = %s AND %s ISNULL)",
+			boiler.TableNames.RepairOffers,
+			boiler.RepairOfferTableColumns.ID,
+			boiler.RepairAgentTableColumns.RepairOfferID,
+			boiler.RepairOfferTableColumns.ClosedAt,
+		)),
+		qm.Load(boiler.RepairAgentRels.RepairGameBlockLogs),
+	).One(gamedb.StdConn)
+	if err != nil {
+		l.Error().Err(err).Msg("Failed to load repair agent")
+		return terror.Error(err, "Failed to load repair agent")
+	}
+
+	totalScore := 0
+	for _, record := range ra.R.RepairGameBlockLogs {
+		if record.RepairGameBlockType == boiler.RepairGameBlockTypeEND {
+			return terror.Error(fmt.Errorf("repair agent is already ended"), "Repair agent is closed.")
+		}
+
+		if !record.StackedAt.Valid || record.IsFailed {
+			continue
+		}
+
+		if record.RepairGameBlockType == boiler.RepairGameBlockTypeBOMB {
+			totalScore -= bombReduceBlockCount
+			continue
+		}
+
+		totalScore += 1
+	}
+
+	// generate initial repair game log
+	rgl := &boiler.RepairGameBlockLog{
+		RepairAgentID:       ra.ID,
+		RepairGameBlockType: boiler.RepairGameBlockTypeNORMAL,
+		SizeMultiplier:      decimal.NewFromInt(1),
+		SpeedMultiplier:     decimal.NewFromInt(1),
+		TriggerKey:          boiler.RepairGameBlockTriggerKeySPACEBAR,
+		Width:               decimal.NewFromInt(10),
+		Depth:               decimal.NewFromInt(10),
+	}
+
+	err = rgl.Insert(gamedb.StdConn, boil.Infer())
+	if err != nil {
+		l.Error().Err(err).Msg("Failed to insert new repair game block.")
+		return terror.Error(err, "Failed to load next repair game block.")
+	}
+
+	nextBlock := &server.RepairGameBlock{
+		ID:              rgl.ID,
+		Type:            rgl.RepairGameBlockType,
+		Key:             rgl.TriggerKey,
+		SpeedMultiplier: rgl.SpeedMultiplier,
+		Dimension: server.RepairGameBlockDimension{
+			Width: rgl.Width,
+			Depth: rgl.Depth,
+		},
+		TotalScore: totalScore,
+	}
+
+	reply(nextBlock) // initial block
+	go func() {
+		time.Sleep(250 * time.Millisecond)
+		reply(nextBlock)
+	}()
 	return nil
 }

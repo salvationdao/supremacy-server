@@ -291,9 +291,12 @@ const (
 
 // Enum values for ModActionType
 const (
-	ModActionTypeBAN     = "BAN"
-	ModActionTypeUNBAN   = "UNBAN"
-	ModActionTypeRESTART = "RESTART"
+	ModActionTypeBAN         = "BAN"
+	ModActionTypeUNBAN       = "UNBAN"
+	ModActionTypeRESTART     = "RESTART"
+	ModActionTypeLOOKUP      = "LOOKUP"
+	ModActionTypeMECH_RENAME = "MECH_RENAME"
+	ModActionTypeUSER_RENAME = "USER_RENAME"
 )
 
 // Enum values for MultiplierTypeEnum
@@ -383,6 +386,22 @@ const (
 	RepairAgentFinishReasonABANDONED = "ABANDONED"
 	RepairAgentFinishReasonEXPIRED   = "EXPIRED"
 	RepairAgentFinishReasonSUCCEEDED = "SUCCEEDED"
+)
+
+// Enum values for RepairGameBlockType
+const (
+	RepairGameBlockTypeNORMAL = "NORMAL"
+	RepairGameBlockTypeSHRINK = "SHRINK"
+	RepairGameBlockTypeFAST   = "FAST"
+	RepairGameBlockTypeBOMB   = "BOMB"
+	RepairGameBlockTypeEND    = "END"
+)
+
+// Enum values for RepairGameBlockTriggerKey
+const (
+	RepairGameBlockTriggerKeyM        = "M"
+	RepairGameBlockTriggerKeyN        = "N"
+	RepairGameBlockTriggerKeySPACEBAR = "SPACEBAR"
 )
 
 // Enum values for RepairFinishReason

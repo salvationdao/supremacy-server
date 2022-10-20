@@ -71,6 +71,8 @@ type ArenaManager struct {
 	ChallengeFundUpdateChan          chan bool
 	BattleLobbyDebounceBroadcastChan chan []string
 	LobbyFuncMx                      *deadlock.Mutex
+
+	RepairGameBlockMx deadlock.RWMutex
 }
 
 type Opts struct {
@@ -101,6 +103,7 @@ func NewArenaManager(opts *Opts) (*ArenaManager, error) {
 		ChallengeFundUpdateChan:          make(chan bool),
 		BattleLobbyDebounceBroadcastChan: make(chan []string, 10),
 		LobbyFuncMx:                      &deadlock.Mutex{},
+		RepairGameBlockMx:                deadlock.RWMutex{},
 	}
 
 	am.server = &http.Server{
@@ -1198,28 +1201,23 @@ func (arena *Arena) start() {
 		switch mt {
 		case JSON:
 			msg := &BattleMsg{}
-			err := json.Unmarshal(data, msg)
+			err = json.Unmarshal(data, msg)
 			if err != nil {
 				gamelog.L.Warn().Str("msg", string(data)).Err(err).Msg("unable to unmarshal battle message")
 				continue
 			}
 
-			// set battle state to end when receive "battle:end" message
-			btl := arena.CurrentBattle()
-			if btl != nil && msg.BattleCommand == "BATTLE:END" {
-				btl.state.Store(EndState)
-				ws.PublishMessage(fmt.Sprintf("/public/arena/%s/battle_state", btl.ArenaID), server.HubKeyBattleState, EndState)
-			}
+			go func(arena *Arena, battleCommand string, data []byte) {
+				switch battleCommand {
+				case "BATTLE:MAP_DETAILS", "BATTLE:START", "BATTLE:INTRO_FINISHED", "BATTLE:WAR_MACHINE_DESTROYED", "BATTLE:END", "BATTLE:OUTRO_FINISHED":
+					// handle message through channel
+					arena.gameClientBattleRoutineDataChan <- data
 
-			switch msg.BattleCommand {
-			case "BATTLE:MAP_DETAILS", "BATTLE:START", "BATTLE:INTRO_FINISHED", "BATTLE:WAR_MACHINE_DESTROYED", "BATTLE:END", "BATTLE:OUTRO_FINISHED":
-				// handle message through channel
-				arena.gameClientBattleRoutineDataChan <- data
-
-			default:
-				// handle all the ability related data
-				arena.gameClientAbilityDataChan <- data
-			}
+				default:
+					// handle all the ability related data
+					arena.gameClientAbilityDataChan <- data
+				}
+			}(arena, msg.BattleCommand, data)
 
 		case Tick:
 			if btl := arena.CurrentBattle(); btl != nil && btl.state.Load() == BattlingState {
@@ -1308,18 +1306,23 @@ func (arena *Arena) GameClientJsonDataParser() {
 			}
 
 			var dataPayload BattleWMDestroyedPayload
-			if err := json.Unmarshal(msg.Payload, &dataPayload); err != nil {
+			if err = json.Unmarshal(msg.Payload, &dataPayload); err != nil {
 				L.Warn().Err(err).Msg("unable to unmarshal battle message warmachine destroyed payload")
 				continue
 			}
 			btl.Destroyed(&dataPayload)
 
+			arena.Manager.BattleLobbyDebounceBroadcastChan <- []string{btl.lobby.ID}
+
 		case "BATTLE:END":
+			btl.state.Store(EndState)
+
 			var dataPayload *BattleEndPayload
-			if err := json.Unmarshal(msg.Payload, &dataPayload); err != nil {
+			if err = json.Unmarshal(msg.Payload, &dataPayload); err != nil {
 				L.Warn().Err(err).Msg("unable to unmarshal battle message warmachine destroyed payload")
 				continue
 			}
+
 			btl.end(dataPayload)
 
 			// reset war machine broadcast

@@ -3,7 +3,6 @@ package api
 import (
 	"context"
 	"fmt"
-	"github.com/ninja-software/tickle"
 	"net"
 	"net/http"
 	"server"
@@ -20,6 +19,8 @@ import (
 	"server/xsyn_rpcclient"
 	"server/zendesk"
 	"time"
+
+	"github.com/ninja-software/tickle"
 
 	"github.com/gofrs/uuid"
 	"github.com/shopspring/decimal"
@@ -62,6 +63,8 @@ type API struct {
 	FactionPunishVote map[string]*PunishVoteTracker
 
 	FactionActivePlayers map[string]*ActivePlayers
+
+	VoiceChatListeners *VoiceChatListeners
 
 	// marketplace
 	MarketplaceController *marketplace.MarketplaceController
@@ -116,7 +119,6 @@ func NewAPI(
 		gamelog.L.Error().Err(err).Msg("Failed to spin up syndicate system")
 		return nil, err
 	}
-
 	// initialise api
 	api := &API{
 		Config:                   config,
@@ -159,6 +161,8 @@ func NewAPI(
 			verifyUrl: "https://hcaptcha.com/siteverify",
 		},
 		questManager: questManager,
+
+		VoiceChatListeners: &VoiceChatListeners{},
 
 		ViewerUpdateChan: make(chan bool),
 	}
@@ -300,7 +304,11 @@ func NewAPI(
 				s.WS("/user/{user_id}/quest_stat", server.HubKeyPlayerQuestStats, server.MustSecure(pc.PlayerQuestStat), MustMatchUserID)
 				s.WS("/user/{user_id}/quest_progression", server.HubKeyPlayerQuestProgressions, server.MustSecure(pc.PlayerQuestProgressions), MustMatchUserID)
 				s.WS("/user/{user_id}/arena/{arena_id}", server.HubKeyVoiceStreams, server.MustSecure(api.VoiceStreamSubscribe), MustMatchUserID)
+				s.WS("/user/{user_id}/arena/{arena_id}/listeners", server.HubKeyVoiceStreams, server.MustSecure(api.VoiceStreamListenersSubscribe), MustMatchUserID)
+
 				s.WS("/user/{user_id}/queue_status", server.HubKeyPlayerQueueStatus, server.MustSecure(pc.PlayerQueueStatusHandler), MustMatchUserID)
+
+				s.WS("/user/{user_id}/involved_battle_lobbies", server.HubKeyInvolvedBattleLobbyListUpdate, server.MustSecureFaction(api.PlayerInvolvedBattleLobbies))
 
 				// fiat related
 				s.WS("/user/{user_id}/shopping_cart_updated", server.HubKeyShoppingCartUpdated, server.MustSecure(fc.ShoppingCartUpdatedSubscriber), MustMatchUserID)
@@ -308,6 +316,8 @@ func NewAPI(
 
 				// user repair bay
 				s.WS("/user/{user_id}/repair_bay", server.HubKeyMechRepairSlots, server.MustSecure(api.PlayerMechRepairSlots), MustMatchUserID)
+
+				s.WS("/user/{user_id}/repair_agent/{repair_agent_id}/next_block", server.HubKeyNextRepairGameBlock, server.MustSecure(api.NextRepairBlock), MustMatchUserID)
 			}))
 
 			// secured user commander
@@ -378,8 +388,8 @@ func NewAPI(
 	return api, nil
 }
 
-// initialWSBroadcast include all the go routines which contain broadcast
-// IMPORTANT: All the initial broadcast functions need to be trigger AFTER the ws tree is built.
+// initialWSBroadcast include all the initial go routines that trigger ws broadcast
+// IMPORTANT: All the initial broadcast functions need to be triggered AFTER the ws tree is built.
 // otherwise, the server will panic!!!
 func (api *API) initialWSBroadcast() error {
 	// create a tickle that update faction mvp every day 00:00 am
@@ -414,7 +424,7 @@ func (api *API) initialWSBroadcast() error {
 		gamelog.L.Error().Err(err).Msg("Failed to set up faction mvp user update tickle")
 	}
 
-	// spin up a punish vote handlers for each faction
+	// spin up a punishment vote handlers for each faction
 	err = api.PunishVoteTrackerSetup()
 	if err != nil {
 		gamelog.L.Error().Err(err).Msg("Failed to setup punish vote tracker")

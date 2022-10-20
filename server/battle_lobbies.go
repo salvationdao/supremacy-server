@@ -14,6 +14,15 @@ import (
 	"server/gamelog"
 )
 
+type BattleLobbyStageOrder int
+
+const (
+	BattleLobbyStageOrderPending BattleLobbyStageOrder = 3
+	BattleLobbyStageOrderReady   BattleLobbyStageOrder = 2
+	BattleLobbyStageOrderBattle  BattleLobbyStageOrder = 1
+	BattleLobbyStageOrderEnd     BattleLobbyStageOrder = 0
+)
+
 type BattleLobby struct {
 	*boiler.BattleLobby
 	HostBy                     *boiler.Player          `json:"host_by"`
@@ -26,6 +35,8 @@ type BattleLobby struct {
 	SelectedZaiSupporters      []*BattleLobbySupporter `json:"selected_zai_supporters"`
 	SelectedBostonSupporters   []*BattleLobbySupporter `json:"selected_bc_supporters"`
 	IsPrivate                  bool                    `json:"is_private"`
+	StageOrder                 BattleLobbyStageOrder   `json:"stage_order"`
+	SupsPool                   decimal.Decimal         `json:"sups_pool"`
 }
 
 type BattleLobbiesMech struct {
@@ -81,9 +92,24 @@ func BattleLobbiesFromBoiler(bls []*boiler.BattleLobby) ([]*BattleLobby, error) 
 			SelectedRedMountSupporters: []*BattleLobbySupporter{},
 			SelectedZaiSupporters:      []*BattleLobbySupporter{},
 			SelectedBostonSupporters:   []*BattleLobbySupporter{},
+			SupsPool:                   decimal.Zero,
+		}
+
+		if sbl.EndedAt.Valid {
+			sbl.StageOrder = BattleLobbyStageOrderEnd
+		} else if sbl.AssignedToArenaID.Valid {
+			sbl.StageOrder = BattleLobbyStageOrderBattle
+		} else if sbl.ReadyAt.Valid {
+			sbl.StageOrder = BattleLobbyStageOrderReady
+		} else {
+			sbl.StageOrder = BattleLobbyStageOrderPending
 		}
 
 		if bl.R != nil {
+			for _, reward := range bl.R.BattleLobbyExtraSupsRewards {
+				sbl.SupsPool = sbl.SupsPool.Add(reward.Amount)
+			}
+
 			if bl.R.HostBy != nil {
 				host := bl.R.HostBy
 				// trim info
@@ -487,6 +513,9 @@ func BattleLobbiesFromBoiler(bls []*boiler.BattleLobby) ([]*BattleLobby, error) 
 			}
 
 			bl.BattleLobbiesMechs = append(bl.BattleLobbiesMechs, blm)
+
+			// accumulate sups pool
+			bl.SupsPool = bl.SupsPool.Add(bl.EntryFee)
 		}
 	}
 
@@ -494,19 +523,19 @@ func BattleLobbiesFromBoiler(bls []*boiler.BattleLobby) ([]*BattleLobby, error) 
 }
 
 // BattleLobbiesFactionFilter omit the mech owner and weapon slots of other faction mechs
-func BattleLobbiesFactionFilter(bls []*BattleLobby, keepDataForFactionID string) []*BattleLobby {
+func BattleLobbiesFactionFilter(bls []*BattleLobby, keepDataForFactionID string, toUserID string) []*BattleLobby {
 	// generate a new struct
 	battleLobbies := []*BattleLobby{}
 
 	for _, bl := range bls {
-		battleLobbies = append(battleLobbies, BattleLobbyInfoFilter(bl, keepDataForFactionID))
+		battleLobbies = append(battleLobbies, BattleLobbyInfoFilter(bl, keepDataForFactionID, bl.HostByID == toUserID))
 	}
 
 	return battleLobbies
 }
 
 // BattleLobbyInfoFilter filter single lobby at a time
-func BattleLobbyInfoFilter(bl *BattleLobby, keepDataForFactionID string) *BattleLobby {
+func BattleLobbyInfoFilter(bl *BattleLobby, keepDataForFactionID string, keepAccessCode bool) *BattleLobby {
 	// copy lobby data,
 	// important: access code must be omitted
 	battleLobby := &BattleLobby{
@@ -515,6 +544,12 @@ func BattleLobbyInfoFilter(bl *BattleLobby, keepDataForFactionID string) *Battle
 		GameMap:            bl.GameMap,
 		BattleLobbiesMechs: []*BattleLobbiesMech{},
 		IsPrivate:          bl.IsPrivate,
+		StageOrder:         bl.StageOrder,
+		SupsPool:           bl.SupsPool,
+	}
+
+	if !keepAccessCode {
+		battleLobby.AccessCode = null.StringFromPtr(nil)
 	}
 
 	for _, blm := range bl.BattleLobbiesMechs {
