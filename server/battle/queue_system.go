@@ -231,8 +231,10 @@ func (am *ArenaManager) DefaultPublicLobbiesCheck() error {
 	return nil
 }
 
+// BroadcastMechQueueStatus broadcast mechs queue status
+// NOTE: player id maybe empty string
 func BroadcastMechQueueStatus(playerID string, mechIDs ...string) {
-	if len(mechIDs) == 0 {
+	if playerID == "" && len(mechIDs) == 0 {
 		return
 	}
 
@@ -241,14 +243,24 @@ func BroadcastMechQueueStatus(playerID string, mechIDs ...string) {
 		return
 	}
 
-	ws.PublishMessage(fmt.Sprintf("/secure/user/%s/owned_mechs", playerID), server.HubKeyPlayerMechsBrief, mechInfo)
-
+	playerMechs := make(map[string][]*db.MechBrief)
 	for _, m := range mechInfo {
+		pm, ok := playerMechs[m.OwnerID]
+		if !ok {
+			pm = []*db.MechBrief{}
+		}
+		pm = append(pm, m)
+		playerMechs[m.OwnerID] = pm
+
 		ws.PublishMessage(fmt.Sprintf("/faction/%s/queue/%s", m.FactionID.String, m.ID), server.HubKeyPlayerAssetMechQueueSubscribe, server.MechArenaInfo{
 			Status:              m.Status,
 			CanDeploy:           m.CanDeploy,
 			BattleLobbyIsLocked: m.LobbyLockedAt.Valid,
 		})
+	}
+
+	for ownerID, pm := range playerMechs {
+		ws.PublishMessage(fmt.Sprintf("/secure/user/%s/owned_mechs", ownerID), server.HubKeyPlayerMechsBrief, pm)
 	}
 }
 

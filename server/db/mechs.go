@@ -1667,12 +1667,7 @@ func LobbyMechsBrief(playerID string, mechIDs ...string) ([]*MechBrief, error) {
 				boiler.UtilityColumns.EquippedOn,
 				boiler.MechColumns.ID,
 			),
-			fmt.Sprintf(
-				"COALESCE((SELECT true FROM %s WHERE %s = _m.%s), false) AS is_staked",
-				boiler.TableNames.StakedMechs,
-				boiler.StakedMechTableColumns.MechID,
-				boiler.MechColumns.ID,
-			),
+			fmt.Sprintf("%s NOTNULL AS is_staked", boiler.StakedMechTableColumns.MechID),
 		),
 
 		qm.From(fmt.Sprintf(
@@ -1787,6 +1782,14 @@ func LobbyMechsBrief(playerID string, mechIDs ...string) ([]*MechBrief, error) {
 			boiler.BlueprintPowerCoreTableColumns.ID,
 			boiler.PowerCoreTableColumns.BlueprintID,
 			boiler.MechColumns.PowerCoreID,
+		)),
+
+		// is staked
+		qm.LeftOuterJoin(fmt.Sprintf(
+			"%s ON %s = _m.%s",
+			boiler.TableNames.StakedMechs,
+			boiler.StakedMechTableColumns.MechID,
+			boiler.MechColumns.ID,
 		)),
 	}
 
