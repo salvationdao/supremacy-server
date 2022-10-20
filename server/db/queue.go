@@ -7,7 +7,6 @@ import (
 	"github.com/ninja-software/terror/v2"
 	"github.com/shopspring/decimal"
 	"github.com/volatiletech/null/v8"
-	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 	"golang.org/x/exp/slices"
 	"server"
@@ -101,7 +100,6 @@ func GetMechQueueStatus(mechID string) (*server.MechArenaInfo, error) {
 	totalRepairBlocks := int64(0)
 	damagedRepairBlocks := int64(0)
 
-	boil.DebugMode = true
 	err = boiler.NewQuery(queries...).QueryRow(gamedb.StdConn).Scan(
 		&isInMarket,
 		&isQueued,
@@ -110,7 +108,6 @@ func GetMechQueueStatus(mechID string) (*server.MechArenaInfo, error) {
 		&totalRepairBlocks,
 		&damagedRepairBlocks,
 	)
-	boil.DebugMode = false
 	if err != nil {
 		l.Error().Err(err).Msg("Failed to scan mech queue status.")
 		return nil, terror.Error(err, "Failed to scan mech queue status.")

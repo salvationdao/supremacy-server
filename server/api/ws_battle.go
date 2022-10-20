@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/davecgh/go-spew/spew"
 	"server/battle"
 	"server/db"
 	"server/db/boiler"
@@ -310,8 +309,6 @@ func (api *API) PlayerAssetMechQueueSubscribeHandler(ctx context.Context, user *
 	if err != nil {
 		return err
 	}
-
-	spew.Dump(mechStatus)
 
 	reply(mechStatus)
 	return nil
