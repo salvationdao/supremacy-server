@@ -468,7 +468,7 @@ func (ac *AdminController) FiatBlueprintWeaponSkinList(ctx context.Context, user
 const HubKeyAdminFiatBlueprintMechAnimationList = "ADMIN:FIAT:BLUEPRINT:MECH:ANIMATION:LIST"
 
 func (ac *AdminController) FiatBlueprintMechAnimationList(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
-	errMsg := "Failed to get weapon skin blueprints, please try again."
+	errMsg := "Failed to get mech animation blueprints, please try again."
 
 	blueprintWeaponSkins, err := boiler.BlueprintWeaponSkins().All(gamedb.StdConn)
 	if err != nil {
