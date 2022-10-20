@@ -6,7 +6,6 @@ import (
 	"database/sql"
 	"encoding/csv"
 	"fmt"
-	"github.com/davecgh/go-spew/spew"
 	"github.com/volatiletech/null/v8"
 	"io"
 	"log"
@@ -1064,7 +1063,6 @@ func SyncWeaponSkins(f io.Reader, db *sql.DB) error {
 			weaponSkin.YoutubeUrl,
 		)
 		if err != nil {
-			spew.Dump(weaponSkin)
 			fmt.Println(err.Error()+weaponSkin.ID, weaponSkin.Label, weaponSkin.Tier)
 			return err
 		}

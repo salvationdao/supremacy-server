@@ -1317,6 +1317,8 @@ func (arena *Arena) GameClientJsonDataParser() {
 			}
 			btl.Destroyed(&dataPayload)
 
+			arena.Manager.BattleLobbyDebounceBroadcastChan <- []string{btl.lobby.ID}
+
 		case "BATTLE:END":
 			var dataPayload *BattleEndPayload
 			if err := json.Unmarshal(msg.Payload, &dataPayload); err != nil {
