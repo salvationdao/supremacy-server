@@ -33,8 +33,8 @@ func BattleQueueController(api *API) {
 	api.SecureUserFactionCommand(HubKeyBattleLobbyLeave, api.BattleLobbyLeave)
 	api.SecureUserCommand(HubKeyBattleLobbyTopUpReward, api.BattleLobbyTopUpReward)
 
-	api.SecureUserFactionCommand(HubKeyMechStake, api.MechStake)
-	api.SecureUserFactionCommand(HubKeyMechUnstake, api.MechUnstake)
+	api.SecureUserFactionCommand(HubKeyMechsStake, api.MechStake)
+	api.SecureUserFactionCommand(HubKeyMechsUnstake, api.MechUnstake)
 
 	api.SecureUserFactionCommand(HubKeyBattleLobbySupporterJoin, api.BattleLobbySupporterJoin)
 	//api.SecureUserFactionCommand(HubKeyBattleLobbySupporterLeave, api.BattleLobbySupporterLeave)
@@ -244,13 +244,6 @@ func (api *API) BattleLobbyCreate(ctx context.Context, user *boiler.Player, fact
 							gamelog.L.Error().Err(err).Str("entry tx id", paidTxID).Msg("Failed to refund transaction id")
 						}
 					})
-
-					// update mech queue status
-					ws.PublishMessage(fmt.Sprintf("/faction/%s/queue/%s", factionID, mechID), server.HubKeyPlayerAssetMechQueueSubscribe, &server.MechArenaInfo{
-						Status:              server.MechArenaStatusQueue,
-						CanDeploy:           false,
-						BattleLobbyIsLocked: bl.ReadyAt.Valid,
-					})
 				}
 
 				err = blm.Insert(tx, boil.Infer())
@@ -269,13 +262,14 @@ func (api *API) BattleLobbyCreate(ctx context.Context, user *boiler.Player, fact
 			return terror.Error(err, "Failed to create battle lobby.")
 		}
 
-		// pause mechs repair case
 		if len(deployedMechIDs) > 0 {
+			// pause mechs repair case
 			err = api.ArenaManager.PauseRepairCases(deployedMechIDs)
 			if err != nil {
 				return err
 			}
 
+			// broadcast update
 			go battle.BroadcastMechQueueStatus(user.ID, deployedMechIDs...)
 			go battle.BroadcastPlayerQueueStatus(user.ID)
 
@@ -555,27 +549,17 @@ func (api *API) BattleLobbyJoin(ctx context.Context, user *boiler.Player, factio
 		// kick
 		if lobbyReady {
 			api.ArenaManager.KickIdleArenas()
+
+			for _, lm := range battleLobbyMechs {
+				ws.PublishMessage(fmt.Sprintf("/faction/%s/queue/%s", factionID, lm.MechID), server.HubKeyPlayerAssetMechQueueSubscribe, &server.MechArenaInfo{
+					Status:              server.MechArenaStatusQueue,
+					CanDeploy:           false,
+					BattleLobbyIsLocked: true,
+				})
+			}
 		}
 
-		// broadcast mech queue position
-		go func(battleLobby *boiler.BattleLobby, currentDeployedMechIDs []string, allLobbyMechs []*boiler.BattleLobbiesMech) {
-			battle.BroadcastMechQueueStatus(user.ID, deployedMechIDs...)
-
-			mai := &server.MechArenaInfo{
-				Status:              server.MechArenaStatusQueue,
-				CanDeploy:           false,
-				BattleLobbyIsLocked: battleLobby.ReadyAt.Valid,
-			}
-
-			// update mech queue status
-			for _, blm := range allLobbyMechs {
-				ws.PublishMessage(fmt.Sprintf("/faction/%s/queue/%s", factionID, blm.MechID), server.HubKeyPlayerAssetMechQueueSubscribe, mai)
-			}
-			for _, mechID := range currentDeployedMechIDs {
-				ws.PublishMessage(fmt.Sprintf("/faction/%s/queue/%s", factionID, mechID), server.HubKeyPlayerAssetMechQueueSubscribe, mai)
-			}
-
-		}(bl, deployedMechIDs, battleLobbyMechs)
+		go battle.BroadcastMechQueueStatus(user.ID, deployedMechIDs...)
 
 		// broadcast battle lobby
 		api.ArenaManager.BattleLobbyDebounceBroadcastChan <- affectedLobbyIDs
@@ -872,27 +856,7 @@ func (api *API) BattleLobbyLeave(ctx context.Context, user *boiler.Player, facti
 		go battle.BroadcastPlayerQueueStatus(user.ID)
 
 		// broadcast new mech stat
-		go func() {
-			battle.BroadcastMechQueueStatus(user.ID, leftMechIDs...)
-
-			cis, err := boiler.CollectionItems(
-				boiler.CollectionItemWhere.ItemID.IN(leftMechIDs),
-			).All(gamedb.StdConn)
-			if err != nil {
-				gamelog.L.Error().Err(err).Strs("collection item id list", leftMechIDs).Msg("Failed to load collection items")
-				return
-			}
-
-			for _, ci := range cis {
-				queueDetails, err := db.GetCollectionItemStatus(*ci)
-				if err != nil && !errors.Is(err, sql.ErrNoRows) {
-					gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("Failed to get mech arena status")
-					continue
-				}
-
-				ws.PublishMessage(fmt.Sprintf("/faction/%s/queue/%s", factionID, ci.ItemID), server.HubKeyPlayerAssetMechQueueSubscribe, queueDetails)
-			}
-		}()
+		go battle.BroadcastMechQueueStatus(user.ID, leftMechIDs...)
 
 		return nil
 	})
@@ -999,7 +963,7 @@ type MechStakeRequest struct {
 	} `json:"payload"`
 }
 
-const HubKeyMechStake = "MECH:STAKE"
+const HubKeyMechsStake = "MECHS:STAKE"
 
 func (api *API) MechStake(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
 	req := &MechStakeRequest{}
@@ -1048,12 +1012,14 @@ func (api *API) MechStake(ctx context.Context, user *boiler.Player, factionID st
 		return terror.Error(err, "Failed to stake your mechs")
 	}
 
+	reply(true)
+
 	// TODO: broadcast staked mech list
 
 	return nil
 }
 
-const HubKeyMechUnstake = "MECH:UNSTAKE"
+const HubKeyMechsUnstake = "MECHS:UNSTAKE"
 
 func (api *API) MechUnstake(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
 	req := &MechStakeRequest{}
@@ -1229,6 +1195,8 @@ func (api *API) MechUnstake(ctx context.Context, user *boiler.Player, factionID 
 	if err != nil {
 		return err
 	}
+
+	reply(true)
 
 	return nil
 }

@@ -242,6 +242,14 @@ func BroadcastMechQueueStatus(playerID string, mechIDs ...string) {
 	}
 
 	ws.PublishMessage(fmt.Sprintf("/secure/user/%s/owned_mechs", playerID), server.HubKeyPlayerMechsBrief, mechInfo)
+
+	for _, m := range mechInfo {
+		ws.PublishMessage(fmt.Sprintf("/faction/%s/queue/%s", m.FactionID.String, m.ID), server.HubKeyPlayerAssetMechQueueSubscribe, server.MechArenaInfo{
+			Status:              m.Status,
+			CanDeploy:           m.CanDeploy,
+			BattleLobbyIsLocked: m.LobbyLockedAt.Valid,
+		})
+	}
 }
 
 func BroadcastPlayerQueueStatus(playerID string) {

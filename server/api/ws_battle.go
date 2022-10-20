@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/davecgh/go-spew/spew"
 	"server/battle"
 	"server/db"
 	"server/db/boiler"
@@ -305,21 +306,12 @@ func (bc *BattleControllerWS) BattleMechStatsHandler(ctx context.Context, key st
 }
 
 func (api *API) PlayerAssetMechQueueSubscribeHandler(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
-	mechID := chi.RouteContext(ctx).URLParam("mech_id")
-
-	collectionItem, err := boiler.CollectionItems(
-		boiler.CollectionItemWhere.OwnerID.EQ(user.ID),
-		boiler.CollectionItemWhere.ItemType.EQ(boiler.ItemTypeMech),
-		boiler.CollectionItemWhere.ItemID.EQ(mechID),
-	).One(gamedb.StdConn)
+	mechStatus, err := db.GetMechQueueStatus(chi.RouteContext(ctx).URLParam("mech_id"))
 	if err != nil {
-		return terror.Error(err, "Failed to find mech from db")
+		return err
 	}
 
-	mechStatus, err := db.GetCollectionItemStatus(*collectionItem)
-	if err != nil {
-		return terror.Error(err, "Failed to get mech status")
-	}
+	spew.Dump(mechStatus)
 
 	reply(mechStatus)
 	return nil

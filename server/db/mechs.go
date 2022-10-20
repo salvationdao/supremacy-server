@@ -1505,6 +1505,7 @@ func MechBattleReady(mechID string) (bool, error) {
 
 type MechBrief struct {
 	ID                  string      `json:"id" db:"id"`
+	FactionID           null.String `json:"faction_id"`
 	OwnerID             string      `json:"owner_id" db:"owner_id"`
 	MarketLocked        bool        `json:"market_locked" db:"market_locked"`
 	XsynLocked          bool        `json:"xsyn_locked" db:"xsyn_locked"`
@@ -1602,6 +1603,7 @@ func LobbyMechsBrief(playerID string, mechIDs ...string) ([]*MechBrief, error) {
 	queries := []qm.QueryMod{
 		qm.Select(
 			fmt.Sprintf("_m.%s", boiler.MechColumns.ID),
+			boiler.PlayerTableColumns.FactionID,
 			fmt.Sprintf("_ci.%s", boiler.CollectionItemColumns.OwnerID),
 			fmt.Sprintf("_ci.%s", boiler.CollectionItemColumns.MarketLocked),
 			fmt.Sprintf("_ci.%s", boiler.CollectionItemColumns.XsynLocked),
@@ -1686,6 +1688,13 @@ func LobbyMechsBrief(playerID string, mechIDs ...string) ([]*MechBrief, error) {
 			boiler.CollectionItemColumns.DeletedAt,
 			playerIDQuery,
 			mechIDInQuery,
+		)),
+
+		qm.InnerJoin(fmt.Sprintf(
+			"%s ON %s = _ci.%s",
+			boiler.TableNames.Players,
+			boiler.PlayerTableColumns.ID,
+			boiler.CollectionItemColumns.OwnerID,
 		)),
 
 		qm.InnerJoin(fmt.Sprintf(
@@ -1796,6 +1805,7 @@ func LobbyMechsBrief(playerID string, mechIDs ...string) ([]*MechBrief, error) {
 		pc := &server.PowerCore{}
 		err = rows.Scan(
 			&mb.ID,
+			&mb.FactionID,
 			&mb.OwnerID,
 			&mb.MarketLocked,
 			&mb.XsynLocked,

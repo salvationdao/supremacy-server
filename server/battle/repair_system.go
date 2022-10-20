@@ -44,41 +44,6 @@ func (am *ArenaManager) RepairOfferCleaner() {
 	}
 }
 
-func broadcastMechQueueStatus(pmrs *boiler.PlayerMechRepairSlot, rc *boiler.RepairCase) {
-	canDeployRatio := db.GetDecimalWithDefault(db.KeyCanDeployDamagedRatio, decimal.NewFromFloat(0.5))
-
-	totalBlocks := db.TotalRepairBlocks(pmrs.MechID)
-
-	go BroadcastMechQueueStatus(pmrs.PlayerID, rc.MechID)
-
-	// broadcast current mech stat if damage blocks is less than or equal to deploy ratio
-	if decimal.NewFromInt(int64(rc.BlocksRequiredRepair - rc.BlocksRepaired)).Div(decimal.NewFromInt(int64(totalBlocks))).LessThanOrEqual(canDeployRatio) {
-
-		owner, err := boiler.FindPlayer(gamedb.StdConn, pmrs.PlayerID)
-		if err != nil {
-			gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("Failed to load owner")
-		}
-
-		collectionItem, err := boiler.CollectionItems(
-			boiler.CollectionItemWhere.OwnerID.EQ(owner.ID),
-			boiler.CollectionItemWhere.ItemType.EQ(boiler.ItemTypeMech),
-			boiler.CollectionItemWhere.ItemID.EQ(pmrs.MechID),
-		).One(gamedb.StdConn)
-		if err != nil {
-			gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("Failed to load mech collection item")
-			return
-		}
-
-		queueDetails, err := db.GetCollectionItemStatus(*collectionItem)
-		if err != nil && !errors.Is(err, sql.ErrNoRows) {
-			gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("Failed to get mech arena status")
-			return
-		}
-
-		ws.PublishMessage(fmt.Sprintf("/faction/%s/queue/%s", owner.FactionID.String, pmrs.MechID), server.HubKeyPlayerAssetMechQueueSubscribe, queueDetails)
-	}
-}
-
 // CloseRepairOffers close the given repair offer
 // IMPORTANT: this function should NOT be used outside of "SendRepairFunc" !!!
 func (am *ArenaManager) CloseRepairOffers(repairOfferIDs []string, offerCloseReason string, agentCloseReason string) error {
@@ -450,7 +415,7 @@ func (am *ArenaManager) repairBayCompleteChecker() {
 				ws.PublishMessage(fmt.Sprintf("/secure/mech/%s/repair_case", rc.MechID), server.HubKeyMechRepairCase, rc)
 
 				// broadcast mech status
-				go broadcastMechQueueStatus(playerMechRepairSlot, rc)
+				go BroadcastMechQueueStatus(playerMechRepairSlot.PlayerID, rc.MechID)
 
 				// broadcast current repair bay
 				go BroadcastRepairBay(playerMechRepairSlot.PlayerID)
@@ -492,7 +457,7 @@ func (am *ArenaManager) repairBayCompleteChecker() {
 				return
 			}
 			// broadcast mech status
-			go broadcastMechQueueStatus(playerMechRepairSlot, rc)
+			go BroadcastMechQueueStatus(playerMechRepairSlot.PlayerID, rc.MechID)
 		}(pm)
 	}
 

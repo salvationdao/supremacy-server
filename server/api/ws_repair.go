@@ -507,17 +507,6 @@ func BroadcastMechQueueStat(mechID string) {
 	}
 
 	go battle.BroadcastMechQueueStatus(ci.OwnerID, ci.ItemID)
-
-	if ci != nil && ci.R != nil && ci.R.Owner != nil && ci.R.Owner.FactionID.Valid {
-		owner := ci.R.Owner
-		queueDetails, err := db.GetCollectionItemStatus(*ci)
-		if err != nil && !errors.Is(err, sql.ErrNoRows) {
-			gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("Failed to get mech arena status")
-			return
-		}
-
-		ws.PublishMessage(fmt.Sprintf("/faction/%s/queue/%s", owner.FactionID.String, mechID), server.HubKeyPlayerAssetMechQueueSubscribe, queueDetails)
-	}
 }
 
 type RepairAgentAbandonRequest struct {

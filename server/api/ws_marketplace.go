@@ -698,12 +698,8 @@ func (mp *MarketplaceController) SalesCreateHandler(ctx context.Context, user *b
 		gamelog.L.Error().Str("collection item id", ciUUID.String()).Err(err).Msg("Failed to get collection item from db")
 	}
 
-	go battle.BroadcastMechQueueStatus(user.ID, ci.ItemID)
-
 	if ci.ItemType == boiler.ItemTypeMech {
-		ws.PublishMessage(fmt.Sprintf("/faction/%s/queue/%s", factionID, ci.ItemID), server.HubKeyPlayerAssetMechQueueSubscribe, &server.MechArenaInfo{
-			Status: server.MechArenaStatusMarket,
-		})
+		go battle.BroadcastMechQueueStatus(user.ID, ci.ItemID)
 	}
 
 	return nil
@@ -1078,28 +1074,6 @@ func (mp *MarketplaceController) SalesArchiveHandler(ctx context.Context, user *
 
 	if ci.ItemType == boiler.ItemTypeMech {
 		go battle.BroadcastMechQueueStatus(ci.OwnerID, ci.ItemID)
-
-		mai := &server.MechArenaInfo{
-			Status:    server.MechArenaStatusIdle,
-			CanDeploy: true,
-		}
-
-		mrc, err := boiler.RepairCases(
-			boiler.RepairCaseWhere.MechID.EQ(ci.ItemID),
-			boiler.RepairCaseWhere.CompletedAt.IsNull(),
-		).One(gamedb.StdConn)
-		if err != nil && !errors.Is(err, sql.ErrNoRows) {
-			l.Error().Err(err).Msg("Failed to load repair case")
-		}
-
-		if mrc != nil {
-			mai.Status = server.MechArenaStatusDamaged
-			if mrc.BlocksRepaired*2 < mrc.BlocksRequiredRepair {
-				mai.CanDeploy = false
-			}
-		}
-
-		ws.PublishMessage(fmt.Sprintf("/faction/%s/queue/%s", fID, ci.ItemID), server.HubKeyPlayerAssetMechQueueSubscribe, mai)
 	}
 
 	return nil

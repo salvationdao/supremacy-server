@@ -5,96 +5,142 @@ import (
 	"fmt"
 	"github.com/gofrs/uuid"
 	"github.com/ninja-software/terror/v2"
+	"github.com/shopspring/decimal"
 	"github.com/volatiletech/null/v8"
+	"github.com/volatiletech/sqlboiler/v4/boil"
+	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 	"golang.org/x/exp/slices"
 	"server"
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
-	"time"
-
-	"github.com/shopspring/decimal"
-	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 
 	"github.com/friendsofgo/errors"
 )
 
 const FACTION_MECH_LIMIT = 3
 
-func GetCollectionItemStatus(collectionItem boiler.CollectionItem) (*server.MechArenaInfo, error) {
-	l := gamelog.L.With().Str("func", "GetCollectionItemStatus").Interface("collectionItem", collectionItem).Logger()
+func GetMechQueueStatus(mechID string) (*server.MechArenaInfo, error) {
+	l := gamelog.L.With().Str("func", "GetMechQueueStatus").Interface("mechID", mechID).Logger()
 
-	// Check in marketplace
-	now := time.Now()
-	inMarketplace, err := collectionItem.ItemSales(
-		boiler.ItemSaleWhere.EndAt.GT(now),
-		boiler.ItemSaleWhere.SoldAt.IsNull(),
-		boiler.ItemSaleWhere.DeletedAt.IsNull(),
-	).Exists(gamedb.StdConn)
+	_, err := uuid.FromString(mechID)
 	if err != nil {
-		l.Error().Err(err).Msg("failed to check in marketplace")
-		return nil, err
+		return nil, terror.Error(fmt.Errorf("invalid mech id"), "Invalid mech id")
 	}
 
-	if inMarketplace {
+	queries := []qm.QueryMod{
+		qm.Select(
+			fmt.Sprintf(
+				"COALESCE((SELECT TRUE FROM %s WHERE %s = %s AND %s ISNULL AND %s ISNULL AND %s > NOW()), FALSE) AS in_marketplace",
+				boiler.TableNames.ItemSales,
+				boiler.ItemSaleTableColumns.CollectionItemID,
+				boiler.CollectionItemTableColumns.ID,
+				boiler.ItemSaleTableColumns.SoldAt,
+				boiler.ItemSaleTableColumns.DeletedAt,
+				boiler.ItemSaleTableColumns.EndAt,
+			),
+			fmt.Sprintf("%s NOTNULL AS is_queued", boiler.BattleLobbiesMechTableColumns.CreatedAt),
+			fmt.Sprintf("%s NOTNULL AS is_locked_in_lobby", boiler.BattleLobbiesMechTableColumns.LockedAt),
+			fmt.Sprintf("%s NOTNULL AS is_in_battle", boiler.BattleLobbiesMechTableColumns.AssignedToBattleID),
+			boiler.BlueprintMechTableColumns.RepairBlocks,
+			fmt.Sprintf(
+				"COALESCE(%s - %s, 0) AS damaged_block",
+				boiler.RepairCaseTableColumns.BlocksRequiredRepair,
+				boiler.RepairCaseTableColumns.BlocksRepaired,
+			),
+		),
+
+		qm.From(fmt.Sprintf(
+			"(SELECT * FROM %s WHERE %s = '%s' AND %s = '%s') %s",
+			boiler.TableNames.CollectionItems,
+			boiler.CollectionItemTableColumns.ItemType,
+			boiler.ItemTypeMech,
+			boiler.CollectionItemTableColumns.ItemID,
+			mechID,
+			boiler.TableNames.CollectionItems,
+		)),
+
+		qm.InnerJoin(fmt.Sprintf(
+			"%s ON %s = %s",
+			boiler.TableNames.Mechs,
+			boiler.MechTableColumns.ID,
+			boiler.CollectionItemTableColumns.ItemID,
+		)),
+
+		qm.InnerJoin(fmt.Sprintf(
+			"%s ON %s = %s",
+			boiler.TableNames.BlueprintMechs,
+			boiler.BlueprintMechTableColumns.ID,
+			boiler.MechTableColumns.BlueprintID,
+		)),
+
+		qm.LeftOuterJoin(fmt.Sprintf(
+			"%s ON %s = %s AND %s ISNULL AND %s ISNULL",
+			boiler.TableNames.RepairCases,
+			boiler.RepairCaseTableColumns.MechID,
+			boiler.MechTableColumns.ID,
+			boiler.RepairCaseTableColumns.CompletedAt,
+			boiler.RepairCaseTableColumns.DeletedAt,
+		)),
+
+		qm.LeftOuterJoin(fmt.Sprintf(
+			"%s ON %s = %s AND %s ISNULL AND %s ISNULL AND %s ISNULL",
+			boiler.TableNames.BattleLobbiesMechs,
+			boiler.BattleLobbiesMechTableColumns.MechID,
+			boiler.MechTableColumns.ID,
+			boiler.BattleLobbiesMechTableColumns.EndedAt,
+			boiler.BattleLobbiesMechTableColumns.RefundTXID,
+			boiler.BattleLobbiesMechTableColumns.DeletedAt,
+		)),
+	}
+
+	isInMarket := false
+	isQueued := false
+	isLockedInLobby := false
+	isInBattle := false
+	totalRepairBlocks := int64(0)
+	damagedRepairBlocks := int64(0)
+
+	boil.DebugMode = true
+	err = boiler.NewQuery(queries...).QueryRow(gamedb.StdConn).Scan(
+		&isInMarket,
+		&isQueued,
+		&isLockedInLobby,
+		&isInBattle,
+		&totalRepairBlocks,
+		&damagedRepairBlocks,
+	)
+	boil.DebugMode = false
+	if err != nil {
+		l.Error().Err(err).Msg("Failed to scan mech queue status.")
+		return nil, terror.Error(err, "Failed to scan mech queue status.")
+	}
+
+	if isInMarket {
 		return &server.MechArenaInfo{
 			Status:    server.MechArenaStatusMarket,
 			CanDeploy: false,
 		}, nil
 	}
 
-	mechID := collectionItem.ItemID
-
-	// Check in battle lobby
-	battleLobbyMech, err := boiler.BattleLobbiesMechs(
-		boiler.BattleLobbiesMechWhere.MechID.EQ(mechID),
-		boiler.BattleLobbiesMechWhere.EndedAt.IsNull(),
-		boiler.BattleLobbiesMechWhere.RefundTXID.IsNull(),
-	).One(gamedb.StdConn)
-	if err != nil && !errors.Is(err, sql.ErrNoRows) {
-		l.Error().Err(err).Msg("Failed to load the battle lobby of the mech.")
-		return nil, terror.Error(err, "Failed to load the battle lobby of the mech.")
-	}
-
-	// if in battle lobby
-	if battleLobbyMech != nil {
+	if isQueued {
 		mai := &server.MechArenaInfo{
 			Status:              server.MechArenaStatusQueue,
 			CanDeploy:           false,
-			BattleLobbyIsLocked: battleLobbyMech.LockedAt.Valid,
+			BattleLobbyIsLocked: isLockedInLobby,
 		}
 
-		// if in battle
-		if battleLobbyMech.AssignedToBattleID.Valid {
+		if isInBattle {
 			mai.Status = server.MechArenaStatusBattle
 		}
 
 		return mai, nil
 	}
 
-	// Check if damaged
-	rc, err := boiler.RepairCases(
-		boiler.RepairCaseWhere.MechID.EQ(mechID),
-		boiler.RepairCaseWhere.CompletedAt.IsNull(),
-	).One(gamedb.StdConn)
-	if err != nil && !errors.Is(err, sql.ErrNoRows) {
-		l.Error().Err(err).Msg("failed to check if damaged")
-		return nil, err
-	}
-
-	if rc != nil {
-		canDeployRatio := GetDecimalWithDefault(KeyCanDeployDamagedRatio, decimal.NewFromFloat(0.5))
-		totalBlocks := TotalRepairBlocks(rc.MechID)
-		if decimal.NewFromInt(int64(rc.BlocksRequiredRepair - rc.BlocksRepaired)).Div(decimal.NewFromInt(int64(totalBlocks))).GreaterThan(canDeployRatio) {
-			// If less than 50% repaired
-			return &server.MechArenaInfo{
-				Status:    server.MechArenaStatusDamaged,
-				CanDeploy: false,
-			}, nil
-		}
+	if damagedRepairBlocks > 0 {
 		return &server.MechArenaInfo{
 			Status:    server.MechArenaStatusDamaged,
-			CanDeploy: true,
+			CanDeploy: decimal.NewFromInt(damagedRepairBlocks).Div(decimal.NewFromInt(totalRepairBlocks)).GreaterThan(GetDecimalWithDefault(KeyCanDeployDamagedRatio, decimal.NewFromFloat(0.5))),
 		}, nil
 	}
 
