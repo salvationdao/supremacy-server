@@ -33,6 +33,7 @@ func NewAdminController(api *API) *AdminController {
 	api.SecureAdminCommand(HubKeyAdminFiatProductCreate, adminHub.FiatProductCreate)
 	api.SecureAdminCommand(HubKeyAdminFiatProductUpdate, adminHub.FiatProductUpdate)
 	api.SecureAdminCommand(HubKeyAdminFiatBlueprintMechList, adminHub.FiatBlueprintMechList)
+	api.SecureAdminCommand(HubKeyAdminFiatBlueprintMechSkinList, adminHub.FiatBlueprintMechSkinList)
 
 	return adminHub
 }
@@ -327,6 +328,26 @@ func (ac *AdminController) FiatBlueprintMechList(ctx context.Context, user *boil
 	resp := []*server.BlueprintMech{}
 	for _, bm := range blueprintMechs {
 		resp = append(resp, server.BlueprintMechFromBoiler(bm))
+	}
+
+	reply(resp)
+
+	return nil
+}
+
+const HubKeyAdminFiatBlueprintMechSkinList = "ADMIN:FIAT:BLUEPRINT:MECH:SKIN:LIST"
+
+func (ac *AdminController) FiatBlueprintMechSkinList(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
+	errMsg := "Failed to get mech skin blueprints, please try again."
+
+	blueprintMechSkins, err := boiler.BlueprintMechSkins().All(gamedb.StdConn)
+	if err != nil {
+		return terror.Error(err, errMsg)
+	}
+
+	resp := []*server.BlueprintMechSkin{}
+	for _, bms := range blueprintMechSkins {
+		resp = append(resp, server.BlueprintMechSkinFromBoiler(bms))
 	}
 
 	reply(resp)
