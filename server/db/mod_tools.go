@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/volatiletech/null/v8"
+	"github.com/volatiletech/sqlboiler/v4/boil"
 	"server"
 	"server/db/boiler"
 	"server/gamedb"
@@ -151,7 +152,7 @@ func ModToolGetUserData(userID string, isAdmin bool, supsAmount decimal.Decimal)
 			Sups: supsAmount,
 		}
 
-		mechs, err := boiler.CollectionItems(
+		mechsCI, err := boiler.CollectionItems(
 			boiler.CollectionItemWhere.ItemType.EQ(boiler.ItemTypeMech),
 			boiler.CollectionItemWhere.OwnerID.EQ(player.ID),
 		).All(gamedb.StdConn)
@@ -159,25 +160,89 @@ func ModToolGetUserData(userID string, isAdmin bool, supsAmount decimal.Decimal)
 			return nil, terror.Error(err, "Failed to find users mechs")
 		}
 
-		if mechs != nil {
-			mechIDs := []string{}
+		userMechs := []*server.Mech{}
+		if mechsCI != nil {
+			for _, mechCI := range mechsCI {
+				mech, err := boiler.Mechs(
+					boiler.MechWhere.ID.EQ(mechCI.ItemID),
+					qm.Load(boiler.MechRels.ChassisSkin),
+					qm.Load(qm.Rels(boiler.MechRels.ChassisSkin, boiler.MechSkinRels.Blueprint)),
+					qm.Load(boiler.MechRels.Blueprint),
+				).One(gamedb.StdConn)
+				if err != nil {
+					return nil, terror.Error(err, "Failed to load mech info")
+				}
 
-			for _, mech := range mechs {
-				mechIDs = append(mechIDs, mech.ItemID)
+				mechSkin, err := boiler.MechModelSkinCompatibilities(
+					boiler.MechModelSkinCompatibilityWhere.MechModelID.EQ(mech.R.Blueprint.ID),
+					boiler.MechModelSkinCompatibilityWhere.BlueprintMechSkinID.EQ(mech.R.ChassisSkin.BlueprintID),
+				).One(gamedb.StdConn)
+				if err != nil {
+					return nil, terror.Error(err, "Failed to load mech info")
+				}
+
+				if mech.R != nil && mech.R.ChassisSkin != nil && mech.R.ChassisSkin.R != nil && mech.R.ChassisSkin.R.Blueprint != nil {
+					mechCI.Tier = mech.R.ChassisSkin.R.Blueprint.Tier
+				}
+
+				m := &server.Mech{
+					ID:    mech.ID,
+					Label: mech.R.Blueprint.Label,
+					Name:  mech.Name,
+					Images: &server.Images{
+						AvatarURL: mechSkin.AvatarURL,
+						ImageURL:  mechSkin.ImageURL,
+					},
+					ChassisSkin: &server.MechSkin{
+						Images: &server.Images{
+							AvatarURL: mechSkin.AvatarURL,
+							ImageURL:  mechSkin.ImageURL,
+						},
+					},
+				}
+
+				userMechs = append(userMechs, m)
 			}
-
-			mechBriefs, err := Mechs(mechIDs...)
-			if err != nil {
-				return nil, terror.Error(err, "Failed to get owned mechs brief")
-			}
-
-			userAssets.Mechs = mechBriefs
+			userAssets.Mechs = userMechs
 		}
 
 		adminToolResponse.UserAssets = userAssets
 	}
 
 	return adminToolResponse, nil
+}
+
+var ErrModLookupDuplicate = errors.New("mod lookup duplicate")
+
+func UpdateLookupHistory(userID, lookupPlayerID string) error {
+	action, err := boiler.ModActionAudits(
+		boiler.ModActionAuditWhere.ModID.EQ(userID),
+		boiler.ModActionAuditWhere.ActionType.EQ(boiler.ModActionTypeLOOKUP),
+		qm.OrderBy(fmt.Sprintf("%s DESC", boiler.ModActionAuditColumns.CreatedAt)),
+	).One(gamedb.StdConn)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return terror.Error(err, "Failed to get mod action audit")
+	}
+
+	if action != nil && action.AffectedPlayerID.Valid {
+		if action.AffectedPlayerID.String == lookupPlayerID {
+			return terror.Error(ErrModLookupDuplicate, "Mod last lookup was same user")
+		}
+	}
+
+	newAction := boiler.ModActionAudit{
+		ActionType:       boiler.ModActionTypeLOOKUP,
+		ModID:            userID,
+		Reason:           "Player Lookup",
+		AffectedPlayerID: null.StringFrom(lookupPlayerID),
+	}
+
+	err = newAction.Insert(gamedb.StdConn, boil.Infer())
+	if err != nil {
+		return terror.Error(err, "Failed to insert new mod action audit")
+	}
+
+	return nil
 }
 
 func getPlayerRelatedAccounts(userID string) ([]*server.Player, error) {

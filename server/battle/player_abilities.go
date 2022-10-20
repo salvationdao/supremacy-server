@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
-	"github.com/davecgh/go-spew/spew"
 	"server"
 	"server/battle/player_abilities"
 	"server/db"
@@ -1540,8 +1539,6 @@ func (arena *Arena) MechMoveCommandCreateHandler(ctx context.Context, user *boil
 			fmc.CellY = mmc.CellY
 		})
 	}
-
-	spew.Dump(mmc)
 
 	ws.PublishMessage(fmt.Sprintf("/mini_map/arena/%s/faction/%s/mech_command/%s", arena.ID, factionID, wm.Hash), server.HubKeyMechCommandUpdateSubscribe, mmc)
 	ws.PublishMessage(fmt.Sprintf("/mini_map/arena/%s/faction/%s/mech_commands", btl.ArenaID, wm.FactionID), server.HubKeyFactionMechCommandUpdateSubscribe, []*FactionMechCommand{fmc})

@@ -173,7 +173,7 @@ func CanAssetBeModifiedOrMoved(exec boil.Executor, itemID string, itemType strin
 		}
 		l = l.With().Interface("powerCore", powerCore).Logger()
 		if powerCore.EquippedOn.Valid {
-			return CanAssetBeModifiedOrMoved(exec, powerCore.EquippedOn.String, boiler.ItemTypePowerCore)
+			return CanAssetBeModifiedOrMoved(exec, powerCore.EquippedOn.String, boiler.ItemTypeMech)
 		}
 	}
 
