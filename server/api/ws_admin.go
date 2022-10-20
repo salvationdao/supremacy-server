@@ -470,14 +470,14 @@ const HubKeyAdminFiatBlueprintMechAnimationList = "ADMIN:FIAT:BLUEPRINT:MECH:ANI
 func (ac *AdminController) FiatBlueprintMechAnimationList(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
 	errMsg := "Failed to get mech animation blueprints, please try again."
 
-	blueprintWeaponSkins, err := boiler.BlueprintWeaponSkins().All(gamedb.StdConn)
+	blueprintMechAnimations, err := boiler.BlueprintMechAnimations().All(gamedb.StdConn)
 	if err != nil {
 		return terror.Error(err, errMsg)
 	}
 
-	resp := []*server.BlueprintWeaponSkin{}
-	for _, bms := range blueprintWeaponSkins {
-		resp = append(resp, server.BlueprintWeaponSkinFromBoiler(bms))
+	resp := []*server.BlueprintMechAnimation{}
+	for _, bma := range blueprintMechAnimations {
+		resp = append(resp, server.BlueprintMechAnimationFromBoiler(bma))
 	}
 
 	reply(resp)
