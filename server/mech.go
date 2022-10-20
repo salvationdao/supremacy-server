@@ -182,15 +182,18 @@ func (m *Mech) IsCompleteGenesis() bool {
 	}
 
 	// check weapons
-	if m.Weapons[0] == nil ||
+	if len(m.Weapons) < 1 ||
+		m.Weapons[0] == nil ||
 		!m.Weapons[0].GenesisTokenID.Valid {
 		return false
 	}
-	if m.Weapons[1] == nil ||
+	if len(m.Weapons) < 2 ||
+		m.Weapons[1] == nil ||
 		!m.Weapons[1].GenesisTokenID.Valid {
 		return false
 	}
-	if m.Weapons[2] == nil ||
+	if len(m.Weapons) < 3 ||
+		m.Weapons[2] == nil ||
 		!m.Weapons[2].GenesisTokenID.Valid {
 		return false
 	}
@@ -216,15 +219,18 @@ func (m *Mech) IsCompleteLimited() bool {
 	}
 
 	// check weapons
-	if m.Weapons[0] == nil ||
+	if len(m.Weapons) < 1 ||
+		m.Weapons[0] == nil ||
 		!m.Weapons[0].LimitedReleaseTokenID.Valid {
 		return false
 	}
-	if m.Weapons[1] == nil ||
+	if len(m.Weapons) < 2 ||
+		m.Weapons[1] == nil ||
 		!m.Weapons[1].LimitedReleaseTokenID.Valid {
 		return false
 	}
-	if m.Weapons[2] == nil ||
+	if len(m.Weapons) < 3 ||
+		m.Weapons[2] == nil ||
 		!m.Weapons[2].LimitedReleaseTokenID.Valid {
 		return false
 	}

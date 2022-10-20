@@ -21,10 +21,12 @@ import (
 
 type AssetReq struct {
 	AssetHash string `json:"asset_hash"`
+	GetAttachedAssets bool `json:"get_attached_assets"`
 }
 
 type AssetResp struct {
 	Asset *XsynAsset `json:"asset"`
+	AttachedAssets []*XsynAsset `json:"attached_assets"`
 }
 
 type TemplateRegisterReq struct {

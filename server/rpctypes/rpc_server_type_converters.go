@@ -165,7 +165,6 @@ func ServerMechsToXsynAsset(mechs []*server.Mech) []*XsynAsset {
 			}
 		}
 
-
 		err = asset.Attributes.AreValid()
 		if err != nil {
 			gamelog.L.Error().Err(err).Msg("invalid asset attributes")
@@ -302,13 +301,27 @@ func ServerMechSkinsToXsynAsset(tx boil.Executor, mechSkins []*server.MechSkin) 
 		}
 
 		if i.SkinSwatch != nil {
-			asset.ImageURL = i.SkinSwatch.ImageURL
-			asset.AnimationURL = i.SkinSwatch.AnimationURL
-			asset.LargeImageURL = i.SkinSwatch.LargeImageURL
-			asset.CardAnimationURL = i.SkinSwatch.CardAnimationURL
-			asset.AvatarURL = i.SkinSwatch.AvatarURL
-			asset.BackgroundColor = i.SkinSwatch.BackgroundColor
-			asset.YoutubeURL = i.SkinSwatch.YoutubeURL
+			if i.SkinSwatch.ImageURL.Valid  {
+				asset.ImageURL = i.SkinSwatch.ImageURL
+			}
+			if i.SkinSwatch.AnimationURL.Valid  {
+				asset.AnimationURL = i.SkinSwatch.AnimationURL
+			}
+			if i.SkinSwatch.LargeImageURL.Valid {
+				asset.LargeImageURL = i.SkinSwatch.LargeImageURL
+			}
+			if i.SkinSwatch.CardAnimationURL.Valid {
+				asset.CardAnimationURL = i.SkinSwatch.CardAnimationURL
+			}
+			if i.SkinSwatch.AvatarURL.Valid {
+				asset.AvatarURL = i.SkinSwatch.AvatarURL
+			}
+			if i.SkinSwatch.BackgroundColor.Valid {
+				asset.BackgroundColor = i.SkinSwatch.BackgroundColor
+			}
+			if i.SkinSwatch.YoutubeURL.Valid  {
+				asset.YoutubeURL = i.SkinSwatch.YoutubeURL
+			}
 		}
 
 		assets = append(assets, asset)
@@ -650,23 +663,37 @@ func ServerWeaponSkinsToXsynAsset(tx boil.Executor, weaponSkins []*server.Weapon
 			Attributes:       attributes,
 			AssetType:        null.StringFrom(i.ItemType),
 			XsynLocked:       i.XsynLocked,
-			ImageURL:         i.Images.ImageURL,
-			AnimationURL:     i.Images.AnimationURL,
-			LargeImageURL:    i.Images.LargeImageURL,
-			CardAnimationURL: i.Images.CardAnimationURL,
-			AvatarURL:        i.Images.AvatarURL,
-			BackgroundColor:  i.Images.BackgroundColor,
-			YoutubeURL:       i.Images.YoutubeURL,
+			ImageURL:         i.ImageURL,
+			AnimationURL:     i.AnimationURL,
+			LargeImageURL:    i.LargeImageURL,
+			CardAnimationURL: i.CardAnimationURL,
+			AvatarURL:        i.AvatarURL,
+			BackgroundColor:  i.BackgroundColor,
+			YoutubeURL:       i.YoutubeURL,
 		}
 
 		if i.SkinSwatch != nil {
-			asset.ImageURL = i.SkinSwatch.ImageURL
-			asset.AnimationURL = i.SkinSwatch.AnimationURL
-			asset.LargeImageURL = i.SkinSwatch.LargeImageURL
-			asset.CardAnimationURL = i.SkinSwatch.CardAnimationURL
-			asset.AvatarURL = i.SkinSwatch.AvatarURL
-			asset.BackgroundColor = i.SkinSwatch.BackgroundColor
-			asset.YoutubeURL = i.SkinSwatch.YoutubeURL
+			if i.SkinSwatch.ImageURL.Valid  {
+				asset.ImageURL = i.SkinSwatch.ImageURL
+			}
+			if i.SkinSwatch.AnimationURL.Valid  {
+				asset.AnimationURL = i.SkinSwatch.AnimationURL
+			}
+			if i.SkinSwatch.LargeImageURL.Valid {
+				asset.LargeImageURL = i.SkinSwatch.LargeImageURL
+			}
+			if i.SkinSwatch.CardAnimationURL.Valid {
+				asset.CardAnimationURL = i.SkinSwatch.CardAnimationURL
+			}
+			if i.SkinSwatch.AvatarURL.Valid {
+				asset.AvatarURL = i.SkinSwatch.AvatarURL
+			}
+			if i.SkinSwatch.BackgroundColor.Valid {
+				asset.BackgroundColor = i.SkinSwatch.BackgroundColor
+			}
+			if i.SkinSwatch.YoutubeURL.Valid  {
+				asset.YoutubeURL = i.SkinSwatch.YoutubeURL
+			}
 		}
 
 		assets = append(assets, asset)
