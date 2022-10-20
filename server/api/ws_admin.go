@@ -116,13 +116,14 @@ func (ac *AdminController) FiatProductList(ctx context.Context, user *boiler.Pla
 
 type AdminFiatProductCreateRequest struct {
 	Payload struct {
-		Name             string   `json:"name"`
-		Description      string   `json:"description"`
-		Factions         []string `json:"factions"`
-		ProductType      string   `json:"product_type"`
-		MechBlueprintIDs []string `json:"mech_blueprint_ids"`
-		PriceDollars     int64    `json:"price_dollars"`
-		PriceCents       int64    `json:"price_cents"`
+		Name                 string   `json:"name"`
+		Description          string   `json:"description"`
+		Factions             []string `json:"factions"`
+		ProductType          string   `json:"product_type"`
+		MechBlueprintIDs     []string `json:"mech_blueprint_ids"`
+		MechSkinBlueprintIDs []string `json:"mech_skin_blueprint_ids"`
+		PriceDollars         int64    `json:"price_dollars"`
+		PriceCents           int64    `json:"price_cents"`
 	} `json:"payload"`
 }
 
@@ -148,20 +149,12 @@ func (ac *AdminController) FiatProductCreate(ctx context.Context, user *boiler.P
 	if req.Payload.ProductType == "" {
 		return terror.Error(fmt.Errorf("product type is required"), "Product type is required.")
 	}
-	if req.Payload.ProductType != boiler.ItemTypeMech {
+	if req.Payload.ProductType != boiler.ItemTypeMech && req.Payload.ProductType != boiler.ItemTypeMechSkin {
 		// TODO: remove this when able to deal with more product types
 		return terror.Error(fmt.Errorf("invalid product type"), "Invalid product type.")
 	}
 	if req.Payload.PriceDollars <= 0 && req.Payload.PriceCents <= 0 {
 		return terror.Error(fmt.Errorf("pricing is required"), "At least one pricing is required.")
-	}
-
-	blueprintMechs, err := db.BlueprintMechs(req.Payload.MechBlueprintIDs)
-	if err != nil {
-		return terror.Error(err, errMsg)
-	}
-	if len(blueprintMechs) != len(req.Payload.MechBlueprintIDs) {
-		return terror.Error(fmt.Errorf("invalid blueprint mech(s)"), "Invalid blueprint mech(s).")
 	}
 
 	// Create Product
@@ -200,23 +193,61 @@ func (ac *AdminController) FiatProductCreate(ctx context.Context, user *boiler.P
 			return terror.Error(err, errMsg)
 		}
 
-		for _, bpm := range blueprintMechs {
-			item := &boiler.FiatProductItem{
-				ProductID: product.ID,
-				Name:      bpm.Label,
-				ItemType:  boiler.FiatProductItemTypesSingleItem,
-			}
-			err := item.Insert(tx, boil.Infer())
+		if req.Payload.ProductType == boiler.ItemTypeMech {
+			blueprintMechs, err := db.BlueprintMechs(req.Payload.MechBlueprintIDs)
 			if err != nil {
 				return terror.Error(err, errMsg)
 			}
-			itemBlueprint := &boiler.FiatProductItemBlueprint{
-				ProductItemID:   null.StringFrom(item.ID), // todo: fix schema?
-				MechBlueprintID: null.StringFrom(bpm.ID),
+			if len(blueprintMechs) != len(req.Payload.MechBlueprintIDs) {
+				return terror.Error(fmt.Errorf("invalid blueprint mech(s)"), "Invalid blueprint mech(s).")
 			}
-			err = itemBlueprint.Insert(tx, boil.Infer())
+
+			for _, bpm := range blueprintMechs {
+				item := &boiler.FiatProductItem{
+					ProductID: product.ID,
+					Name:      bpm.Label,
+					ItemType:  boiler.FiatProductItemTypesSingleItem,
+				}
+				err := item.Insert(tx, boil.Infer())
+				if err != nil {
+					return terror.Error(err, errMsg)
+				}
+				itemBlueprint := &boiler.FiatProductItemBlueprint{
+					ProductItemID:   null.StringFrom(item.ID),
+					MechBlueprintID: null.StringFrom(bpm.ID),
+				}
+				err = itemBlueprint.Insert(tx, boil.Infer())
+				if err != nil {
+					return terror.Error(err, errMsg)
+				}
+			}
+		} else if req.Payload.ProductType == boiler.ItemTypeMechSkin {
+			blueprintMechSkins, err := db.BlueprintMechSkinSkins(tx, req.Payload.MechSkinBlueprintIDs)
 			if err != nil {
 				return terror.Error(err, errMsg)
+			}
+			if len(blueprintMechSkins) != len(req.Payload.MechSkinBlueprintIDs) {
+				return terror.Error(fmt.Errorf("invalid blueprint mech(s)"), "Invalid blueprint mech(s).")
+			}
+
+			for _, bpms := range blueprintMechSkins {
+				item := &boiler.FiatProductItem{
+					ProductID: product.ID,
+					Name:      bpms.Label,
+					ItemType:  boiler.FiatProductItemTypesSingleItem,
+				}
+				err := item.Insert(tx, boil.Infer())
+				if err != nil {
+					return terror.Error(err, errMsg)
+				}
+				itemBlueprint := &boiler.FiatProductItemBlueprint{
+					ProductItemID:       null.StringFrom(item.ID),
+					MechSkinBlueprintID: null.StringFrom(bpms.ID),
+				}
+				err = itemBlueprint.Insert(tx, boil.Infer())
+				if err != nil {
+					return terror.Error(err, errMsg)
+				}
 			}
 		}
 
@@ -234,12 +265,11 @@ func (ac *AdminController) FiatProductCreate(ctx context.Context, user *boiler.P
 
 type AdminFiatProductUpdateRequest struct {
 	Payload struct {
-		ID               string   `json:"id"`
-		Name             string   `json:"name"`
-		Description      string   `json:"description"`
-		MechBlueprintIDs []string `json:"mech_blueprint_ids"`
-		PriceDollars     int64    `json:"price_dollars"`
-		PriceCents       int64    `json:"price_cents"`
+		ID           string `json:"id"`
+		Name         string `json:"name"`
+		Description  string `json:"description"`
+		PriceDollars int64  `json:"price_dollars"`
+		PriceCents   int64  `json:"price_cents"`
 	} `json:"payload"`
 }
 
