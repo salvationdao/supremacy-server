@@ -142,7 +142,7 @@ func (api *API) FillUpIncompleteLobbies(w http.ResponseWriter, r *http.Request) 
 					BattleLobbyID: bl.ID,
 					MechID:        bcMechs[i].ItemID,
 					FactionID:     server.BostonCyberneticsFactionID,
-					OwnerID:       server.BostonCyberneticsPlayerID,
+					QueuedByID:    server.BostonCyberneticsPlayerID,
 				}
 
 				err = blm.Insert(gamedb.StdConn, boil.Infer())
@@ -157,7 +157,7 @@ func (api *API) FillUpIncompleteLobbies(w http.ResponseWriter, r *http.Request) 
 					BattleLobbyID: bl.ID,
 					MechID:        rmMechs[i].ItemID,
 					FactionID:     server.RedMountainFactionID,
-					OwnerID:       server.RedMountainPlayerID,
+					QueuedByID:    server.RedMountainPlayerID,
 				}
 
 				err = blm.Insert(gamedb.StdConn, boil.Infer())
@@ -172,7 +172,7 @@ func (api *API) FillUpIncompleteLobbies(w http.ResponseWriter, r *http.Request) 
 					BattleLobbyID: bl.ID,
 					MechID:        zaiMechs[i].ItemID,
 					FactionID:     server.ZaibatsuFactionID,
-					OwnerID:       server.ZaibatsuPlayerID,
+					QueuedByID:    server.ZaibatsuPlayerID,
 				}
 
 				err = blm.Insert(gamedb.StdConn, boil.Infer())

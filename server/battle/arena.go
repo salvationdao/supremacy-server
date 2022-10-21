@@ -124,6 +124,11 @@ func NewArenaManager(opts *Opts) (*ArenaManager, error) {
 		return nil, terror.Error(err, "Failed to delete unfinished AI battles.")
 	}
 
+	err = stackedAIMechsCheck()
+	if err != nil {
+		return nil, err
+	}
+
 	return am, nil
 }
 
@@ -1807,7 +1812,7 @@ func (arena *Arena) assignSupporters() {
 			case server.BostonCyberneticsFactionID:
 				if bcSupporterCount == 0 {
 					selectedSupporter = &boiler.BattleLobbySupporter{
-						SupporterID:   mech.OwnerID,
+						SupporterID:   mech.QueuedByID,
 						FactionID:     mech.FactionID,
 						BattleLobbyID: mech.BattleLobbyID,
 					}
@@ -1815,7 +1820,7 @@ func (arena *Arena) assignSupporters() {
 			case server.RedMountainFactionID:
 				if rmSupporterCount == 0 {
 					selectedSupporter = &boiler.BattleLobbySupporter{
-						SupporterID:   mech.OwnerID,
+						SupporterID:   mech.QueuedByID,
 						FactionID:     mech.FactionID,
 						BattleLobbyID: mech.BattleLobbyID,
 					}
@@ -1823,7 +1828,7 @@ func (arena *Arena) assignSupporters() {
 			case server.ZaibatsuFactionID:
 				if zaiSupporterCount == 0 {
 					selectedSupporter = &boiler.BattleLobbySupporter{
-						SupporterID:   mech.OwnerID,
+						SupporterID:   mech.QueuedByID,
 						FactionID:     mech.FactionID,
 						BattleLobbyID: mech.BattleLobbyID,
 					}
@@ -2216,15 +2221,7 @@ func (arena *Arena) BeginBattle() {
 		return
 	}
 
-	playerMechMap := make(map[string][]string)
 	for _, wm := range btl.WarMachines {
-		pm, ok := playerMechMap[wm.OwnedByID]
-		if !ok {
-			pm = []string{}
-		}
-		pm = append(pm, wm.ID)
-		playerMechMap[wm.OwnedByID] = pm
-
 		// check mech join battle quest for each mech owner
 		arena.Manager.QuestManager.MechJoinBattleQuestCheck(wm.OwnedByID)
 	}
@@ -2234,10 +2231,7 @@ func (arena *Arena) BeginBattle() {
 		gamelog.L.Error().Msg("Failed to update voice chat channels")
 	}
 
-	// broadcast mech status change
-	for playerID, mechIDs := range playerMechMap {
-		go BroadcastMechQueueStatus(playerID, mechIDs...)
-	}
+	go BroadcastMechQueueStatus(btl.warMachineIDs)
 
 	al, err := db.AbilityLabelList()
 	if err != nil {

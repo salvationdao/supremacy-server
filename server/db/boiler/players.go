@@ -207,11 +207,11 @@ var PlayerRels = struct {
 	BattleContracts                          string
 	BattleContributions                      string
 	HostByBattleLobbies                      string
-	OwnerBattleLobbiesMechs                  string
+	QueuedByBattleLobbiesMechs               string
 	OfferedByBattleLobbyExtraSupsRewards     string
 	SupporterBattleLobbySupporterOptIns      string
 	SupporterBattleLobbySupporters           string
-	OwnerBattleMechs                         string
+	PilotedByBattleMechs                     string
 	PaidByBattleQueueFeesOlds                string
 	OwnerBattleQueueOlds                     string
 	Battles                                  string
@@ -259,7 +259,7 @@ var PlayerRels = struct {
 	ReportedPlayerPunishVotes                string
 	RepairAgents                             string
 	OfferedByRepairOffers                    string
-	OwnerStackedMechBattleLogs               string
+	OwnerStakedMechBattleLogs                string
 	OwnerStakedMechs                         string
 	SyndicateCommittees                      string
 	SyndicateDirectors                       string
@@ -293,11 +293,11 @@ var PlayerRels = struct {
 	BattleContracts:                          "BattleContracts",
 	BattleContributions:                      "BattleContributions",
 	HostByBattleLobbies:                      "HostByBattleLobbies",
-	OwnerBattleLobbiesMechs:                  "OwnerBattleLobbiesMechs",
+	QueuedByBattleLobbiesMechs:               "QueuedByBattleLobbiesMechs",
 	OfferedByBattleLobbyExtraSupsRewards:     "OfferedByBattleLobbyExtraSupsRewards",
 	SupporterBattleLobbySupporterOptIns:      "SupporterBattleLobbySupporterOptIns",
 	SupporterBattleLobbySupporters:           "SupporterBattleLobbySupporters",
-	OwnerBattleMechs:                         "OwnerBattleMechs",
+	PilotedByBattleMechs:                     "PilotedByBattleMechs",
 	PaidByBattleQueueFeesOlds:                "PaidByBattleQueueFeesOlds",
 	OwnerBattleQueueOlds:                     "OwnerBattleQueueOlds",
 	Battles:                                  "Battles",
@@ -345,7 +345,7 @@ var PlayerRels = struct {
 	ReportedPlayerPunishVotes:                "ReportedPlayerPunishVotes",
 	RepairAgents:                             "RepairAgents",
 	OfferedByRepairOffers:                    "OfferedByRepairOffers",
-	OwnerStackedMechBattleLogs:               "OwnerStackedMechBattleLogs",
+	OwnerStakedMechBattleLogs:                "OwnerStakedMechBattleLogs",
 	OwnerStakedMechs:                         "OwnerStakedMechs",
 	SyndicateCommittees:                      "SyndicateCommittees",
 	SyndicateDirectors:                       "SyndicateDirectors",
@@ -382,11 +382,11 @@ type playerR struct {
 	BattleContracts                          BattleContractSlice              `boiler:"BattleContracts" boil:"BattleContracts" json:"BattleContracts" toml:"BattleContracts" yaml:"BattleContracts"`
 	BattleContributions                      BattleContributionSlice          `boiler:"BattleContributions" boil:"BattleContributions" json:"BattleContributions" toml:"BattleContributions" yaml:"BattleContributions"`
 	HostByBattleLobbies                      BattleLobbySlice                 `boiler:"HostByBattleLobbies" boil:"HostByBattleLobbies" json:"HostByBattleLobbies" toml:"HostByBattleLobbies" yaml:"HostByBattleLobbies"`
-	OwnerBattleLobbiesMechs                  BattleLobbiesMechSlice           `boiler:"OwnerBattleLobbiesMechs" boil:"OwnerBattleLobbiesMechs" json:"OwnerBattleLobbiesMechs" toml:"OwnerBattleLobbiesMechs" yaml:"OwnerBattleLobbiesMechs"`
+	QueuedByBattleLobbiesMechs               BattleLobbiesMechSlice           `boiler:"QueuedByBattleLobbiesMechs" boil:"QueuedByBattleLobbiesMechs" json:"QueuedByBattleLobbiesMechs" toml:"QueuedByBattleLobbiesMechs" yaml:"QueuedByBattleLobbiesMechs"`
 	OfferedByBattleLobbyExtraSupsRewards     BattleLobbyExtraSupsRewardSlice  `boiler:"OfferedByBattleLobbyExtraSupsRewards" boil:"OfferedByBattleLobbyExtraSupsRewards" json:"OfferedByBattleLobbyExtraSupsRewards" toml:"OfferedByBattleLobbyExtraSupsRewards" yaml:"OfferedByBattleLobbyExtraSupsRewards"`
 	SupporterBattleLobbySupporterOptIns      BattleLobbySupporterOptInSlice   `boiler:"SupporterBattleLobbySupporterOptIns" boil:"SupporterBattleLobbySupporterOptIns" json:"SupporterBattleLobbySupporterOptIns" toml:"SupporterBattleLobbySupporterOptIns" yaml:"SupporterBattleLobbySupporterOptIns"`
 	SupporterBattleLobbySupporters           BattleLobbySupporterSlice        `boiler:"SupporterBattleLobbySupporters" boil:"SupporterBattleLobbySupporters" json:"SupporterBattleLobbySupporters" toml:"SupporterBattleLobbySupporters" yaml:"SupporterBattleLobbySupporters"`
-	OwnerBattleMechs                         BattleMechSlice                  `boiler:"OwnerBattleMechs" boil:"OwnerBattleMechs" json:"OwnerBattleMechs" toml:"OwnerBattleMechs" yaml:"OwnerBattleMechs"`
+	PilotedByBattleMechs                     BattleMechSlice                  `boiler:"PilotedByBattleMechs" boil:"PilotedByBattleMechs" json:"PilotedByBattleMechs" toml:"PilotedByBattleMechs" yaml:"PilotedByBattleMechs"`
 	PaidByBattleQueueFeesOlds                BattleQueueFeesOldSlice          `boiler:"PaidByBattleQueueFeesOlds" boil:"PaidByBattleQueueFeesOlds" json:"PaidByBattleQueueFeesOlds" toml:"PaidByBattleQueueFeesOlds" yaml:"PaidByBattleQueueFeesOlds"`
 	OwnerBattleQueueOlds                     BattleQueueOldSlice              `boiler:"OwnerBattleQueueOlds" boil:"OwnerBattleQueueOlds" json:"OwnerBattleQueueOlds" toml:"OwnerBattleQueueOlds" yaml:"OwnerBattleQueueOlds"`
 	Battles                                  BattleSlice                      `boiler:"Battles" boil:"Battles" json:"Battles" toml:"Battles" yaml:"Battles"`
@@ -434,7 +434,7 @@ type playerR struct {
 	ReportedPlayerPunishVotes                PunishVoteSlice                  `boiler:"ReportedPlayerPunishVotes" boil:"ReportedPlayerPunishVotes" json:"ReportedPlayerPunishVotes" toml:"ReportedPlayerPunishVotes" yaml:"ReportedPlayerPunishVotes"`
 	RepairAgents                             RepairAgentSlice                 `boiler:"RepairAgents" boil:"RepairAgents" json:"RepairAgents" toml:"RepairAgents" yaml:"RepairAgents"`
 	OfferedByRepairOffers                    RepairOfferSlice                 `boiler:"OfferedByRepairOffers" boil:"OfferedByRepairOffers" json:"OfferedByRepairOffers" toml:"OfferedByRepairOffers" yaml:"OfferedByRepairOffers"`
-	OwnerStackedMechBattleLogs               StackedMechBattleLogSlice        `boiler:"OwnerStackedMechBattleLogs" boil:"OwnerStackedMechBattleLogs" json:"OwnerStackedMechBattleLogs" toml:"OwnerStackedMechBattleLogs" yaml:"OwnerStackedMechBattleLogs"`
+	OwnerStakedMechBattleLogs                StakedMechBattleLogSlice         `boiler:"OwnerStakedMechBattleLogs" boil:"OwnerStakedMechBattleLogs" json:"OwnerStakedMechBattleLogs" toml:"OwnerStakedMechBattleLogs" yaml:"OwnerStakedMechBattleLogs"`
 	OwnerStakedMechs                         StakedMechSlice                  `boiler:"OwnerStakedMechs" boil:"OwnerStakedMechs" json:"OwnerStakedMechs" toml:"OwnerStakedMechs" yaml:"OwnerStakedMechs"`
 	SyndicateCommittees                      SyndicateCommitteeSlice          `boiler:"SyndicateCommittees" boil:"SyndicateCommittees" json:"SyndicateCommittees" toml:"SyndicateCommittees" yaml:"SyndicateCommittees"`
 	SyndicateDirectors                       SyndicateDirectorSlice           `boiler:"SyndicateDirectors" boil:"SyndicateDirectors" json:"SyndicateDirectors" toml:"SyndicateDirectors" yaml:"SyndicateDirectors"`
@@ -979,15 +979,15 @@ func (o *Player) HostByBattleLobbies(mods ...qm.QueryMod) battleLobbyQuery {
 	return query
 }
 
-// OwnerBattleLobbiesMechs retrieves all the battle_lobbies_mech's BattleLobbiesMechs with an executor via owner_id column.
-func (o *Player) OwnerBattleLobbiesMechs(mods ...qm.QueryMod) battleLobbiesMechQuery {
+// QueuedByBattleLobbiesMechs retrieves all the battle_lobbies_mech's BattleLobbiesMechs with an executor via queued_by_id column.
+func (o *Player) QueuedByBattleLobbiesMechs(mods ...qm.QueryMod) battleLobbiesMechQuery {
 	var queryMods []qm.QueryMod
 	if len(mods) != 0 {
 		queryMods = append(queryMods, mods...)
 	}
 
 	queryMods = append(queryMods,
-		qm.Where("\"battle_lobbies_mechs\".\"owner_id\"=?", o.ID),
+		qm.Where("\"battle_lobbies_mechs\".\"queued_by_id\"=?", o.ID),
 		qmhelper.WhereIsNull("\"battle_lobbies_mechs\".\"deleted_at\""),
 	)
 
@@ -1067,15 +1067,15 @@ func (o *Player) SupporterBattleLobbySupporters(mods ...qm.QueryMod) battleLobby
 	return query
 }
 
-// OwnerBattleMechs retrieves all the battle_mech's BattleMechs with an executor via owner_id column.
-func (o *Player) OwnerBattleMechs(mods ...qm.QueryMod) battleMechQuery {
+// PilotedByBattleMechs retrieves all the battle_mech's BattleMechs with an executor via piloted_by_id column.
+func (o *Player) PilotedByBattleMechs(mods ...qm.QueryMod) battleMechQuery {
 	var queryMods []qm.QueryMod
 	if len(mods) != 0 {
 		queryMods = append(queryMods, mods...)
 	}
 
 	queryMods = append(queryMods,
-		qm.Where("\"battle_mechs\".\"owner_id\"=?", o.ID),
+		qm.Where("\"battle_mechs\".\"piloted_by_id\"=?", o.ID),
 	)
 
 	query := BattleMechs(queryMods...)
@@ -2102,23 +2102,23 @@ func (o *Player) OfferedByRepairOffers(mods ...qm.QueryMod) repairOfferQuery {
 	return query
 }
 
-// OwnerStackedMechBattleLogs retrieves all the stacked_mech_battle_log's StackedMechBattleLogs with an executor via owner_id column.
-func (o *Player) OwnerStackedMechBattleLogs(mods ...qm.QueryMod) stackedMechBattleLogQuery {
+// OwnerStakedMechBattleLogs retrieves all the staked_mech_battle_log's StakedMechBattleLogs with an executor via owner_id column.
+func (o *Player) OwnerStakedMechBattleLogs(mods ...qm.QueryMod) stakedMechBattleLogQuery {
 	var queryMods []qm.QueryMod
 	if len(mods) != 0 {
 		queryMods = append(queryMods, mods...)
 	}
 
 	queryMods = append(queryMods,
-		qm.Where("\"stacked_mech_battle_logs\".\"owner_id\"=?", o.ID),
-		qmhelper.WhereIsNull("\"stacked_mech_battle_logs\".\"deleted_at\""),
+		qm.Where("\"staked_mech_battle_logs\".\"owner_id\"=?", o.ID),
+		qmhelper.WhereIsNull("\"staked_mech_battle_logs\".\"deleted_at\""),
 	)
 
-	query := StackedMechBattleLogs(queryMods...)
-	queries.SetFrom(query.Query, "\"stacked_mech_battle_logs\"")
+	query := StakedMechBattleLogs(queryMods...)
+	queries.SetFrom(query.Query, "\"staked_mech_battle_logs\"")
 
 	if len(queries.GetSelect(query.Query)) == 0 {
-		queries.SetSelect(query.Query, []string{"\"stacked_mech_battle_logs\".*"})
+		queries.SetSelect(query.Query, []string{"\"staked_mech_battle_logs\".*"})
 	}
 
 	return query
@@ -4025,9 +4025,9 @@ func (playerL) LoadHostByBattleLobbies(e boil.Executor, singular bool, maybePlay
 	return nil
 }
 
-// LoadOwnerBattleLobbiesMechs allows an eager lookup of values, cached into the
+// LoadQueuedByBattleLobbiesMechs allows an eager lookup of values, cached into the
 // loaded structs of the objects. This is for a 1-M or N-M relationship.
-func (playerL) LoadOwnerBattleLobbiesMechs(e boil.Executor, singular bool, maybePlayer interface{}, mods queries.Applicator) error {
+func (playerL) LoadQueuedByBattleLobbiesMechs(e boil.Executor, singular bool, maybePlayer interface{}, mods queries.Applicator) error {
 	var slice []*Player
 	var object *Player
 
@@ -4066,7 +4066,7 @@ func (playerL) LoadOwnerBattleLobbiesMechs(e boil.Executor, singular bool, maybe
 
 	query := NewQuery(
 		qm.From(`battle_lobbies_mechs`),
-		qm.WhereIn(`battle_lobbies_mechs.owner_id in ?`, args...),
+		qm.WhereIn(`battle_lobbies_mechs.queued_by_id in ?`, args...),
 		qmhelper.WhereIsNull(`battle_lobbies_mechs.deleted_at`),
 	)
 	if mods != nil {
@@ -4098,24 +4098,24 @@ func (playerL) LoadOwnerBattleLobbiesMechs(e boil.Executor, singular bool, maybe
 		}
 	}
 	if singular {
-		object.R.OwnerBattleLobbiesMechs = resultSlice
+		object.R.QueuedByBattleLobbiesMechs = resultSlice
 		for _, foreign := range resultSlice {
 			if foreign.R == nil {
 				foreign.R = &battleLobbiesMechR{}
 			}
-			foreign.R.Owner = object
+			foreign.R.QueuedBy = object
 		}
 		return nil
 	}
 
 	for _, foreign := range resultSlice {
 		for _, local := range slice {
-			if local.ID == foreign.OwnerID {
-				local.R.OwnerBattleLobbiesMechs = append(local.R.OwnerBattleLobbiesMechs, foreign)
+			if local.ID == foreign.QueuedByID {
+				local.R.QueuedByBattleLobbiesMechs = append(local.R.QueuedByBattleLobbiesMechs, foreign)
 				if foreign.R == nil {
 					foreign.R = &battleLobbiesMechR{}
 				}
-				foreign.R.Owner = local
+				foreign.R.QueuedBy = local
 				break
 			}
 		}
@@ -4421,9 +4421,9 @@ func (playerL) LoadSupporterBattleLobbySupporters(e boil.Executor, singular bool
 	return nil
 }
 
-// LoadOwnerBattleMechs allows an eager lookup of values, cached into the
+// LoadPilotedByBattleMechs allows an eager lookup of values, cached into the
 // loaded structs of the objects. This is for a 1-M or N-M relationship.
-func (playerL) LoadOwnerBattleMechs(e boil.Executor, singular bool, maybePlayer interface{}, mods queries.Applicator) error {
+func (playerL) LoadPilotedByBattleMechs(e boil.Executor, singular bool, maybePlayer interface{}, mods queries.Applicator) error {
 	var slice []*Player
 	var object *Player
 
@@ -4462,7 +4462,7 @@ func (playerL) LoadOwnerBattleMechs(e boil.Executor, singular bool, maybePlayer 
 
 	query := NewQuery(
 		qm.From(`battle_mechs`),
-		qm.WhereIn(`battle_mechs.owner_id in ?`, args...),
+		qm.WhereIn(`battle_mechs.piloted_by_id in ?`, args...),
 	)
 	if mods != nil {
 		mods.Apply(query)
@@ -4493,24 +4493,24 @@ func (playerL) LoadOwnerBattleMechs(e boil.Executor, singular bool, maybePlayer 
 		}
 	}
 	if singular {
-		object.R.OwnerBattleMechs = resultSlice
+		object.R.PilotedByBattleMechs = resultSlice
 		for _, foreign := range resultSlice {
 			if foreign.R == nil {
 				foreign.R = &battleMechR{}
 			}
-			foreign.R.Owner = object
+			foreign.R.PilotedBy = object
 		}
 		return nil
 	}
 
 	for _, foreign := range resultSlice {
 		for _, local := range slice {
-			if local.ID == foreign.OwnerID {
-				local.R.OwnerBattleMechs = append(local.R.OwnerBattleMechs, foreign)
+			if local.ID == foreign.PilotedByID {
+				local.R.PilotedByBattleMechs = append(local.R.PilotedByBattleMechs, foreign)
 				if foreign.R == nil {
 					foreign.R = &battleMechR{}
 				}
-				foreign.R.Owner = local
+				foreign.R.PilotedBy = local
 				break
 			}
 		}
@@ -9168,9 +9168,9 @@ func (playerL) LoadOfferedByRepairOffers(e boil.Executor, singular bool, maybePl
 	return nil
 }
 
-// LoadOwnerStackedMechBattleLogs allows an eager lookup of values, cached into the
+// LoadOwnerStakedMechBattleLogs allows an eager lookup of values, cached into the
 // loaded structs of the objects. This is for a 1-M or N-M relationship.
-func (playerL) LoadOwnerStackedMechBattleLogs(e boil.Executor, singular bool, maybePlayer interface{}, mods queries.Applicator) error {
+func (playerL) LoadOwnerStakedMechBattleLogs(e boil.Executor, singular bool, maybePlayer interface{}, mods queries.Applicator) error {
 	var slice []*Player
 	var object *Player
 
@@ -9208,9 +9208,9 @@ func (playerL) LoadOwnerStackedMechBattleLogs(e boil.Executor, singular bool, ma
 	}
 
 	query := NewQuery(
-		qm.From(`stacked_mech_battle_logs`),
-		qm.WhereIn(`stacked_mech_battle_logs.owner_id in ?`, args...),
-		qmhelper.WhereIsNull(`stacked_mech_battle_logs.deleted_at`),
+		qm.From(`staked_mech_battle_logs`),
+		qm.WhereIn(`staked_mech_battle_logs.owner_id in ?`, args...),
+		qmhelper.WhereIsNull(`staked_mech_battle_logs.deleted_at`),
 	)
 	if mods != nil {
 		mods.Apply(query)
@@ -9218,22 +9218,22 @@ func (playerL) LoadOwnerStackedMechBattleLogs(e boil.Executor, singular bool, ma
 
 	results, err := query.Query(e)
 	if err != nil {
-		return errors.Wrap(err, "failed to eager load stacked_mech_battle_logs")
+		return errors.Wrap(err, "failed to eager load staked_mech_battle_logs")
 	}
 
-	var resultSlice []*StackedMechBattleLog
+	var resultSlice []*StakedMechBattleLog
 	if err = queries.Bind(results, &resultSlice); err != nil {
-		return errors.Wrap(err, "failed to bind eager loaded slice stacked_mech_battle_logs")
+		return errors.Wrap(err, "failed to bind eager loaded slice staked_mech_battle_logs")
 	}
 
 	if err = results.Close(); err != nil {
-		return errors.Wrap(err, "failed to close results in eager load on stacked_mech_battle_logs")
+		return errors.Wrap(err, "failed to close results in eager load on staked_mech_battle_logs")
 	}
 	if err = results.Err(); err != nil {
-		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for stacked_mech_battle_logs")
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for staked_mech_battle_logs")
 	}
 
-	if len(stackedMechBattleLogAfterSelectHooks) != 0 {
+	if len(stakedMechBattleLogAfterSelectHooks) != 0 {
 		for _, obj := range resultSlice {
 			if err := obj.doAfterSelectHooks(e); err != nil {
 				return err
@@ -9241,10 +9241,10 @@ func (playerL) LoadOwnerStackedMechBattleLogs(e boil.Executor, singular bool, ma
 		}
 	}
 	if singular {
-		object.R.OwnerStackedMechBattleLogs = resultSlice
+		object.R.OwnerStakedMechBattleLogs = resultSlice
 		for _, foreign := range resultSlice {
 			if foreign.R == nil {
-				foreign.R = &stackedMechBattleLogR{}
+				foreign.R = &stakedMechBattleLogR{}
 			}
 			foreign.R.Owner = object
 		}
@@ -9254,9 +9254,9 @@ func (playerL) LoadOwnerStackedMechBattleLogs(e boil.Executor, singular bool, ma
 	for _, foreign := range resultSlice {
 		for _, local := range slice {
 			if local.ID == foreign.OwnerID {
-				local.R.OwnerStackedMechBattleLogs = append(local.R.OwnerStackedMechBattleLogs, foreign)
+				local.R.OwnerStakedMechBattleLogs = append(local.R.OwnerStakedMechBattleLogs, foreign)
 				if foreign.R == nil {
-					foreign.R = &stackedMechBattleLogR{}
+					foreign.R = &stakedMechBattleLogR{}
 				}
 				foreign.R.Owner = local
 				break
@@ -11893,22 +11893,22 @@ func (o *Player) AddHostByBattleLobbies(exec boil.Executor, insert bool, related
 	return nil
 }
 
-// AddOwnerBattleLobbiesMechs adds the given related objects to the existing relationships
+// AddQueuedByBattleLobbiesMechs adds the given related objects to the existing relationships
 // of the player, optionally inserting them as new records.
-// Appends related to o.R.OwnerBattleLobbiesMechs.
-// Sets related.R.Owner appropriately.
-func (o *Player) AddOwnerBattleLobbiesMechs(exec boil.Executor, insert bool, related ...*BattleLobbiesMech) error {
+// Appends related to o.R.QueuedByBattleLobbiesMechs.
+// Sets related.R.QueuedBy appropriately.
+func (o *Player) AddQueuedByBattleLobbiesMechs(exec boil.Executor, insert bool, related ...*BattleLobbiesMech) error {
 	var err error
 	for _, rel := range related {
 		if insert {
-			rel.OwnerID = o.ID
+			rel.QueuedByID = o.ID
 			if err = rel.Insert(exec, boil.Infer()); err != nil {
 				return errors.Wrap(err, "failed to insert into foreign table")
 			}
 		} else {
 			updateQuery := fmt.Sprintf(
 				"UPDATE \"battle_lobbies_mechs\" SET %s WHERE %s",
-				strmangle.SetParamNames("\"", "\"", 1, []string{"owner_id"}),
+				strmangle.SetParamNames("\"", "\"", 1, []string{"queued_by_id"}),
 				strmangle.WhereClause("\"", "\"", 2, battleLobbiesMechPrimaryKeyColumns),
 			)
 			values := []interface{}{o.ID, rel.ID}
@@ -11921,25 +11921,25 @@ func (o *Player) AddOwnerBattleLobbiesMechs(exec boil.Executor, insert bool, rel
 				return errors.Wrap(err, "failed to update foreign table")
 			}
 
-			rel.OwnerID = o.ID
+			rel.QueuedByID = o.ID
 		}
 	}
 
 	if o.R == nil {
 		o.R = &playerR{
-			OwnerBattleLobbiesMechs: related,
+			QueuedByBattleLobbiesMechs: related,
 		}
 	} else {
-		o.R.OwnerBattleLobbiesMechs = append(o.R.OwnerBattleLobbiesMechs, related...)
+		o.R.QueuedByBattleLobbiesMechs = append(o.R.QueuedByBattleLobbiesMechs, related...)
 	}
 
 	for _, rel := range related {
 		if rel.R == nil {
 			rel.R = &battleLobbiesMechR{
-				Owner: o,
+				QueuedBy: o,
 			}
 		} else {
-			rel.R.Owner = o
+			rel.R.QueuedBy = o
 		}
 	}
 	return nil
@@ -12101,22 +12101,22 @@ func (o *Player) AddSupporterBattleLobbySupporters(exec boil.Executor, insert bo
 	return nil
 }
 
-// AddOwnerBattleMechs adds the given related objects to the existing relationships
+// AddPilotedByBattleMechs adds the given related objects to the existing relationships
 // of the player, optionally inserting them as new records.
-// Appends related to o.R.OwnerBattleMechs.
-// Sets related.R.Owner appropriately.
-func (o *Player) AddOwnerBattleMechs(exec boil.Executor, insert bool, related ...*BattleMech) error {
+// Appends related to o.R.PilotedByBattleMechs.
+// Sets related.R.PilotedBy appropriately.
+func (o *Player) AddPilotedByBattleMechs(exec boil.Executor, insert bool, related ...*BattleMech) error {
 	var err error
 	for _, rel := range related {
 		if insert {
-			rel.OwnerID = o.ID
+			rel.PilotedByID = o.ID
 			if err = rel.Insert(exec, boil.Infer()); err != nil {
 				return errors.Wrap(err, "failed to insert into foreign table")
 			}
 		} else {
 			updateQuery := fmt.Sprintf(
 				"UPDATE \"battle_mechs\" SET %s WHERE %s",
-				strmangle.SetParamNames("\"", "\"", 1, []string{"owner_id"}),
+				strmangle.SetParamNames("\"", "\"", 1, []string{"piloted_by_id"}),
 				strmangle.WhereClause("\"", "\"", 2, battleMechPrimaryKeyColumns),
 			)
 			values := []interface{}{o.ID, rel.BattleID, rel.MechID}
@@ -12129,25 +12129,25 @@ func (o *Player) AddOwnerBattleMechs(exec boil.Executor, insert bool, related ..
 				return errors.Wrap(err, "failed to update foreign table")
 			}
 
-			rel.OwnerID = o.ID
+			rel.PilotedByID = o.ID
 		}
 	}
 
 	if o.R == nil {
 		o.R = &playerR{
-			OwnerBattleMechs: related,
+			PilotedByBattleMechs: related,
 		}
 	} else {
-		o.R.OwnerBattleMechs = append(o.R.OwnerBattleMechs, related...)
+		o.R.PilotedByBattleMechs = append(o.R.PilotedByBattleMechs, related...)
 	}
 
 	for _, rel := range related {
 		if rel.R == nil {
 			rel.R = &battleMechR{
-				Owner: o,
+				PilotedBy: o,
 			}
 		} else {
-			rel.R.Owner = o
+			rel.R.PilotedBy = o
 		}
 	}
 	return nil
@@ -15197,11 +15197,11 @@ func (o *Player) RemoveOfferedByRepairOffers(exec boil.Executor, related ...*Rep
 	return nil
 }
 
-// AddOwnerStackedMechBattleLogs adds the given related objects to the existing relationships
+// AddOwnerStakedMechBattleLogs adds the given related objects to the existing relationships
 // of the player, optionally inserting them as new records.
-// Appends related to o.R.OwnerStackedMechBattleLogs.
+// Appends related to o.R.OwnerStakedMechBattleLogs.
 // Sets related.R.Owner appropriately.
-func (o *Player) AddOwnerStackedMechBattleLogs(exec boil.Executor, insert bool, related ...*StackedMechBattleLog) error {
+func (o *Player) AddOwnerStakedMechBattleLogs(exec boil.Executor, insert bool, related ...*StakedMechBattleLog) error {
 	var err error
 	for _, rel := range related {
 		if insert {
@@ -15211,9 +15211,9 @@ func (o *Player) AddOwnerStackedMechBattleLogs(exec boil.Executor, insert bool, 
 			}
 		} else {
 			updateQuery := fmt.Sprintf(
-				"UPDATE \"stacked_mech_battle_logs\" SET %s WHERE %s",
+				"UPDATE \"staked_mech_battle_logs\" SET %s WHERE %s",
 				strmangle.SetParamNames("\"", "\"", 1, []string{"owner_id"}),
-				strmangle.WhereClause("\"", "\"", 2, stackedMechBattleLogPrimaryKeyColumns),
+				strmangle.WhereClause("\"", "\"", 2, stakedMechBattleLogPrimaryKeyColumns),
 			)
 			values := []interface{}{o.ID, rel.ID}
 
@@ -15231,15 +15231,15 @@ func (o *Player) AddOwnerStackedMechBattleLogs(exec boil.Executor, insert bool, 
 
 	if o.R == nil {
 		o.R = &playerR{
-			OwnerStackedMechBattleLogs: related,
+			OwnerStakedMechBattleLogs: related,
 		}
 	} else {
-		o.R.OwnerStackedMechBattleLogs = append(o.R.OwnerStackedMechBattleLogs, related...)
+		o.R.OwnerStakedMechBattleLogs = append(o.R.OwnerStakedMechBattleLogs, related...)
 	}
 
 	for _, rel := range related {
 		if rel.R == nil {
-			rel.R = &stackedMechBattleLogR{
+			rel.R = &stakedMechBattleLogR{
 				Owner: o,
 			}
 		} else {

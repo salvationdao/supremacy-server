@@ -2591,7 +2591,7 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetUtilityListHandler(ctx context.C
 }
 
 func (api *API) PlayerMechs(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
-	resp, err := db.OwnedMechsBrief(user.ID)
+	resp, err := db.LobbyMechsBrief(user.ID)
 	if err != nil {
 		return err
 	}

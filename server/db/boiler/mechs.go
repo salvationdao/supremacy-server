@@ -184,110 +184,110 @@ var MechWhere = struct {
 
 // MechRels is where relationship names are stored.
 var MechRels = struct {
-	Blueprint                       string
-	ChassisSkin                     string
-	IntroAnimation                  string
-	OutroAnimation                  string
-	PowerCore                       string
-	BattleQueueOld                  string
-	MechStat                        string
-	ChassisMechsOld                 string
-	StakedMech                      string
-	OnMechBattleAbilityTriggers     string
-	BattleContracts                 string
-	WarMachineOneBattleHistories    string
-	WarMachineTwoBattleHistories    string
-	BattleKills                     string
-	KilledBattleKills               string
-	BattleLobbiesMechs              string
-	BattleMechs                     string
-	KilledByBattleMechs             string
-	BattleQueueFeesOlds             string
-	BattleQueueNotifications        string
-	BattleWins                      string
-	MechAbilityTriggerLogsOlds      string
-	EquippedOnMechAnimations        string
-	MechMoveCommandLogs             string
-	EquippedOnMechSkins             string
-	ChassisMechUtilities            string
-	ChassisMechWeapons              string
-	PlayerMechRepairSlots           string
-	EquippedOnPowerCores            string
-	RepairCases                     string
-	StakedMechStackedMechBattleLogs string
-	EquippedOnUtilities             string
-	EquippedOnWeapons               string
+	Blueprint                      string
+	ChassisSkin                    string
+	IntroAnimation                 string
+	OutroAnimation                 string
+	PowerCore                      string
+	BattleQueueOld                 string
+	MechStat                       string
+	ChassisMechsOld                string
+	StakedMech                     string
+	OnMechBattleAbilityTriggers    string
+	BattleContracts                string
+	WarMachineOneBattleHistories   string
+	WarMachineTwoBattleHistories   string
+	BattleKills                    string
+	KilledBattleKills              string
+	BattleLobbiesMechs             string
+	BattleMechs                    string
+	KilledByBattleMechs            string
+	BattleQueueFeesOlds            string
+	BattleQueueNotifications       string
+	BattleWins                     string
+	MechAbilityTriggerLogsOlds     string
+	EquippedOnMechAnimations       string
+	MechMoveCommandLogs            string
+	EquippedOnMechSkins            string
+	ChassisMechUtilities           string
+	ChassisMechWeapons             string
+	PlayerMechRepairSlots          string
+	EquippedOnPowerCores           string
+	RepairCases                    string
+	StakedMechStakedMechBattleLogs string
+	EquippedOnUtilities            string
+	EquippedOnWeapons              string
 }{
-	Blueprint:                       "Blueprint",
-	ChassisSkin:                     "ChassisSkin",
-	IntroAnimation:                  "IntroAnimation",
-	OutroAnimation:                  "OutroAnimation",
-	PowerCore:                       "PowerCore",
-	BattleQueueOld:                  "BattleQueueOld",
-	MechStat:                        "MechStat",
-	ChassisMechsOld:                 "ChassisMechsOld",
-	StakedMech:                      "StakedMech",
-	OnMechBattleAbilityTriggers:     "OnMechBattleAbilityTriggers",
-	BattleContracts:                 "BattleContracts",
-	WarMachineOneBattleHistories:    "WarMachineOneBattleHistories",
-	WarMachineTwoBattleHistories:    "WarMachineTwoBattleHistories",
-	BattleKills:                     "BattleKills",
-	KilledBattleKills:               "KilledBattleKills",
-	BattleLobbiesMechs:              "BattleLobbiesMechs",
-	BattleMechs:                     "BattleMechs",
-	KilledByBattleMechs:             "KilledByBattleMechs",
-	BattleQueueFeesOlds:             "BattleQueueFeesOlds",
-	BattleQueueNotifications:        "BattleQueueNotifications",
-	BattleWins:                      "BattleWins",
-	MechAbilityTriggerLogsOlds:      "MechAbilityTriggerLogsOlds",
-	EquippedOnMechAnimations:        "EquippedOnMechAnimations",
-	MechMoveCommandLogs:             "MechMoveCommandLogs",
-	EquippedOnMechSkins:             "EquippedOnMechSkins",
-	ChassisMechUtilities:            "ChassisMechUtilities",
-	ChassisMechWeapons:              "ChassisMechWeapons",
-	PlayerMechRepairSlots:           "PlayerMechRepairSlots",
-	EquippedOnPowerCores:            "EquippedOnPowerCores",
-	RepairCases:                     "RepairCases",
-	StakedMechStackedMechBattleLogs: "StakedMechStackedMechBattleLogs",
-	EquippedOnUtilities:             "EquippedOnUtilities",
-	EquippedOnWeapons:               "EquippedOnWeapons",
+	Blueprint:                      "Blueprint",
+	ChassisSkin:                    "ChassisSkin",
+	IntroAnimation:                 "IntroAnimation",
+	OutroAnimation:                 "OutroAnimation",
+	PowerCore:                      "PowerCore",
+	BattleQueueOld:                 "BattleQueueOld",
+	MechStat:                       "MechStat",
+	ChassisMechsOld:                "ChassisMechsOld",
+	StakedMech:                     "StakedMech",
+	OnMechBattleAbilityTriggers:    "OnMechBattleAbilityTriggers",
+	BattleContracts:                "BattleContracts",
+	WarMachineOneBattleHistories:   "WarMachineOneBattleHistories",
+	WarMachineTwoBattleHistories:   "WarMachineTwoBattleHistories",
+	BattleKills:                    "BattleKills",
+	KilledBattleKills:              "KilledBattleKills",
+	BattleLobbiesMechs:             "BattleLobbiesMechs",
+	BattleMechs:                    "BattleMechs",
+	KilledByBattleMechs:            "KilledByBattleMechs",
+	BattleQueueFeesOlds:            "BattleQueueFeesOlds",
+	BattleQueueNotifications:       "BattleQueueNotifications",
+	BattleWins:                     "BattleWins",
+	MechAbilityTriggerLogsOlds:     "MechAbilityTriggerLogsOlds",
+	EquippedOnMechAnimations:       "EquippedOnMechAnimations",
+	MechMoveCommandLogs:            "MechMoveCommandLogs",
+	EquippedOnMechSkins:            "EquippedOnMechSkins",
+	ChassisMechUtilities:           "ChassisMechUtilities",
+	ChassisMechWeapons:             "ChassisMechWeapons",
+	PlayerMechRepairSlots:          "PlayerMechRepairSlots",
+	EquippedOnPowerCores:           "EquippedOnPowerCores",
+	RepairCases:                    "RepairCases",
+	StakedMechStakedMechBattleLogs: "StakedMechStakedMechBattleLogs",
+	EquippedOnUtilities:            "EquippedOnUtilities",
+	EquippedOnWeapons:              "EquippedOnWeapons",
 }
 
 // mechR is where relationships are stored.
 type mechR struct {
-	Blueprint                       *BlueprintMech                 `boiler:"Blueprint" boil:"Blueprint" json:"Blueprint" toml:"Blueprint" yaml:"Blueprint"`
-	ChassisSkin                     *MechSkin                      `boiler:"ChassisSkin" boil:"ChassisSkin" json:"ChassisSkin" toml:"ChassisSkin" yaml:"ChassisSkin"`
-	IntroAnimation                  *MechAnimation                 `boiler:"IntroAnimation" boil:"IntroAnimation" json:"IntroAnimation" toml:"IntroAnimation" yaml:"IntroAnimation"`
-	OutroAnimation                  *MechAnimation                 `boiler:"OutroAnimation" boil:"OutroAnimation" json:"OutroAnimation" toml:"OutroAnimation" yaml:"OutroAnimation"`
-	PowerCore                       *PowerCore                     `boiler:"PowerCore" boil:"PowerCore" json:"PowerCore" toml:"PowerCore" yaml:"PowerCore"`
-	BattleQueueOld                  *BattleQueueOld                `boiler:"BattleQueueOld" boil:"BattleQueueOld" json:"BattleQueueOld" toml:"BattleQueueOld" yaml:"BattleQueueOld"`
-	MechStat                        *MechStat                      `boiler:"MechStat" boil:"MechStat" json:"MechStat" toml:"MechStat" yaml:"MechStat"`
-	ChassisMechsOld                 *MechsOld                      `boiler:"ChassisMechsOld" boil:"ChassisMechsOld" json:"ChassisMechsOld" toml:"ChassisMechsOld" yaml:"ChassisMechsOld"`
-	StakedMech                      *StakedMech                    `boiler:"StakedMech" boil:"StakedMech" json:"StakedMech" toml:"StakedMech" yaml:"StakedMech"`
-	OnMechBattleAbilityTriggers     BattleAbilityTriggerSlice      `boiler:"OnMechBattleAbilityTriggers" boil:"OnMechBattleAbilityTriggers" json:"OnMechBattleAbilityTriggers" toml:"OnMechBattleAbilityTriggers" yaml:"OnMechBattleAbilityTriggers"`
-	BattleContracts                 BattleContractSlice            `boiler:"BattleContracts" boil:"BattleContracts" json:"BattleContracts" toml:"BattleContracts" yaml:"BattleContracts"`
-	WarMachineOneBattleHistories    BattleHistorySlice             `boiler:"WarMachineOneBattleHistories" boil:"WarMachineOneBattleHistories" json:"WarMachineOneBattleHistories" toml:"WarMachineOneBattleHistories" yaml:"WarMachineOneBattleHistories"`
-	WarMachineTwoBattleHistories    BattleHistorySlice             `boiler:"WarMachineTwoBattleHistories" boil:"WarMachineTwoBattleHistories" json:"WarMachineTwoBattleHistories" toml:"WarMachineTwoBattleHistories" yaml:"WarMachineTwoBattleHistories"`
-	BattleKills                     BattleKillSlice                `boiler:"BattleKills" boil:"BattleKills" json:"BattleKills" toml:"BattleKills" yaml:"BattleKills"`
-	KilledBattleKills               BattleKillSlice                `boiler:"KilledBattleKills" boil:"KilledBattleKills" json:"KilledBattleKills" toml:"KilledBattleKills" yaml:"KilledBattleKills"`
-	BattleLobbiesMechs              BattleLobbiesMechSlice         `boiler:"BattleLobbiesMechs" boil:"BattleLobbiesMechs" json:"BattleLobbiesMechs" toml:"BattleLobbiesMechs" yaml:"BattleLobbiesMechs"`
-	BattleMechs                     BattleMechSlice                `boiler:"BattleMechs" boil:"BattleMechs" json:"BattleMechs" toml:"BattleMechs" yaml:"BattleMechs"`
-	KilledByBattleMechs             BattleMechSlice                `boiler:"KilledByBattleMechs" boil:"KilledByBattleMechs" json:"KilledByBattleMechs" toml:"KilledByBattleMechs" yaml:"KilledByBattleMechs"`
-	BattleQueueFeesOlds             BattleQueueFeesOldSlice        `boiler:"BattleQueueFeesOlds" boil:"BattleQueueFeesOlds" json:"BattleQueueFeesOlds" toml:"BattleQueueFeesOlds" yaml:"BattleQueueFeesOlds"`
-	BattleQueueNotifications        BattleQueueNotificationSlice   `boiler:"BattleQueueNotifications" boil:"BattleQueueNotifications" json:"BattleQueueNotifications" toml:"BattleQueueNotifications" yaml:"BattleQueueNotifications"`
-	BattleWins                      BattleWinSlice                 `boiler:"BattleWins" boil:"BattleWins" json:"BattleWins" toml:"BattleWins" yaml:"BattleWins"`
-	MechAbilityTriggerLogsOlds      MechAbilityTriggerLogsOldSlice `boiler:"MechAbilityTriggerLogsOlds" boil:"MechAbilityTriggerLogsOlds" json:"MechAbilityTriggerLogsOlds" toml:"MechAbilityTriggerLogsOlds" yaml:"MechAbilityTriggerLogsOlds"`
-	EquippedOnMechAnimations        MechAnimationSlice             `boiler:"EquippedOnMechAnimations" boil:"EquippedOnMechAnimations" json:"EquippedOnMechAnimations" toml:"EquippedOnMechAnimations" yaml:"EquippedOnMechAnimations"`
-	MechMoveCommandLogs             MechMoveCommandLogSlice        `boiler:"MechMoveCommandLogs" boil:"MechMoveCommandLogs" json:"MechMoveCommandLogs" toml:"MechMoveCommandLogs" yaml:"MechMoveCommandLogs"`
-	EquippedOnMechSkins             MechSkinSlice                  `boiler:"EquippedOnMechSkins" boil:"EquippedOnMechSkins" json:"EquippedOnMechSkins" toml:"EquippedOnMechSkins" yaml:"EquippedOnMechSkins"`
-	ChassisMechUtilities            MechUtilitySlice               `boiler:"ChassisMechUtilities" boil:"ChassisMechUtilities" json:"ChassisMechUtilities" toml:"ChassisMechUtilities" yaml:"ChassisMechUtilities"`
-	ChassisMechWeapons              MechWeaponSlice                `boiler:"ChassisMechWeapons" boil:"ChassisMechWeapons" json:"ChassisMechWeapons" toml:"ChassisMechWeapons" yaml:"ChassisMechWeapons"`
-	PlayerMechRepairSlots           PlayerMechRepairSlotSlice      `boiler:"PlayerMechRepairSlots" boil:"PlayerMechRepairSlots" json:"PlayerMechRepairSlots" toml:"PlayerMechRepairSlots" yaml:"PlayerMechRepairSlots"`
-	EquippedOnPowerCores            PowerCoreSlice                 `boiler:"EquippedOnPowerCores" boil:"EquippedOnPowerCores" json:"EquippedOnPowerCores" toml:"EquippedOnPowerCores" yaml:"EquippedOnPowerCores"`
-	RepairCases                     RepairCaseSlice                `boiler:"RepairCases" boil:"RepairCases" json:"RepairCases" toml:"RepairCases" yaml:"RepairCases"`
-	StakedMechStackedMechBattleLogs StackedMechBattleLogSlice      `boiler:"StakedMechStackedMechBattleLogs" boil:"StakedMechStackedMechBattleLogs" json:"StakedMechStackedMechBattleLogs" toml:"StakedMechStackedMechBattleLogs" yaml:"StakedMechStackedMechBattleLogs"`
-	EquippedOnUtilities             UtilitySlice                   `boiler:"EquippedOnUtilities" boil:"EquippedOnUtilities" json:"EquippedOnUtilities" toml:"EquippedOnUtilities" yaml:"EquippedOnUtilities"`
-	EquippedOnWeapons               WeaponSlice                    `boiler:"EquippedOnWeapons" boil:"EquippedOnWeapons" json:"EquippedOnWeapons" toml:"EquippedOnWeapons" yaml:"EquippedOnWeapons"`
+	Blueprint                      *BlueprintMech                 `boiler:"Blueprint" boil:"Blueprint" json:"Blueprint" toml:"Blueprint" yaml:"Blueprint"`
+	ChassisSkin                    *MechSkin                      `boiler:"ChassisSkin" boil:"ChassisSkin" json:"ChassisSkin" toml:"ChassisSkin" yaml:"ChassisSkin"`
+	IntroAnimation                 *MechAnimation                 `boiler:"IntroAnimation" boil:"IntroAnimation" json:"IntroAnimation" toml:"IntroAnimation" yaml:"IntroAnimation"`
+	OutroAnimation                 *MechAnimation                 `boiler:"OutroAnimation" boil:"OutroAnimation" json:"OutroAnimation" toml:"OutroAnimation" yaml:"OutroAnimation"`
+	PowerCore                      *PowerCore                     `boiler:"PowerCore" boil:"PowerCore" json:"PowerCore" toml:"PowerCore" yaml:"PowerCore"`
+	BattleQueueOld                 *BattleQueueOld                `boiler:"BattleQueueOld" boil:"BattleQueueOld" json:"BattleQueueOld" toml:"BattleQueueOld" yaml:"BattleQueueOld"`
+	MechStat                       *MechStat                      `boiler:"MechStat" boil:"MechStat" json:"MechStat" toml:"MechStat" yaml:"MechStat"`
+	ChassisMechsOld                *MechsOld                      `boiler:"ChassisMechsOld" boil:"ChassisMechsOld" json:"ChassisMechsOld" toml:"ChassisMechsOld" yaml:"ChassisMechsOld"`
+	StakedMech                     *StakedMech                    `boiler:"StakedMech" boil:"StakedMech" json:"StakedMech" toml:"StakedMech" yaml:"StakedMech"`
+	OnMechBattleAbilityTriggers    BattleAbilityTriggerSlice      `boiler:"OnMechBattleAbilityTriggers" boil:"OnMechBattleAbilityTriggers" json:"OnMechBattleAbilityTriggers" toml:"OnMechBattleAbilityTriggers" yaml:"OnMechBattleAbilityTriggers"`
+	BattleContracts                BattleContractSlice            `boiler:"BattleContracts" boil:"BattleContracts" json:"BattleContracts" toml:"BattleContracts" yaml:"BattleContracts"`
+	WarMachineOneBattleHistories   BattleHistorySlice             `boiler:"WarMachineOneBattleHistories" boil:"WarMachineOneBattleHistories" json:"WarMachineOneBattleHistories" toml:"WarMachineOneBattleHistories" yaml:"WarMachineOneBattleHistories"`
+	WarMachineTwoBattleHistories   BattleHistorySlice             `boiler:"WarMachineTwoBattleHistories" boil:"WarMachineTwoBattleHistories" json:"WarMachineTwoBattleHistories" toml:"WarMachineTwoBattleHistories" yaml:"WarMachineTwoBattleHistories"`
+	BattleKills                    BattleKillSlice                `boiler:"BattleKills" boil:"BattleKills" json:"BattleKills" toml:"BattleKills" yaml:"BattleKills"`
+	KilledBattleKills              BattleKillSlice                `boiler:"KilledBattleKills" boil:"KilledBattleKills" json:"KilledBattleKills" toml:"KilledBattleKills" yaml:"KilledBattleKills"`
+	BattleLobbiesMechs             BattleLobbiesMechSlice         `boiler:"BattleLobbiesMechs" boil:"BattleLobbiesMechs" json:"BattleLobbiesMechs" toml:"BattleLobbiesMechs" yaml:"BattleLobbiesMechs"`
+	BattleMechs                    BattleMechSlice                `boiler:"BattleMechs" boil:"BattleMechs" json:"BattleMechs" toml:"BattleMechs" yaml:"BattleMechs"`
+	KilledByBattleMechs            BattleMechSlice                `boiler:"KilledByBattleMechs" boil:"KilledByBattleMechs" json:"KilledByBattleMechs" toml:"KilledByBattleMechs" yaml:"KilledByBattleMechs"`
+	BattleQueueFeesOlds            BattleQueueFeesOldSlice        `boiler:"BattleQueueFeesOlds" boil:"BattleQueueFeesOlds" json:"BattleQueueFeesOlds" toml:"BattleQueueFeesOlds" yaml:"BattleQueueFeesOlds"`
+	BattleQueueNotifications       BattleQueueNotificationSlice   `boiler:"BattleQueueNotifications" boil:"BattleQueueNotifications" json:"BattleQueueNotifications" toml:"BattleQueueNotifications" yaml:"BattleQueueNotifications"`
+	BattleWins                     BattleWinSlice                 `boiler:"BattleWins" boil:"BattleWins" json:"BattleWins" toml:"BattleWins" yaml:"BattleWins"`
+	MechAbilityTriggerLogsOlds     MechAbilityTriggerLogsOldSlice `boiler:"MechAbilityTriggerLogsOlds" boil:"MechAbilityTriggerLogsOlds" json:"MechAbilityTriggerLogsOlds" toml:"MechAbilityTriggerLogsOlds" yaml:"MechAbilityTriggerLogsOlds"`
+	EquippedOnMechAnimations       MechAnimationSlice             `boiler:"EquippedOnMechAnimations" boil:"EquippedOnMechAnimations" json:"EquippedOnMechAnimations" toml:"EquippedOnMechAnimations" yaml:"EquippedOnMechAnimations"`
+	MechMoveCommandLogs            MechMoveCommandLogSlice        `boiler:"MechMoveCommandLogs" boil:"MechMoveCommandLogs" json:"MechMoveCommandLogs" toml:"MechMoveCommandLogs" yaml:"MechMoveCommandLogs"`
+	EquippedOnMechSkins            MechSkinSlice                  `boiler:"EquippedOnMechSkins" boil:"EquippedOnMechSkins" json:"EquippedOnMechSkins" toml:"EquippedOnMechSkins" yaml:"EquippedOnMechSkins"`
+	ChassisMechUtilities           MechUtilitySlice               `boiler:"ChassisMechUtilities" boil:"ChassisMechUtilities" json:"ChassisMechUtilities" toml:"ChassisMechUtilities" yaml:"ChassisMechUtilities"`
+	ChassisMechWeapons             MechWeaponSlice                `boiler:"ChassisMechWeapons" boil:"ChassisMechWeapons" json:"ChassisMechWeapons" toml:"ChassisMechWeapons" yaml:"ChassisMechWeapons"`
+	PlayerMechRepairSlots          PlayerMechRepairSlotSlice      `boiler:"PlayerMechRepairSlots" boil:"PlayerMechRepairSlots" json:"PlayerMechRepairSlots" toml:"PlayerMechRepairSlots" yaml:"PlayerMechRepairSlots"`
+	EquippedOnPowerCores           PowerCoreSlice                 `boiler:"EquippedOnPowerCores" boil:"EquippedOnPowerCores" json:"EquippedOnPowerCores" toml:"EquippedOnPowerCores" yaml:"EquippedOnPowerCores"`
+	RepairCases                    RepairCaseSlice                `boiler:"RepairCases" boil:"RepairCases" json:"RepairCases" toml:"RepairCases" yaml:"RepairCases"`
+	StakedMechStakedMechBattleLogs StakedMechBattleLogSlice       `boiler:"StakedMechStakedMechBattleLogs" boil:"StakedMechStakedMechBattleLogs" json:"StakedMechStakedMechBattleLogs" toml:"StakedMechStakedMechBattleLogs" yaml:"StakedMechStakedMechBattleLogs"`
+	EquippedOnUtilities            UtilitySlice                   `boiler:"EquippedOnUtilities" boil:"EquippedOnUtilities" json:"EquippedOnUtilities" toml:"EquippedOnUtilities" yaml:"EquippedOnUtilities"`
+	EquippedOnWeapons              WeaponSlice                    `boiler:"EquippedOnWeapons" boil:"EquippedOnWeapons" json:"EquippedOnWeapons" toml:"EquippedOnWeapons" yaml:"EquippedOnWeapons"`
 }
 
 // NewStruct creates a new relationship struct
@@ -1125,23 +1125,23 @@ func (o *Mech) RepairCases(mods ...qm.QueryMod) repairCaseQuery {
 	return query
 }
 
-// StakedMechStackedMechBattleLogs retrieves all the stacked_mech_battle_log's StackedMechBattleLogs with an executor via staked_mech_id column.
-func (o *Mech) StakedMechStackedMechBattleLogs(mods ...qm.QueryMod) stackedMechBattleLogQuery {
+// StakedMechStakedMechBattleLogs retrieves all the staked_mech_battle_log's StakedMechBattleLogs with an executor via staked_mech_id column.
+func (o *Mech) StakedMechStakedMechBattleLogs(mods ...qm.QueryMod) stakedMechBattleLogQuery {
 	var queryMods []qm.QueryMod
 	if len(mods) != 0 {
 		queryMods = append(queryMods, mods...)
 	}
 
 	queryMods = append(queryMods,
-		qm.Where("\"stacked_mech_battle_logs\".\"staked_mech_id\"=?", o.ID),
-		qmhelper.WhereIsNull("\"stacked_mech_battle_logs\".\"deleted_at\""),
+		qm.Where("\"staked_mech_battle_logs\".\"staked_mech_id\"=?", o.ID),
+		qmhelper.WhereIsNull("\"staked_mech_battle_logs\".\"deleted_at\""),
 	)
 
-	query := StackedMechBattleLogs(queryMods...)
-	queries.SetFrom(query.Query, "\"stacked_mech_battle_logs\"")
+	query := StakedMechBattleLogs(queryMods...)
+	queries.SetFrom(query.Query, "\"staked_mech_battle_logs\"")
 
 	if len(queries.GetSelect(query.Query)) == 0 {
-		queries.SetSelect(query.Query, []string{"\"stacked_mech_battle_logs\".*"})
+		queries.SetSelect(query.Query, []string{"\"staked_mech_battle_logs\".*"})
 	}
 
 	return query
@@ -4195,9 +4195,9 @@ func (mechL) LoadRepairCases(e boil.Executor, singular bool, maybeMech interface
 	return nil
 }
 
-// LoadStakedMechStackedMechBattleLogs allows an eager lookup of values, cached into the
+// LoadStakedMechStakedMechBattleLogs allows an eager lookup of values, cached into the
 // loaded structs of the objects. This is for a 1-M or N-M relationship.
-func (mechL) LoadStakedMechStackedMechBattleLogs(e boil.Executor, singular bool, maybeMech interface{}, mods queries.Applicator) error {
+func (mechL) LoadStakedMechStakedMechBattleLogs(e boil.Executor, singular bool, maybeMech interface{}, mods queries.Applicator) error {
 	var slice []*Mech
 	var object *Mech
 
@@ -4235,9 +4235,9 @@ func (mechL) LoadStakedMechStackedMechBattleLogs(e boil.Executor, singular bool,
 	}
 
 	query := NewQuery(
-		qm.From(`stacked_mech_battle_logs`),
-		qm.WhereIn(`stacked_mech_battle_logs.staked_mech_id in ?`, args...),
-		qmhelper.WhereIsNull(`stacked_mech_battle_logs.deleted_at`),
+		qm.From(`staked_mech_battle_logs`),
+		qm.WhereIn(`staked_mech_battle_logs.staked_mech_id in ?`, args...),
+		qmhelper.WhereIsNull(`staked_mech_battle_logs.deleted_at`),
 	)
 	if mods != nil {
 		mods.Apply(query)
@@ -4245,22 +4245,22 @@ func (mechL) LoadStakedMechStackedMechBattleLogs(e boil.Executor, singular bool,
 
 	results, err := query.Query(e)
 	if err != nil {
-		return errors.Wrap(err, "failed to eager load stacked_mech_battle_logs")
+		return errors.Wrap(err, "failed to eager load staked_mech_battle_logs")
 	}
 
-	var resultSlice []*StackedMechBattleLog
+	var resultSlice []*StakedMechBattleLog
 	if err = queries.Bind(results, &resultSlice); err != nil {
-		return errors.Wrap(err, "failed to bind eager loaded slice stacked_mech_battle_logs")
+		return errors.Wrap(err, "failed to bind eager loaded slice staked_mech_battle_logs")
 	}
 
 	if err = results.Close(); err != nil {
-		return errors.Wrap(err, "failed to close results in eager load on stacked_mech_battle_logs")
+		return errors.Wrap(err, "failed to close results in eager load on staked_mech_battle_logs")
 	}
 	if err = results.Err(); err != nil {
-		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for stacked_mech_battle_logs")
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for staked_mech_battle_logs")
 	}
 
-	if len(stackedMechBattleLogAfterSelectHooks) != 0 {
+	if len(stakedMechBattleLogAfterSelectHooks) != 0 {
 		for _, obj := range resultSlice {
 			if err := obj.doAfterSelectHooks(e); err != nil {
 				return err
@@ -4268,10 +4268,10 @@ func (mechL) LoadStakedMechStackedMechBattleLogs(e boil.Executor, singular bool,
 		}
 	}
 	if singular {
-		object.R.StakedMechStackedMechBattleLogs = resultSlice
+		object.R.StakedMechStakedMechBattleLogs = resultSlice
 		for _, foreign := range resultSlice {
 			if foreign.R == nil {
-				foreign.R = &stackedMechBattleLogR{}
+				foreign.R = &stakedMechBattleLogR{}
 			}
 			foreign.R.StakedMech = object
 		}
@@ -4281,9 +4281,9 @@ func (mechL) LoadStakedMechStackedMechBattleLogs(e boil.Executor, singular bool,
 	for _, foreign := range resultSlice {
 		for _, local := range slice {
 			if local.ID == foreign.StakedMechID {
-				local.R.StakedMechStackedMechBattleLogs = append(local.R.StakedMechStackedMechBattleLogs, foreign)
+				local.R.StakedMechStakedMechBattleLogs = append(local.R.StakedMechStakedMechBattleLogs, foreign)
 				if foreign.R == nil {
-					foreign.R = &stackedMechBattleLogR{}
+					foreign.R = &stakedMechBattleLogR{}
 				}
 				foreign.R.StakedMech = local
 				break
@@ -6551,11 +6551,11 @@ func (o *Mech) AddRepairCases(exec boil.Executor, insert bool, related ...*Repai
 	return nil
 }
 
-// AddStakedMechStackedMechBattleLogs adds the given related objects to the existing relationships
+// AddStakedMechStakedMechBattleLogs adds the given related objects to the existing relationships
 // of the mech, optionally inserting them as new records.
-// Appends related to o.R.StakedMechStackedMechBattleLogs.
+// Appends related to o.R.StakedMechStakedMechBattleLogs.
 // Sets related.R.StakedMech appropriately.
-func (o *Mech) AddStakedMechStackedMechBattleLogs(exec boil.Executor, insert bool, related ...*StackedMechBattleLog) error {
+func (o *Mech) AddStakedMechStakedMechBattleLogs(exec boil.Executor, insert bool, related ...*StakedMechBattleLog) error {
 	var err error
 	for _, rel := range related {
 		if insert {
@@ -6565,9 +6565,9 @@ func (o *Mech) AddStakedMechStackedMechBattleLogs(exec boil.Executor, insert boo
 			}
 		} else {
 			updateQuery := fmt.Sprintf(
-				"UPDATE \"stacked_mech_battle_logs\" SET %s WHERE %s",
+				"UPDATE \"staked_mech_battle_logs\" SET %s WHERE %s",
 				strmangle.SetParamNames("\"", "\"", 1, []string{"staked_mech_id"}),
-				strmangle.WhereClause("\"", "\"", 2, stackedMechBattleLogPrimaryKeyColumns),
+				strmangle.WhereClause("\"", "\"", 2, stakedMechBattleLogPrimaryKeyColumns),
 			)
 			values := []interface{}{o.ID, rel.ID}
 
@@ -6585,15 +6585,15 @@ func (o *Mech) AddStakedMechStackedMechBattleLogs(exec boil.Executor, insert boo
 
 	if o.R == nil {
 		o.R = &mechR{
-			StakedMechStackedMechBattleLogs: related,
+			StakedMechStakedMechBattleLogs: related,
 		}
 	} else {
-		o.R.StakedMechStackedMechBattleLogs = append(o.R.StakedMechStackedMechBattleLogs, related...)
+		o.R.StakedMechStakedMechBattleLogs = append(o.R.StakedMechStakedMechBattleLogs, related...)
 	}
 
 	for _, rel := range related {
 		if rel.R == nil {
-			rel.R = &stackedMechBattleLogR{
+			rel.R = &stakedMechBattleLogR{
 				StakedMech: o,
 			}
 		} else {

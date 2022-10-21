@@ -142,7 +142,7 @@ var TableNames = struct {
 	ShoppingCartItems                                  string
 	ShoppingCarts                                      string
 	SpoilsOfWar                                        string
-	StackedMechBattleLogs                              string
+	StakedMechBattleLogs                               string
 	StakedMechs                                        string
 	StaticMigrations                                   string
 	StorePurchaseHistory                               string
@@ -311,7 +311,7 @@ var TableNames = struct {
 	ShoppingCartItems:              "shopping_cart_items",
 	ShoppingCarts:                  "shopping_carts",
 	SpoilsOfWar:                    "spoils_of_war",
-	StackedMechBattleLogs:          "stacked_mech_battle_logs",
+	StakedMechBattleLogs:           "staked_mech_battle_logs",
 	StakedMechs:                    "staked_mechs",
 	StaticMigrations:               "static_migrations",
 	StorePurchaseHistory:           "store_purchase_history",

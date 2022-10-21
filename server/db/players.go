@@ -687,7 +687,7 @@ func PlayerMechKillCount(playerID string, afterTime time.Time) (int, error) {
 		boiler.BattleHistoryColumns.BattleID,        // 6
 		boiler.BattleMechColumns.BattleID,           // 7
 		boiler.BattleMechColumns.MechID,             // 8
-		boiler.BattleMechColumns.OwnerID,            // 9
+		boiler.BattleMechColumns.PilotedByID,        // 9
 	)
 
 	mechKillCount := 0
@@ -750,7 +750,7 @@ func PlayerMechJoinBattleCount(playerID string, startFromTime time.Time) (int, e
 	q := fmt.Sprintf(
 		"SELECT COUNT(*) FROM %s WHERE %s = $1 AND %s >= $2;",
 		boiler.TableNames.BattleMechs,
-		boiler.BattleMechColumns.OwnerID,
+		boiler.BattleMechColumns.PilotedByID,
 		boiler.BattleMechColumns.CreatedAt,
 	)
 

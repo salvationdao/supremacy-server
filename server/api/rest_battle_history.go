@@ -395,7 +395,7 @@ func getMechMechOwnerDetails(factionShortcode FactionShortcode, battleID string)
 	battleMechs, err := boiler.BattleMechs(
 		boiler.BattleMechWhere.BattleID.EQ(battleID),
 		boiler.BattleMechWhere.FactionID.EQ(factionID),
-		qm.Load(boiler.BattleMechRels.Owner),
+		qm.Load(boiler.BattleMechRels.PilotedBy),
 	).All(gamedb.StdConn)
 	if err != nil {
 		return nil, terror.Error(err, "Failed to find battle mech details")
@@ -404,13 +404,13 @@ func getMechMechOwnerDetails(factionShortcode FactionShortcode, battleID string)
 	mechOwnersShortDetails := []*PlayerShortDetails{}
 
 	for _, mech := range battleMechs {
-		if mech.R != nil && mech.R.Owner != nil {
+		if mech.R != nil && mech.R.PilotedBy != nil {
 			mechOwnersShortDetail := &PlayerShortDetails{
-				GID: mech.R.Owner.Gid,
+				GID: mech.R.PilotedBy.Gid,
 			}
 
-			if mech.R.Owner.Username.Valid {
-				mechOwnersShortDetail.Username = mech.R.Owner.Username.String
+			if mech.R.PilotedBy.Username.Valid {
+				mechOwnersShortDetail.Username = mech.R.PilotedBy.Username.String
 			}
 
 			mechOwnersShortDetails = append(mechOwnersShortDetails, mechOwnersShortDetail)
