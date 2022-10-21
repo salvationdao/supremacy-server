@@ -5,6 +5,8 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"github.com/shopspring/decimal"
+	"golang.org/x/exp/slices"
 	"server"
 	"server/battle/player_abilities"
 	"server/db"
@@ -121,7 +123,7 @@ func (pam *PlayerAbilityManager) MovingFactionMiniMechs(factionID string) []*pla
 	return result
 }
 
-func (pam *PlayerAbilityManager) IssueMiniMechMoveCommand(hash string, factionID string, triggeredByID string, cellX int, cellY int, battleID string) (*player_abilities.MiniMechMoveCommand, error) {
+func (pam *PlayerAbilityManager) IssueMiniMechMoveCommand(hash string, factionID string, triggeredByID string, cellX decimal.Decimal, cellY decimal.Decimal, battleID string) (*player_abilities.MiniMechMoveCommand, error) {
 	pam.Lock()
 	defer pam.Unlock()
 
@@ -1025,9 +1027,23 @@ func (am *ArenaManager) MechCommandsSubscriber(ctx context.Context, user *boiler
 		return terror.Error(err, "Failed to get mech command logs")
 	}
 
+	cis, err := boiler.CollectionItems(
+		boiler.CollectionItemWhere.ItemType.EQ(boiler.ItemTypeMech),
+		boiler.CollectionItemWhere.ItemID.IN(ids),
+	).All(gamedb.StdConn)
+	if err != nil {
+		return terror.Error(err, "Failed to load mechs")
+	}
+
 	result := []*FactionMechCommand{}
 	for _, l := range logs {
+		index := slices.IndexFunc(cis, func(ci *boiler.CollectionItem) bool { return ci.ItemID == l.MechID })
+		if index == -1 {
+			continue
+		}
+
 		result = append(result, &FactionMechCommand{
+			ID:         l.BattleID + cis[index].Hash,
 			BattleID:   l.BattleID,
 			CellX:      l.CellX,
 			CellY:      l.CellY,
@@ -1039,6 +1055,7 @@ func (am *ArenaManager) MechCommandsSubscriber(ctx context.Context, user *boiler
 	for _, mm := range movingMiniMechs {
 		mm.Read(func(mmmc *player_abilities.MiniMechMoveCommand) {
 			result = append(result, &FactionMechCommand{
+				ID:         mm.BattleID + mmmc.MechHash,
 				BattleID:   mm.BattleID,
 				CellX:      mm.CellX,
 				CellY:      mm.CellY,
@@ -1052,12 +1069,12 @@ func (am *ArenaManager) MechCommandsSubscriber(ctx context.Context, user *boiler
 }
 
 type FactionMechCommand struct {
-	ID         string `json:"id"`
-	BattleID   string `json:"battle_id"`
-	CellX      int    `json:"cell_x"`
-	CellY      int    `json:"cell_y"`
-	IsMiniMech bool   `json:"is_mini_mech"`
-	IsEnded    bool   `json:"is_ended"`
+	ID         string          `json:"id"`
+	BattleID   string          `json:"battle_id"`
+	CellX      decimal.Decimal `json:"cell_x"`
+	CellY      decimal.Decimal `json:"cell_y"`
+	IsMiniMech bool            `json:"is_mini_mech"`
+	IsEnded    bool            `json:"is_ended"`
 }
 
 type MechMoveCommandResponse struct {
@@ -1410,8 +1427,8 @@ func (arena *Arena) MechMoveCommandCreateHandler(ctx context.Context, user *boil
 			wm.Hash,
 			wm.FactionID,
 			user.ID,
-			int(req.Payload.StartCoords.X.IntPart()),
-			int(req.Payload.StartCoords.Y.IntPart()),
+			req.Payload.StartCoords.X,
+			req.Payload.StartCoords.Y,
 			arena.CurrentBattle().ID,
 		)
 		if err != nil {
@@ -1460,6 +1477,8 @@ func (arena *Arena) MechMoveCommandCreateHandler(ctx context.Context, user *boil
 	fmc := &FactionMechCommand{
 		BattleID: btl.ID,
 		IsEnded:  false,
+		CellX:    req.Payload.StartCoords.X,
+		CellY:    req.Payload.StartCoords.Y,
 	}
 
 	if !isMiniMech {
@@ -1483,8 +1502,8 @@ func (arena *Arena) MechMoveCommandCreateHandler(ctx context.Context, user *boil
 			ArenaID:       arena.ID,
 			MechID:        wm.ID,
 			TriggeredByID: user.ID,
-			CellX:         int(req.Payload.StartCoords.X.IntPart()),
-			CellY:         int(req.Payload.StartCoords.Y.IntPart()),
+			CellX:         req.Payload.StartCoords.X,
+			CellY:         req.Payload.StartCoords.Y,
 			BattleID:      btl.ID,
 			CreatedAt:     now,
 			IsMoving:      true,
@@ -1504,8 +1523,6 @@ func (arena *Arena) MechMoveCommandCreateHandler(ctx context.Context, user *boil
 
 		fmc.ID = mmc.ID
 		fmc.IsMiniMech = false
-		fmc.CellX = mmc.CellX
-		fmc.CellY = mmc.CellY
 
 	} else {
 		mmmc, err := arena._currentBattle.playerAbilityManager().GetMiniMechMove(wm.Hash)
@@ -1535,8 +1552,6 @@ func (arena *Arena) MechMoveCommandCreateHandler(ctx context.Context, user *boil
 
 			fmc.ID = mmc.ID
 			fmc.IsMiniMech = false
-			fmc.CellX = mmc.CellX
-			fmc.CellY = mmc.CellY
 		})
 	}
 
@@ -1657,8 +1672,6 @@ func (am *ArenaManager) MechMoveCommandCancelHandler(ctx context.Context, user *
 		mmc.ID = btl.ID + wm.Hash
 
 		fmc.ID = mmc.ID
-		fmc.CellX = mmc.CellX
-		fmc.CellY = mmc.CellY
 		fmc.IsMiniMech = false
 
 	} else {
@@ -1695,8 +1708,6 @@ func (am *ArenaManager) MechMoveCommandCancelHandler(ctx context.Context, user *
 		}
 
 		fmc.ID = mmc.ID
-		fmc.CellX = mmc.CellX
-		fmc.CellY = mmc.CellY
 		fmc.IsMiniMech = true
 	}
 

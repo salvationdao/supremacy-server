@@ -304,11 +304,11 @@ func WeaponsFromServer(wpns []*server.Weapon) []*Weapon {
 
 func WeaponFromServer(weapon *server.Weapon) *Weapon {
 	return &Weapon{
-		ID:      weapon.ID,
-		Hash:    weapon.Hash,
-		Name:    weapon.Label,
-		ModelID: weapon.BlueprintID,
-		SkinID:  weapon.WeaponSkin.BlueprintID,
+		ID:          weapon.ID,
+		Hash:        weapon.Hash,
+		Name:        weapon.Label,
+		ModelID:     weapon.BlueprintID,
+		SkinID:      weapon.WeaponSkin.BlueprintID,
 		SocketIndex: weapon.SlotNumber.Int,
 		//stats
 		Damage:              weapon.Damage,

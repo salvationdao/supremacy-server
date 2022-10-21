@@ -1,0 +1,3 @@
+ALTER TABLE mech_move_command_logs
+ALTER COLUMN cell_x TYPE DECIMAL USING cell_x :: DECIMAL,
+ALTER COLUMN cell_y TYPE DECIMAL USING cell_y:: DECIMAL;
