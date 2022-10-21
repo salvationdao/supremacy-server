@@ -3,7 +3,6 @@ package api
 import (
 	"context"
 	"fmt"
-	"github.com/ninja-software/tickle"
 	"net"
 	"net/http"
 	"server"
@@ -20,6 +19,8 @@ import (
 	"server/xsyn_rpcclient"
 	"server/zendesk"
 	"time"
+
+	"github.com/ninja-software/tickle"
 
 	"github.com/gofrs/uuid"
 	"github.com/shopspring/decimal"
@@ -62,6 +63,8 @@ type API struct {
 	FactionPunishVote map[string]*PunishVoteTracker
 
 	FactionActivePlayers map[string]*ActivePlayers
+
+	VoiceChatListeners *VoiceChatListeners
 
 	// marketplace
 	MarketplaceController *marketplace.MarketplaceController
@@ -116,7 +119,6 @@ func NewAPI(
 		gamelog.L.Error().Err(err).Msg("Failed to spin up syndicate system")
 		return nil, err
 	}
-
 	// initialise api
 	api := &API{
 		Config:                   config,
@@ -159,6 +161,8 @@ func NewAPI(
 			verifyUrl: "https://hcaptcha.com/siteverify",
 		},
 		questManager: questManager,
+
+		VoiceChatListeners: &VoiceChatListeners{},
 
 		ViewerUpdateChan: make(chan bool),
 	}
@@ -266,6 +270,7 @@ func NewAPI(
 
 				// come from battle
 				s.WS("/mech/{mech_id}/details", HubKeyPlayerAssetMechDetailPublic, pasc.PlayerAssetMechDetailPublic)
+				s.WS("/mech/{mech_id}/is_staked", HubKeyMechIsStaked, api.MechIsStaked)
 				s.WS("/custom_avatar/{avatar_id}/details", HubKeyPlayerCustomAvatarDetails, pc.ProfileCustomAvatarDetailsHandler)
 
 				// battle related endpoint
@@ -300,6 +305,8 @@ func NewAPI(
 				s.WS("/user/{user_id}/quest_stat", server.HubKeyPlayerQuestStats, server.MustSecure(pc.PlayerQuestStat), MustMatchUserID)
 				s.WS("/user/{user_id}/quest_progression", server.HubKeyPlayerQuestProgressions, server.MustSecure(pc.PlayerQuestProgressions), MustMatchUserID)
 				s.WS("/user/{user_id}/arena/{arena_id}", server.HubKeyVoiceStreams, server.MustSecure(api.VoiceStreamSubscribe), MustMatchUserID)
+				s.WS("/user/{user_id}/arena/{arena_id}/listeners", server.HubKeyVoiceStreams, server.MustSecure(api.VoiceStreamListenersSubscribe), MustMatchUserID)
+
 				s.WS("/user/{user_id}/queue_status", server.HubKeyPlayerQueueStatus, server.MustSecure(pc.PlayerQueueStatusHandler), MustMatchUserID)
 
 				s.WS("/user/{user_id}/involved_battle_lobbies", server.HubKeyInvolvedBattleLobbyListUpdate, server.MustSecureFaction(api.PlayerInvolvedBattleLobbies))
@@ -310,6 +317,8 @@ func NewAPI(
 
 				// user repair bay
 				s.WS("/user/{user_id}/repair_bay", server.HubKeyMechRepairSlots, server.MustSecure(api.PlayerMechRepairSlots), MustMatchUserID)
+
+				s.WS("/user/{user_id}/repair_agent/{repair_agent_id}/next_block", server.HubKeyNextRepairGameBlock, server.MustSecure(api.NextRepairBlock), MustMatchUserID)
 			}))
 
 			// secured user commander
@@ -340,6 +349,8 @@ func NewAPI(
 
 				s.WS("/crate/{crate_id}", server.HubKeyMysteryCrateSubscribe, server.MustSecureFaction(ssc.MysteryCrateSubscribeHandler))
 				s.WS("/queue/{mech_id}", server.HubKeyPlayerAssetMechQueueSubscribe, server.MustSecureFaction(api.PlayerAssetMechQueueSubscribeHandler))
+
+				s.WS("/staked_mechs", server.HubKeyFactionStakedMechs, server.MustSecureFaction(api.FactionStakedMechs))
 
 				// subscription from battle
 				s.WS("/arena/{arena_id}/mech/{slotNumber}/abilities", battle.HubKeyWarMachineAbilitiesUpdated, server.MustSecureFaction(api.ArenaManager.WarMachineAbilitiesUpdateSubscribeHandler))

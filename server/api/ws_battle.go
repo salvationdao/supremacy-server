@@ -305,20 +305,9 @@ func (bc *BattleControllerWS) BattleMechStatsHandler(ctx context.Context, key st
 }
 
 func (api *API) PlayerAssetMechQueueSubscribeHandler(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
-	mechID := chi.RouteContext(ctx).URLParam("mech_id")
-
-	collectionItem, err := boiler.CollectionItems(
-		boiler.CollectionItemWhere.OwnerID.EQ(user.ID),
-		boiler.CollectionItemWhere.ItemType.EQ(boiler.ItemTypeMech),
-		boiler.CollectionItemWhere.ItemID.EQ(mechID),
-	).One(gamedb.StdConn)
+	mechStatus, err := db.GetMechQueueStatus(chi.RouteContext(ctx).URLParam("mech_id"))
 	if err != nil {
-		return terror.Error(err, "Failed to find mech from db")
-	}
-
-	mechStatus, err := db.GetCollectionItemStatus(*collectionItem)
-	if err != nil {
-		return terror.Error(err, "Failed to get mech status")
+		return err
 	}
 
 	reply(mechStatus)
@@ -386,5 +375,41 @@ func (api *API) BattleState(ctx context.Context, key string, payload []byte, rep
 	}
 
 	reply(arena.CurrentBattleState())
+	return nil
+}
+
+func (api *API) FactionStakedMechs(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
+	l := gamelog.L.With().Str("func", "FactionStakedMechs").Logger()
+	sms, err := boiler.StakedMechs(
+		boiler.StakedMechWhere.FactionID.EQ(factionID),
+		qm.Where(fmt.Sprintf(
+			"NOT EXISTS (SELECT 1 FROM %s WHERE %s = %s AND %s ISNULL AND %s ISNULL AND %s ISNULL)",
+			boiler.TableNames.BattleLobbiesMechs,
+			boiler.BattleLobbiesMechTableColumns.MechID,
+			boiler.StakedMechTableColumns.MechID,
+			boiler.BattleLobbiesMechTableColumns.EndedAt,
+			boiler.BattleLobbiesMechTableColumns.RefundTXID,
+			boiler.BattleLobbiesMechTableColumns.DeletedAt,
+		)),
+	).All(gamedb.StdConn)
+	if err != nil {
+		l.Error().Err(err).Msg("Failed to load staked mechs.")
+		return terror.Error(err, "Failed to load staked mechs.")
+	}
+
+	mechIDs := []string{}
+	for _, sm := range sms {
+		mechIDs = append(mechIDs, sm.MechID)
+	}
+
+	if len(mechIDs) > 0 {
+		mbs, err := db.LobbyMechsBrief("", mechIDs...)
+		if err != nil {
+			return err
+		}
+
+		reply(mbs)
+	}
+
 	return nil
 }

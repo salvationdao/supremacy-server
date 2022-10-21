@@ -231,17 +231,37 @@ func (am *ArenaManager) DefaultPublicLobbiesCheck() error {
 	return nil
 }
 
+// BroadcastMechQueueStatus broadcast mechs queue status
+// NOTE: player id maybe empty string
 func BroadcastMechQueueStatus(playerID string, mechIDs ...string) {
-	if len(mechIDs) == 0 {
+	if playerID == "" && len(mechIDs) == 0 {
 		return
 	}
 
-	mechInfo, err := db.OwnedMechsBrief(playerID, mechIDs...)
+	mechInfo, err := db.LobbyMechsBrief(playerID, mechIDs...)
 	if err != nil {
 		return
 	}
 
-	ws.PublishMessage(fmt.Sprintf("/secure/user/%s/owned_mechs", playerID), server.HubKeyPlayerMechsBrief, mechInfo)
+	playerMechs := make(map[string][]*db.MechBrief)
+	for _, m := range mechInfo {
+		pm, ok := playerMechs[m.OwnerID]
+		if !ok {
+			pm = []*db.MechBrief{}
+		}
+		pm = append(pm, m)
+		playerMechs[m.OwnerID] = pm
+
+		ws.PublishMessage(fmt.Sprintf("/faction/%s/queue/%s", m.FactionID.String, m.ID), server.HubKeyPlayerAssetMechQueueSubscribe, server.MechArenaInfo{
+			Status:              m.Status,
+			CanDeploy:           m.CanDeploy,
+			BattleLobbyIsLocked: m.LobbyLockedAt.Valid,
+		})
+	}
+
+	for ownerID, pm := range playerMechs {
+		ws.PublishMessage(fmt.Sprintf("/secure/user/%s/owned_mechs", ownerID), server.HubKeyPlayerMechsBrief, pm)
+	}
 }
 
 func BroadcastPlayerQueueStatus(playerID string) {
@@ -251,7 +271,7 @@ func BroadcastPlayerQueueStatus(playerID string) {
 	}
 
 	blms, err := boiler.BattleLobbiesMechs(
-		boiler.BattleLobbiesMechWhere.OwnerID.EQ(playerID),
+		boiler.BattleLobbiesMechWhere.QueuedByID.EQ(playerID),
 		boiler.BattleLobbiesMechWhere.RefundTXID.IsNull(),
 		boiler.BattleLobbiesMechWhere.EndedAt.IsNull(),
 	).All(gamedb.StdConn)
@@ -349,7 +369,7 @@ func GenerateAIDrivenBattle() (*boiler.BattleLobby, error) {
 		blms = append(blms, &boiler.BattleLobbiesMech{
 			BattleLobbyID: bl.ID,
 			MechID:        sm.MechID,
-			OwnerID:       sm.OwnerID,
+			QueuedByID:    sm.OwnerID,
 			FactionID:     sm.FactionID,
 			LockedAt:      bl.ReadyAt,
 		})

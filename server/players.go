@@ -37,14 +37,22 @@ type Player struct {
 	RoleType string     `json:"role_type"`
 }
 
+func (p *PublicPlayer) Scan(value interface{}) error {
+	v, ok := value.([]byte)
+	if !ok {
+		return fmt.Errorf("unable to scan value into byte array")
+	}
+	return json.Unmarshal(v, p)
+}
+
 type PublicPlayer struct {
-	ID        string      `json:"id"`
-	Username  null.String `json:"username"`
-	Gid       int         `json:"gid"`
-	FactionID null.String `json:"faction_id"`
-	AboutMe   null.String `json:"about_me"`
-	Rank      string      `json:"rank"`
-	CreatedAt time.Time   `json:"created_at"`
+	ID        string      `json:"id" db:"id"`
+	Username  null.String `json:"username" db:"username"`
+	Gid       int         `json:"gid" db:"gid"`
+	FactionID null.String `json:"faction_id" db:"faction_id"`
+	AboutMe   null.String `json:"about_me" db:"about_me"`
+	Rank      string      `json:"rank" db:"rank"`
+	CreatedAt time.Time   `json:"created_at" db:"created_at"`
 }
 
 func (p *Player) Scan(value interface{}) error {

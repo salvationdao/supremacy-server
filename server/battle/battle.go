@@ -780,6 +780,29 @@ func (btl *Battle) handleBattleEnd(payload *BattleEndPayload) {
 			ws.PublishMessage(fmt.Sprintf("/secure/user/%s/system_messages", msg.PlayerID), server.HubKeySystemMessageListUpdatedSubscribe, true)
 		}
 	}(btl)
+
+	// record staked mechs battle logs
+	go func(battle *Battle) {
+		stakedMechs, err := boiler.StakedMechs(
+			boiler.StakedMechWhere.MechID.IN(battle.warMachineIDs),
+		).All(gamedb.StdConn)
+		if err != nil {
+			return
+		}
+
+		for _, stakedMech := range stakedMechs {
+			smb := boiler.StakedMechBattleLog{
+				BattleID:     btl.ID,
+				StakedMechID: stakedMech.MechID,
+				OwnerID:      stakedMech.OwnerID,
+				FactionID:    stakedMech.FactionID,
+			}
+			err = smb.Insert(gamedb.StdConn, boil.Infer())
+			if err != nil {
+				gamelog.L.Error().Err(err).Interface("staked mech battle log", smb).Msg("Failed to insert staked mech battle record.")
+			}
+		}
+	}(btl)
 }
 
 type PlayerBattleCompleteMessage struct {
@@ -816,7 +839,7 @@ func (btl *Battle) RewardBattleMechOwners(winningFactionOrder []string) {
 	blms, err := boiler.BattleLobbiesMechs(
 		boiler.BattleLobbiesMechWhere.BattleLobbyID.EQ(btl.lobby.ID),
 		boiler.BattleLobbiesMechWhere.MechID.IN(btl.warMachineIDs),
-		qm.Load(boiler.BattleLobbiesMechRels.Owner),
+		qm.Load(boiler.BattleLobbiesMechRels.QueuedBy),
 	).All(gamedb.StdConn)
 	if err != nil {
 		gamelog.L.Error().Err(err).Str("battle lobby id", btl.lobby.ID).Strs("mech id list", btl.warMachineIDs).Msg("Failed to load mechs from battle lobby")
@@ -831,10 +854,10 @@ func (btl *Battle) RewardBattleMechOwners(winningFactionOrder []string) {
 		}
 
 		// if owner is not AI
-		if blm.R != nil && blm.R.Owner != nil {
+		if blm.R != nil && blm.R.QueuedBy != nil {
 
 			// skip AI player, when it is in production
-			if server.IsProductionEnv() && blm.R.Owner.IsAi {
+			if server.IsProductionEnv() && blm.R.QueuedBy.IsAi {
 				continue
 			}
 
@@ -879,8 +902,8 @@ func (btl *Battle) RewardBattleMechOwners(winningFactionOrder []string) {
 		switch i {
 		case 0: // winning faction
 			for _, blm := range blms {
-				if blm.FactionID == factionID && blm.R != nil && blm.R.Owner != nil {
-					player := blm.R.Owner
+				if blm.FactionID == factionID && blm.R != nil && blm.R.QueuedBy != nil {
+					player := blm.R.QueuedBy
 					// skip AI player, when it is in production
 					if server.IsProductionEnv() && player.IsAi {
 						continue
@@ -901,8 +924,8 @@ func (btl *Battle) RewardBattleMechOwners(winningFactionOrder []string) {
 
 		case 1: // second faction
 			for _, blm := range blms {
-				if blm.FactionID == factionID && blm.R != nil && blm.R.Owner != nil {
-					player := blm.R.Owner
+				if blm.FactionID == factionID && blm.R != nil && blm.R.QueuedBy != nil {
+					player := blm.R.QueuedBy
 					// skip AI player, when it is in production
 					if server.IsProductionEnv() && player.IsAi {
 						continue
@@ -923,8 +946,8 @@ func (btl *Battle) RewardBattleMechOwners(winningFactionOrder []string) {
 
 		case 2: // lose faction
 			for _, blm := range blms {
-				if blm.FactionID == factionID && blm.R != nil && blm.R.Owner != nil {
-					player := blm.R.Owner
+				if blm.FactionID == factionID && blm.R != nil && blm.R.QueuedBy != nil {
+					player := blm.R.QueuedBy
 
 					// skip AI player, when it is in production
 					if server.IsProductionEnv() && player.IsAi {
@@ -2270,12 +2293,13 @@ func (btl *Battle) Load(battleLobby *boiler.BattleLobby) error {
 
 	btl.warMachineIDs = []string{}
 
+	involvedPlayerIDs := []string{}
 	// insert battle mechs
 	for _, blm := range lms {
 		bmd := boiler.BattleMech{
 			BattleID:  btl.ID,
 			MechID:    blm.MechID,
-			OwnerID:   blm.OwnerID,
+			OwnerID:   blm.QueuedByID,
 			FactionID: blm.FactionID,
 		}
 		err = bmd.Insert(gamedb.StdConn, boil.Infer())
@@ -2285,6 +2309,7 @@ func (btl *Battle) Load(battleLobby *boiler.BattleLobby) error {
 		}
 
 		btl.warMachineIDs = append(btl.warMachineIDs, blm.MechID)
+		involvedPlayerIDs = append(involvedPlayerIDs, blm.QueuedByID)
 	}
 
 	mechs, err := db.Mechs(btl.warMachineIDs...)
@@ -2292,6 +2317,36 @@ func (btl *Battle) Load(battleLobby *boiler.BattleLobby) error {
 		gamelog.L.Error().Strs("mech ids", btl.warMachineIDs).Err(err).Msg("Failed to load mech detail")
 		return terror.Error(err, "Failed to load mech details")
 	}
+
+	// override owner with the players who queue
+	ps, err := boiler.Players(
+		boiler.PlayerWhere.ID.IN(involvedPlayerIDs),
+	).All(gamedb.StdConn)
+	if err != nil {
+		gamelog.L.Error().Strs("player id list", involvedPlayerIDs).Err(err).Msg("Failed to players")
+		return terror.Error(err, "Failed to load players")
+	}
+
+	for _, mech := range mechs {
+		index := slices.IndexFunc(lms, func(lm *boiler.BattleLobbiesMech) bool { return lm.MechID == mech.ID })
+		if index == -1 {
+			continue
+		}
+		queuedByID := lms[index].QueuedByID
+
+		// get player
+		index = slices.IndexFunc(ps, func(p *boiler.Player) bool { return p.ID == queuedByID })
+		if index == -1 {
+			continue
+		}
+
+		queuedBy := ps[index]
+		mech.OwnerID = queuedByID
+		mech.Owner = &server.User{
+			Username: queuedBy.Username.String,
+		}
+	}
+
 	btl.WarMachines = btl.MechsToWarMachines(mechs)
 
 	// set mechs current health

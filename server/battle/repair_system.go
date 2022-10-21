@@ -3,6 +3,8 @@ package battle
 import (
 	"database/sql"
 	"fmt"
+	"golang.org/x/exp/slices"
+	"math/rand"
 	"server"
 	"server/db"
 	"server/db/boiler"
@@ -39,41 +41,6 @@ func (am *ArenaManager) RepairOfferCleaner() {
 		case <-repairBayTicker.C:
 			am.repairBayCompleteChecker()
 		}
-	}
-}
-
-func broadcastMechQueueStatus(pmrs *boiler.PlayerMechRepairSlot, rc *boiler.RepairCase) {
-	canDeployRatio := db.GetDecimalWithDefault(db.KeyCanDeployDamagedRatio, decimal.NewFromFloat(0.5))
-
-	totalBlocks := db.TotalRepairBlocks(pmrs.MechID)
-
-	go BroadcastMechQueueStatus(pmrs.PlayerID, rc.MechID)
-
-	// broadcast current mech stat if damage blocks is less than or equal to deploy ratio
-	if decimal.NewFromInt(int64(rc.BlocksRequiredRepair - rc.BlocksRepaired)).Div(decimal.NewFromInt(int64(totalBlocks))).LessThanOrEqual(canDeployRatio) {
-
-		owner, err := boiler.FindPlayer(gamedb.StdConn, pmrs.PlayerID)
-		if err != nil {
-			gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("Failed to load owner")
-		}
-
-		collectionItem, err := boiler.CollectionItems(
-			boiler.CollectionItemWhere.OwnerID.EQ(owner.ID),
-			boiler.CollectionItemWhere.ItemType.EQ(boiler.ItemTypeMech),
-			boiler.CollectionItemWhere.ItemID.EQ(pmrs.MechID),
-		).One(gamedb.StdConn)
-		if err != nil {
-			gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("Failed to load mech collection item")
-			return
-		}
-
-		queueDetails, err := db.GetCollectionItemStatus(*collectionItem)
-		if err != nil && !errors.Is(err, sql.ErrNoRows) {
-			gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("Failed to get mech arena status")
-			return
-		}
-
-		ws.PublishMessage(fmt.Sprintf("/faction/%s/queue/%s", owner.FactionID.String, pmrs.MechID), server.HubKeyPlayerAssetMechQueueSubscribe, queueDetails)
 	}
 }
 
@@ -448,7 +415,7 @@ func (am *ArenaManager) repairBayCompleteChecker() {
 				ws.PublishMessage(fmt.Sprintf("/secure/mech/%s/repair_case", rc.MechID), server.HubKeyMechRepairCase, rc)
 
 				// broadcast mech status
-				go broadcastMechQueueStatus(playerMechRepairSlot, rc)
+				go BroadcastMechQueueStatus(playerMechRepairSlot.PlayerID, rc.MechID)
 
 				// broadcast current repair bay
 				go BroadcastRepairBay(playerMechRepairSlot.PlayerID)
@@ -490,7 +457,7 @@ func (am *ArenaManager) repairBayCompleteChecker() {
 				return
 			}
 			// broadcast mech status
-			go broadcastMechQueueStatus(playerMechRepairSlot, rc)
+			go BroadcastMechQueueStatus(playerMechRepairSlot.PlayerID, rc.MechID)
 		}(pm)
 	}
 
@@ -675,4 +642,201 @@ func (am *ArenaManager) RestartRepairCases(mechIDs []string) error {
 	)
 
 	return nil
+}
+
+func (am *ArenaManager) RepairGameBlockProcesser(repairAgentID string, repairGameBlockLogID string, stackedBlockDimension *server.RepairGameBlockDimension, isFailed bool) (*server.RepairGameBlock, error) {
+	l := gamelog.L.With().Str("func", "RepairGameBlockProcesser").Str("repair agent id", repairAgentID).Str("repair game block log id", repairGameBlockLogID).Logger()
+
+	bombReduceBlockCount := db.GetIntWithDefault(db.KeyDeductBlockCountFromBomb, 3)
+	requiredScore := db.GetIntWithDefault(db.KeyRequiredRepairStacks, 50)
+
+	keys := []string{
+		boiler.RepairGameBlockTriggerKeyM,
+		boiler.RepairGameBlockTriggerKeyN,
+		boiler.RepairGameBlockTriggerKeySPACEBAR,
+	}
+
+	// pre-load repair game block to shorten the process time
+	repairGameBlocks, err := boiler.RepairGameBlocks(
+		boiler.RepairGameBlockWhere.Type.NEQ(boiler.RepairGameBlockTypeEND),
+	).All(gamedb.StdConn)
+	if err != nil {
+		l.Error().Err(err).Msg("Failed to laod repair block type.")
+		return nil, terror.Error(err, "Failed to load repair block")
+	}
+
+	am.RepairGameBlockMx.Lock()
+	defer am.RepairGameBlockMx.Unlock()
+
+	// get the latest block
+	repairGameBlockLogs, err := boiler.RepairGameBlockLogs(
+		boiler.RepairGameBlockLogWhere.RepairAgentID.EQ(repairAgentID),
+		qm.OrderBy(boiler.RepairGameBlockLogColumns.CreatedAt+" DESC"),
+	).All(gamedb.StdConn)
+	if err != nil {
+		l.Error().Err(err).Msg("Failed to load latest repair game log.")
+		return nil, terror.Error(err, "Failed to varify block.")
+	}
+
+	// this should never happen, but just in case
+	if repairGameBlockLogs == nil {
+		l.Error().Err(err).Msg("Can't find any repair game block log.")
+		return nil, terror.Error(fmt.Errorf("empty repair game block log."))
+	}
+
+	lastBlock := repairGameBlockLogs[0]
+
+	// skip, if the block is not the latest
+	if lastBlock.ID != repairGameBlockLogID {
+		return nil, terror.Error(fmt.Errorf("invalid repair game record"), "This is not the latest block.")
+	}
+
+	// check, if the block size grow
+	if lastBlock.Width.LessThan(stackedBlockDimension.Width.RoundFloor(5)) || lastBlock.Depth.LessThan(stackedBlockDimension.Depth.RoundFloor(5)) {
+		if lastBlock.RepairGameBlockType != boiler.RepairGameBlockTypeBOMB || isFailed {
+			return nil, terror.Error(fmt.Errorf("cheat detected"), "The block grow bigger!")
+		}
+	}
+
+	// update the latest block
+	lastBlock.IsFailed = isFailed
+	lastBlock.StackedAt = null.TimeFrom(time.Now())
+	lastBlock.StackedWidth = decimal.NewNullDecimal(stackedBlockDimension.Width.Round(5))
+	lastBlock.StackedDepth = decimal.NewNullDecimal(stackedBlockDimension.Depth.Round(5))
+
+	tx, err := gamedb.StdConn.Begin()
+	if err != nil {
+		l.Error().Err(err).Msg("Failed to start db transaction.")
+		return nil, terror.Error(err, "Failed to validate block.")
+	}
+
+	defer tx.Rollback()
+
+	_, err = lastBlock.Update(tx, boil.Whitelist(
+		boiler.RepairGameBlockLogColumns.IsFailed,
+		boiler.RepairGameBlockLogColumns.StackedAt,
+		boiler.RepairGameBlockLogColumns.StackedWidth,
+		boiler.RepairGameBlockLogColumns.StackedDepth,
+	))
+	if err != nil {
+		l.Error().Err(err).Interface("new repair game block", lastBlock).Msg("Failed to record repair game block.")
+		return nil, terror.Error(err, "Failed to reocrd current block.")
+	}
+
+	var result *server.RepairGameBlock
+	// if the block does not failed and the block is not a bomb
+	if !isFailed || lastBlock.RepairGameBlockType == boiler.RepairGameBlockTypeBOMB {
+		// generate next block
+		var nextRepairBlock *boiler.RepairGameBlockLog
+
+		// calculate score
+		totalScore := 0
+		for _, record := range repairGameBlockLogs {
+			if record.RepairGameBlockType == boiler.RepairGameBlockTypeEND {
+				return nil, terror.Error(fmt.Errorf("repair agent is already ended"), "Repair agent is closed.")
+			}
+
+			if !record.StackedAt.Valid || record.IsFailed {
+				continue
+			}
+
+			if record.RepairGameBlockType == boiler.RepairGameBlockTypeBOMB {
+				totalScore -= bombReduceBlockCount
+				continue
+			}
+
+			totalScore += 1
+		}
+
+		if totalScore < 0 {
+			totalScore = 0
+		}
+
+		if totalScore >= requiredScore {
+
+			// generate the end block
+			nextRepairBlock = &boiler.RepairGameBlockLog{
+				RepairAgentID:       repairAgentID,
+				RepairGameBlockType: boiler.RepairGameBlockTypeEND,
+				SizeMultiplier:      decimal.NewFromInt(1),
+				SpeedMultiplier:     decimal.NewFromInt(1),
+				TriggerKey:          boiler.RepairGameBlockTriggerKeySPACEBAR,
+				Width:               decimal.NewFromInt(10),
+				Depth:               decimal.NewFromInt(10),
+			}
+
+			err = nextRepairBlock.Insert(tx, boil.Infer())
+			if err != nil {
+				l.Error().Err(err).Interface("end block", nextRepairBlock).Msg("Failed to generate the end block.")
+				return nil, terror.Error(err, "Failed to generate the end block.")
+			}
+
+		} else {
+			// otherwise, generate next block
+
+			// remove bomb from the options, if the score is lower than what bomb will deduct
+			if totalScore < bombReduceBlockCount {
+				index := slices.IndexFunc(repairGameBlocks, func(rgl *boiler.RepairGameBlock) bool { return rgl.Type == boiler.RepairGameBlockTypeBOMB })
+				repairGameBlocks = slices.Delete(repairGameBlocks, index, index+1)
+			}
+
+			// random select a block
+			var pool []*boiler.RepairGameBlock
+			for _, rgb := range repairGameBlocks {
+				for i := decimal.Zero; i.LessThan(rgb.Probability.Mul(decimal.NewFromInt(100))); i = i.Add(decimal.NewFromInt(1)) {
+					pool = append(pool, rgb)
+				}
+			}
+
+			// shuffle the slice of opted in supporters
+			rand.Seed(time.Now().UnixNano())
+			rand.Shuffle(len(pool), func(i, j int) { pool[i], pool[j] = pool[j], pool[i] })
+
+			rand.Seed(time.Now().UnixNano())
+			rand.Shuffle(len(keys), func(i, j int) { keys[i], keys[j] = keys[j], keys[i] })
+
+			block := pool[0]
+			sizeMultiDiff := block.MaxSizeMultiplier.Sub(block.MinSizeMultiplier).Mul(decimal.NewFromFloat(rand.Float64()))
+			sizeMultiplier := block.MaxSizeMultiplier.Sub(sizeMultiDiff)
+			speedMultiDiff := block.MaxSpeedMultiplier.Sub(block.MinSpeedMultiplier).Mul(decimal.NewFromFloat(rand.Float64()))
+			speedMultiplier := block.MinSpeedMultiplier.Add(speedMultiDiff).Mul(block.MaxSpeedMultiplier)
+
+			nextRepairBlock = &boiler.RepairGameBlockLog{
+				RepairAgentID:       repairAgentID,
+				RepairGameBlockType: block.Type,
+				SizeMultiplier:      sizeMultiplier,
+				SpeedMultiplier:     speedMultiplier,
+				TriggerKey:          keys[0],
+				Width:               stackedBlockDimension.Width.Mul(sizeMultiplier).Round(5),
+				Depth:               stackedBlockDimension.Depth.Mul(sizeMultiplier).Round(5),
+			}
+
+			err = nextRepairBlock.Insert(tx, boil.Infer())
+			if err != nil {
+				l.Error().Err(err).Interface("end block", nextRepairBlock).Msg("Failed to generate next block.")
+				return nil, terror.Error(err, "Failed to generate next block.")
+			}
+		}
+
+		result = &server.RepairGameBlock{
+			ID:              nextRepairBlock.ID,
+			Type:            nextRepairBlock.RepairGameBlockType,
+			Key:             nextRepairBlock.TriggerKey,
+			SpeedMultiplier: nextRepairBlock.SpeedMultiplier,
+			TotalScore:      totalScore,
+			Dimension: server.RepairGameBlockDimension{
+				Width: nextRepairBlock.Width,
+				Depth: nextRepairBlock.Depth,
+			},
+		}
+	}
+
+	// generate new block
+	err = tx.Commit()
+	if err != nil {
+		l.Error().Err(err).Msg("Failed to commit db transaction.")
+		return nil, terror.Error(err, "Faield to validate repair block.")
+	}
+
+	return result, nil
 }

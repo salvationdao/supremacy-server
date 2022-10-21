@@ -136,7 +136,7 @@ func CanAssetBeModifiedOrMoved(exec boil.Executor, itemID string, itemType strin
 			return CanAssetBeModifiedOrMoved(exec, weapon.EquippedOn.String, boiler.ItemTypeMech)
 		}
 	case boiler.ItemTypeMech:
-		mechStatus, err := GetCollectionItemStatus(*ci)
+		mechStatus, err := GetMechQueueStatus(ci.ID)
 		if err != nil {
 			l.Error().Err(err).Msg("failed to get mech status")
 			return false, -1, err
@@ -173,7 +173,7 @@ func CanAssetBeModifiedOrMoved(exec boil.Executor, itemID string, itemType strin
 		}
 		l = l.With().Interface("powerCore", powerCore).Logger()
 		if powerCore.EquippedOn.Valid {
-			return CanAssetBeModifiedOrMoved(exec, powerCore.EquippedOn.String, boiler.ItemTypePowerCore)
+			return CanAssetBeModifiedOrMoved(exec, powerCore.EquippedOn.String, boiler.ItemTypeMech)
 		}
 	}
 

@@ -164,7 +164,6 @@ const (
 	MechArenaStatusIdle    MechArenaStatus = "IDLE"
 	MechArenaStatusSold    MechArenaStatus = "SOLD"
 	MechArenaStatusDamaged MechArenaStatus = "DAMAGED"
-	MechArenaStatusStaked  MechArenaStatus = "STAKED"
 )
 
 type MechArenaInfo struct {
