@@ -270,7 +270,7 @@ func (api *API) BattleLobbyCreate(ctx context.Context, user *boiler.Player, fact
 			}
 
 			// broadcast update
-			go battle.BroadcastMechQueueStatus(user.ID, deployedMechIDs...)
+			go battle.BroadcastMechQueueStatus(deployedMechIDs)
 			go battle.BroadcastPlayerQueueStatus(user.ID)
 
 		}
@@ -559,7 +559,7 @@ func (api *API) BattleLobbyJoin(ctx context.Context, user *boiler.Player, factio
 			}
 		}
 
-		go battle.BroadcastMechQueueStatus(user.ID, deployedMechIDs...)
+		go battle.BroadcastMechQueueStatus(deployedMechIDs)
 
 		// broadcast battle lobby
 		api.ArenaManager.BattleLobbyDebounceBroadcastChan <- affectedLobbyIDs
@@ -856,7 +856,7 @@ func (api *API) BattleLobbyLeave(ctx context.Context, user *boiler.Player, facti
 		go battle.BroadcastPlayerQueueStatus(user.ID)
 
 		// broadcast new mech stat
-		go battle.BroadcastMechQueueStatus(user.ID, leftMechIDs...)
+		go battle.BroadcastMechQueueStatus(leftMechIDs)
 
 		return nil
 	})
@@ -1171,7 +1171,7 @@ func (api *API) MechUnstake(ctx context.Context, user *boiler.Player, factionID 
 				gamelog.L.Error().Err(err).Strs("mech id list", leftMechIDs).Msg("Failed to restart repair cases")
 			}
 
-			battle.BroadcastMechQueueStatus("", leftMechIDs...)
+			battle.BroadcastMechQueueStatus(leftMechIDs)
 		}()
 
 		// load changed battle lobbies

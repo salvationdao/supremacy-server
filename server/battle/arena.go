@@ -2210,15 +2210,7 @@ func (arena *Arena) BeginBattle() {
 		return
 	}
 
-	playerMechMap := make(map[string][]string)
 	for _, wm := range btl.WarMachines {
-		pm, ok := playerMechMap[wm.OwnedByID]
-		if !ok {
-			pm = []string{}
-		}
-		pm = append(pm, wm.ID)
-		playerMechMap[wm.OwnedByID] = pm
-
 		// check mech join battle quest for each mech owner
 		arena.Manager.QuestManager.MechJoinBattleQuestCheck(wm.OwnedByID)
 	}
@@ -2228,10 +2220,7 @@ func (arena *Arena) BeginBattle() {
 		gamelog.L.Error().Msg("Failed to update voice chat channels")
 	}
 
-	// broadcast mech status change
-	for playerID, mechIDs := range playerMechMap {
-		go BroadcastMechQueueStatus(playerID, mechIDs...)
-	}
+	go BroadcastMechQueueStatus(btl.warMachineIDs)
 
 	al, err := db.AbilityLabelList()
 	if err != nil {

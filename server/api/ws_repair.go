@@ -506,7 +506,7 @@ func BroadcastMechQueueStat(mechID string) {
 		return
 	}
 
-	go battle.BroadcastMechQueueStatus(ci.OwnerID, ci.ItemID)
+	go battle.BroadcastMechQueueStatus([]string{ci.ItemID})
 }
 
 type RepairAgentAbandonRequest struct {

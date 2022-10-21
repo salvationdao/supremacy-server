@@ -109,28 +109,28 @@ func broadcastBattleLobbyUpdate(battleLobbyIDs ...string) {
 
 		// check joined players
 		for _, blm := range bl.BattleLobbiesMechs {
-			if blm.Owner == nil || !blm.Owner.FactionID.Valid {
+			if blm.QueuedBy == nil || !blm.QueuedBy.FactionID.Valid {
 				continue
 			}
 
-			ownerID := blm.Owner.ID
-			factionID := blm.Owner.FactionID.String
+			queuedByID := blm.QueuedBy.ID
+			factionID := blm.QueuedBy.FactionID.String
 
-			_, ok := playerInvolvedLobbiesMap[ownerID]
+			_, ok := playerInvolvedLobbiesMap[queuedByID]
 			if !ok {
-				playerInvolvedLobbiesMap[ownerID] = &playerInvolveLobby{
+				playerInvolvedLobbiesMap[queuedByID] = &playerInvolveLobby{
 					factionID: factionID,
 					bls:       []*server.BattleLobby{},
 				}
 			}
 
 			// skip, if the player already have the lobby on their list
-			if slices.IndexFunc(playerInvolvedLobbiesMap[ownerID].bls, func(battleLobby *server.BattleLobby) bool { return battleLobby.ID == bl.ID }) != -1 {
+			if slices.IndexFunc(playerInvolvedLobbiesMap[queuedByID].bls, func(battleLobby *server.BattleLobby) bool { return battleLobby.ID == bl.ID }) != -1 {
 				continue
 			}
 
 			// otherwise, append to lobby to the player's list
-			playerInvolvedLobbiesMap[ownerID].bls = append(playerInvolvedLobbiesMap[ownerID].bls, bl)
+			playerInvolvedLobbiesMap[queuedByID].bls = append(playerInvolvedLobbiesMap[queuedByID].bls, bl)
 		}
 	}
 
@@ -233,24 +233,37 @@ func (am *ArenaManager) DefaultPublicLobbiesCheck() error {
 
 // BroadcastMechQueueStatus broadcast mechs queue status
 // NOTE: player id maybe empty string
-func BroadcastMechQueueStatus(playerID string, mechIDs ...string) {
-	if playerID == "" && len(mechIDs) == 0 {
+func BroadcastMechQueueStatus(mechIDs []string) {
+	if len(mechIDs) == 0 {
 		return
 	}
 
-	mechInfo, err := db.LobbyMechsBrief(playerID, mechIDs...)
+	mechInfo, err := db.LobbyMechsBrief("", mechIDs...)
 	if err != nil {
 		return
 	}
 
+	factionStakedMechs := make(map[string][]*db.MechBrief)
 	playerMechs := make(map[string][]*db.MechBrief)
 	for _, m := range mechInfo {
+
+		// prepare player mech list
 		pm, ok := playerMechs[m.OwnerID]
 		if !ok {
 			pm = []*db.MechBrief{}
 		}
 		pm = append(pm, m)
 		playerMechs[m.OwnerID] = pm
+
+		// prepare faction staked mech list
+		if m.IsStaked {
+			fsm, ok := factionStakedMechs[m.FactionID.String]
+			if !ok {
+				fsm = []*db.MechBrief{}
+			}
+			fsm = append(fsm, m)
+			factionStakedMechs[m.FactionID.String] = fsm
+		}
 
 		ws.PublishMessage(fmt.Sprintf("/faction/%s/queue/%s", m.FactionID.String, m.ID), server.HubKeyPlayerAssetMechQueueSubscribe, server.MechArenaInfo{
 			Status:              m.Status,
@@ -259,8 +272,14 @@ func BroadcastMechQueueStatus(playerID string, mechIDs ...string) {
 		})
 	}
 
+	// broadcast player owned mechs
 	for ownerID, pm := range playerMechs {
 		ws.PublishMessage(fmt.Sprintf("/secure/user/%s/owned_mechs", ownerID), server.HubKeyPlayerMechsBrief, pm)
+	}
+
+	// broadcast faction staked mechs
+	for factionID, fsm := range factionStakedMechs {
+		ws.PublishMessage(fmt.Sprintf("/faction/%s/staked_mechs", factionID), server.HubKeyFactionStakedMechs, fsm)
 	}
 }
 
