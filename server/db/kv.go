@@ -73,6 +73,7 @@ const KeyDecentralisedAutonomousSyndicateTax KVKey = "decentralised_autonomous_s
 const KeyCorporationSyndicateTax KVKey = "corporation_syndicate_tax"
 
 const KeyOvenmediaAPIBaseUrl KVKey = "ovenmedia_api_base_url"
+const KeyOvenmediaVoiceStreamURL KVKey = "ovenmedia_stream_voice_base_url"
 const KeyOvenmediaStreamURL KVKey = "ovenmedia_stream_base_url"
 const KeyCanRecordReplayStatus KVKey = "can_record_replay"
 const KeyVoiceExpiryTimeHours KVKey = "voice_expiry_time_hours"

@@ -334,7 +334,7 @@ func TemplateRegister(templateID uuid.UUID, ownerID uuid.UUID) (
 
 		// sort slice to make rocket pods last
 		sort.Slice(weapons, func(i, j int) bool {
-			return weapons[i].ID == server.WeaponRocketPodsZai || weapons[i].ID == server.WeaponRocketPodsRM || weapons[i].ID == server.WeaponRocketPodsBC
+			return weapons[i].BlueprintID != server.WeaponRocketPodsZai && weapons[i].BlueprintID != server.WeaponRocketPodsRM && weapons[i].BlueprintID != server.WeaponRocketPodsBC
 		})
 		for i := 0; i < mechs[0].WeaponHardpoints; i++ {
 			if len(weapons) > i {

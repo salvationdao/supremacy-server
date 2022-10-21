@@ -727,7 +727,7 @@ func (am *ArenaManager) RepairGameBlockProcesser(repairAgentID string, repairGam
 	}
 
 	// check, if the block size grow
-	if lastBlock.Width.LessThan(stackedBlockDimension.Width.Round(6)) || lastBlock.Depth.LessThan(stackedBlockDimension.Depth.Round(6)) {
+	if lastBlock.Width.LessThan(stackedBlockDimension.Width.RoundFloor(5)) || lastBlock.Depth.LessThan(stackedBlockDimension.Depth.RoundFloor(5)) {
 		if lastBlock.RepairGameBlockType != boiler.RepairGameBlockTypeBOMB || isFailed {
 			return nil, terror.Error(fmt.Errorf("cheat detected"), "The block grow bigger!")
 		}
@@ -834,13 +834,13 @@ func (am *ArenaManager) RepairGameBlockProcesser(repairAgentID string, repairGam
 			sizeMultiDiff := block.MaxSizeMultiplier.Sub(block.MinSizeMultiplier).Mul(decimal.NewFromFloat(rand.Float64()))
 			sizeMultiplier := block.MaxSizeMultiplier.Sub(sizeMultiDiff)
 			speedMultiDiff := block.MaxSpeedMultiplier.Sub(block.MinSpeedMultiplier).Mul(decimal.NewFromFloat(rand.Float64()))
-			speedMulitplier := block.MinSpeedMultiplier.Add(speedMultiDiff).Mul(block.MaxSpeedMultiplier)
+			speedMultiplier := block.MinSpeedMultiplier.Add(speedMultiDiff).Mul(block.MaxSpeedMultiplier)
 
 			nextRepairBlock = &boiler.RepairGameBlockLog{
 				RepairAgentID:       repairAgentID,
 				RepairGameBlockType: block.Type,
 				SizeMultiplier:      sizeMultiplier,
-				SpeedMultiplier:     speedMulitplier,
+				SpeedMultiplier:     speedMultiplier,
 				TriggerKey:          keys[0],
 				Width:               stackedBlockDimension.Width.Mul(sizeMultiplier).Round(5),
 				Depth:               stackedBlockDimension.Depth.Mul(sizeMultiplier).Round(5),

@@ -15,6 +15,7 @@ import (
 	"server/gamedb"
 	"server/gamelog"
 	"server/helpers"
+	"server/oven_stream"
 	"server/quest"
 	"server/replay"
 	"server/system_messages"
@@ -166,10 +167,11 @@ func (am *ArenaManager) KickIdleArenas() {
 }
 
 type ArenaBrief struct {
-	ID    string `json:"id"`
-	Gid   int    `json:"gid"`
-	Name  string `json:"name"`
-	Stage string `json:"state"`
+	ID         string                  `json:"id"`
+	Gid        int                     `json:"gid"`
+	Name       string                  `json:"name"`
+	Stage      string                  `json:"state"`
+	OvenStream *oven_stream.OvenStream `json:"oven_stream"`
 }
 
 func (am *ArenaManager) AvailableBattleArenas() []*ArenaBrief {
@@ -180,10 +182,11 @@ func (am *ArenaManager) AvailableBattleArenas() []*ArenaBrief {
 	for _, arena := range am.arenas {
 		if arena.Stage.Load() != ArenaStageHijacked && arena.connected.Load() {
 			resp = append(resp, &ArenaBrief{
-				ID:    arena.ID,
-				Gid:   arena.Gid,
-				Name:  arena.Name,
-				Stage: arena.Stage.Load(),
+				ID:         arena.ID,
+				Gid:        arena.Gid,
+				Name:       arena.Name,
+				Stage:      arena.Stage.Load(),
+				OvenStream: oven_stream.GetStreamDetails(arena.Name, arena.ID),
 			})
 		}
 	}
@@ -292,10 +295,18 @@ func (am *ArenaManager) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			ws.PublishMessage(fmt.Sprintf("/public/arena/%s/closed", arena.ID), server.HubKeyBattleArenaClosedSubscribe, true)
 
 			// broadcast a new arena list to frontend
-			arenaList := []*boiler.BattleArena{}
+			arenaList := []*ArenaBrief{}
 			for _, a := range am.arenas {
 				if a.connected.Load() {
-					arenaList = append(arenaList, a.BattleArena)
+
+					aBrief := &ArenaBrief{
+						ID:         a.BattleArena.ID,
+						Gid:        a.BattleArena.Gid,
+						Name:       a.Name,
+						Stage:      a.Stage.Load(),
+						OvenStream: oven_stream.GetStreamDetails(a.Name, a.BattleArena.ID),
+					}
+					arenaList = append(arenaList, aBrief)
 				}
 			}
 
@@ -1201,28 +1212,23 @@ func (arena *Arena) start() {
 		switch mt {
 		case JSON:
 			msg := &BattleMsg{}
-			err := json.Unmarshal(data, msg)
+			err = json.Unmarshal(data, msg)
 			if err != nil {
 				gamelog.L.Warn().Str("msg", string(data)).Err(err).Msg("unable to unmarshal battle message")
 				continue
 			}
 
-			// set battle state to end when receive "battle:end" message
-			btl := arena.CurrentBattle()
-			if btl != nil && msg.BattleCommand == "BATTLE:END" {
-				btl.state.Store(EndState)
-				ws.PublishMessage(fmt.Sprintf("/public/arena/%s/battle_state", btl.ArenaID), server.HubKeyBattleState, EndState)
-			}
+			go func(arena *Arena, battleCommand string, data []byte) {
+				switch battleCommand {
+				case "BATTLE:MAP_DETAILS", "BATTLE:START", "BATTLE:INTRO_FINISHED", "BATTLE:WAR_MACHINE_DESTROYED", "BATTLE:END", "BATTLE:OUTRO_FINISHED":
+					// handle message through channel
+					arena.gameClientBattleRoutineDataChan <- data
 
-			switch msg.BattleCommand {
-			case "BATTLE:MAP_DETAILS", "BATTLE:START", "BATTLE:INTRO_FINISHED", "BATTLE:WAR_MACHINE_DESTROYED", "BATTLE:END", "BATTLE:OUTRO_FINISHED":
-				// handle message through channel
-				arena.gameClientBattleRoutineDataChan <- data
-
-			default:
-				// handle all the ability related data
-				arena.gameClientAbilityDataChan <- data
-			}
+				default:
+					// handle all the ability related data
+					arena.gameClientAbilityDataChan <- data
+				}
+			}(arena, msg.BattleCommand, data)
 
 		case Tick:
 			if btl := arena.CurrentBattle(); btl != nil && btl.state.Load() == BattlingState {
@@ -1311,18 +1317,23 @@ func (arena *Arena) GameClientJsonDataParser() {
 			}
 
 			var dataPayload BattleWMDestroyedPayload
-			if err := json.Unmarshal(msg.Payload, &dataPayload); err != nil {
+			if err = json.Unmarshal(msg.Payload, &dataPayload); err != nil {
 				L.Warn().Err(err).Msg("unable to unmarshal battle message warmachine destroyed payload")
 				continue
 			}
 			btl.Destroyed(&dataPayload)
 
+			arena.Manager.BattleLobbyDebounceBroadcastChan <- []string{btl.lobby.ID}
+
 		case "BATTLE:END":
+			btl.state.Store(EndState)
+
 			var dataPayload *BattleEndPayload
-			if err := json.Unmarshal(msg.Payload, &dataPayload); err != nil {
+			if err = json.Unmarshal(msg.Payload, &dataPayload); err != nil {
 				L.Warn().Err(err).Msg("unable to unmarshal battle message warmachine destroyed payload")
 				continue
 			}
+
 			btl.end(dataPayload)
 
 			// reset war machine broadcast
