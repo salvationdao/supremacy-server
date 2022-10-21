@@ -51,7 +51,28 @@ type FiatProduct struct {
 	Name        string                `json:"name"`
 	Description string                `json:"description"`
 	Pricing     []*FiatProductPricing `json:"pricing"`
+	Items       []*FiatProductItem    `json:"items"`
 	AvatarURL   null.String           `json:"avatar_url"`
+}
+
+type FiatProductItem struct {
+	ID         string                      `json:"id"`
+	Name       string                      `json:"name"`
+	ItemType   string                      `json:"item_type"`
+	Blueprints []*FiatProductItemBlueprint `json:"blueprints"`
+}
+
+type FiatProductItemBlueprint struct {
+	ID                       string `json:"id"`
+	MechBlueprintID          string `json:"mech_blueprint_id,omitempty"`
+	MechAnimationBlueprintID string `json:"mech_animation_blueprint_id,omitempty"`
+	MechSkinBlueprintID      string `json:"mech_skin_blueprint_id,omitempty"`
+	UtilityBlueprintID       string `json:"utility_blueprint_id,omitempty"`
+	WeaponBlueprintID        string `json:"weapon_blueprint_id,omitempty"`
+	WeaponSkinBlueprintID    string `json:"weapon_skin_blueprint_id,omitempty"`
+	AmmoBlueprintID          string `json:"ammo_blueprint_id,omitempty"`
+	PowerCoreBlueprintID     string `json:"power_corer_blueprint_id,omitempty"`
+	PlayerAbilityBlueprintID string `json:"player_ability_blueprint_id,omitempty"`
 }
 
 type FiatProductPricing struct {

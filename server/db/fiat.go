@@ -131,6 +131,78 @@ func FiatProduct(conn boil.Executor, id string) (*server.FiatProduct, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	// Get pricing
+	pricing, err := boiler.FiatProductPricings(
+		boiler.FiatProductPricingWhere.FiatProductID.EQ(output.ID),
+	).All(conn)
+	if err != nil {
+		return nil, err
+	}
+
+	output.Pricing = []*server.FiatProductPricing{}
+	for _, p := range pricing {
+		item := &server.FiatProductPricing{
+			CurrencyCode: p.CurrencyCode,
+			Amount:       p.Amount,
+		}
+		output.Pricing = append(output.Pricing, item)
+	}
+
+	// Get product items
+	productItems, err := boiler.FiatProductItems(
+		boiler.FiatProductItemWhere.ProductID.EQ(output.ID),
+		qm.Load(boiler.FiatProductItemRels.ProductItemFiatProductItemBlueprints),
+	).All(conn)
+	if err != nil {
+		return nil, err
+	}
+
+	output.Items = []*server.FiatProductItem{}
+	for _, pi := range productItems {
+		item := &server.FiatProductItem{
+			ID:         pi.ID,
+			Name:       pi.Name,
+			ItemType:   pi.ItemType,
+			Blueprints: []*server.FiatProductItemBlueprint{},
+		}
+		for _, bp := range pi.R.ProductItemFiatProductItemBlueprints {
+			bpItem := &server.FiatProductItemBlueprint{
+				ID: bp.ID,
+			}
+			if bp.MechBlueprintID.Valid {
+				bpItem.MechBlueprintID = bp.MechBlueprintID.String
+			}
+			if bp.MechAnimationBlueprintID.Valid {
+				bpItem.MechAnimationBlueprintID = bp.MechAnimationBlueprintID.String
+			}
+			if bp.MechSkinBlueprintID.Valid {
+				bpItem.MechSkinBlueprintID = bp.MechSkinBlueprintID.String
+			}
+			if bp.UtilityBlueprintID.Valid {
+				bpItem.UtilityBlueprintID = bp.UtilityBlueprintID.String
+			}
+			if bp.WeaponBlueprintID.Valid {
+				bpItem.WeaponBlueprintID = bp.WeaponBlueprintID.String
+			}
+			if bp.WeaponSkinBlueprintID.Valid {
+				bpItem.WeaponSkinBlueprintID = bp.WeaponSkinBlueprintID.String
+			}
+			if bp.AmmoBlueprintID.Valid {
+				bpItem.AmmoBlueprintID = bp.AmmoBlueprintID.String
+			}
+			if bp.PowerCoreBlueprintID.Valid {
+				bpItem.PowerCoreBlueprintID = bp.PowerCoreBlueprintID.String
+			}
+			if bp.PlayerAbilityBlueprintID.Valid {
+				bpItem.PlayerAbilityBlueprintID = bp.PlayerAbilityBlueprintID.String
+			}
+			item.Blueprints = append(item.Blueprints, bpItem)
+		}
+
+		output.Items = append(output.Items, item)
+	}
+
 	return output, nil
 }
 
@@ -141,7 +213,7 @@ type FiatProductFilter struct {
 
 // FiatProducts gets a list of available fiat products to purchase by faction.
 func FiatProducts(conn boil.Executor, filters *FiatProductFilter, search string, sortBy string, sortDir SortByDir, offset int, pageSize int) (int64, []*server.FiatProduct, error) {
-	queryMods := []qm.QueryMod{}
+	queryMods := fiatProductQueryMods
 
 	// Filters
 	if filters != nil {
@@ -160,7 +232,7 @@ func FiatProducts(conn boil.Executor, filters *FiatProductFilter, search string,
 					`(
 						(to_tsvector('english', %s) @@ to_tsquery(?))
 						OR (to_tsvector('english', %s) @@ to_tsquery(?))
-						OR (to_tsvector('english', %s) @@ to_tsquery(?))
+						OR (to_tsvector('english', %s::text) @@ to_tsquery(?))
 						OR (to_tsvector('english', %s) @@ to_tsquery(?))
 					)`,
 					boiler.FiatProductTableColumns.Name,
@@ -204,7 +276,6 @@ func FiatProducts(conn boil.Executor, filters *FiatProductFilter, search string,
 	}
 
 	// Get products
-	queryMods = append(queryMods, fiatProductQueryMods...)
 	output := []*server.FiatProduct{}
 	result := boiler.FiatProducts(queryMods...).QueryP(conn)
 	if err != nil {

@@ -260,6 +260,8 @@ const (
 	FiatProductTypesMechSkin       = "mech_skin"
 	FiatProductTypesWeaponSkin     = "weapon_skin"
 	FiatProductTypesMechAnimation  = "mech_animation"
+	FiatProductTypesMech           = "mech"
+	FiatProductTypesWeapon         = "weapon"
 )
 
 // Enum values for AbilityLevel
