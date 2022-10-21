@@ -317,7 +317,7 @@ func (api *API) BattleLobbyJoin(ctx context.Context, user *boiler.Player, factio
 	}
 
 	if len(availableMechIDs) == 0 {
-		return terror.Error(err, "The provided mechs are still under repair.")
+		return terror.Error(fmt.Errorf("no available mech"), "The provided mechs are still under repair.")
 	}
 
 	bl, err := boiler.FindBattleLobby(gamedb.StdConn, req.Payload.BattleLobbyID)
@@ -1025,7 +1025,7 @@ func (api *API) MechStake(ctx context.Context, user *boiler.Player, factionID st
 	}
 	// broadcast both mech list
 	ws.PublishMessage(fmt.Sprintf("/faction/%s/staked_mechs", factionID), server.HubKeyFactionStakedMechs, lms)
-	ws.PublishMessage(fmt.Sprintf("/secure/user/%s/owned_mechs", user.ID), server.HubKeyPlayerMechsBrief, lms)
+	ws.PublishMessage(fmt.Sprintf("/secure/user/%s/owned_queueable_mechs", user.ID), server.HubKeyPlayerQueueableMechs, lms)
 
 	reply(true)
 	return nil
@@ -1187,7 +1187,7 @@ func (api *API) MechUnstake(ctx context.Context, user *boiler.Player, factionID 
 		}
 		// broadcast both mech list
 		ws.PublishMessage(fmt.Sprintf("/faction/%s/staked_mechs", factionID), server.HubKeyFactionStakedMechs, lms)
-		ws.PublishMessage(fmt.Sprintf("/secure/user/%s/owned_mechs", user.ID), server.HubKeyPlayerMechsBrief, lms)
+		ws.PublishMessage(fmt.Sprintf("/secure/user/%s/owned_queueable_mechs", user.ID), server.HubKeyPlayerQueueableMechs, lms)
 
 		return nil
 	})
@@ -1470,6 +1470,8 @@ func CheckMechQueueAuthorisation(playerID string, factionID string, mechIDs []st
 		return []string{}, nil
 	}
 
+	l := gamelog.L.With().Str("func", "CheckMechQueueAuthorisation").Logger()
+
 	mqas, err := db.MechsQueueAuthorisationDataGet(mechIDs)
 	if err != nil {
 		return nil, err
@@ -1478,26 +1480,32 @@ func CheckMechQueueAuthorisation(playerID string, factionID string, mechIDs []st
 	availableList := []string{}
 	for _, mqa := range mqas {
 		if mqa.LockedToMarketplace {
+			l.Debug().Err(err).Msg("mech is locked in market place")
 			continue
 		}
 
 		if mqa.MarketLocked {
+			l.Debug().Err(err).Msg("mech is locked in market place")
 			continue
 		}
 
 		if mqa.XsynLocked {
+			l.Debug().Err(err).Msg("mech is locked in Xsyn")
 			continue
 		}
 
 		if !mqa.IsAvailable {
+			l.Debug().Err(err).Msg("mech is currently not available")
 			continue
 		}
 
 		if !mqa.PowerCoreID.Valid {
+			l.Debug().Err(err).Msg("mech does not have power core.")
 			continue
 		}
 
 		if !mqa.HasWeapon {
+			l.Debug().Err(err).Msg("mech does not have weapons equipped.")
 			continue
 		}
 

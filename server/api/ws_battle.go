@@ -158,7 +158,7 @@ func (bc *BattleControllerWS) PlayerBattleMechHistoryListHandler(ctx context.Con
 	}
 
 	battleMechs, err := boiler.BattleMechs(
-		boiler.BattleMechWhere.OwnerID.EQ(req.Payload.PlayerID),
+		boiler.BattleMechWhere.PilotedByID.EQ(req.Payload.PlayerID),
 		qm.OrderBy("created_at desc"),
 		qm.Limit(10),
 		qm.Load(boiler.BattleMechRels.Mech),

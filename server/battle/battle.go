@@ -527,9 +527,9 @@ func (btl *Battle) handleBattleEnd(payload *BattleEndPayload) {
 		// if faction won
 		if bm.FactionID == winningFactionID {
 			// notify winning players
-			prefs, err := boiler.PlayerSettingsPreferences(boiler.PlayerSettingsPreferenceWhere.PlayerID.EQ(bm.OwnerID)).One(gamedb.StdConn)
+			prefs, err := boiler.PlayerSettingsPreferences(boiler.PlayerSettingsPreferenceWhere.PlayerID.EQ(bm.PilotedByID)).One(gamedb.StdConn)
 			if err != nil && !errors.Is(err, sql.ErrNoRows) {
-				gamelog.L.Error().Str("log_name", "battle arena").Err(err).Str("player_id", bm.OwnerID).Msg("unable to get player prefs")
+				gamelog.L.Error().Str("log_name", "battle arena").Err(err).Str("player_id", bm.PilotedByID).Msg("unable to get player prefs")
 				continue
 			}
 
@@ -690,7 +690,7 @@ func (btl *Battle) handleBattleEnd(payload *BattleEndPayload) {
 			// get mechs data
 			for _, bm := range battleMechs {
 				// skip, if player is not the owner
-				if bm.OwnerID != msg.PlayerID {
+				if bm.PilotedByID != msg.PlayerID {
 					continue
 				}
 
@@ -2284,10 +2284,10 @@ func (btl *Battle) Load(battleLobby *boiler.BattleLobby) error {
 	// insert battle mechs
 	for _, blm := range lms {
 		bmd := boiler.BattleMech{
-			BattleID:  btl.ID,
-			MechID:    blm.MechID,
-			OwnerID:   blm.QueuedByID,
-			FactionID: blm.FactionID,
+			BattleID:    btl.ID,
+			MechID:      blm.MechID,
+			PilotedByID: blm.QueuedByID,
+			FactionID:   blm.FactionID,
 		}
 		err = bmd.Insert(gamedb.StdConn, boil.Infer())
 		if err != nil {

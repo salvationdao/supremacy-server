@@ -37,10 +37,10 @@ func UpdateKilledBattleMech(battleID string, mechID uuid.UUID, ownerID string, f
 			Err(err).Msg("unable to retrieve battle Mech from database")
 
 		bmd = &boiler.BattleMech{
-			BattleID:  battleID,
-			MechID:    mechID.String(),
-			OwnerID:   ownerID,
-			FactionID: factionID,
+			BattleID:    battleID,
+			MechID:      mechID.String(),
+			PilotedByID: ownerID,
+			FactionID:   factionID,
 		}
 		err = bmd.Insert(gamedb.StdConn, boil.Infer())
 		if err != nil {
