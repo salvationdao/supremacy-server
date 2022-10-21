@@ -34,8 +34,9 @@ func NewAdminController(api *API) *AdminController {
 	api.SecureAdminCommand(HubKeyAdminFiatProductUpdate, adminHub.FiatProductUpdate)
 	api.SecureAdminCommand(HubKeyAdminFiatBlueprintMechList, adminHub.FiatBlueprintMechList)
 	api.SecureAdminCommand(HubKeyAdminFiatBlueprintMechSkinList, adminHub.FiatBlueprintMechSkinList)
-	api.SecureAdminCommand(HubKeyAdminFiatBlueprintWeaponSkinList, adminHub.FiatBlueprintWeaponSkinList)
 	api.SecureAdminCommand(HubKeyAdminFiatBlueprintMechAnimationList, adminHub.FiatBlueprintMechAnimationList)
+	api.SecureAdminCommand(HubKeyAdminFiatBlueprintWeaponList, adminHub.FiatBlueprintWeaponList)
+	api.SecureAdminCommand(HubKeyAdminFiatBlueprintWeaponSkinList, adminHub.FiatBlueprintWeaponSkinList)
 
 	return adminHub
 }
@@ -125,6 +126,7 @@ type AdminFiatProductCreateRequest struct {
 		MechBlueprintIDs          []string `json:"mech_blueprint_ids"`
 		MechSkinBlueprintIDs      []string `json:"mech_skin_blueprint_ids"`
 		MechAnimationBlueprintIDs []string `json:"mech_animation_blueprint_ids"`
+		WeaponBlueprintIDs        []string `json:"weapon_blueprint_ids"`
 		WeaponSkinBlueprintIDs    []string `json:"weapon_skin_blueprint_ids"`
 		PriceDollars              int64    `json:"price_dollars"`
 		PriceCents                int64    `json:"price_cents"`
@@ -198,6 +200,9 @@ func (ac *AdminController) FiatProductCreate(ctx context.Context, user *boiler.P
 		}
 
 		if req.Payload.ProductType == boiler.ItemTypeMech {
+			if len(req.Payload.MechBlueprintIDs) == 0 {
+				return terror.Error(fmt.Errorf("blueprints required"), "At least one mech is required.")
+			}
 			blueprintMechs, err := db.BlueprintMechs(req.Payload.MechBlueprintIDs)
 			if err != nil {
 				return terror.Error(err, errMsg)
@@ -226,6 +231,9 @@ func (ac *AdminController) FiatProductCreate(ctx context.Context, user *boiler.P
 				}
 			}
 		} else if req.Payload.ProductType == boiler.ItemTypeMechSkin {
+			if len(req.Payload.MechSkinBlueprintIDs) == 0 {
+				return terror.Error(fmt.Errorf("blueprints required"), "At least one mech skin is required.")
+			}
 			blueprintMechSkins, err := db.BlueprintMechSkinSkins(tx, req.Payload.MechSkinBlueprintIDs)
 			if err != nil {
 				return terror.Error(err, errMsg)
@@ -254,6 +262,9 @@ func (ac *AdminController) FiatProductCreate(ctx context.Context, user *boiler.P
 				}
 			}
 		} else if req.Payload.ProductType == boiler.ItemTypeMechAnimation {
+			if len(req.Payload.MechAnimationBlueprintIDs) == 0 {
+				return terror.Error(fmt.Errorf("blueprints required"), "At least one mech animation is required.")
+			}
 			blueprintMechAnimations, err := db.BlueprintMechAnimations(req.Payload.MechAnimationBlueprintIDs)
 			if err != nil {
 				return terror.Error(err, errMsg)
@@ -281,7 +292,41 @@ func (ac *AdminController) FiatProductCreate(ctx context.Context, user *boiler.P
 					return terror.Error(err, errMsg)
 				}
 			}
+		} else if req.Payload.ProductType == boiler.ItemTypeWeapon {
+			if len(req.Payload.WeaponBlueprintIDs) == 0 {
+				return terror.Error(fmt.Errorf("blueprints required"), "At least one weapon is required.")
+			}
+			blueprintWeapons, err := db.BlueprintWeapons(req.Payload.WeaponBlueprintIDs)
+			if err != nil {
+				return terror.Error(err, errMsg)
+			}
+			if len(blueprintWeapons) != len(req.Payload.WeaponBlueprintIDs) {
+				return terror.Error(fmt.Errorf("invalid blueprint weapon(s)"), "Invalid blueprint weapon(s).")
+			}
+
+			for _, bpw := range blueprintWeapons {
+				item := &boiler.FiatProductItem{
+					ProductID: product.ID,
+					Name:      bpw.Label,
+					ItemType:  boiler.FiatProductItemTypesSingleItem,
+				}
+				err := item.Insert(tx, boil.Infer())
+				if err != nil {
+					return terror.Error(err, errMsg)
+				}
+				itemBlueprint := &boiler.FiatProductItemBlueprint{
+					ProductItemID:     null.StringFrom(item.ID),
+					WeaponBlueprintID: null.StringFrom(bpw.ID),
+				}
+				err = itemBlueprint.Insert(tx, boil.Infer())
+				if err != nil {
+					return terror.Error(err, errMsg)
+				}
+			}
 		} else if req.Payload.ProductType == boiler.ItemTypeWeaponSkin {
+			if len(req.Payload.WeaponSkinBlueprintIDs) == 0 {
+				return terror.Error(fmt.Errorf("blueprints required"), "At least one weapon skin is required.")
+			}
 			blueprintWeaponSkins, err := db.BlueprintWeaponSkins(req.Payload.WeaponSkinBlueprintIDs)
 			if err != nil {
 				return terror.Error(err, errMsg)
@@ -445,6 +490,26 @@ func (ac *AdminController) FiatBlueprintMechSkinList(ctx context.Context, user *
 	return nil
 }
 
+const HubKeyAdminFiatBlueprintWeaponList = "ADMIN:FIAT:BLUEPRINT:WEAPON:LIST"
+
+func (ac *AdminController) FiatBlueprintWeaponList(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
+	errMsg := "Failed to get weapon blueprints, please try again."
+
+	blueprintWeapons, err := boiler.BlueprintWeapons().All(gamedb.StdConn)
+	if err != nil {
+		return terror.Error(err, errMsg)
+	}
+
+	resp := []*server.BlueprintWeapon{}
+	for _, bw := range blueprintWeapons {
+		resp = append(resp, server.BlueprintWeaponFromBoiler(bw))
+	}
+
+	reply(resp)
+
+	return nil
+}
+
 const HubKeyAdminFiatBlueprintWeaponSkinList = "ADMIN:FIAT:BLUEPRINT:WEAPON:SKIN:LIST"
 
 func (ac *AdminController) FiatBlueprintWeaponSkinList(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
@@ -456,8 +521,8 @@ func (ac *AdminController) FiatBlueprintWeaponSkinList(ctx context.Context, user
 	}
 
 	resp := []*server.BlueprintWeaponSkin{}
-	for _, bms := range blueprintWeaponSkins {
-		resp = append(resp, server.BlueprintWeaponSkinFromBoiler(bms))
+	for _, bws := range blueprintWeaponSkins {
+		resp = append(resp, server.BlueprintWeaponSkinFromBoiler(bws))
 	}
 
 	reply(resp)
