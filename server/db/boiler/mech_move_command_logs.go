@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/friendsofgo/errors"
+	"github.com/shopspring/decimal"
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries"
@@ -23,19 +24,19 @@ import (
 
 // MechMoveCommandLog is an object representing the database table.
 type MechMoveCommandLog struct {
-	ID            string    `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
-	BattleID      string    `boiler:"battle_id" boil:"battle_id" json:"battle_id" toml:"battle_id" yaml:"battle_id"`
-	MechID        string    `boiler:"mech_id" boil:"mech_id" json:"mech_id" toml:"mech_id" yaml:"mech_id"`
-	TriggeredByID string    `boiler:"triggered_by_id" boil:"triggered_by_id" json:"triggered_by_id" toml:"triggered_by_id" yaml:"triggered_by_id"`
-	CellX         int       `boiler:"cell_x" boil:"cell_x" json:"cell_x" toml:"cell_x" yaml:"cell_x"`
-	CellY         int       `boiler:"cell_y" boil:"cell_y" json:"cell_y" toml:"cell_y" yaml:"cell_y"`
-	CancelledAt   null.Time `boiler:"cancelled_at" boil:"cancelled_at" json:"cancelled_at,omitempty" toml:"cancelled_at" yaml:"cancelled_at,omitempty"`
-	ReachedAt     null.Time `boiler:"reached_at" boil:"reached_at" json:"reached_at,omitempty" toml:"reached_at" yaml:"reached_at,omitempty"`
-	CreatedAt     time.Time `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
-	UpdatedAt     time.Time `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
-	DeletedAt     null.Time `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
-	IsMoving      bool      `boiler:"is_moving" boil:"is_moving" json:"is_moving" toml:"is_moving" yaml:"is_moving"`
-	ArenaID       string    `boiler:"arena_id" boil:"arena_id" json:"arena_id" toml:"arena_id" yaml:"arena_id"`
+	ID            string          `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
+	BattleID      string          `boiler:"battle_id" boil:"battle_id" json:"battle_id" toml:"battle_id" yaml:"battle_id"`
+	MechID        string          `boiler:"mech_id" boil:"mech_id" json:"mech_id" toml:"mech_id" yaml:"mech_id"`
+	TriggeredByID string          `boiler:"triggered_by_id" boil:"triggered_by_id" json:"triggered_by_id" toml:"triggered_by_id" yaml:"triggered_by_id"`
+	CellX         decimal.Decimal `boiler:"cell_x" boil:"cell_x" json:"cell_x" toml:"cell_x" yaml:"cell_x"`
+	CellY         decimal.Decimal `boiler:"cell_y" boil:"cell_y" json:"cell_y" toml:"cell_y" yaml:"cell_y"`
+	CancelledAt   null.Time       `boiler:"cancelled_at" boil:"cancelled_at" json:"cancelled_at,omitempty" toml:"cancelled_at" yaml:"cancelled_at,omitempty"`
+	ReachedAt     null.Time       `boiler:"reached_at" boil:"reached_at" json:"reached_at,omitempty" toml:"reached_at" yaml:"reached_at,omitempty"`
+	CreatedAt     time.Time       `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
+	UpdatedAt     time.Time       `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
+	DeletedAt     null.Time       `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
+	IsMoving      bool            `boiler:"is_moving" boil:"is_moving" json:"is_moving" toml:"is_moving" yaml:"is_moving"`
+	ArenaID       string          `boiler:"arena_id" boil:"arena_id" json:"arena_id" toml:"arena_id" yaml:"arena_id"`
 
 	R *mechMoveCommandLogR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L mechMoveCommandLogL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -108,8 +109,8 @@ var MechMoveCommandLogWhere = struct {
 	BattleID      whereHelperstring
 	MechID        whereHelperstring
 	TriggeredByID whereHelperstring
-	CellX         whereHelperint
-	CellY         whereHelperint
+	CellX         whereHelperdecimal_Decimal
+	CellY         whereHelperdecimal_Decimal
 	CancelledAt   whereHelpernull_Time
 	ReachedAt     whereHelpernull_Time
 	CreatedAt     whereHelpertime_Time
@@ -122,8 +123,8 @@ var MechMoveCommandLogWhere = struct {
 	BattleID:      whereHelperstring{field: "\"mech_move_command_logs\".\"battle_id\""},
 	MechID:        whereHelperstring{field: "\"mech_move_command_logs\".\"mech_id\""},
 	TriggeredByID: whereHelperstring{field: "\"mech_move_command_logs\".\"triggered_by_id\""},
-	CellX:         whereHelperint{field: "\"mech_move_command_logs\".\"cell_x\""},
-	CellY:         whereHelperint{field: "\"mech_move_command_logs\".\"cell_y\""},
+	CellX:         whereHelperdecimal_Decimal{field: "\"mech_move_command_logs\".\"cell_x\""},
+	CellY:         whereHelperdecimal_Decimal{field: "\"mech_move_command_logs\".\"cell_y\""},
 	CancelledAt:   whereHelpernull_Time{field: "\"mech_move_command_logs\".\"cancelled_at\""},
 	ReachedAt:     whereHelpernull_Time{field: "\"mech_move_command_logs\".\"reached_at\""},
 	CreatedAt:     whereHelpertime_Time{field: "\"mech_move_command_logs\".\"created_at\""},
