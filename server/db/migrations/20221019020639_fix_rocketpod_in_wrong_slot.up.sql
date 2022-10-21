@@ -1,23 +1,21 @@
-SELECT w.id, mw.slot_number
-FROM mech_weapons mw
-         INNER JOIN weapons w ON w.id = mw.weapon_id
-         INNER JOIN blueprint_weapons bw ON w.blueprint_id = bw.id
-WHERE bw.id IN (
-                'c1c78867-9de7-43d3-97e9-91381800f38e', -- rocket pod static id
-                '41099781-8586-4783-9d1c-b515a386fe9f', -- rocket pod static id
-                'e9fc2417-6a5b-489d-b82e-42942535af90' -- rocket pod static id
-    )
-  AND mw.slot_number != 2;
-
-SELECT w.id, mw.slot_number, bw.label
-FROM mech_weapons mw
-         INNER JOIN weapons w ON w.id = mw.weapon_id
-         INNER JOIN blueprint_weapons bw ON w.blueprint_id = bw.id
-WHERE mw.chassis_id IN (
-    '79f750be-f71e-4633-bd10-b88843329e84'
-    );
-
--- 79f750be-f71e-4633-bd10-b88843329e84, 0
+-- SELECT w.id, mw.slot_number
+-- FROM mech_weapons mw
+--          INNER JOIN weapons w ON w.id = mw.weapon_id
+--          INNER JOIN blueprint_weapons bw ON w.blueprint_id = bw.id
+-- WHERE bw.id IN (
+--                 'c1c78867-9de7-43d3-97e9-91381800f38e', -- rocket pod static id
+--                 '41099781-8586-4783-9d1c-b515a386fe9f', -- rocket pod static id
+--                 'e9fc2417-6a5b-489d-b82e-42942535af90' -- rocket pod static id
+--     )
+--   AND mw.slot_number != 2;
+--
+-- SELECT w.id, mw.slot_number, bw.label
+-- FROM mech_weapons mw
+--          INNER JOIN weapons w ON w.id = mw.weapon_id
+--          INNER JOIN blueprint_weapons bw ON w.blueprint_id = bw.id
+-- WHERE mw.chassis_id IN (
+--     '79f750be-f71e-4633-bd10-b88843329e84'
+--     );
 
 -- for rocket pods in slot 0 move em
 -- move rocket pods to slot 3
