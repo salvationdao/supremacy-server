@@ -35,8 +35,8 @@ func ServerMechsToXsynAsset(mechs []*server.Mech) []*XsynAsset {
 			AssetType:      null.StringFrom(i.ItemType),
 		}
 
-		if isGenesisOrLimited && i.ChassisSkin != nil {
-			asset.Tier = i.ChassisSkin.Tier
+		if !i.XsynLocked {
+			asset.Service = server.SupremacyGameUserID
 		}
 
 		// convert stats to attributes to
@@ -153,6 +153,21 @@ func ServerMechsToXsynAsset(mechs []*server.Mech) []*XsynAsset {
 				Value:     i.ChassisSkin.Tier,
 			},
 		)
+
+		if isGenesisOrLimited {
+			if i.GenesisTokenID.Valid {
+				asset.TokenID = i.GenesisTokenID.Int64
+				asset.CollectionSlug = "supremacy-genesis"
+			}
+			if i.LimitedReleaseTokenID.Valid {
+				asset.TokenID = i.LimitedReleaseTokenID.Int64
+				asset.CollectionSlug = "supremacy-limited-release"
+			}
+
+			if i.ChassisSkin != nil {
+				asset.Tier = i.ChassisSkin.Tier
+			}
+		}
 
 		err = asset.Attributes.AreValid()
 		if err != nil {
@@ -279,7 +294,6 @@ func ServerMechSkinsToXsynAsset(tx boil.Executor, mechSkins []*server.MechSkin) 
 			Name:             i.Label,
 			Attributes:       attributes,
 			AssetType:        null.StringFrom(i.ItemType),
-			XsynLocked:       i.XsynLocked,
 			ImageURL:         i.Images.ImageURL,
 			AnimationURL:     i.Images.AnimationURL,
 			LargeImageURL:    i.Images.LargeImageURL,
@@ -289,14 +303,32 @@ func ServerMechSkinsToXsynAsset(tx boil.Executor, mechSkins []*server.MechSkin) 
 			YoutubeURL:       i.Images.YoutubeURL,
 		}
 
+		if !i.XsynLocked {
+			asset.Service = server.SupremacyGameUserID
+		}
+
 		if i.SkinSwatch != nil {
-			asset.ImageURL = i.SkinSwatch.ImageURL
-			asset.AnimationURL = i.SkinSwatch.AnimationURL
-			asset.LargeImageURL = i.SkinSwatch.LargeImageURL
-			asset.CardAnimationURL = i.SkinSwatch.CardAnimationURL
-			asset.AvatarURL = i.SkinSwatch.AvatarURL
-			asset.BackgroundColor = i.SkinSwatch.BackgroundColor
-			asset.YoutubeURL = i.SkinSwatch.YoutubeURL
+			if i.SkinSwatch.ImageURL.Valid  {
+				asset.ImageURL = i.SkinSwatch.ImageURL
+			}
+			if i.SkinSwatch.AnimationURL.Valid  {
+				asset.AnimationURL = i.SkinSwatch.AnimationURL
+			}
+			if i.SkinSwatch.LargeImageURL.Valid {
+				asset.LargeImageURL = i.SkinSwatch.LargeImageURL
+			}
+			if i.SkinSwatch.CardAnimationURL.Valid {
+				asset.CardAnimationURL = i.SkinSwatch.CardAnimationURL
+			}
+			if i.SkinSwatch.AvatarURL.Valid {
+				asset.AvatarURL = i.SkinSwatch.AvatarURL
+			}
+			if i.SkinSwatch.BackgroundColor.Valid {
+				asset.BackgroundColor = i.SkinSwatch.BackgroundColor
+			}
+			if i.SkinSwatch.YoutubeURL.Valid  {
+				asset.YoutubeURL = i.SkinSwatch.YoutubeURL
+			}
 		}
 
 		assets = append(assets, asset)
@@ -372,7 +404,7 @@ func ServerPowerCoresToXsynAsset(powerCore []*server.PowerCore) []*XsynAsset {
 			gamelog.L.Error().Err(err).Msg("invalid asset attributes")
 		}
 
-		assets = append(assets, &XsynAsset{
+		asset := &XsynAsset{
 			ID:               i.ID,
 			CollectionSlug:   i.CollectionSlug,
 			TokenID:          i.TokenID,
@@ -382,7 +414,6 @@ func ServerPowerCoresToXsynAsset(powerCore []*server.PowerCore) []*XsynAsset {
 			Data:             asJson,
 			Name:             i.Label,
 			Attributes:       attributes,
-			XsynLocked:       i.XsynLocked,
 			ImageURL:         i.Images.ImageURL,
 			AnimationURL:     i.Images.AnimationURL,
 			LargeImageURL:    i.Images.LargeImageURL,
@@ -390,8 +421,13 @@ func ServerPowerCoresToXsynAsset(powerCore []*server.PowerCore) []*XsynAsset {
 			AvatarURL:        i.Images.AvatarURL,
 			BackgroundColor:  i.Images.BackgroundColor,
 			YoutubeURL:       i.Images.YoutubeURL,
-		})
+		}
 
+		if !i.XsynLocked {
+			asset.Service = server.SupremacyGameUserID
+		}
+
+		assets = append(assets, asset)
 	}
 
 	return assets
@@ -525,7 +561,10 @@ func ServerWeaponsToXsynAsset(weapons []*server.Weapon) []*XsynAsset {
 			Data:           asJson,
 			Name:           i.Label,
 			Attributes:     attributes,
-			XsynLocked:     i.XsynLocked,
+		}
+
+		if !i.XsynLocked {
+			asset.Service = server.SupremacyGameUserID
 		}
 
 		if i.WeaponSkin == nil {
@@ -637,24 +676,41 @@ func ServerWeaponSkinsToXsynAsset(tx boil.Executor, weaponSkins []*server.Weapon
 			Name:             i.Label,
 			Attributes:       attributes,
 			AssetType:        null.StringFrom(i.ItemType),
-			XsynLocked:       i.XsynLocked,
-			ImageURL:         i.Images.ImageURL,
-			AnimationURL:     i.Images.AnimationURL,
-			LargeImageURL:    i.Images.LargeImageURL,
-			CardAnimationURL: i.Images.CardAnimationURL,
-			AvatarURL:        i.Images.AvatarURL,
-			BackgroundColor:  i.Images.BackgroundColor,
-			YoutubeURL:       i.Images.YoutubeURL,
+			ImageURL:         i.ImageURL,
+			AnimationURL:     i.AnimationURL,
+			LargeImageURL:    i.LargeImageURL,
+			CardAnimationURL: i.CardAnimationURL,
+			AvatarURL:        i.AvatarURL,
+			BackgroundColor:  i.BackgroundColor,
+			YoutubeURL:       i.YoutubeURL,
+		}
+
+		if !i.XsynLocked {
+			asset.Service = server.SupremacyGameUserID
 		}
 
 		if i.SkinSwatch != nil {
-			asset.ImageURL = i.SkinSwatch.ImageURL
-			asset.AnimationURL = i.SkinSwatch.AnimationURL
-			asset.LargeImageURL = i.SkinSwatch.LargeImageURL
-			asset.CardAnimationURL = i.SkinSwatch.CardAnimationURL
-			asset.AvatarURL = i.SkinSwatch.AvatarURL
-			asset.BackgroundColor = i.SkinSwatch.BackgroundColor
-			asset.YoutubeURL = i.SkinSwatch.YoutubeURL
+			if i.SkinSwatch.ImageURL.Valid  {
+				asset.ImageURL = i.SkinSwatch.ImageURL
+			}
+			if i.SkinSwatch.AnimationURL.Valid  {
+				asset.AnimationURL = i.SkinSwatch.AnimationURL
+			}
+			if i.SkinSwatch.LargeImageURL.Valid {
+				asset.LargeImageURL = i.SkinSwatch.LargeImageURL
+			}
+			if i.SkinSwatch.CardAnimationURL.Valid {
+				asset.CardAnimationURL = i.SkinSwatch.CardAnimationURL
+			}
+			if i.SkinSwatch.AvatarURL.Valid {
+				asset.AvatarURL = i.SkinSwatch.AvatarURL
+			}
+			if i.SkinSwatch.BackgroundColor.Valid {
+				asset.BackgroundColor = i.SkinSwatch.BackgroundColor
+			}
+			if i.SkinSwatch.YoutubeURL.Valid  {
+				asset.YoutubeURL = i.SkinSwatch.YoutubeURL
+			}
 		}
 
 		assets = append(assets, asset)
@@ -715,7 +771,7 @@ func ServerUtilitiesToXsynAsset(utils []*server.Utility) []*XsynAsset {
 			gamelog.L.Error().Err(err).Msg("invalid asset attributes")
 		}
 
-		assets = append(assets, &XsynAsset{
+		asset := &XsynAsset{
 			ID:               i.ID,
 			CollectionSlug:   i.CollectionSlug,
 			TokenID:          i.TokenID,
@@ -725,7 +781,6 @@ func ServerUtilitiesToXsynAsset(utils []*server.Utility) []*XsynAsset {
 			Data:             asJson,
 			Name:             i.Label,
 			Attributes:       attributes,
-			XsynLocked:       i.XsynLocked,
 			ImageURL:         i.Images.ImageURL,
 			AnimationURL:     i.Images.AnimationURL,
 			LargeImageURL:    i.Images.LargeImageURL,
@@ -733,7 +788,12 @@ func ServerUtilitiesToXsynAsset(utils []*server.Utility) []*XsynAsset {
 			AvatarURL:        i.Images.AvatarURL,
 			BackgroundColor:  i.Images.BackgroundColor,
 			YoutubeURL:       i.Images.YoutubeURL,
-		})
+		}
+
+		if !i.XsynLocked {
+			asset.Service = server.SupremacyGameUserID
+		}
+		assets = append(assets, asset)
 	}
 
 	return assets

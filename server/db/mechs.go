@@ -1428,6 +1428,17 @@ func MechSetAllEquippedAssetsAsHidden(trx boil.Executor, mechID string, reason n
 		itemIDsToUpdate = append(itemIDsToUpdate, itm.ID)
 	}
 
+	// get equipped mech power core
+	mPowerCore, err := boiler.PowerCores(
+		boiler.PowerCoreWhere.EquippedOn.EQ(null.StringFrom(mechID)),
+	).All(tx)
+	if err != nil {
+		return err
+	}
+	for _, itm := range mPowerCore {
+		itemIDsToUpdate = append(itemIDsToUpdate, itm.ID)
+	}
+
 	// get equipped mech animations
 	mAnim, err := boiler.MechAnimations(
 		boiler.MechAnimationWhere.EquippedOn.EQ(null.StringFrom(mechID)),

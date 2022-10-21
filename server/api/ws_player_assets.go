@@ -1298,7 +1298,19 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetMechEquipHandler(ctx context.Con
 		removePowerCore.EquippedOn = null.String{}
 		_, err = removePowerCore.Update(tx, boil.Infer())
 		if err != nil {
-			l.Error().Err(err).Msg("failed to unequip power core from its mech")
+			l.Error().Err(err).Msg("failed to unequipped power core from its mech")
+			return terror.Error(err, errorMsg)
+		}
+
+		core, err := db.PowerCore(tx, removePowerCore.ID)
+		if err != nil {
+			l.Error().Err(err).Msg("failed to get updated powercore")
+			return terror.Error(err, errorMsg)
+		}
+
+		err = pac.API.Passport.AssetUpdate(rpctypes.ServerPowerCoresToXsynAsset([]*server.PowerCore{core})[0])
+		if err != nil {
+			l.Error().Err(err).Msg("failed to update powercore on xsyn")
 			return terror.Error(err, errorMsg)
 		}
 	} else if req.Payload.EquipPowerCore.PowerCoreID != "" {
@@ -1394,6 +1406,17 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetMechEquipHandler(ctx context.Con
 			l.Error().Err(err).Msg("failed to update power core with new mech")
 			return terror.Error(err, errorMsg)
 		}
+		core, err := db.PowerCore(tx, powerCore.ID)
+		if err != nil {
+			l.Error().Err(err).Msg("failed to get updated powercore")
+			return terror.Error(err, errorMsg)
+		}
+
+		err = pac.API.Passport.AssetUpdate(rpctypes.ServerPowerCoresToXsynAsset([]*server.PowerCore{core})[0])
+		if err != nil {
+			l.Error().Err(err).Msg("failed to update powercore on xsyn")
+			return terror.Error(err, errorMsg)
+		}
 	}
 	if len(req.Payload.EquipUtility) != 0 {
 		for _, eu := range req.Payload.EquipUtility {
@@ -1456,6 +1479,17 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetMechEquipHandler(ctx context.Con
 				_, err = removeMechUtility.Update(tx, boil.Infer())
 				if err != nil {
 					l.Error().Err(err).Msg("failed to unlink utility from mech")
+					return terror.Error(err, errorMsg)
+				}
+				util, err := db.Utility(tx, removeUtility.ID)
+				if err != nil {
+					l.Error().Err(err).Msg("failed to get updated utility")
+					return terror.Error(err, errorMsg)
+				}
+
+				err = pac.API.Passport.AssetUpdate(rpctypes.ServerUtilitiesToXsynAsset([]*server.Utility{util})[0])
+				if err != nil {
+					l.Error().Err(err).Msg("failed to update utility on xsyn")
 					return terror.Error(err, errorMsg)
 				}
 			} else if eu.UtilityID != "" {
@@ -1561,6 +1595,17 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetMechEquipHandler(ctx context.Con
 					l.Error().Err(err).Msg("failed to update mech utility")
 					return terror.Error(err, errorMsg)
 				}
+				util, err := db.Utility(tx, utility.ID)
+				if err != nil {
+					l.Error().Err(err).Msg("failed to get updated utility")
+					return terror.Error(err, errorMsg)
+				}
+
+				err = pac.API.Passport.AssetUpdate(rpctypes.ServerUtilitiesToXsynAsset([]*server.Utility{util})[0])
+				if err != nil {
+					l.Error().Err(err).Msg("failed to update utility on xsyn")
+					return terror.Error(err, errorMsg)
+				}
 			}
 		}
 	}
@@ -1625,6 +1670,17 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetMechEquipHandler(ctx context.Con
 				_, err = removeMechWeapon.Update(tx, boil.Infer())
 				if err != nil {
 					l.Error().Err(err).Msg("failed to unlink weapon from mech")
+					return terror.Error(err, errorMsg)
+				}
+				wpn, err := db.Weapon(tx, removeWeapon.ID)
+				if err != nil {
+					l.Error().Err(err).Msg("failed to get weapon")
+					return terror.Error(err, errorMsg)
+				}
+
+				err = pac.API.Passport.AssetUpdate(rpctypes.ServerWeaponsToXsynAsset([]*server.Weapon{wpn})[0])
+				if err != nil {
+					l.Error().Err(err).Msg("failed to update weapon on xsyn")
 					return terror.Error(err, errorMsg)
 				}
 			} else if ew.WeaponID != "" {
@@ -1722,6 +1778,17 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetMechEquipHandler(ctx context.Con
 						l.Error().Msg("failed to remove previous weapon from mech 2")
 						return terror.Error(fmt.Errorf("failed to remove previous weapon from mech"))
 					}
+					wpn, err := db.Weapon(tx, previousWeapon.ID)
+					if err != nil {
+						l.Error().Err(err).Msg("failed to get previousWeapon")
+						return terror.Error(err, errorMsg)
+					}
+
+					err = pac.API.Passport.AssetUpdate(rpctypes.ServerWeaponsToXsynAsset([]*server.Weapon{wpn})[0])
+					if err != nil {
+						l.Error().Err(err).Msg("failed to update previousWeapon on xsyn")
+						return terror.Error(err, errorMsg)
+					}
 				}
 
 				weapon.EquippedOn = null.StringFrom(mech.ID)
@@ -1737,6 +1804,17 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetMechEquipHandler(ctx context.Con
 				_, err = mw.Update(tx, boil.Infer())
 				if err != nil {
 					l.Error().Err(err).Msg("failed to update mech weapon")
+					return terror.Error(err, errorMsg)
+				}
+				wpn, err := db.Weapon(tx, weapon.ID)
+				if err != nil {
+					l.Error().Err(err).Msg("failed to get weapon")
+					return terror.Error(err, errorMsg)
+				}
+
+				err = pac.API.Passport.AssetUpdate(rpctypes.ServerWeaponsToXsynAsset([]*server.Weapon{wpn})[0])
+				if err != nil {
+					l.Error().Err(err).Msg("failed to update weapon on xsyn")
 					return terror.Error(err, errorMsg)
 				}
 			}
@@ -1882,14 +1960,31 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetMechEquipHandler(ctx context.Con
 			l.Error().Msg("failed to update mech skin with new mech 2")
 			return terror.Error(fmt.Errorf("failed to update mech skin with new mech"), errorMsg)
 		}
+		dbMechSkin, err := db.MechSkin(tx, mechSkin.ID, nil)
+		if err != nil {
+			l.Error().Err(err).Msg("failed to get mechSkin utility")
+			return terror.Error(err, errorMsg)
+		}
+
+		err = pac.API.Passport.AssetUpdate(rpctypes.ServerMechSkinsToXsynAsset(tx, []*server.MechSkin{dbMechSkin})[0])
+		if err != nil {
+			l.Error().Err(err).Msg("failed to update mechSkin on xsyn")
+			return terror.Error(err, errorMsg)
+		}
 	}
 
-	err = tx.Commit()
+	updatedMech, err := db.Mech(tx, req.Payload.MechID)
 	if err != nil {
 		return terror.Error(err, errorMsg)
 	}
 
-	updatedMech, err := db.Mech(gamedb.StdConn, req.Payload.MechID)
+	err = pac.API.Passport.AssetUpdate(rpctypes.ServerMechsToXsynAsset([]*server.Mech{updatedMech})[0])
+	if err != nil {
+		l.Error().Err(err).Msg("failed to update updatedMech on xsyn")
+		return terror.Error(err, errorMsg)
+	}
+
+	err = tx.Commit()
 	if err != nil {
 		return terror.Error(err, errorMsg)
 	}
@@ -1967,7 +2062,7 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetWeaponListHandler(ctx context.Co
 		Page:                          req.Payload.Page,
 		OwnerID:                       user.ID,
 		DisplayXsynMechs:              req.Payload.DisplayXsynMechs,
-		DisplayGenesisAndLimited:      req.Payload.DisplayGenesisAndLimited,
+		DisplayGenesisAndLimited:      true,
 		ExcludeMarketLocked:           req.Payload.ExcludeMarketLocked,
 		IncludeMarketListed:           req.Payload.IncludeMarketListed,
 		ExcludeMechLocked:             req.Payload.ExcludeMechLocked,
@@ -2127,7 +2222,7 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetMechSubmodelListDetailedHandler(
 		FilterEquippedStatuses:   req.Payload.FilterEquippedStatuses,
 		SortBy:                   req.Payload.SortBy,
 		SortDir:                  req.Payload.SortDir,
-		DisplayGenesisAndLimited: req.Payload.DisplayGenesisAndLimited,
+		DisplayGenesisAndLimited: true,
 		FilterSkinCompatibility:  req.Payload.FilterSkinCompatibility,
 	}
 
@@ -2203,7 +2298,7 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetWeaponSubmodelListDetailedHandle
 		FilterEquippedStatuses:   req.Payload.FilterEquippedStatuses,
 		SortBy:                   req.Payload.SortBy,
 		SortDir:                  req.Payload.SortDir,
-		DisplayGenesisAndLimited: req.Payload.DisplayGenesisAndLimited,
+		DisplayGenesisAndLimited: true,
 		FilterSkinCompatibility:  req.Payload.FilterSkinCompatibility,
 	}
 
@@ -2277,7 +2372,7 @@ func (pac *PlayerAssetsControllerWS) PlayerMechBlueprintListDetailedHandler(ctx 
 
 	for rows.Next() {
 		mbp := &server.BlueprintMech{}
-		err = rows.Scan(
+		err := rows.Scan(
 			&mbp.ID,
 			&mbp.Label,
 			&mbp.DefaultChassisSkinID,

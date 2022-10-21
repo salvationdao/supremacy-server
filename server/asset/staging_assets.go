@@ -38,7 +38,7 @@ func GiveUserAllAssets(user *boiler.Player, pp *xsyn_rpcclient.XsynXrpcClient) e
 			[]string{
 				server.MechSkinDune,       // static id for genesis mega skin
 				server.MechSkinBlackDigi,  // static id for genesis mega skin
-				server.MechSkinRustBucket, // static id for genesis mega skin
+				server.MechSkinDesert, // static id for genesis mega skin
 			},
 		),
 	).All(tx)

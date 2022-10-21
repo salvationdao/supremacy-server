@@ -81,8 +81,8 @@ func TransferMechToNewOwner(
 		if err != nil {
 			return nil, err
 		}
-		for _, itm := range mWpnSkin {
-			itemIDsToTransfer = append(itemIDsToTransfer, itm.ID)
+		for _, wItem := range mWpnSkin {
+			itemIDsToTransfer = append(itemIDsToTransfer, wItem.ID)
 		}
 	}
 

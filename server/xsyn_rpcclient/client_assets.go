@@ -91,7 +91,7 @@ func (pp *XsynXrpcClient) AssetsRegister(ass []*rpctypes.XsynAsset) error {
 		ass,
 	}, resp)
 	if err != nil {
-		gamelog.L.Err(err).Interface("asset", ass).Msg("rpc error - S.AssetRegisterHandler")
+		gamelog.L.Err(err).Interface("asset", ass).Msg("rpc error - S.AssetsRegisterHandler")
 		return err
 	}
 
@@ -233,6 +233,29 @@ func (pp *XsynXrpcClient) AssignTemplateToUser(req *AssignTemplateReq) error {
 	req.ApiKey = pp.ApiKey
 	err := pp.XrpcClient.Call("S.AssignTemplateHandler", req, resp)
 	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+type AssetUpdateReq struct {
+	ApiKey string                         `json:"api_key"`
+	Asset  *rpctypes.XsynAsset `json:"asset"`
+}
+
+type AssetUpdateResp struct {
+}
+
+// AssetUpdate updates a item on xsyn
+func (pp *XsynXrpcClient) AssetUpdate(ass *rpctypes.XsynAsset) error {
+	resp := &RegisterAssetResp{}
+	err := pp.XrpcClient.Call("S.AssetUpdateHandler", AssetUpdateReq{
+		pp.ApiKey,
+		ass,
+	}, resp)
+	if err != nil {
+		gamelog.L.Err(err).Interface("asset", ass).Msg("rpc error - S.AssetRegisterHandler")
 		return err
 	}
 

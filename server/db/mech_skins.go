@@ -143,6 +143,8 @@ func MechSkinListDetailed(opts *MechSkinListOpts) (int64, []*server.MechSkin, er
 	var queryMods []qm.QueryMod
 
 	queryMods = append(queryMods,
+		// hide hidden assets
+		boiler.CollectionItemWhere.AssetHidden.IsNull(),
 		// where owner id = ?
 		GenerateListFilterQueryMod(ListFilterRequestItem{
 			Table:    boiler.TableNames.CollectionItems,
