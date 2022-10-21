@@ -1505,6 +1505,7 @@ func MechBattleReady(mechID string) (bool, error) {
 
 type MechBrief struct {
 	ID                  string      `json:"id" db:"id"`
+	FactionID           null.String `json:"faction_id"`
 	OwnerID             string      `json:"owner_id" db:"owner_id"`
 	MarketLocked        bool        `json:"market_locked" db:"market_locked"`
 	XsynLocked          bool        `json:"xsyn_locked" db:"xsyn_locked"`
@@ -1560,17 +1561,27 @@ type MechBrief struct {
 	WeaponSlots []*server.WeaponSlot `json:"weapon_slots"`
 }
 
-// OwnedMechsBrief return list for mech for quick deploy
-func OwnedMechsBrief(playerID string, mechIDs ...string) ([]*MechBrief, error) {
+// LobbyMechsBrief return list for mech for quick deploy
+func LobbyMechsBrief(playerID string, mechIDs ...string) ([]*MechBrief, error) {
 	// prevent sql injection, check player id is in uuid format
-	_, err := uuid.FromString(playerID)
-	if err != nil {
-		return nil, terror.Error(err, "The player id is not in uuid format.")
+	playerIDQuery := ""
+	if playerID != "" {
+		_, err := uuid.FromString(playerID)
+		if err != nil {
+			return nil, terror.Error(err, "The player id is not in uuid format.")
+		}
+
+		playerIDQuery = fmt.Sprintf(
+			" AND %s = '%s'",
+			boiler.CollectionItemColumns.OwnerID,
+			playerID,
+		)
+
 	}
 
 	mechIDInQuery := ""
 	if len(mechIDs) > 0 {
-		mechIDInQuery += fmt.Sprintf("AND %s IN(", boiler.CollectionItemColumns.ItemID)
+		mechIDInQuery += fmt.Sprintf(" AND %s IN(", boiler.CollectionItemColumns.ItemID)
 
 		for i, mechID := range mechIDs {
 			// prevent sql injection, check each mech id is in uuid format
@@ -1592,6 +1603,7 @@ func OwnedMechsBrief(playerID string, mechIDs ...string) ([]*MechBrief, error) {
 	queries := []qm.QueryMod{
 		qm.Select(
 			fmt.Sprintf("_m.%s", boiler.MechColumns.ID),
+			boiler.PlayerTableColumns.FactionID,
 			fmt.Sprintf("_ci.%s", boiler.CollectionItemColumns.OwnerID),
 			fmt.Sprintf("_ci.%s", boiler.CollectionItemColumns.MarketLocked),
 			fmt.Sprintf("_ci.%s", boiler.CollectionItemColumns.XsynLocked),
@@ -1655,16 +1667,11 @@ func OwnedMechsBrief(playerID string, mechIDs ...string) ([]*MechBrief, error) {
 				boiler.UtilityColumns.EquippedOn,
 				boiler.MechColumns.ID,
 			),
-			fmt.Sprintf(
-				"COALESCE((SELECT true FROM %s WHERE %s = _m.%s), false) AS is_staked",
-				boiler.TableNames.StakedMechs,
-				boiler.StakedMechTableColumns.MechID,
-				boiler.MechColumns.ID,
-			),
+			fmt.Sprintf("%s NOTNULL AS is_staked", boiler.StakedMechTableColumns.MechID),
 		),
 
 		qm.From(fmt.Sprintf(
-			"(SELECT %s, %s, %s, %s, %s, %s FROM %s WHERE %s = 'mech' AND %s = '%s' AND %s IS NULL %s) _ci",
+			"(SELECT %s, %s, %s, %s, %s, %s FROM %s WHERE %s = 'mech' AND %s IS NULL %s %s) _ci",
 			boiler.CollectionItemColumns.ID,
 			boiler.CollectionItemColumns.ItemID,
 			boiler.CollectionItemColumns.OwnerID,
@@ -1673,10 +1680,16 @@ func OwnedMechsBrief(playerID string, mechIDs ...string) ([]*MechBrief, error) {
 			boiler.CollectionItemColumns.LockedToMarketplace,
 			boiler.TableNames.CollectionItems,
 			boiler.CollectionItemColumns.ItemType,
-			boiler.CollectionItemColumns.OwnerID,
-			playerID,
 			boiler.CollectionItemColumns.DeletedAt,
+			playerIDQuery,
 			mechIDInQuery,
+		)),
+
+		qm.InnerJoin(fmt.Sprintf(
+			"%s ON %s = _ci.%s",
+			boiler.TableNames.Players,
+			boiler.PlayerTableColumns.ID,
+			boiler.CollectionItemColumns.OwnerID,
 		)),
 
 		qm.InnerJoin(fmt.Sprintf(
@@ -1770,6 +1783,14 @@ func OwnedMechsBrief(playerID string, mechIDs ...string) ([]*MechBrief, error) {
 			boiler.PowerCoreTableColumns.BlueprintID,
 			boiler.MechColumns.PowerCoreID,
 		)),
+
+		// is staked
+		qm.LeftOuterJoin(fmt.Sprintf(
+			"%s ON %s = _m.%s",
+			boiler.TableNames.StakedMechs,
+			boiler.StakedMechTableColumns.MechID,
+			boiler.MechColumns.ID,
+		)),
 	}
 
 	rows, err := boiler.NewQuery(queries...).Query(gamedb.StdConn)
@@ -1787,6 +1808,7 @@ func OwnedMechsBrief(playerID string, mechIDs ...string) ([]*MechBrief, error) {
 		pc := &server.PowerCore{}
 		err = rows.Scan(
 			&mb.ID,
+			&mb.FactionID,
 			&mb.OwnerID,
 			&mb.MarketLocked,
 			&mb.XsynLocked,

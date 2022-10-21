@@ -112,7 +112,8 @@ const HubKeyVoiceStreamGetListeners = "VOICE:STREAM:GET:LISTENERS"
 
 // battle queue
 
-const HubKeyPlayerMechsBrief = "PLAYER:MECHS:BRIEF"
+const HubKeyPlayerQueueableMechs = "PLAYER:QUEUEABLE:MECHS"
+const HubKeyFactionStakedMechs = "FACTION:STAKED:MECHS"
 
 const HubKeyBattleLobbyListUpdate = "BATTLE:LOBBY:LIST:UPDATE"
 const HubKeyInvolvedBattleLobbyListUpdate = "INVOLVED:BATTLE:LOBBY:LIST:UPDATE"

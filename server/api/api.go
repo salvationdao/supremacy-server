@@ -270,6 +270,7 @@ func NewAPI(
 
 				// come from battle
 				s.WS("/mech/{mech_id}/details", HubKeyPlayerAssetMechDetailPublic, pasc.PlayerAssetMechDetailPublic)
+				s.WS("/mech/{mech_id}/is_staked", HubKeyMechIsStaked, api.MechIsStaked)
 				s.WS("/custom_avatar/{avatar_id}/details", HubKeyPlayerCustomAvatarDetails, pc.ProfileCustomAvatarDetailsHandler)
 
 				// battle related endpoint
@@ -294,7 +295,7 @@ func NewAPI(
 
 				// user related
 				s.WSTrack("/user/{user_id}", "user_id", server.HubKeyUserSubscribe, server.MustSecure(pc.PlayersSubscribeHandler), MustMatchUserID)
-				s.WS("/user/{user_id}/owned_mechs", server.HubKeyPlayerMechsBrief, server.MustSecure(api.PlayerMechs), MustMatchUserID)
+				s.WS("/user/{user_id}/owned_queueable_mechs", server.HubKeyPlayerQueueableMechs, server.MustSecure(api.PlayerMechs), MustMatchUserID)
 				s.WS("/user/{user_id}/stat", server.HubKeyUserStatSubscribe, server.MustSecure(pc.PlayersStatSubscribeHandler), MustMatchUserID)
 				s.WS("/user/{user_id}/rank", server.HubKeyPlayerRankGet, server.MustSecure(pc.PlayerRankGet), MustMatchUserID)
 				s.WS("/user/{user_id}/player_abilities", server.HubKeyPlayerAbilitiesList, server.MustSecure(pac.PlayerAbilitiesListHandler), MustMatchUserID)
@@ -348,6 +349,8 @@ func NewAPI(
 
 				s.WS("/crate/{crate_id}", server.HubKeyMysteryCrateSubscribe, server.MustSecureFaction(ssc.MysteryCrateSubscribeHandler))
 				s.WS("/queue/{mech_id}", server.HubKeyPlayerAssetMechQueueSubscribe, server.MustSecureFaction(api.PlayerAssetMechQueueSubscribeHandler))
+
+				s.WS("/staked_mechs", server.HubKeyFactionStakedMechs, server.MustSecureFaction(api.FactionStakedMechs))
 
 				// subscription from battle
 				s.WS("/arena/{arena_id}/mech/{slotNumber}/abilities", battle.HubKeyWarMachineAbilitiesUpdated, server.MustSecureFaction(api.ArenaManager.WarMachineAbilitiesUpdateSubscribeHandler))

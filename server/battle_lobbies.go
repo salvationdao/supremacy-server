@@ -52,6 +52,9 @@ type BattleLobbiesMech struct {
 	Owner       *boiler.Player `json:"owner"`
 	FactionID   null.String    `json:"faction_id"`
 
+	// player might queue other players' mechs from the mech staking list
+	QueuedBy *PublicPlayer `json:"queued_by"`
+
 	WeaponSlots []*WeaponSlot `json:"weapon_slots"`
 }
 
@@ -277,12 +280,15 @@ func BattleLobbiesFromBoiler(bls []*boiler.BattleLobby) ([]*BattleLobby, error) 
 			boiler.PlayerTableColumns.FactionID,
 			boiler.PlayerTableColumns.Gid,
 			boiler.PlayerTableColumns.Rank,
+
+			// queue by player
+			"TO_JSON(_queued_by_player.*) AS queued_by_player",
 		),
 
 		// from filtered collection item
 		qm.From(fmt.Sprintf(
 			`(
-				SELECT %s, %s, %s FROM %s 
+				SELECT %s, %s, %s, %s FROM %s 
 				INNER JOIN %s ON %s = %s 
 							AND %s %s
 							AND %s ISNULL 
@@ -293,6 +299,7 @@ func BattleLobbiesFromBoiler(bls []*boiler.BattleLobby) ([]*BattleLobby, error) 
 			boiler.CollectionItemTableColumns.ItemID,
 			boiler.CollectionItemTableColumns.OwnerID,
 			boiler.BattleLobbiesMechTableColumns.BattleLobbyID,
+			boiler.BattleLobbiesMechTableColumns.QueuedByID,
 
 			// FROM
 			boiler.TableNames.CollectionItems,
@@ -315,6 +322,15 @@ func BattleLobbiesFromBoiler(bls []*boiler.BattleLobby) ([]*BattleLobby, error) 
 			boiler.PlayerTableColumns.ID,
 			boiler.CollectionItemColumns.OwnerID,
 		)),
+
+		// inner join queue by player
+		qm.InnerJoin(fmt.Sprintf(
+			"%s _queued_by_player ON _queued_by_player.%s = _ci.%s",
+			boiler.TableNames.Players,
+			boiler.PlayerColumns.ID,
+			boiler.BattleLobbiesMechColumns.QueuedByID,
+		)),
+
 		// inner join mech
 		qm.InnerJoin(fmt.Sprintf(
 			"%s ON %s = _ci.%s",
@@ -357,6 +373,7 @@ func BattleLobbiesFromBoiler(bls []*boiler.BattleLobby) ([]*BattleLobby, error) 
 		blm := &BattleLobbiesMech{
 			Owner: &boiler.Player{},
 		}
+		queuedByPlayer := &PublicPlayer{}
 
 		bm := &BlueprintMech{}
 		skinLevel := int64(0)
@@ -373,12 +390,14 @@ func BattleLobbiesFromBoiler(bls []*boiler.BattleLobby) ([]*BattleLobby, error) 
 			&blm.Owner.FactionID,
 			&blm.Owner.Gid,
 			&blm.Owner.Rank,
+			&queuedByPlayer,
 		)
 		if err != nil {
 			gamelog.L.Error().Err(err).Msg("Failed to scan battle lobby.")
 			return nil, terror.Error(err, "Failed to scan battle lobby mech")
 		}
 
+		blm.QueuedBy = queuedByPlayer
 		bm.BoostedSpeed = int64(bm.Speed)
 		bm.BoostedMaxHitpoints = int64(bm.MaxHitpoints)
 		bm.BoostedShieldRechargeRate = int64(bm.ShieldRechargeRate)
@@ -571,6 +590,10 @@ func BattleLobbyInfoFilter(bl *BattleLobby, keepDataForFactionID string, keepAcc
 			battleLobbyMech.WeaponSlots = blm.WeaponSlots
 
 			battleLobbyMech.BlueprintMech = blm.BlueprintMech
+		}
+
+		if blm.QueuedBy != nil && blm.QueuedBy.FactionID.String == keepDataForFactionID {
+			battleLobbyMech.QueuedBy = blm.QueuedBy
 		}
 
 		battleLobby.BattleLobbiesMechs = append(battleLobby.BattleLobbiesMechs, battleLobbyMech)

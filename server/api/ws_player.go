@@ -100,7 +100,7 @@ func (pc *PlayerController) PlayerQueueStatusHandler(ctx context.Context, user *
 	}
 
 	blms, err := boiler.BattleLobbiesMechs(
-		boiler.BattleLobbiesMechWhere.OwnerID.EQ(user.ID),
+		boiler.BattleLobbiesMechWhere.QueuedByID.EQ(user.ID),
 		boiler.BattleLobbiesMechWhere.RefundTXID.IsNull(),
 		boiler.BattleLobbiesMechWhere.EndedAt.IsNull(),
 	).All(gamedb.StdConn)

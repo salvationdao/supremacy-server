@@ -117,7 +117,7 @@ func GetNextBattleLobby(battleLobbyIDs []string) (*boiler.BattleLobby, error) {
 	// build excluding player query
 	excludingPlayerQuery := ""
 	if len(excludingPlayerIDs) > 0 {
-		excludingPlayerQuery += fmt.Sprintf("AND %s NOT IN(", boiler.BattleLobbiesMechTableColumns.OwnerID)
+		excludingPlayerQuery += fmt.Sprintf("AND %s NOT IN(", boiler.BattleLobbiesMechTableColumns.QueuedByID)
 		for i, id := range excludingPlayerIDs {
 			excludingPlayerQuery += "'" + id + "'"
 
@@ -186,7 +186,7 @@ func playersInLobbies(battleLobbyIDs []string) ([]string, error) {
 		rows, err := boiler.NewQuery(
 			qm.Select(fmt.Sprintf(
 				"DISTINCT(_blm.%s)",
-				boiler.BattleLobbiesMechColumns.OwnerID,
+				boiler.BattleLobbiesMechColumns.QueuedByID,
 			)),
 			qm.From(fmt.Sprintf(
 				"(SELECT %s FROM %s WHERE %s NOTNULL AND %s ISNULL AND %s ISNULL %s) _bl",
@@ -200,7 +200,7 @@ func playersInLobbies(battleLobbyIDs []string) ([]string, error) {
 			qm.InnerJoin(fmt.Sprintf(
 				"(SELECT %s, %s FROM %s WHERE %s ISNULL AND %s ISNULL) _blm ON _blm.%s = _bl.%s",
 				boiler.BattleLobbiesMechColumns.BattleLobbyID,
-				boiler.BattleLobbiesMechColumns.OwnerID,
+				boiler.BattleLobbiesMechColumns.QueuedByID,
 				boiler.TableNames.BattleLobbiesMechs,
 				boiler.BattleLobbiesMechColumns.RefundTXID,
 				boiler.BattleLobbiesMechColumns.DeletedAt,

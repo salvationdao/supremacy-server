@@ -24,7 +24,7 @@ import (
 // BattleMech is an object representing the database table.
 type BattleMech struct {
 	BattleID     string      `boiler:"battle_id" boil:"battle_id" json:"battle_id" toml:"battle_id" yaml:"battle_id"`
-	OwnerID      string      `boiler:"owner_id" boil:"owner_id" json:"owner_id" toml:"owner_id" yaml:"owner_id"`
+	PilotedByID  string      `boiler:"piloted_by_id" boil:"piloted_by_id" json:"piloted_by_id" toml:"piloted_by_id" yaml:"piloted_by_id"`
 	FactionID    string      `boiler:"faction_id" boil:"faction_id" json:"faction_id" toml:"faction_id" yaml:"faction_id"`
 	Killed       null.Time   `boiler:"killed" boil:"killed" json:"killed,omitempty" toml:"killed" yaml:"killed,omitempty"`
 	Kills        int         `boiler:"kills" boil:"kills" json:"kills" toml:"kills" yaml:"kills"`
@@ -42,7 +42,7 @@ type BattleMech struct {
 
 var BattleMechColumns = struct {
 	BattleID     string
-	OwnerID      string
+	PilotedByID  string
 	FactionID    string
 	Killed       string
 	Kills        string
@@ -55,7 +55,7 @@ var BattleMechColumns = struct {
 	KilledByID   string
 }{
 	BattleID:     "battle_id",
-	OwnerID:      "owner_id",
+	PilotedByID:  "piloted_by_id",
 	FactionID:    "faction_id",
 	Killed:       "killed",
 	Kills:        "kills",
@@ -70,7 +70,7 @@ var BattleMechColumns = struct {
 
 var BattleMechTableColumns = struct {
 	BattleID     string
-	OwnerID      string
+	PilotedByID  string
 	FactionID    string
 	Killed       string
 	Kills        string
@@ -83,7 +83,7 @@ var BattleMechTableColumns = struct {
 	KilledByID   string
 }{
 	BattleID:     "battle_mechs.battle_id",
-	OwnerID:      "battle_mechs.owner_id",
+	PilotedByID:  "battle_mechs.piloted_by_id",
 	FactionID:    "battle_mechs.faction_id",
 	Killed:       "battle_mechs.killed",
 	Kills:        "battle_mechs.kills",
@@ -100,7 +100,7 @@ var BattleMechTableColumns = struct {
 
 var BattleMechWhere = struct {
 	BattleID     whereHelperstring
-	OwnerID      whereHelperstring
+	PilotedByID  whereHelperstring
 	FactionID    whereHelperstring
 	Killed       whereHelpernull_Time
 	Kills        whereHelperint
@@ -113,7 +113,7 @@ var BattleMechWhere = struct {
 	KilledByID   whereHelpernull_String
 }{
 	BattleID:     whereHelperstring{field: "\"battle_mechs\".\"battle_id\""},
-	OwnerID:      whereHelperstring{field: "\"battle_mechs\".\"owner_id\""},
+	PilotedByID:  whereHelperstring{field: "\"battle_mechs\".\"piloted_by_id\""},
 	FactionID:    whereHelperstring{field: "\"battle_mechs\".\"faction_id\""},
 	Killed:       whereHelpernull_Time{field: "\"battle_mechs\".\"killed\""},
 	Kills:        whereHelperint{field: "\"battle_mechs\".\"kills\""},
@@ -128,26 +128,26 @@ var BattleMechWhere = struct {
 
 // BattleMechRels is where relationship names are stored.
 var BattleMechRels = struct {
-	Battle   string
-	Mech     string
-	Faction  string
-	KilledBy string
-	Owner    string
+	Battle    string
+	Mech      string
+	Faction   string
+	KilledBy  string
+	PilotedBy string
 }{
-	Battle:   "Battle",
-	Mech:     "Mech",
-	Faction:  "Faction",
-	KilledBy: "KilledBy",
-	Owner:    "Owner",
+	Battle:    "Battle",
+	Mech:      "Mech",
+	Faction:   "Faction",
+	KilledBy:  "KilledBy",
+	PilotedBy: "PilotedBy",
 }
 
 // battleMechR is where relationships are stored.
 type battleMechR struct {
-	Battle   *Battle  `boiler:"Battle" boil:"Battle" json:"Battle" toml:"Battle" yaml:"Battle"`
-	Mech     *Mech    `boiler:"Mech" boil:"Mech" json:"Mech" toml:"Mech" yaml:"Mech"`
-	Faction  *Faction `boiler:"Faction" boil:"Faction" json:"Faction" toml:"Faction" yaml:"Faction"`
-	KilledBy *Mech    `boiler:"KilledBy" boil:"KilledBy" json:"KilledBy" toml:"KilledBy" yaml:"KilledBy"`
-	Owner    *Player  `boiler:"Owner" boil:"Owner" json:"Owner" toml:"Owner" yaml:"Owner"`
+	Battle    *Battle  `boiler:"Battle" boil:"Battle" json:"Battle" toml:"Battle" yaml:"Battle"`
+	Mech      *Mech    `boiler:"Mech" boil:"Mech" json:"Mech" toml:"Mech" yaml:"Mech"`
+	Faction   *Faction `boiler:"Faction" boil:"Faction" json:"Faction" toml:"Faction" yaml:"Faction"`
+	KilledBy  *Mech    `boiler:"KilledBy" boil:"KilledBy" json:"KilledBy" toml:"KilledBy" yaml:"KilledBy"`
+	PilotedBy *Player  `boiler:"PilotedBy" boil:"PilotedBy" json:"PilotedBy" toml:"PilotedBy" yaml:"PilotedBy"`
 }
 
 // NewStruct creates a new relationship struct
@@ -159,8 +159,8 @@ func (*battleMechR) NewStruct() *battleMechR {
 type battleMechL struct{}
 
 var (
-	battleMechAllColumns            = []string{"battle_id", "owner_id", "faction_id", "killed", "kills", "damage_taken", "updated_at", "created_at", "faction_won", "mech_survived", "mech_id", "killed_by_id"}
-	battleMechColumnsWithoutDefault = []string{"battle_id", "owner_id", "faction_id", "mech_id"}
+	battleMechAllColumns            = []string{"battle_id", "piloted_by_id", "faction_id", "killed", "kills", "damage_taken", "updated_at", "created_at", "faction_won", "mech_survived", "mech_id", "killed_by_id"}
+	battleMechColumnsWithoutDefault = []string{"battle_id", "piloted_by_id", "faction_id", "mech_id"}
 	battleMechColumnsWithDefault    = []string{"killed", "kills", "damage_taken", "updated_at", "created_at", "faction_won", "mech_survived", "killed_by_id"}
 	battleMechPrimaryKeyColumns     = []string{"battle_id", "mech_id"}
 	battleMechGeneratedColumns      = []string{}
@@ -467,10 +467,10 @@ func (o *BattleMech) KilledBy(mods ...qm.QueryMod) mechQuery {
 	return query
 }
 
-// Owner pointed to by the foreign key.
-func (o *BattleMech) Owner(mods ...qm.QueryMod) playerQuery {
+// PilotedBy pointed to by the foreign key.
+func (o *BattleMech) PilotedBy(mods ...qm.QueryMod) playerQuery {
 	queryMods := []qm.QueryMod{
-		qm.Where("\"id\" = ?", o.OwnerID),
+		qm.Where("\"id\" = ?", o.PilotedByID),
 		qmhelper.WhereIsNull("deleted_at"),
 	}
 
@@ -905,9 +905,9 @@ func (battleMechL) LoadKilledBy(e boil.Executor, singular bool, maybeBattleMech 
 	return nil
 }
 
-// LoadOwner allows an eager lookup of values, cached into the
+// LoadPilotedBy allows an eager lookup of values, cached into the
 // loaded structs of the objects. This is for an N-1 relationship.
-func (battleMechL) LoadOwner(e boil.Executor, singular bool, maybeBattleMech interface{}, mods queries.Applicator) error {
+func (battleMechL) LoadPilotedBy(e boil.Executor, singular bool, maybeBattleMech interface{}, mods queries.Applicator) error {
 	var slice []*BattleMech
 	var object *BattleMech
 
@@ -922,7 +922,7 @@ func (battleMechL) LoadOwner(e boil.Executor, singular bool, maybeBattleMech int
 		if object.R == nil {
 			object.R = &battleMechR{}
 		}
-		args = append(args, object.OwnerID)
+		args = append(args, object.PilotedByID)
 
 	} else {
 	Outer:
@@ -932,12 +932,12 @@ func (battleMechL) LoadOwner(e boil.Executor, singular bool, maybeBattleMech int
 			}
 
 			for _, a := range args {
-				if a == obj.OwnerID {
+				if a == obj.PilotedByID {
 					continue Outer
 				}
 			}
 
-			args = append(args, obj.OwnerID)
+			args = append(args, obj.PilotedByID)
 
 		}
 	}
@@ -986,22 +986,22 @@ func (battleMechL) LoadOwner(e boil.Executor, singular bool, maybeBattleMech int
 
 	if singular {
 		foreign := resultSlice[0]
-		object.R.Owner = foreign
+		object.R.PilotedBy = foreign
 		if foreign.R == nil {
 			foreign.R = &playerR{}
 		}
-		foreign.R.OwnerBattleMechs = append(foreign.R.OwnerBattleMechs, object)
+		foreign.R.PilotedByBattleMechs = append(foreign.R.PilotedByBattleMechs, object)
 		return nil
 	}
 
 	for _, local := range slice {
 		for _, foreign := range resultSlice {
-			if local.OwnerID == foreign.ID {
-				local.R.Owner = foreign
+			if local.PilotedByID == foreign.ID {
+				local.R.PilotedBy = foreign
 				if foreign.R == nil {
 					foreign.R = &playerR{}
 				}
-				foreign.R.OwnerBattleMechs = append(foreign.R.OwnerBattleMechs, local)
+				foreign.R.PilotedByBattleMechs = append(foreign.R.PilotedByBattleMechs, local)
 				break
 			}
 		}
@@ -1227,10 +1227,10 @@ func (o *BattleMech) RemoveKilledBy(exec boil.Executor, related *Mech) error {
 	return nil
 }
 
-// SetOwner of the battleMech to the related item.
-// Sets o.R.Owner to related.
-// Adds o to related.R.OwnerBattleMechs.
-func (o *BattleMech) SetOwner(exec boil.Executor, insert bool, related *Player) error {
+// SetPilotedBy of the battleMech to the related item.
+// Sets o.R.PilotedBy to related.
+// Adds o to related.R.PilotedByBattleMechs.
+func (o *BattleMech) SetPilotedBy(exec boil.Executor, insert bool, related *Player) error {
 	var err error
 	if insert {
 		if err = related.Insert(exec, boil.Infer()); err != nil {
@@ -1240,7 +1240,7 @@ func (o *BattleMech) SetOwner(exec boil.Executor, insert bool, related *Player) 
 
 	updateQuery := fmt.Sprintf(
 		"UPDATE \"battle_mechs\" SET %s WHERE %s",
-		strmangle.SetParamNames("\"", "\"", 1, []string{"owner_id"}),
+		strmangle.SetParamNames("\"", "\"", 1, []string{"piloted_by_id"}),
 		strmangle.WhereClause("\"", "\"", 2, battleMechPrimaryKeyColumns),
 	)
 	values := []interface{}{related.ID, o.BattleID, o.MechID}
@@ -1253,21 +1253,21 @@ func (o *BattleMech) SetOwner(exec boil.Executor, insert bool, related *Player) 
 		return errors.Wrap(err, "failed to update local table")
 	}
 
-	o.OwnerID = related.ID
+	o.PilotedByID = related.ID
 	if o.R == nil {
 		o.R = &battleMechR{
-			Owner: related,
+			PilotedBy: related,
 		}
 	} else {
-		o.R.Owner = related
+		o.R.PilotedBy = related
 	}
 
 	if related.R == nil {
 		related.R = &playerR{
-			OwnerBattleMechs: BattleMechSlice{o},
+			PilotedByBattleMechs: BattleMechSlice{o},
 		}
 	} else {
-		related.R.OwnerBattleMechs = append(related.R.OwnerBattleMechs, o)
+		related.R.PilotedByBattleMechs = append(related.R.PilotedByBattleMechs, o)
 	}
 
 	return nil

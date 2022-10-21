@@ -253,13 +253,13 @@ func (arena *Arena) NotifyUpcomingWarMachines() {
 				continue
 			}
 
-			player, err := boiler.FindPlayer(gamedb.StdConn, blm.OwnerID)
+			player, err := boiler.FindPlayer(gamedb.StdConn, blm.QueuedByID)
 			if err != nil {
-				gamelog.L.Error().Err(err).Str("player id", blm.OwnerID).Msg("Failed to load player")
+				gamelog.L.Error().Err(err).Str("player id", blm.QueuedByID).Msg("Failed to load player")
 				continue
 			}
 
-			playerUUID := uuid.FromStringOrNil(blm.OwnerID)
+			playerUUID := uuid.FromStringOrNil(blm.QueuedByID)
 
 			mech, err := blm.Mech(
 				qm.Load(boiler.MechRels.BattleQueueNotifications),
@@ -289,7 +289,7 @@ func (arena *Arena) NotifyUpcomingWarMachines() {
 					gamelog.L.Info().Str("TelegramNotificationID", n.TelegramNotificationID.String).Msg("sending telegram notification")
 					err = arena.Manager.telegram.NotifyDEPRECATED(n.TelegramNotificationID.String, notificationMsg)
 					if err != nil {
-						gamelog.L.Error().Str("log_name", "battle arena").Err(err).Str("mech_id", blm.MechID).Str("owner_id", blm.OwnerID).Time("queued_at", blm.CreatedAt).Str("telegram id", n.TelegramNotificationID.String).Msg("failed to notify telegram")
+						gamelog.L.Error().Str("log_name", "battle arena").Err(err).Str("mech_id", blm.MechID).Str("queued_by_id", blm.QueuedByID).Time("queued_at", blm.CreatedAt).Str("telegram id", n.TelegramNotificationID.String).Msg("failed to notify telegram")
 					}
 					sent = true
 				}
@@ -321,7 +321,7 @@ func (arena *Arena) NotifyUpcomingWarMachines() {
 				blm.IsNotified = true
 				_, err = blm.Update(gamedb.StdConn, boil.Whitelist(boiler.BattleLobbiesMechColumns.IsNotified))
 				if err != nil {
-					gamelog.L.Error().Str("log_name", "battle arena").Err(err).Str("mech_id", blm.MechID).Str("owner_id", blm.OwnerID).Time("queued_at", blm.CreatedAt).Msg("failed to update notified column")
+					gamelog.L.Error().Str("log_name", "battle arena").Err(err).Str("mech_id", blm.MechID).Str("queued_by_id", blm.QueuedByID).Time("queued_at", blm.CreatedAt).Msg("failed to update notified column")
 				}
 				continue
 			}
@@ -407,7 +407,7 @@ func (arena *Arena) NotifyUpcomingWarMachines() {
 				gamelog.L.Info().Str("player_id", player.ID).Msg("sending telegram notification")
 				err = arena.Manager.telegram.Notify(prefs.TelegramID.Int64, notificationMsg)
 				if err != nil {
-					gamelog.L.Error().Str("log_name", "battle arena").Err(err).Str("mech_id", blm.MechID).Str("owner_id", blm.OwnerID).Time("queued_at", blm.CreatedAt).Str("telegram id", fmt.Sprintf("%v", prefs.TelegramID)).Msg("failed to send telegram notification")
+					gamelog.L.Error().Str("log_name", "battle arena").Err(err).Str("mech_id", blm.MechID).Str("queued_by_id", blm.QueuedByID).Time("queued_at", blm.CreatedAt).Str("telegram id", fmt.Sprintf("%v", prefs.TelegramID)).Msg("failed to send telegram notification")
 					_, err = arena.Manager.RPCClient.RefundSupsMessage(notifyTransactionID)
 					if err != nil {
 						gamelog.L.Error().Str("log_name", "battle arena").Str("txID", notifyTransactionID).Err(err).Msg("failed to refund notification queue fee")
@@ -421,7 +421,7 @@ func (arena *Arena) NotifyUpcomingWarMachines() {
 			blm.IsNotified = true
 			_, err = blm.Update(gamedb.StdConn, boil.Whitelist(boiler.BattleLobbiesMechColumns.IsNotified))
 			if err != nil {
-				gamelog.L.Error().Str("log_name", "battle arena").Err(err).Str("mech_id", blm.MechID).Str("owner_id", blm.OwnerID).Time("queued_at", blm.CreatedAt).Msg("failed to update notified column")
+				gamelog.L.Error().Str("log_name", "battle arena").Err(err).Str("mech_id", blm.MechID).Str("queued_by_id", blm.QueuedByID).Time("queued_at", blm.CreatedAt).Msg("failed to update notified column")
 			}
 		}
 	}

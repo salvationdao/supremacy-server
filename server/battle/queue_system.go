@@ -9,6 +9,7 @@ import (
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 	"golang.org/x/exp/slices"
+	"math/rand"
 	"server"
 	"server/db"
 	"server/db/boiler"
@@ -108,28 +109,28 @@ func broadcastBattleLobbyUpdate(battleLobbyIDs ...string) {
 
 		// check joined players
 		for _, blm := range bl.BattleLobbiesMechs {
-			if blm.Owner == nil || !blm.Owner.FactionID.Valid {
+			if blm.QueuedBy == nil || !blm.QueuedBy.FactionID.Valid {
 				continue
 			}
 
-			ownerID := blm.Owner.ID
-			factionID := blm.Owner.FactionID.String
+			queuedByID := blm.QueuedBy.ID
+			factionID := blm.QueuedBy.FactionID.String
 
-			_, ok := playerInvolvedLobbiesMap[ownerID]
+			_, ok := playerInvolvedLobbiesMap[queuedByID]
 			if !ok {
-				playerInvolvedLobbiesMap[ownerID] = &playerInvolveLobby{
+				playerInvolvedLobbiesMap[queuedByID] = &playerInvolveLobby{
 					factionID: factionID,
 					bls:       []*server.BattleLobby{},
 				}
 			}
 
 			// skip, if the player already have the lobby on their list
-			if slices.IndexFunc(playerInvolvedLobbiesMap[ownerID].bls, func(battleLobby *server.BattleLobby) bool { return battleLobby.ID == bl.ID }) != -1 {
+			if slices.IndexFunc(playerInvolvedLobbiesMap[queuedByID].bls, func(battleLobby *server.BattleLobby) bool { return battleLobby.ID == bl.ID }) != -1 {
 				continue
 			}
 
 			// otherwise, append to lobby to the player's list
-			playerInvolvedLobbiesMap[ownerID].bls = append(playerInvolvedLobbiesMap[ownerID].bls, bl)
+			playerInvolvedLobbiesMap[queuedByID].bls = append(playerInvolvedLobbiesMap[queuedByID].bls, bl)
 		}
 	}
 
@@ -230,17 +231,56 @@ func (am *ArenaManager) DefaultPublicLobbiesCheck() error {
 	return nil
 }
 
-func BroadcastMechQueueStatus(playerID string, mechIDs ...string) {
+// BroadcastMechQueueStatus broadcast mechs queue status
+// NOTE: player id maybe empty string
+func BroadcastMechQueueStatus(mechIDs []string) {
 	if len(mechIDs) == 0 {
 		return
 	}
 
-	mechInfo, err := db.OwnedMechsBrief(playerID, mechIDs...)
+	mechInfo, err := db.LobbyMechsBrief("", mechIDs...)
 	if err != nil {
 		return
 	}
 
-	ws.PublishMessage(fmt.Sprintf("/secure/user/%s/owned_mechs", playerID), server.HubKeyPlayerMechsBrief, mechInfo)
+	factionStakedMechs := make(map[string][]*db.MechBrief)
+	playerMechs := make(map[string][]*db.MechBrief)
+	for _, m := range mechInfo {
+
+		// prepare player mech list
+		pm, ok := playerMechs[m.OwnerID]
+		if !ok {
+			pm = []*db.MechBrief{}
+		}
+		pm = append(pm, m)
+		playerMechs[m.OwnerID] = pm
+
+		// prepare faction staked mech list
+		if m.IsStaked {
+			fsm, ok := factionStakedMechs[m.FactionID.String]
+			if !ok {
+				fsm = []*db.MechBrief{}
+			}
+			fsm = append(fsm, m)
+			factionStakedMechs[m.FactionID.String] = fsm
+		}
+
+		ws.PublishMessage(fmt.Sprintf("/faction/%s/queue/%s", m.FactionID.String, m.ID), server.HubKeyPlayerAssetMechQueueSubscribe, server.MechArenaInfo{
+			Status:              m.Status,
+			CanDeploy:           m.CanDeploy,
+			BattleLobbyIsLocked: m.LobbyLockedAt.Valid,
+		})
+	}
+
+	// broadcast player owned mechs
+	for ownerID, pm := range playerMechs {
+		ws.PublishMessage(fmt.Sprintf("/secure/user/%s/owned_queueable_mechs", ownerID), server.HubKeyPlayerQueueableMechs, pm)
+	}
+
+	// broadcast faction staked mechs
+	for factionID, fsm := range factionStakedMechs {
+		ws.PublishMessage(fmt.Sprintf("/faction/%s/staked_mechs", factionID), server.HubKeyFactionStakedMechs, fsm)
+	}
 }
 
 func BroadcastPlayerQueueStatus(playerID string) {
@@ -250,7 +290,7 @@ func BroadcastPlayerQueueStatus(playerID string) {
 	}
 
 	blms, err := boiler.BattleLobbiesMechs(
-		boiler.BattleLobbiesMechWhere.OwnerID.EQ(playerID),
+		boiler.BattleLobbiesMechWhere.QueuedByID.EQ(playerID),
 		boiler.BattleLobbiesMechWhere.RefundTXID.IsNull(),
 		boiler.BattleLobbiesMechWhere.EndedAt.IsNull(),
 	).All(gamedb.StdConn)
@@ -298,38 +338,26 @@ func GenerateAIDrivenBattle() (*boiler.BattleLobby, error) {
 		return nil, terror.Error(err, "Failed to insert AI driven battle.")
 	}
 
-	// get default mechs
-	rows, err := boiler.NewQuery(
-		qm.Select(
-			boiler.MechTableColumns.ID,
-			boiler.CollectionItemTableColumns.OwnerID,
-			fmt.Sprintf(
-				"(SELECT %s FROM %s WHERE %s = %s)",
-				boiler.PlayerTableColumns.FactionID,
-				boiler.TableNames.Players,
-				boiler.PlayerTableColumns.ID,
-				boiler.CollectionItemTableColumns.OwnerID,
-			),
-		),
-
-		qm.From(fmt.Sprintf(
-			"(SELECT %s FROM %s WHERE %s = TRUE) %s",
-			boiler.MechTableColumns.ID,
-			boiler.TableNames.Mechs,
-			boiler.MechTableColumns.IsDefault,
-			boiler.TableNames.Mechs,
+	// get mechs from staked pool
+	sms, err := boiler.StakedMechs(
+		qm.Where(fmt.Sprintf(
+			"NOT EXISTS (SELECT 1 FROM %s WHERE %s = %s AND %s ISNULL)",
+			boiler.TableNames.RepairCases,
+			boiler.RepairCaseTableColumns.MechID,
+			boiler.StakedMechTableColumns.MechID,
+			boiler.RepairCaseTableColumns.CompletedAt,
 		)),
-
-		qm.InnerJoin(fmt.Sprintf(
-			"%s ON %s = %s",
-			boiler.TableNames.CollectionItems,
-			boiler.CollectionItemTableColumns.ItemID,
-			boiler.MechTableColumns.ID,
-		)),
-	).Query(tx)
+	).All(tx)
 	if err != nil {
-		l.Error().Err(err).Msg("Failed to load default mechs.")
-		return nil, terror.Error(err, "Failed to load default mechs.")
+		l.Error().Err(err).Msg("Failed to load staked mechs")
+		return nil, terror.Error(err, "Failed to load staked mechs.")
+	}
+
+	// shuffle list
+	rand.Seed(time.Now().UnixNano())
+	for i := range sms {
+		j := rand.Intn(i + 1)
+		sms[i], sms[j] = sms[j], sms[i]
 	}
 
 	// control insert mech amount
@@ -338,18 +366,8 @@ func GenerateAIDrivenBattle() (*boiler.BattleLobby, error) {
 	zaiCount := 0
 
 	var blms []*boiler.BattleLobbiesMech
-	for rows.Next() {
-		mechID := ""
-		ownerID := ""
-		factionID := ""
-
-		err = rows.Scan(&mechID, &ownerID, &factionID)
-		if err != nil {
-			l.Error().Err(err).Msg("Failed to scan mech info.")
-			return nil, terror.Error(err, "Failed to scan mech info.")
-		}
-
-		switch factionID {
+	for _, sm := range sms {
+		switch sm.FactionID {
 		case server.RedMountainFactionID:
 			if rmCount == bl.EachFactionMechAmount {
 				continue
@@ -369,9 +387,9 @@ func GenerateAIDrivenBattle() (*boiler.BattleLobby, error) {
 
 		blms = append(blms, &boiler.BattleLobbiesMech{
 			BattleLobbyID: bl.ID,
-			MechID:        mechID,
-			OwnerID:       ownerID,
-			FactionID:     factionID,
+			MechID:        sm.MechID,
+			QueuedByID:    sm.OwnerID,
+			FactionID:     sm.FactionID,
 			LockedAt:      bl.ReadyAt,
 		})
 	}
