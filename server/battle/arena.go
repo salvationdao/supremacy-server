@@ -119,9 +119,18 @@ func NewArenaManager(opts *Opts) (*ArenaManager, error) {
 		boiler.BattleLobbyWhere.IsAiDrivenMatch.EQ(true),
 	).UpdateAll(gamedb.StdConn, boiler.M{
 		boiler.BattleLobbyColumns.DeletedAt: null.TimeFrom(time.Now()),
+		boiler.BattleLobbyColumns.EndedAt:   null.TimeFrom(time.Now()),
 	})
 	if err != nil {
 		return nil, terror.Error(err, "Failed to delete unfinished AI battles.")
+	}
+
+	_, err = boiler.BattleLobbiesMechs().UpdateAll(gamedb.StdConn, boiler.M{
+		boiler.BattleLobbiesMechColumns.DeletedAt: null.TimeFrom(time.Now()),
+		boiler.BattleLobbiesMechColumns.EndedAt:   null.TimeFrom(time.Now()),
+	})
+	if err != nil {
+		return nil, terror.Error(err, "Failed to delete unfinished AI battles mechs.")
 	}
 
 	err = stackedAIMechsCheck()
@@ -398,24 +407,45 @@ func (am *ArenaManager) NewArena(battleArena *boiler.BattleArena, wsConn *websoc
 		case <-time.After(1 * time.Second): // timeout
 		}
 
-		if btl := a.CurrentBattle(); btl != nil && btl.replaySession.ReplaySession != nil {
-			err = replay.RecordReplayRequest(btl.Battle, btl.replaySession.ReplaySession.ID, replay.StopRecording)
-			if err != nil {
-				gamelog.L.Error().Str("battle_id", btl.ID).Str("replay_id", btl.replaySession.ReplaySession.ID).Err(err).Msg("failed to stop recording during game client disconnection")
+		if btl := a.CurrentBattle(); btl != nil {
+
+			// clean up the battle if it is an AI match
+			if btl.lobby != nil && btl.lobby.IsAiDrivenMatch {
+				btl.lobby.EndedAt = null.TimeFrom(time.Now())
+				btl.lobby.DeletedAt = null.TimeFrom(time.Now())
+				_, err = btl.lobby.Update(gamedb.StdConn, boil.Whitelist(boiler.BattleLobbyColumns.EndedAt, boiler.BattleLobbyColumns.DeletedAt))
+				if err != nil {
+					gamelog.L.Error().Str("battle_id", btl.ID).Str("battle lobby id", btl.lobby.ID).Err(err).Msg("failed to close ai battle lobby")
+				}
+
+				_, err = btl.lobby.BattleLobbiesMechs().UpdateAll(gamedb.StdConn, boiler.M{
+					boiler.BattleLobbiesMechColumns.EndedAt:   null.TimeFrom(time.Now()),
+					boiler.BattleLobbiesMechColumns.DeletedAt: null.TimeFrom(time.Now()),
+				})
+				if err != nil {
+					gamelog.L.Error().Str("battle_id", btl.ID).Str("battle lobby id", btl.lobby.ID).Err(err).Msg("failed to clean up battle lobbies mechs from AI match.")
+				}
 			}
 
-			var eventByte []byte
-			eventByte, err = json.Marshal(btl.replaySession.Events)
-			if err != nil {
-				gamelog.L.Error().Err(err).Str("battle_id", btl.ID).Str("replay_id", btl.replaySession.ReplaySession.ID).Interface("Events", btl.replaySession.Events).Msg("Failed to marshal json into battle replay")
-			} else {
-				btl.replaySession.ReplaySession.BattleEvents = null.JSONFrom(eventByte)
-			}
-			btl.replaySession.ReplaySession.StoppedAt = null.TimeFrom(time.Now())
-			btl.replaySession.ReplaySession.RecordingStatus = boiler.RecordingStatusSTOPPED
-			_, err = btl.replaySession.ReplaySession.Update(gamedb.StdConn, boil.Infer())
-			if err != nil {
-				gamelog.L.Error().Str("battle_id", btl.ID).Str("replay_id", btl.replaySession.ReplaySession.ID).Err(err).Msg("Failed to update replay session")
+			if btl.replaySession.ReplaySession != nil {
+				err = replay.RecordReplayRequest(btl.Battle, btl.replaySession.ReplaySession.ID, replay.StopRecording)
+				if err != nil {
+					gamelog.L.Error().Str("battle_id", btl.ID).Str("replay_id", btl.replaySession.ReplaySession.ID).Err(err).Msg("failed to stop recording during game client disconnection")
+				}
+
+				var eventByte []byte
+				eventByte, err = json.Marshal(btl.replaySession.Events)
+				if err != nil {
+					gamelog.L.Error().Err(err).Str("battle_id", btl.ID).Str("replay_id", btl.replaySession.ReplaySession.ID).Interface("Events", btl.replaySession.Events).Msg("Failed to marshal json into battle replay")
+				} else {
+					btl.replaySession.ReplaySession.BattleEvents = null.JSONFrom(eventByte)
+				}
+				btl.replaySession.ReplaySession.StoppedAt = null.TimeFrom(time.Now())
+				btl.replaySession.ReplaySession.RecordingStatus = boiler.RecordingStatusSTOPPED
+				_, err = btl.replaySession.ReplaySession.Update(gamedb.StdConn, boil.Infer())
+				if err != nil {
+					gamelog.L.Error().Str("battle_id", btl.ID).Str("replay_id", btl.replaySession.ReplaySession.ID).Err(err).Msg("Failed to update replay session")
+				}
 			}
 		}
 	}
