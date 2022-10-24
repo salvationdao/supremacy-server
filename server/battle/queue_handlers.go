@@ -11,7 +11,6 @@ import (
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
-	"server/xsyn_rpcclient"
 	"time"
 
 	"github.com/shopspring/decimal"
@@ -19,7 +18,6 @@ import (
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 	"golang.org/x/exp/slices"
 
-	"github.com/gofrs/uuid"
 	"github.com/ninja-software/terror/v2"
 	"github.com/ninja-syndicate/ws"
 	"github.com/volatiletech/sqlboiler/v4/boil"
@@ -45,7 +43,7 @@ func CalcNextQueueStatus(factionID string) {
 
 	ws.PublishMessage(fmt.Sprintf("/faction/%s/queue", factionID), WSQueueStatusSubscribe, QueueStatusResponse{
 		QueuePosition: pos + 1,
-		QueueCost:     db.GetDecimalWithDefault(db.KeyBattleQueueFee, decimal.New(0, 18)),
+		QueueCost:     decimal.Zero,
 	})
 }
 
@@ -179,7 +177,6 @@ func (am *ArenaManager) QueueJoinHandler(ctx context.Context, user *boiler.Playe
 	}
 
 	var tx *sql.Tx
-	paidTxID := ""
 
 	deployedMechIDs := []string{}
 	now := time.Now()
@@ -203,24 +200,12 @@ func (am *ArenaManager) QueueJoinHandler(ctx context.Context, user *boiler.Playe
 			}
 			defer tx.Rollback()
 
-			bqf := &boiler.BattleQueueFee{
-				MechID:   mci.ItemID,
-				PaidByID: user.ID,
-				Amount:   db.GetDecimalWithDefault(db.KeyBattleQueueFee, decimal.New(0, 18)),
-			}
-
-			err = bqf.Insert(tx, boil.Infer())
-			if err != nil {
-				return terror.Error(err, "Failed to insert battle queue fee.")
-			}
-
 			// Insert into battle queue
 			bq := &boiler.BattleQueue{
 				MechID:    mci.ItemID,
 				QueuedAt:  time.Now(),
 				FactionID: factionID,
 				OwnerID:   mci.OwnerID,
-				FeeID:     null.StringFrom(bqf.ID),
 			}
 			err = bq.Insert(tx, boil.Infer())
 			if err != nil {
@@ -228,43 +213,6 @@ func (am *ArenaManager) QueueJoinHandler(ctx context.Context, user *boiler.Playe
 					Interface("mech id", mci.ItemID).
 					Err(err).Msg("unable to insert mech into battle queue")
 				return terror.Error(err, "Unable to join queue, contact support or try again.")
-			}
-
-			if bqf.Amount.GreaterThan(decimal.Zero) {
-				// pay battle queue fee
-				paidTxID, err = am.RPCClient.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
-					FromUserID:           uuid.Must(uuid.FromString(user.ID)),
-					ToUserID:             uuid.Must(uuid.FromString(server.SupremacyBattleUserID)),
-					Amount:               bqf.Amount.StringFixed(0),
-					TransactionReference: server.TransactionReference(fmt.Sprintf("battle_queue_fee|%s|%d", mci.ItemID, time.Now().UnixNano())),
-					Group:                string(server.TransactionGroupSupremacy),
-					SubGroup:             string(server.TransactionGroupBattle),
-					Description:          "queue mech to join the battle arena.",
-				})
-				if err != nil {
-					gamelog.L.Error().
-						Str("player_id", user.ID).
-						Str("mech id", mci.ItemID).
-						Str("amount", bqf.Amount.StringFixed(0)).
-						Err(err).Msg("Failed to pay sups on queuing mech.")
-					return terror.Error(err, "Failed to pay sups on queuing mech.")
-				}
-
-				refundFunc := func() {
-					// refund queue fee
-					_, err = am.RPCClient.RefundSupsMessage(paidTxID)
-					if err != nil {
-						gamelog.L.Error().Str("log_name", "battle arena").Str("txID", paidTxID).Err(err).Msg("failed to refund queue fee")
-					}
-				}
-
-				bqf.PaidTXID = null.StringFrom(paidTxID)
-				_, err = bqf.Update(tx, boil.Whitelist(boiler.BattleQueueFeeColumns.PaidTXID))
-				if err != nil {
-					refundFunc()
-					gamelog.L.Error().Interface("battle queue fee", bqf).Err(err).Msg("Failed to update battle queue fee transaction id")
-					return terror.Error(err, "Failed to update queue fee transaction id")
-				}
 			}
 
 			// stop repair offers, if there is any
@@ -286,7 +234,6 @@ func (am *ArenaManager) QueueJoinHandler(ctx context.Context, user *boiler.Playe
 						return nil
 					})
 					if err != nil {
-						refundFunc()
 						return err
 					}
 				}
@@ -295,7 +242,6 @@ func (am *ArenaManager) QueueJoinHandler(ctx context.Context, user *boiler.Playe
 			// Commit transaction
 			err = tx.Commit()
 			if err != nil {
-				refundFunc()
 				gamelog.L.Error().Str("log_name", "battle arena").
 					Interface("mech id", mci.ItemID).
 					Err(err).Msg("unable to commit mech insertion into queue")
