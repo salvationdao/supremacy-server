@@ -924,7 +924,7 @@ func (btl *Battle) RewardBattleMechOwners(winningFactionOrder []string) {
 						totalSups.Mul(btl.lobby.SecondFactionCut).Div(playerPerFaction[blm.FactionID]),
 						taxRatio,
 						blm,
-						bonusSups, // bonus sups
+						bonusSups,                                  // bonus sups
 						slices.Index(afkMechIDs, blm.MechID) != -1, // if mech is in the afk mech list
 						false,
 					)
@@ -948,7 +948,7 @@ func (btl *Battle) RewardBattleMechOwners(winningFactionOrder []string) {
 						totalSups.Mul(btl.lobby.ThirdFactionCut).Div(playerPerFaction[blm.FactionID]),
 						taxRatio,
 						blm,
-						bonusSups, // bonus sups
+						bonusSups,                                  // bonus sups
 						slices.Index(afkMechIDs, blm.MechID) != -1, // if mech is in the afk mech list
 						true,
 					)
@@ -2331,7 +2331,9 @@ func (btl *Battle) Load(battleLobby *boiler.BattleLobby) error {
 		mech.OwnerID = queuedByID
 		mech.Owner = &server.User{
 			Username: queuedBy.Username.String,
+			Gid:      queuedBy.Gid,
 		}
+
 	}
 
 	btl.WarMachines = btl.MechsToWarMachines(mechs)
