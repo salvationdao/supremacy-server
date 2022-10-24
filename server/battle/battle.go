@@ -833,6 +833,17 @@ func (btl *Battle) RewardBattleMechOwners(winningFactionOrder []string) {
 		return
 	}
 
+	extraBattleRewards, err := btl.lobby.BattleLobbyExtraSupsRewards(
+		boiler.BattleLobbyExtraSupsRewardWhere.RefundedTXID.IsNull(),
+	).All(gamedb.StdConn)
+	if err != nil {
+		gamelog.L.Error().Err(err).Msg("Failed to load extra battle reward.")
+	}
+
+	for _, ebr := range extraBattleRewards {
+		totalSups = totalSups.Add(ebr.Amount)
+	}
+
 	// get players per faction
 	playerPerFaction := make(map[string]decimal.Decimal)
 	for _, blm := range blms {

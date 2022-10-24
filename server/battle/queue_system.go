@@ -338,14 +338,36 @@ func GenerateAIDrivenBattle() (*boiler.BattleLobby, error) {
 		return nil, terror.Error(err, "Failed to insert AI driven battle.")
 	}
 
-	// get mechs from staked pool
+	// get mechs from staked pool (not damaged and not AI)
 	sms, err := boiler.StakedMechs(
+		qm.InnerJoin(fmt.Sprintf(
+			"%s ON %s = %s AND %s = FALSE",
+			boiler.TableNames.Players,
+			boiler.StakedMechTableColumns.OwnerID,
+			boiler.PlayerTableColumns.ID,
+			boiler.PlayerTableColumns.IsAi,
+		)),
+		qm.InnerJoin(fmt.Sprintf(
+			"%s ON %s = %s",
+			boiler.TableNames.Mechs,
+			boiler.MechTableColumns.ID,
+			boiler.StakedMechTableColumns.MechID,
+		)),
+		qm.InnerJoin(fmt.Sprintf(
+			"%s ON %s = %s",
+			boiler.TableNames.BlueprintMechs,
+			boiler.BlueprintMechTableColumns.ID,
+			boiler.MechTableColumns.BlueprintID,
+		)),
 		qm.Where(fmt.Sprintf(
-			"NOT EXISTS (SELECT 1 FROM %s WHERE %s = %s AND %s ISNULL)",
+			`NOT EXISTS (SELECT 1 FROM %s WHERE %s = %s AND %s ISNULL AND %s < (%s - %s)*2)`,
 			boiler.TableNames.RepairCases,
 			boiler.RepairCaseTableColumns.MechID,
 			boiler.StakedMechTableColumns.MechID,
 			boiler.RepairCaseTableColumns.CompletedAt,
+			boiler.BlueprintMechTableColumns.RepairBlocks,
+			boiler.RepairCaseTableColumns.BlocksRequiredRepair,
+			boiler.RepairCaseTableColumns.BlocksRepaired,
 		)),
 	).All(tx)
 	if err != nil {
@@ -394,9 +416,50 @@ func GenerateAIDrivenBattle() (*boiler.BattleLobby, error) {
 		})
 	}
 
+	// if not enough player mechs, insert AI mechs
 	if rmCount < bl.EachFactionMechAmount || bcCount < bl.EachFactionMechAmount || zaiCount < bl.EachFactionMechAmount {
-		l.Error().Err(err).Msg("Not enough mech to generate AI driven match.")
-		return nil, terror.Error(err, "Not enough mech to generate AI driven match.")
+		// load AI mechs
+		stakedAIMechs, err := boiler.StakedMechs(
+			qm.Where(fmt.Sprintf(
+				`EXISTS (SELECT 1 FROM %s WHERE %s = %s AND %s = TRUE)`,
+				boiler.TableNames.Players,
+				boiler.PlayerTableColumns.ID,
+				boiler.StakedMechTableColumns.OwnerID,
+				boiler.PlayerTableColumns.IsAi,
+			)),
+		).All(gamedb.StdConn)
+		if err != nil {
+			l.Error().Err(err).Msg("Failed to load AI mechs.")
+			return nil, terror.Error(err, "Failed to load AI mechs.")
+		}
+
+		for _, sm := range stakedAIMechs {
+			switch sm.FactionID {
+			case server.RedMountainFactionID:
+				if rmCount == bl.EachFactionMechAmount {
+					continue
+				}
+				rmCount++
+			case server.BostonCyberneticsFactionID:
+				if bcCount == bl.EachFactionMechAmount {
+					continue
+				}
+				bcCount++
+			case server.ZaibatsuFactionID:
+				if zaiCount == bl.EachFactionMechAmount {
+					continue
+				}
+				zaiCount++
+			}
+
+			blms = append(blms, &boiler.BattleLobbiesMech{
+				BattleLobbyID: bl.ID,
+				MechID:        sm.MechID,
+				QueuedByID:    sm.OwnerID,
+				FactionID:     sm.FactionID,
+				LockedAt:      bl.ReadyAt,
+			})
+		}
 	}
 
 	for _, blm := range blms {

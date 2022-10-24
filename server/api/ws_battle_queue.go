@@ -1444,7 +1444,7 @@ func (api *API) BattleLobbyTopUpReward(ctx context.Context, user *boiler.Player,
 		blr := &boiler.BattleLobbyExtraSupsReward{
 			BattleLobbyID: bl.ID,
 			OfferedByID:   user.ID,
-			Amount:        req.Payload.Amount.Mul(decimal.New(1, 18)),
+			Amount:        amount,
 			PaidTXID:      paidTxID,
 		}
 
