@@ -27,7 +27,7 @@ type QueueJoinHandlerResponse struct {
 	Success bool `json:"success"`
 }
 
-type QueueJoinRequest struct {
+type MechQueueRequest struct {
 	Payload struct {
 		MechIDs []string `json:"mech_ids"`
 	} `json:"payload"`
@@ -50,7 +50,7 @@ func CalcNextQueueStatus(factionID string) {
 const WSQueueJoin = "BATTLE:QUEUE:JOIN"
 
 func (am *ArenaManager) QueueJoinHandler(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
-	req := &QueueJoinRequest{}
+	req := &MechQueueRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
 		gamelog.L.Error().Str("log_name", "battle arena").Str("msg", string(payload)).Err(err).Msg("unable to unmarshal queue join")
@@ -426,6 +426,87 @@ func (am *ArenaManager) QueueJoinHandler(ctx context.Context, user *boiler.Playe
 	reply(QueueJoinHandlerResponse{
 		Success: true,
 	})
+
+	return nil
+}
+
+const WSQueueLeave = "BATTLE:QUEUE:LEAVE"
+
+func (am *ArenaManager) QueueLeaveHandler(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
+	req := &MechQueueRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		gamelog.L.Error().Str("log_name", "battle arena").Str("msg", string(payload)).Err(err).Msg("unable to unmarshal queue join")
+		return err
+	}
+
+	bqs, err := boiler.BattleQueues(
+		boiler.BattleQueueWhere.MechID.IN(req.Payload.MechIDs),
+		boiler.BattleQueueWhere.OwnerID.EQ(user.ID),
+		boiler.BattleQueueWhere.BattleID.IsNull(),
+	).All(gamedb.StdConn)
+	if err != nil {
+		return terror.Error(err, "Failed to load battle queue.")
+	}
+
+	if bqs == nil {
+		return terror.Error(err, "Mech is not found.")
+	}
+
+	mechIDs := []string{}
+	for _, bq := range bqs {
+		mechIDs = append(mechIDs, bq.MechID)
+	}
+
+	_, err = bqs.DeleteAll(gamedb.StdConn)
+	if err != nil {
+		return terror.Error(err, "Failed to remove mech from the queue.")
+	}
+
+	rcs, err := boiler.RepairCases(
+		boiler.RepairCaseWhere.MechID.IN(mechIDs),
+		boiler.RepairCaseWhere.CompletedAt.IsNull(),
+		qm.Load(boiler.RepairCaseRels.RepairOffers, boiler.RepairOfferWhere.OfferedByID.IsNull()),
+	).All(gamedb.StdConn)
+	if err != nil {
+		gamelog.L.Error().Err(err).Msg("Failed to load repair cases.")
+		return terror.Error(err, "Failed to load repair cases")
+	}
+
+	for _, rc := range rcs {
+		if rc.R != nil && rc.R.RepairOffers != nil && len(rc.R.RepairOffers) > 0 {
+			err = am.SendRepairFunc(func() error {
+				ro := rc.R.RepairOffers[0]
+				ro.ClosedAt = null.TimeFromPtr(nil)
+				_, err = ro.Update(gamedb.StdConn, boil.Whitelist(boiler.RepairOfferColumns.ClosedAt))
+				if err != nil {
+					gamelog.L.Error().Err(err).Interface("repair offer", ro).Msg("Failed to reset repair offer.")
+					return terror.Error(err, "Failed to reset repair offer.")
+				}
+
+				return nil
+			})
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	// Send updated battle queue status to all subscribers
+	go CalcNextQueueStatus(factionID)
+
+	// broadcast queue detail
+	go func() {
+		qs, err := db.GetNextBattle(ctx)
+		if err != nil && !errors.Is(err, sql.ErrNoRows) {
+			gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("Failed to get mech arena status")
+			return
+		}
+
+		ws.PublishMessage("/public/arena/upcomming_battle", HubKeyNextBattleDetails, qs)
+	}()
+
+	reply(true)
 
 	return nil
 }
