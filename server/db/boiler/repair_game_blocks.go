@@ -26,8 +26,6 @@ import (
 type RepairGameBlock struct {
 	ID                   string          `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
 	Type                 string          `boiler:"type" boil:"type" json:"type" toml:"type" yaml:"type"`
-	MinSizeMultiplier    decimal.Decimal `boiler:"min_size_multiplier" boil:"min_size_multiplier" json:"min_size_multiplier" toml:"min_size_multiplier" yaml:"min_size_multiplier"`
-	MaxSizeMultiplier    decimal.Decimal `boiler:"max_size_multiplier" boil:"max_size_multiplier" json:"max_size_multiplier" toml:"max_size_multiplier" yaml:"max_size_multiplier"`
 	MinSpeedMultiplier   decimal.Decimal `boiler:"min_speed_multiplier" boil:"min_speed_multiplier" json:"min_speed_multiplier" toml:"min_speed_multiplier" yaml:"min_speed_multiplier"`
 	MaxSpeedMultiplier   decimal.Decimal `boiler:"max_speed_multiplier" boil:"max_speed_multiplier" json:"max_speed_multiplier" toml:"max_speed_multiplier" yaml:"max_speed_multiplier"`
 	ExtraSpeedMultiplier decimal.Decimal `boiler:"extra_speed_multiplier" boil:"extra_speed_multiplier" json:"extra_speed_multiplier" toml:"extra_speed_multiplier" yaml:"extra_speed_multiplier"`
@@ -43,8 +41,6 @@ type RepairGameBlock struct {
 var RepairGameBlockColumns = struct {
 	ID                   string
 	Type                 string
-	MinSizeMultiplier    string
-	MaxSizeMultiplier    string
 	MinSpeedMultiplier   string
 	MaxSpeedMultiplier   string
 	ExtraSpeedMultiplier string
@@ -55,8 +51,6 @@ var RepairGameBlockColumns = struct {
 }{
 	ID:                   "id",
 	Type:                 "type",
-	MinSizeMultiplier:    "min_size_multiplier",
-	MaxSizeMultiplier:    "max_size_multiplier",
 	MinSpeedMultiplier:   "min_speed_multiplier",
 	MaxSpeedMultiplier:   "max_speed_multiplier",
 	ExtraSpeedMultiplier: "extra_speed_multiplier",
@@ -69,8 +63,6 @@ var RepairGameBlockColumns = struct {
 var RepairGameBlockTableColumns = struct {
 	ID                   string
 	Type                 string
-	MinSizeMultiplier    string
-	MaxSizeMultiplier    string
 	MinSpeedMultiplier   string
 	MaxSpeedMultiplier   string
 	ExtraSpeedMultiplier string
@@ -81,8 +73,6 @@ var RepairGameBlockTableColumns = struct {
 }{
 	ID:                   "repair_game_blocks.id",
 	Type:                 "repair_game_blocks.type",
-	MinSizeMultiplier:    "repair_game_blocks.min_size_multiplier",
-	MaxSizeMultiplier:    "repair_game_blocks.max_size_multiplier",
 	MinSpeedMultiplier:   "repair_game_blocks.min_speed_multiplier",
 	MaxSpeedMultiplier:   "repair_game_blocks.max_speed_multiplier",
 	ExtraSpeedMultiplier: "repair_game_blocks.extra_speed_multiplier",
@@ -97,8 +87,6 @@ var RepairGameBlockTableColumns = struct {
 var RepairGameBlockWhere = struct {
 	ID                   whereHelperstring
 	Type                 whereHelperstring
-	MinSizeMultiplier    whereHelperdecimal_Decimal
-	MaxSizeMultiplier    whereHelperdecimal_Decimal
 	MinSpeedMultiplier   whereHelperdecimal_Decimal
 	MaxSpeedMultiplier   whereHelperdecimal_Decimal
 	ExtraSpeedMultiplier whereHelperdecimal_Decimal
@@ -109,8 +97,6 @@ var RepairGameBlockWhere = struct {
 }{
 	ID:                   whereHelperstring{field: "\"repair_game_blocks\".\"id\""},
 	Type:                 whereHelperstring{field: "\"repair_game_blocks\".\"type\""},
-	MinSizeMultiplier:    whereHelperdecimal_Decimal{field: "\"repair_game_blocks\".\"min_size_multiplier\""},
-	MaxSizeMultiplier:    whereHelperdecimal_Decimal{field: "\"repair_game_blocks\".\"max_size_multiplier\""},
 	MinSpeedMultiplier:   whereHelperdecimal_Decimal{field: "\"repair_game_blocks\".\"min_speed_multiplier\""},
 	MaxSpeedMultiplier:   whereHelperdecimal_Decimal{field: "\"repair_game_blocks\".\"max_speed_multiplier\""},
 	ExtraSpeedMultiplier: whereHelperdecimal_Decimal{field: "\"repair_game_blocks\".\"extra_speed_multiplier\""},
@@ -137,9 +123,9 @@ func (*repairGameBlockR) NewStruct() *repairGameBlockR {
 type repairGameBlockL struct{}
 
 var (
-	repairGameBlockAllColumns            = []string{"id", "type", "min_size_multiplier", "max_size_multiplier", "min_speed_multiplier", "max_speed_multiplier", "extra_speed_multiplier", "probability", "created_at", "updated_at", "deleted_at"}
+	repairGameBlockAllColumns            = []string{"id", "type", "min_speed_multiplier", "max_speed_multiplier", "extra_speed_multiplier", "probability", "created_at", "updated_at", "deleted_at"}
 	repairGameBlockColumnsWithoutDefault = []string{}
-	repairGameBlockColumnsWithDefault    = []string{"id", "type", "min_size_multiplier", "max_size_multiplier", "min_speed_multiplier", "max_speed_multiplier", "extra_speed_multiplier", "probability", "created_at", "updated_at", "deleted_at"}
+	repairGameBlockColumnsWithDefault    = []string{"id", "type", "min_speed_multiplier", "max_speed_multiplier", "extra_speed_multiplier", "probability", "created_at", "updated_at", "deleted_at"}
 	repairGameBlockPrimaryKeyColumns     = []string{"id"}
 	repairGameBlockGeneratedColumns      = []string{}
 )

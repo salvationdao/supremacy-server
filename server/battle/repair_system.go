@@ -758,7 +758,6 @@ func (am *ArenaManager) RepairGameBlockProcesser(repairAgentID string, repairGam
 			nextRepairBlock = &boiler.RepairGameBlockLog{
 				RepairAgentID:       repairAgentID,
 				RepairGameBlockType: boiler.RepairGameBlockTypeEND,
-				SizeMultiplier:      decimal.NewFromInt(1),
 				SpeedMultiplier:     decimal.NewFromInt(1),
 				TriggerKey:          boiler.RepairGameBlockTriggerKeySPACEBAR,
 				Width:               decimal.NewFromInt(10),
@@ -796,19 +795,16 @@ func (am *ArenaManager) RepairGameBlockProcesser(repairAgentID string, repairGam
 			rand.Shuffle(len(keys), func(i, j int) { keys[i], keys[j] = keys[j], keys[i] })
 
 			block := pool[0]
-			sizeMultiDiff := block.MaxSizeMultiplier.Sub(block.MinSizeMultiplier).Mul(decimal.NewFromFloat(rand.Float64()))
-			sizeMultiplier := block.MaxSizeMultiplier.Sub(sizeMultiDiff)
 			speedMultiDiff := block.MaxSpeedMultiplier.Sub(block.MinSpeedMultiplier).Mul(decimal.NewFromFloat(rand.Float64()))
 			speedMultiplier := block.MinSpeedMultiplier.Add(speedMultiDiff).Mul(block.MaxSpeedMultiplier)
 
 			nextRepairBlock = &boiler.RepairGameBlockLog{
 				RepairAgentID:       repairAgentID,
 				RepairGameBlockType: block.Type,
-				SizeMultiplier:      sizeMultiplier,
 				SpeedMultiplier:     speedMultiplier,
 				TriggerKey:          keys[0],
-				Width:               stackedBlockDimension.Width.Mul(sizeMultiplier).Round(5),
-				Depth:               stackedBlockDimension.Depth.Mul(sizeMultiplier).Round(5),
+				Width:               stackedBlockDimension.Width.Round(5),
+				Depth:               stackedBlockDimension.Depth.Round(5),
 			}
 
 			err = nextRepairBlock.Insert(tx, boil.Infer())
