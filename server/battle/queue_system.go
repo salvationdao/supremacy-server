@@ -360,6 +360,13 @@ func GenerateAIDrivenBattle() (*boiler.BattleLobby, error) {
 			boiler.MechTableColumns.BlueprintID,
 		)),
 		qm.Where(fmt.Sprintf(
+			"NOT EXITS (SELECT 1 FROM %s WHERE %s = %s AND %s ISNULL)",
+			boiler.TableNames.BattleLobbiesMechs,
+			boiler.BattleLobbiesMechTableColumns.MechID,
+			boiler.StakedMechTableColumns.MechID,
+			boiler.BattleLobbiesMechTableColumns.EndedAt,
+		)),
+		qm.Where(fmt.Sprintf(
 			`NOT EXISTS (SELECT 1 FROM %s WHERE %s = %s AND %s ISNULL AND %s < (%s - %s)*2)`,
 			boiler.TableNames.RepairCases,
 			boiler.RepairCaseTableColumns.MechID,

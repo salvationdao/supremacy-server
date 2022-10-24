@@ -1266,7 +1266,7 @@ func (arena *Arena) start() {
 			}(arena, msg.BattleCommand, data)
 
 		case Tick:
-			if btl := arena.CurrentBattle(); btl != nil && btl.state.Load() == BattlingState {
+			if btl := arena.CurrentBattle(); btl != nil {
 				go btl.Tick(payload)
 			}
 
@@ -1346,11 +1346,6 @@ func (arena *Arena) GameClientJsonDataParser() {
 			btl.start()
 
 		case "BATTLE:WAR_MACHINE_DESTROYED":
-			// do not process, if battle already ended
-			if btl.state.Load() == EndState {
-				continue
-			}
-
 			var dataPayload BattleWMDestroyedPayload
 			if err = json.Unmarshal(msg.Payload, &dataPayload); err != nil {
 				L.Warn().Err(err).Msg("unable to unmarshal battle message warmachine destroyed payload")
