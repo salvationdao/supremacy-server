@@ -45,7 +45,7 @@ func CalcNextQueueStatus(factionID string) {
 
 	ws.PublishMessage(fmt.Sprintf("/faction/%s/queue", factionID), WSQueueStatusSubscribe, QueueStatusResponse{
 		QueuePosition: pos + 1,
-		QueueCost:     db.GetDecimalWithDefault(db.KeyBattleQueueFee, decimal.New(100, 18)),
+		QueueCost:     db.GetDecimalWithDefault(db.KeyBattleQueueFee, decimal.New(0, 18)),
 	})
 }
 
@@ -206,7 +206,7 @@ func (am *ArenaManager) QueueJoinHandler(ctx context.Context, user *boiler.Playe
 			bqf := &boiler.BattleQueueFee{
 				MechID:   mci.ItemID,
 				PaidByID: user.ID,
-				Amount:   db.GetDecimalWithDefault(db.KeyBattleQueueFee, decimal.New(100, 18)),
+				Amount:   db.GetDecimalWithDefault(db.KeyBattleQueueFee, decimal.New(0, 18)),
 			}
 
 			err = bqf.Insert(tx, boil.Infer())
@@ -230,39 +230,41 @@ func (am *ArenaManager) QueueJoinHandler(ctx context.Context, user *boiler.Playe
 				return terror.Error(err, "Unable to join queue, contact support or try again.")
 			}
 
-			// pay battle queue fee
-			paidTxID, err = am.RPCClient.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
-				FromUserID:           uuid.Must(uuid.FromString(user.ID)),
-				ToUserID:             uuid.Must(uuid.FromString(server.SupremacyBattleUserID)),
-				Amount:               bqf.Amount.StringFixed(0),
-				TransactionReference: server.TransactionReference(fmt.Sprintf("battle_queue_fee|%s|%d", mci.ItemID, time.Now().UnixNano())),
-				Group:                string(server.TransactionGroupSupremacy),
-				SubGroup:             string(server.TransactionGroupBattle),
-				Description:          "queue mech to join the battle arena.",
-			})
-			if err != nil {
-				gamelog.L.Error().
-					Str("player_id", user.ID).
-					Str("mech id", mci.ItemID).
-					Str("amount", bqf.Amount.StringFixed(0)).
-					Err(err).Msg("Failed to pay sups on queuing mech.")
-				return terror.Error(err, "Failed to pay sups on queuing mech.")
-			}
-
-			refundFunc := func() {
-				// refund queue fee
-				_, err = am.RPCClient.RefundSupsMessage(paidTxID)
+			if bqf.Amount.GreaterThan(decimal.Zero) {
+				// pay battle queue fee
+				paidTxID, err = am.RPCClient.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
+					FromUserID:           uuid.Must(uuid.FromString(user.ID)),
+					ToUserID:             uuid.Must(uuid.FromString(server.SupremacyBattleUserID)),
+					Amount:               bqf.Amount.StringFixed(0),
+					TransactionReference: server.TransactionReference(fmt.Sprintf("battle_queue_fee|%s|%d", mci.ItemID, time.Now().UnixNano())),
+					Group:                string(server.TransactionGroupSupremacy),
+					SubGroup:             string(server.TransactionGroupBattle),
+					Description:          "queue mech to join the battle arena.",
+				})
 				if err != nil {
-					gamelog.L.Error().Str("log_name", "battle arena").Str("txID", paidTxID).Err(err).Msg("failed to refund queue fee")
+					gamelog.L.Error().
+						Str("player_id", user.ID).
+						Str("mech id", mci.ItemID).
+						Str("amount", bqf.Amount.StringFixed(0)).
+						Err(err).Msg("Failed to pay sups on queuing mech.")
+					return terror.Error(err, "Failed to pay sups on queuing mech.")
 				}
-			}
 
-			bqf.PaidTXID = null.StringFrom(paidTxID)
-			_, err = bqf.Update(tx, boil.Whitelist(boiler.BattleQueueFeeColumns.PaidTXID))
-			if err != nil {
-				refundFunc()
-				gamelog.L.Error().Interface("battle queue fee", bqf).Err(err).Msg("Failed to update battle queue fee transaction id")
-				return terror.Error(err, "Failed to update queue fee transaction id")
+				refundFunc := func() {
+					// refund queue fee
+					_, err = am.RPCClient.RefundSupsMessage(paidTxID)
+					if err != nil {
+						gamelog.L.Error().Str("log_name", "battle arena").Str("txID", paidTxID).Err(err).Msg("failed to refund queue fee")
+					}
+				}
+
+				bqf.PaidTXID = null.StringFrom(paidTxID)
+				_, err = bqf.Update(tx, boil.Whitelist(boiler.BattleQueueFeeColumns.PaidTXID))
+				if err != nil {
+					refundFunc()
+					gamelog.L.Error().Interface("battle queue fee", bqf).Err(err).Msg("Failed to update battle queue fee transaction id")
+					return terror.Error(err, "Failed to update queue fee transaction id")
+				}
 			}
 
 			// stop repair offers, if there is any

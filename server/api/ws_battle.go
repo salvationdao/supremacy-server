@@ -305,7 +305,7 @@ func (api *API) QueueStatusSubscribeHandler(ctx context.Context, user *boiler.Pl
 
 	reply(battle.QueueStatusResponse{
 		QueuePosition: pos + 1,
-		QueueCost:     db.GetDecimalWithDefault(db.KeyBattleQueueFee, decimal.New(100, 18)),
+		QueueCost:     db.GetDecimalWithDefault(db.KeyBattleQueueFee, decimal.New(0, 18)),
 	})
 	return nil
 }

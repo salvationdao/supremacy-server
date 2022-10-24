@@ -813,7 +813,7 @@ func (btl *Battle) QueueDefaultMechs(queueReqMap map[string]*QueueDefaultMechReq
 
 		// pay queue fee from treasury when it is not in production
 		if !server.IsProductionEnv() {
-			amount := db.GetDecimalWithDefault(db.KeyBattleQueueFee, decimal.New(100, 18))
+			amount := db.GetDecimalWithDefault(db.KeyBattleQueueFee, decimal.New(0, 18))
 
 			bqf := &boiler.BattleQueueFee{
 				MechID:   mech.ID,
@@ -826,42 +826,44 @@ func (btl *Battle) QueueDefaultMechs(queueReqMap map[string]*QueueDefaultMechReq
 				return terror.Error(err, "Failed to insert battle queue fee.")
 			}
 
-			paidTxID, err := btl.arena.RPCClient.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
-				FromUserID:           uuid.UUID(server.XsynTreasuryUserID), // paid from treasury fund
-				ToUserID:             uuid.Must(uuid.FromString(server.SupremacyBattleUserID)),
-				Amount:               amount.StringFixed(0),
-				TransactionReference: server.TransactionReference(fmt.Sprintf("battle_queue_fee|%s|%d", mech.ID, time.Now().UnixNano())),
-				Group:                string(server.TransactionGroupSupremacy),
-				SubGroup:             string(server.TransactionGroupBattle),
-				Description:          "queue mech to join the battle arena.",
-			})
-			if err != nil {
-				gamelog.L.Error().
-					Str("faction_user_id", mech.OwnerID).
-					Str("mech id", mech.ID).
-					Str("amount", amount.StringFixed(0)).
-					Err(err).Msg("Failed to pay sups on queuing default mech.")
-				return terror.Error(err, "Failed to pay sups on queuing mech.")
-			}
-
-			refundFunc := func() {
-				_, err = btl.arena.RPCClient.RefundSupsMessage(paidTxID)
+			if bqf.Amount.GreaterThan(decimal.Zero) {
+				paidTxID, err := btl.arena.RPCClient.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
+					FromUserID:           uuid.UUID(server.XsynTreasuryUserID), // paid from treasury fund
+					ToUserID:             uuid.Must(uuid.FromString(server.SupremacyBattleUserID)),
+					Amount:               amount.StringFixed(0),
+					TransactionReference: server.TransactionReference(fmt.Sprintf("battle_queue_fee|%s|%d", mech.ID, time.Now().UnixNano())),
+					Group:                string(server.TransactionGroupSupremacy),
+					SubGroup:             string(server.TransactionGroupBattle),
+					Description:          "queue mech to join the battle arena.",
+				})
 				if err != nil {
 					gamelog.L.Error().
-						Str("player_id", server.XsynTreasuryUserID.String()).
+						Str("faction_user_id", mech.OwnerID).
 						Str("mech id", mech.ID).
 						Str("amount", amount.StringFixed(0)).
-						Err(err).Msg("Failed to refund sups on queuing default mech.")
+						Err(err).Msg("Failed to pay sups on queuing default mech.")
+					return terror.Error(err, "Failed to pay sups on queuing mech.")
 				}
-			}
 
-			bq.QueueFeeTXID = null.StringFrom(paidTxID)
-			bq.FeeID = null.StringFrom(bqf.ID)
-			_, err = bq.Update(tx, boil.Whitelist(boiler.BattleQueueColumns.QueueFeeTXID, boiler.BattleQueueColumns.FeeID))
-			if err != nil {
-				refundFunc() // refund player
-				gamelog.L.Error().Err(err).Msg("Failed to record queue fee tx id")
-				return terror.Error(err, "Failed to update battle queue")
+				refundFunc := func() {
+					_, err = btl.arena.RPCClient.RefundSupsMessage(paidTxID)
+					if err != nil {
+						gamelog.L.Error().
+							Str("player_id", server.XsynTreasuryUserID.String()).
+							Str("mech id", mech.ID).
+							Str("amount", amount.StringFixed(0)).
+							Err(err).Msg("Failed to refund sups on queuing default mech.")
+					}
+				}
+
+				bq.QueueFeeTXID = null.StringFrom(paidTxID)
+				bq.FeeID = null.StringFrom(bqf.ID)
+				_, err = bq.Update(tx, boil.Whitelist(boiler.BattleQueueColumns.QueueFeeTXID, boiler.BattleQueueColumns.FeeID))
+				if err != nil {
+					refundFunc() // refund player
+					gamelog.L.Error().Err(err).Msg("Failed to record queue fee tx id")
+					return terror.Error(err, "Failed to update battle queue")
+				}
 			}
 		}
 	}
