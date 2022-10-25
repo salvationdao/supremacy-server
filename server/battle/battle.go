@@ -866,34 +866,6 @@ func (btl *Battle) RewardBattleMechOwners(winningFactionOrder []string) {
 	// reward sups
 	taxRatio := db.GetDecimalWithDefault(db.KeyBattleRewardTaxRatio, decimal.NewFromFloat(0.025))
 
-	bonusSups := decimal.Zero
-	// check challenge fund balance
-	rewardedMechs, err := boiler.BattleMechs(
-		boiler.BattleMechWhere.BattleID.EQ(btl.ID),
-		qm.Where(fmt.Sprintf(
-			"EXISTS (SELECT 1 FROM %s WHERE %s = %s AND %s = %s AND %s ISNULL )",
-			boiler.TableNames.MechMoveCommandLogs,
-			boiler.MechMoveCommandLogTableColumns.BattleID,
-			boiler.BattleMechTableColumns.BattleID,
-			boiler.MechMoveCommandLogTableColumns.MechID,
-			boiler.BattleMechTableColumns.MechID,
-			boiler.MechMoveCommandLogTableColumns.DeletedAt,
-		)),
-	).All(gamedb.StdConn)
-	if err != nil {
-		gamelog.L.Error().Err(err).Msg("Failed to load battle active mechs.")
-	}
-	if rewardedMechs != nil {
-		// load challenge fund
-		challengeFund := btl.arena.Manager.RPCClient.UserBalanceGet(uuid.FromStringOrNil(server.SupremacyChallengeFundUserID))
-		bonus := db.GetDecimalWithDefault(db.KeyBattleSupsRewardBonus, decimal.New(45, 18))
-
-		// set bonus sups, if challenge fund has enough sups to distribute
-		if challengeFund.GreaterThanOrEqual(bonus.Mul(decimal.NewFromInt(int64(len(rewardedMechs))))) {
-			bonusSups = bonus
-		}
-	}
-
 	afkMechIDs := btl.AFKChecker()
 
 	for i, factionID := range winningFactionOrder {
@@ -913,7 +885,6 @@ func (btl *Battle) RewardBattleMechOwners(winningFactionOrder []string) {
 						totalSups.Mul(btl.lobby.FirstFactionCut).Div(playerPerFaction[blm.FactionID]),
 						taxRatio,
 						blm,
-						bonusSups,
 						slices.Index(afkMechIDs, blm.MechID) != -1, // if mech is in the afk mech list
 						false,
 					)
@@ -935,7 +906,6 @@ func (btl *Battle) RewardBattleMechOwners(winningFactionOrder []string) {
 						totalSups.Mul(btl.lobby.SecondFactionCut).Div(playerPerFaction[blm.FactionID]),
 						taxRatio,
 						blm,
-						bonusSups,                                  // bonus sups
 						slices.Index(afkMechIDs, blm.MechID) != -1, // if mech is in the afk mech list
 						false,
 					)
@@ -959,7 +929,6 @@ func (btl *Battle) RewardBattleMechOwners(winningFactionOrder []string) {
 						totalSups.Mul(btl.lobby.ThirdFactionCut).Div(playerPerFaction[blm.FactionID]),
 						taxRatio,
 						blm,
-						bonusSups,                                  // bonus sups
 						slices.Index(afkMechIDs, blm.MechID) != -1, // if mech is in the afk mech list
 						true,
 					)
@@ -1024,7 +993,6 @@ func (btl *Battle) RewardMechOwner(
 	rewardedSups decimal.Decimal,
 	taxRatio decimal.Decimal,
 	battleLobbiesMech *boiler.BattleLobbiesMech,
-	bonusSups decimal.Decimal,
 	isAFK bool,
 	rewardAbility bool,
 ) {
@@ -1041,33 +1009,6 @@ func (btl *Battle) RewardMechOwner(
 	}
 
 	updateCols := []string{}
-	// reward bonus
-	if !isAFK && !owner.IsAi && bonusSups.GreaterThan(decimal.Zero) {
-		// transfer bonus reward
-		rewardBonusTXID, err := btl.arena.Manager.RPCClient.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
-			FromUserID:           uuid.FromStringOrNil(server.SupremacyChallengeFundUserID),
-			ToUserID:             uuid.Must(uuid.FromString(owner.ID)),
-			Amount:               bonusSups.StringFixed(0),
-			TransactionReference: server.TransactionReference(fmt.Sprintf("bonus_battle_reward|%s|%d", btl.ID, time.Now().UnixNano())),
-			Group:                string(server.TransactionGroupSupremacy),
-			SubGroup:             string(server.TransactionGroupBonusBattleReward), // for tracking bonus payout
-			Description:          fmt.Sprintf("bonus reward from battle #%d.", btl.BattleNumber),
-		})
-		if err != nil {
-			l.Error().Err(err).
-				Str("from", server.SupremacyBattleUserID).
-				Str("to", owner.ID).
-				Str("amount", bonusSups.StringFixed(0)).
-				Msg("Failed to pay player battle reward")
-		}
-
-		// update reward bonus, if successfully payout
-		if rewardBonusTXID != "" {
-			battleLobbiesMech.BonusSupsTXID = null.StringFrom(rewardBonusTXID)
-			updateCols = append(updateCols, boiler.BattleLobbiesMechColumns.BonusSupsTXID)
-			pw.RewardedSupsBonus = bonusSups
-		}
-	}
 
 	// reward sups
 	if pw.RewardedSups.GreaterThan(decimal.Zero) {
@@ -1192,7 +1133,6 @@ func (btl *Battle) RewardMechOwner(
 		pbm.BattleReward = pw
 	} else {
 		pbm.BattleReward.RewardedSups = pbm.BattleReward.RewardedSups.Add(rewardedSups)
-		pbm.BattleReward.RewardedSupsBonus = pbm.BattleReward.RewardedSupsBonus.Add(bonusSups)
 	}
 
 	// skip ability reward, if
