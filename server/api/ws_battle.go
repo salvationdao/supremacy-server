@@ -40,6 +40,7 @@ func NewBattleController(api *API) *BattleControllerWS {
 
 	// faction queue
 	api.SecureUserFactionCommand(battle.WSQueueJoin, api.ArenaManager.QueueJoinHandler)
+	api.SecureUserFactionCommand(battle.WSQueueLeave, api.ArenaManager.QueueLeaveHandler)
 	api.SecureUserFactionCommand(battle.WSMechArenaStatusUpdate, api.ArenaManager.AssetUpdateRequest)
 
 	api.SecureUserFactionCommand(battle.HubKeyPlayerAbilityUse, api.ArenaManager.PlayerAbilityUse)
@@ -305,7 +306,7 @@ func (api *API) QueueStatusSubscribeHandler(ctx context.Context, user *boiler.Pl
 
 	reply(battle.QueueStatusResponse{
 		QueuePosition: pos + 1,
-		QueueCost:     db.GetDecimalWithDefault(db.KeyBattleQueueFee, decimal.New(100, 18)),
+		QueueCost:     decimal.Zero,
 	})
 	return nil
 }

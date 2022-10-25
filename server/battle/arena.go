@@ -25,7 +25,6 @@ import (
 
 	"github.com/sasha-s/go-deadlock"
 
-	"github.com/shopspring/decimal"
 	"golang.org/x/exp/slices"
 
 	"github.com/go-chi/chi/v5"
@@ -67,6 +66,8 @@ type ArenaManager struct {
 	deadlock.RWMutex // lock for arena
 
 	ChallengeFundUpdateChan chan bool
+
+	BattleQueueMx deadlock.Mutex
 }
 
 type Opts struct {
@@ -96,6 +97,58 @@ func NewArenaManager(opts *Opts) (*ArenaManager, error) {
 		arenas:                   make(map[string]*Arena),
 
 		ChallengeFundUpdateChan: make(chan bool),
+	}
+
+	// clean up queued mechs
+	qfs, err := boiler.BattleQueueFees(
+		boiler.BattleQueueFeeWhere.PaidTXID.IsNotNull(),
+		boiler.BattleQueueFeeWhere.PayoutTXID.IsNull(),
+		qm.Where(fmt.Sprintf(
+			"EXISTS (SELECT 1 FROM %s WHERE %s = %s)",
+			boiler.TableNames.BattleQueue,
+			boiler.BattleQueueTableColumns.FeeID,
+			boiler.BattleQueueFeeTableColumns.ID,
+		)),
+	).All(gamedb.StdConn)
+	if err != nil {
+		return nil, terror.Error(err, "Failed to load unfinished battle queue fee.")
+	}
+
+	for _, qf := range qfs {
+		func() {
+			tx, err := gamedb.StdConn.Begin()
+			if err != nil {
+				gamelog.L.Error().Err(err).Msg("Failed to start db transaction.")
+				return
+			}
+
+			defer tx.Rollback()
+
+			qf.DeletedAt = null.TimeFrom(time.Now())
+			_, err = qf.Update(tx, boil.Whitelist(boiler.BattleQueueFeeColumns.DeletedAt))
+			if err != nil {
+				gamelog.L.Error().Err(err).Interface("battle queue fee", qf).Msg("Failed to soft delete battle queue fee.")
+				return
+			}
+
+			_, err = am.RPCClient.RefundSupsMessage(qf.PaidTXID.String)
+			if err != nil {
+				gamelog.L.Error().Err(err).Msg("Failed to refund battle queue fee")
+				return
+			}
+
+			err = tx.Commit()
+			if err != nil {
+				gamelog.L.Error().Err(err).Msg("Failed to commit db transaction.")
+				return
+			}
+		}()
+	}
+
+	// clean up the entire battle queue list
+	_, err = boiler.BattleQueues().DeleteAll(gamedb.StdConn)
+	if err != nil {
+		return nil, terror.Error(err, "Failed to clean up battle queue list.")
 	}
 
 	am.server = &http.Server{
@@ -810,60 +863,6 @@ func (btl *Battle) QueueDefaultMechs(queueReqMap map[string]*QueueDefaultMechReq
 		}
 
 		qr.amount -= 1
-
-		// pay queue fee from treasury when it is not in production
-		if !server.IsProductionEnv() {
-			amount := db.GetDecimalWithDefault(db.KeyBattleQueueFee, decimal.New(100, 18))
-
-			bqf := &boiler.BattleQueueFee{
-				MechID:   mech.ID,
-				PaidByID: mech.OwnerID,
-				Amount:   amount,
-			}
-
-			err = bqf.Insert(tx, boil.Infer())
-			if err != nil {
-				return terror.Error(err, "Failed to insert battle queue fee.")
-			}
-
-			paidTxID, err := btl.arena.RPCClient.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
-				FromUserID:           uuid.UUID(server.XsynTreasuryUserID), // paid from treasury fund
-				ToUserID:             uuid.Must(uuid.FromString(server.SupremacyBattleUserID)),
-				Amount:               amount.StringFixed(0),
-				TransactionReference: server.TransactionReference(fmt.Sprintf("battle_queue_fee|%s|%d", mech.ID, time.Now().UnixNano())),
-				Group:                string(server.TransactionGroupSupremacy),
-				SubGroup:             string(server.TransactionGroupBattle),
-				Description:          "queue mech to join the battle arena.",
-			})
-			if err != nil {
-				gamelog.L.Error().
-					Str("faction_user_id", mech.OwnerID).
-					Str("mech id", mech.ID).
-					Str("amount", amount.StringFixed(0)).
-					Err(err).Msg("Failed to pay sups on queuing default mech.")
-				return terror.Error(err, "Failed to pay sups on queuing mech.")
-			}
-
-			refundFunc := func() {
-				_, err = btl.arena.RPCClient.RefundSupsMessage(paidTxID)
-				if err != nil {
-					gamelog.L.Error().
-						Str("player_id", server.XsynTreasuryUserID.String()).
-						Str("mech id", mech.ID).
-						Str("amount", amount.StringFixed(0)).
-						Err(err).Msg("Failed to refund sups on queuing default mech.")
-				}
-			}
-
-			bq.QueueFeeTXID = null.StringFrom(paidTxID)
-			bq.FeeID = null.StringFrom(bqf.ID)
-			_, err = bq.Update(tx, boil.Whitelist(boiler.BattleQueueColumns.QueueFeeTXID, boiler.BattleQueueColumns.FeeID))
-			if err != nil {
-				refundFunc() // refund player
-				gamelog.L.Error().Err(err).Msg("Failed to record queue fee tx id")
-				return terror.Error(err, "Failed to update battle queue")
-			}
-		}
 	}
 
 	err = tx.Commit()

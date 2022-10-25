@@ -11,7 +11,6 @@ import (
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
-	"server/xsyn_rpcclient"
 	"time"
 
 	"github.com/shopspring/decimal"
@@ -19,7 +18,6 @@ import (
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 	"golang.org/x/exp/slices"
 
-	"github.com/gofrs/uuid"
 	"github.com/ninja-software/terror/v2"
 	"github.com/ninja-syndicate/ws"
 	"github.com/volatiletech/sqlboiler/v4/boil"
@@ -29,7 +27,7 @@ type QueueJoinHandlerResponse struct {
 	Success bool `json:"success"`
 }
 
-type QueueJoinRequest struct {
+type MechQueueRequest struct {
 	Payload struct {
 		MechIDs []string `json:"mech_ids"`
 	} `json:"payload"`
@@ -45,14 +43,14 @@ func CalcNextQueueStatus(factionID string) {
 
 	ws.PublishMessage(fmt.Sprintf("/faction/%s/queue", factionID), WSQueueStatusSubscribe, QueueStatusResponse{
 		QueuePosition: pos + 1,
-		QueueCost:     db.GetDecimalWithDefault(db.KeyBattleQueueFee, decimal.New(100, 18)),
+		QueueCost:     decimal.Zero,
 	})
 }
 
 const WSQueueJoin = "BATTLE:QUEUE:JOIN"
 
 func (am *ArenaManager) QueueJoinHandler(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
-	req := &QueueJoinRequest{}
+	req := &MechQueueRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
 		gamelog.L.Error().Str("log_name", "battle arena").Str("msg", string(payload)).Err(err).Msg("unable to unmarshal queue join")
@@ -132,6 +130,9 @@ func (am *ArenaManager) QueueJoinHandler(ctx context.Context, user *boiler.Playe
 		}
 	}
 
+	am.BattleQueueMx.Lock()
+	defer am.BattleQueueMx.Unlock()
+
 	// Check if any of the mechs exist in the battle queue
 	existMech, err := boiler.BattleQueues(boiler.BattleQueueWhere.MechID.IN(req.Payload.MechIDs)).One(gamedb.StdConn)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
@@ -178,15 +179,35 @@ func (am *ArenaManager) QueueJoinHandler(ctx context.Context, user *boiler.Playe
 		}
 	}
 
+	// check queue slot
+	bqs, err := boiler.BattleQueues(
+		boiler.BattleQueueWhere.FactionID.EQ(factionID),
+	).All(gamedb.StdConn)
+	if err != nil {
+		return terror.Error(err, "Failed to check battle queue.")
+	}
+
+	availableSlot := 6 // two battles maximum
+	if bqs != nil {
+		availableSlot -= len(bqs)
+	}
+
+	if availableSlot == 0 {
+		return terror.Error(fmt.Errorf("faction queue is full"), "The queue for your faction is currently full.")
+	}
+
 	var tx *sql.Tx
-	paidTxID := ""
 
 	deployedMechIDs := []string{}
 	now := time.Now()
 	nextRepairDurationSeconds := db.GetIntWithDefault(db.KeyAutoRepairDurationSeconds, 600)
 
 	// insert mech from the input order
-	for _, mechID := range req.Payload.MechIDs {
+	for i, mechID := range req.Payload.MechIDs {
+		if i >= availableSlot {
+			continue
+		}
+
 		idx := slices.IndexFunc(mcis, func(mci *boiler.CollectionItem) bool {
 			return mci.ItemID == mechID
 		})
@@ -203,24 +224,12 @@ func (am *ArenaManager) QueueJoinHandler(ctx context.Context, user *boiler.Playe
 			}
 			defer tx.Rollback()
 
-			bqf := &boiler.BattleQueueFee{
-				MechID:   mci.ItemID,
-				PaidByID: user.ID,
-				Amount:   db.GetDecimalWithDefault(db.KeyBattleQueueFee, decimal.New(100, 18)),
-			}
-
-			err = bqf.Insert(tx, boil.Infer())
-			if err != nil {
-				return terror.Error(err, "Failed to insert battle queue fee.")
-			}
-
 			// Insert into battle queue
 			bq := &boiler.BattleQueue{
 				MechID:    mci.ItemID,
 				QueuedAt:  time.Now(),
 				FactionID: factionID,
 				OwnerID:   mci.OwnerID,
-				FeeID:     null.StringFrom(bqf.ID),
 			}
 			err = bq.Insert(tx, boil.Infer())
 			if err != nil {
@@ -228,41 +237,6 @@ func (am *ArenaManager) QueueJoinHandler(ctx context.Context, user *boiler.Playe
 					Interface("mech id", mci.ItemID).
 					Err(err).Msg("unable to insert mech into battle queue")
 				return terror.Error(err, "Unable to join queue, contact support or try again.")
-			}
-
-			// pay battle queue fee
-			paidTxID, err = am.RPCClient.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
-				FromUserID:           uuid.Must(uuid.FromString(user.ID)),
-				ToUserID:             uuid.Must(uuid.FromString(server.SupremacyBattleUserID)),
-				Amount:               bqf.Amount.StringFixed(0),
-				TransactionReference: server.TransactionReference(fmt.Sprintf("battle_queue_fee|%s|%d", mci.ItemID, time.Now().UnixNano())),
-				Group:                string(server.TransactionGroupSupremacy),
-				SubGroup:             string(server.TransactionGroupBattle),
-				Description:          "queue mech to join the battle arena.",
-			})
-			if err != nil {
-				gamelog.L.Error().
-					Str("player_id", user.ID).
-					Str("mech id", mci.ItemID).
-					Str("amount", bqf.Amount.StringFixed(0)).
-					Err(err).Msg("Failed to pay sups on queuing mech.")
-				return terror.Error(err, "Failed to pay sups on queuing mech.")
-			}
-
-			refundFunc := func() {
-				// refund queue fee
-				_, err = am.RPCClient.RefundSupsMessage(paidTxID)
-				if err != nil {
-					gamelog.L.Error().Str("log_name", "battle arena").Str("txID", paidTxID).Err(err).Msg("failed to refund queue fee")
-				}
-			}
-
-			bqf.PaidTXID = null.StringFrom(paidTxID)
-			_, err = bqf.Update(tx, boil.Whitelist(boiler.BattleQueueFeeColumns.PaidTXID))
-			if err != nil {
-				refundFunc()
-				gamelog.L.Error().Interface("battle queue fee", bqf).Err(err).Msg("Failed to update battle queue fee transaction id")
-				return terror.Error(err, "Failed to update queue fee transaction id")
 			}
 
 			// stop repair offers, if there is any
@@ -284,7 +258,6 @@ func (am *ArenaManager) QueueJoinHandler(ctx context.Context, user *boiler.Playe
 						return nil
 					})
 					if err != nil {
-						refundFunc()
 						return err
 					}
 				}
@@ -293,7 +266,6 @@ func (am *ArenaManager) QueueJoinHandler(ctx context.Context, user *boiler.Playe
 			// Commit transaction
 			err = tx.Commit()
 			if err != nil {
-				refundFunc()
 				gamelog.L.Error().Str("log_name", "battle arena").
 					Interface("mech id", mci.ItemID).
 					Err(err).Msg("unable to commit mech insertion into queue")
@@ -478,6 +450,109 @@ func (am *ArenaManager) QueueJoinHandler(ctx context.Context, user *boiler.Playe
 	reply(QueueJoinHandlerResponse{
 		Success: true,
 	})
+
+	return nil
+}
+
+const WSQueueLeave = "BATTLE:QUEUE:LEAVE"
+
+func (am *ArenaManager) QueueLeaveHandler(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
+	req := &MechQueueRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		gamelog.L.Error().Str("log_name", "battle arena").Str("msg", string(payload)).Err(err).Msg("unable to unmarshal queue join")
+		return err
+	}
+
+	bqs, err := boiler.BattleQueues(
+		boiler.BattleQueueWhere.MechID.IN(req.Payload.MechIDs),
+		boiler.BattleQueueWhere.OwnerID.EQ(user.ID),
+		boiler.BattleQueueWhere.BattleID.IsNull(),
+	).All(gamedb.StdConn)
+	if err != nil {
+		return terror.Error(err, "Failed to load battle queue.")
+	}
+
+	if bqs == nil {
+		return terror.Error(err, "Mech is not found.")
+	}
+
+	mechIDs := []string{}
+	for _, bq := range bqs {
+		mechIDs = append(mechIDs, bq.MechID)
+	}
+
+	_, err = bqs.DeleteAll(gamedb.StdConn)
+	if err != nil {
+		return terror.Error(err, "Failed to remove mech from the queue.")
+	}
+
+	rcs, err := boiler.RepairCases(
+		boiler.RepairCaseWhere.MechID.IN(mechIDs),
+		boiler.RepairCaseWhere.CompletedAt.IsNull(),
+		qm.Load(boiler.RepairCaseRels.RepairOffers, boiler.RepairOfferWhere.OfferedByID.IsNull()),
+	).All(gamedb.StdConn)
+	if err != nil {
+		gamelog.L.Error().Err(err).Msg("Failed to load repair cases.")
+		return terror.Error(err, "Failed to load repair cases")
+	}
+
+	for _, rc := range rcs {
+		if rc.R != nil && rc.R.RepairOffers != nil && len(rc.R.RepairOffers) > 0 {
+			err = am.SendRepairFunc(func() error {
+				ro := rc.R.RepairOffers[0]
+				ro.ClosedAt = null.TimeFromPtr(nil)
+				_, err = ro.Update(gamedb.StdConn, boil.Whitelist(boiler.RepairOfferColumns.ClosedAt))
+				if err != nil {
+					gamelog.L.Error().Err(err).Interface("repair offer", ro).Msg("Failed to reset repair offer.")
+					return terror.Error(err, "Failed to reset repair offer.")
+				}
+
+				return nil
+			})
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	for _, mechID := range mechIDs {
+		// broadcast queue detail
+		go func(mechID string) {
+			collectionItem, err := boiler.CollectionItems(
+				boiler.CollectionItemWhere.OwnerID.EQ(user.ID),
+				boiler.CollectionItemWhere.ItemType.EQ(boiler.ItemTypeMech),
+				boiler.CollectionItemWhere.ItemID.EQ(mechID),
+			).One(gamedb.StdConn)
+			if err != nil {
+				gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("Failed to get mech collection item")
+				return
+			}
+
+			qs, err := db.GetCollectionItemStatus(*collectionItem)
+			if err != nil {
+				gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("Failed to get mech arena status")
+				return
+			}
+			ws.PublishMessage(fmt.Sprintf("/faction/%s/queue/%s", factionID, mechID), WSPlayerAssetMechQueueSubscribe, qs)
+		}(mechID)
+	}
+
+	// Send updated battle queue status to all subscribers
+	go CalcNextQueueStatus(factionID)
+
+	// broadcast queue detail
+	go func() {
+		qs, err := db.GetNextBattle(ctx)
+		if err != nil && !errors.Is(err, sql.ErrNoRows) {
+			gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("Failed to get mech arena status")
+			return
+		}
+
+		ws.PublishMessage("/public/arena/upcomming_battle", HubKeyNextBattleDetails, qs)
+	}()
+
+	reply(true)
 
 	return nil
 }
