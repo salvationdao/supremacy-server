@@ -99,6 +99,58 @@ func NewArenaManager(opts *Opts) (*ArenaManager, error) {
 		ChallengeFundUpdateChan: make(chan bool),
 	}
 
+	// clean up queued mechs
+	qfs, err := boiler.BattleQueueFees(
+		boiler.BattleQueueFeeWhere.PaidTXID.IsNotNull(),
+		boiler.BattleQueueFeeWhere.PayoutTXID.IsNull(),
+		qm.Where(fmt.Sprintf(
+			"EXISTS (SELECT 1 FROM %s WHERE %s = %s)",
+			boiler.TableNames.BattleQueue,
+			boiler.BattleQueueTableColumns.FeeID,
+			boiler.BattleQueueFeeTableColumns.ID,
+		)),
+	).All(gamedb.StdConn)
+	if err != nil {
+		return nil, terror.Error(err, "Failed to load unfinished battle queue fee.")
+	}
+
+	for _, qf := range qfs {
+		func() {
+			tx, err := gamedb.StdConn.Begin()
+			if err != nil {
+				gamelog.L.Error().Err(err).Msg("Failed to start db transaction.")
+				return
+			}
+
+			defer tx.Rollback()
+
+			qf.DeletedAt = null.TimeFrom(time.Now())
+			_, err = qf.Update(tx, boil.Whitelist(boiler.BattleQueueFeeColumns.DeletedAt))
+			if err != nil {
+				gamelog.L.Error().Err(err).Interface("battle queue fee", qf).Msg("Failed to soft delete battle queue fee.")
+				return
+			}
+
+			_, err = am.RPCClient.RefundSupsMessage(qf.PaidTXID.String)
+			if err != nil {
+				gamelog.L.Error().Err(err).Msg("Failed to refund battle queue fee")
+				return
+			}
+
+			err = tx.Commit()
+			if err != nil {
+				gamelog.L.Error().Err(err).Msg("Failed to commit db transaction.")
+				return
+			}
+		}()
+	}
+
+	// clean up the entire battle queue list
+	_, err = boiler.BattleQueues().DeleteAll(gamedb.StdConn)
+	if err != nil {
+		return nil, terror.Error(err, "Failed to clean up battle queue list.")
+	}
+
 	am.server = &http.Server{
 		Handler:      am,
 		ReadTimeout:  am.timeout,
