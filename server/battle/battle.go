@@ -882,7 +882,7 @@ func (btl *Battle) RewardBattleMechOwners(winningFactionOrder []string) {
 		switch i {
 		case 0: // winning faction
 			for _, bq := range bqs {
-				if bq.FactionID == factionID && bq.R != nil && bq.R.Fee != nil && bq.R.Owner != nil {
+				if bq.FactionID == factionID && bq.R != nil && bq.R.Owner != nil {
 					player := bq.R.Owner
 					// skip AI player, when it is in production
 					if server.IsProductionEnv() && player.IsAi {
@@ -902,7 +902,7 @@ func (btl *Battle) RewardBattleMechOwners(winningFactionOrder []string) {
 
 		case 1: // second faction
 			for _, bq := range bqs {
-				if bq.FactionID == factionID && bq.R != nil && bq.R.Fee != nil && bq.R.Owner != nil {
+				if bq.FactionID == factionID && bq.R != nil && bq.R.Owner != nil {
 					player := bq.R.Owner
 					// skip AI player, when it is in production
 					if server.IsProductionEnv() && player.IsAi {
@@ -922,7 +922,7 @@ func (btl *Battle) RewardBattleMechOwners(winningFactionOrder []string) {
 
 		case 2: // lose faction
 			for _, bq := range bqs {
-				if bq.FactionID == factionID && bq.R != nil && bq.R.Fee != nil && bq.R.Owner != nil {
+				if bq.FactionID == factionID && bq.R != nil && bq.R.Owner != nil {
 					player := bq.R.Owner
 
 					// skip AI player, when it is in production
@@ -1025,11 +1025,11 @@ func (btl *Battle) RewardMechOwner(
 		tax := reward.Mul(taxRatio)
 		challengeFund := decimal.New(1, 18)
 
-		// if player is AI, pay reward back to treasury fund, and return
-		if owner.IsAi {
+		func() {
+			// otherwise, pay battle reward to the actual player
 			_, err := btl.arena.RPCClient.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
-				FromUserID:           uuid.Must(uuid.FromString(server.SupremacyBattleUserID)),
-				ToUserID:             uuid.UUID(server.XsynTreasuryUserID),
+				FromUserID:           uuid.Must(uuid.FromString(server.SupremacyChallengeFundUserID)),
+				ToUserID:             uuid.Must(uuid.FromString(owner.ID)),
 				Amount:               reward.StringFixed(0),
 				TransactionReference: server.TransactionReference(fmt.Sprintf("battle_reward|%s|%d", btl.ID, time.Now().UnixNano())),
 				Group:                string(server.TransactionGroupSupremacy),
@@ -1038,72 +1038,51 @@ func (btl *Battle) RewardMechOwner(
 			})
 			if err != nil {
 				l.Error().Err(err).
-					Str("from", server.SupremacyBattleUserID).
+					Str("from", server.SupremacyChallengeFundUserID).
 					Str("to", owner.ID).
 					Str("amount", reward.StringFixed(0)).
-					Msg("Failed to pay player battel reward")
+					Msg("Failed to pay player battle reward")
+				return
 			}
-		} else {
-			func() {
-				// otherwise, pay battle reward to the actual player
-				_, err := btl.arena.RPCClient.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
-					FromUserID:           uuid.Must(uuid.FromString(server.SupremacyChallengeFundUserID)),
-					ToUserID:             uuid.Must(uuid.FromString(owner.ID)),
-					Amount:               reward.StringFixed(0),
-					TransactionReference: server.TransactionReference(fmt.Sprintf("battle_reward|%s|%d", btl.ID, time.Now().UnixNano())),
-					Group:                string(server.TransactionGroupSupremacy),
-					SubGroup:             string(server.TransactionGroupBattle),
-					Description:          fmt.Sprintf("reward from battle #%d.", btl.BattleNumber),
-				})
-				if err != nil {
-					l.Error().Err(err).
-						Str("from", server.SupremacyChallengeFundUserID).
-						Str("to", owner.ID).
-						Str("amount", reward.StringFixed(0)).
-						Msg("Failed to pay player battle reward")
-					return
-				}
 
-				// pay reward tax
-				_, err = btl.arena.RPCClient.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
-					FromUserID:           uuid.Must(uuid.FromString(owner.ID)),
-					ToUserID:             uuid.FromStringOrNil(server.SupremacyChallengeFundUserID), // NOTE: send fees to challenge fund for now. (was treasury)
-					Amount:               tax.StringFixed(0),
-					TransactionReference: server.TransactionReference(fmt.Sprintf("battle_reward_tax|%s|%d", btl.ID, time.Now().UnixNano())),
-					Group:                string(server.TransactionGroupSupremacy),
-					SubGroup:             string(server.TransactionGroupBattle),
-					Description:          fmt.Sprintf("reward tax from battle #%d.", btl.BattleNumber),
-				})
-				if err != nil {
-					l.Error().Err(err).
-						Str("from", owner.ID).
-						Str("to", server.SupremacyChallengeFundUserID).
-						Str("amount", tax.StringFixed(0)).
-						Msg("Failed to pay player battle reward")
-					return
-				}
+			// pay reward tax
+			_, err = btl.arena.RPCClient.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
+				FromUserID:           uuid.Must(uuid.FromString(owner.ID)),
+				ToUserID:             uuid.FromStringOrNil(server.SupremacyChallengeFundUserID), // NOTE: send fees to challenge fund for now. (was treasury)
+				Amount:               tax.StringFixed(0),
+				TransactionReference: server.TransactionReference(fmt.Sprintf("battle_reward_tax|%s|%d", btl.ID, time.Now().UnixNano())),
+				Group:                string(server.TransactionGroupSupremacy),
+				SubGroup:             string(server.TransactionGroupBattle),
+				Description:          fmt.Sprintf("reward tax from battle #%d.", btl.BattleNumber),
+			})
+			if err != nil {
+				l.Error().Err(err).
+					Str("from", owner.ID).
+					Str("to", server.SupremacyChallengeFundUserID).
+					Str("amount", tax.StringFixed(0)).
+					Msg("Failed to pay player battle reward")
+				return
+			}
 
-				// pay challenge fund
-				_, err = btl.arena.RPCClient.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
-					FromUserID:           uuid.Must(uuid.FromString(owner.ID)),
-					ToUserID:             uuid.Must(uuid.FromString(server.SupremacyChallengeFundUserID)),
-					Amount:               challengeFund.StringFixed(0),
-					TransactionReference: server.TransactionReference(fmt.Sprintf("supremacy_challenge_fund|%s|%d", btl.ID, time.Now().UnixNano())),
-					Group:                string(server.TransactionGroupSupremacy),
-					SubGroup:             string(server.TransactionGroupBattle),
-					Description:          fmt.Sprintf("challenge fund from battle #%d.", btl.BattleNumber),
-				})
-				if err != nil {
-					l.Error().Err(err).
-						Str("from", owner.ID).
-						Str("to", server.SupremacyChallengeFundUserID).
-						Str("amount", challengeFund.StringFixed(0)).
-						Msg("Failed to pay player battle reward")
-					return
-				}
-			}()
-
-		}
+			// pay challenge fund
+			_, err = btl.arena.RPCClient.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
+				FromUserID:           uuid.Must(uuid.FromString(owner.ID)),
+				ToUserID:             uuid.Must(uuid.FromString(server.SupremacyChallengeFundUserID)),
+				Amount:               challengeFund.StringFixed(0),
+				TransactionReference: server.TransactionReference(fmt.Sprintf("supremacy_challenge_fund|%s|%d", btl.ID, time.Now().UnixNano())),
+				Group:                string(server.TransactionGroupSupremacy),
+				SubGroup:             string(server.TransactionGroupBattle),
+				Description:          fmt.Sprintf("challenge fund from battle #%d.", btl.BattleNumber),
+			})
+			if err != nil {
+				l.Error().Err(err).
+					Str("from", owner.ID).
+					Str("to", server.SupremacyChallengeFundUserID).
+					Str("amount", challengeFund.StringFixed(0)).
+					Msg("Failed to pay player battle reward")
+				return
+			}
+		}()
 	}
 
 	// record mech reward
