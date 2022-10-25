@@ -66,6 +66,8 @@ type ArenaManager struct {
 	deadlock.RWMutex // lock for arena
 
 	ChallengeFundUpdateChan chan bool
+
+	BattleQueueMx deadlock.Mutex
 }
 
 type Opts struct {

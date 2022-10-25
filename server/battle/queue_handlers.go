@@ -130,6 +130,9 @@ func (am *ArenaManager) QueueJoinHandler(ctx context.Context, user *boiler.Playe
 		}
 	}
 
+	am.BattleQueueMx.Lock()
+	defer am.BattleQueueMx.Unlock()
+
 	// Check if any of the mechs exist in the battle queue
 	existMech, err := boiler.BattleQueues(boiler.BattleQueueWhere.MechID.IN(req.Payload.MechIDs)).One(gamedb.StdConn)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
@@ -176,6 +179,23 @@ func (am *ArenaManager) QueueJoinHandler(ctx context.Context, user *boiler.Playe
 		}
 	}
 
+	// check queue slot
+	bqs, err := boiler.BattleQueues(
+		boiler.BattleQueueWhere.FactionID.EQ(factionID),
+	).All(gamedb.StdConn)
+	if err != nil {
+		return terror.Error(err, "Failed to check battle queue.")
+	}
+
+	availableSlot := 6 // two battles maximum
+	if bqs != nil {
+		availableSlot -= len(bqs)
+	}
+
+	if availableSlot == 0 {
+		return terror.Error(fmt.Errorf("faction queue is full"), "The queue for your faction is currently full.")
+	}
+
 	var tx *sql.Tx
 
 	deployedMechIDs := []string{}
@@ -183,7 +203,11 @@ func (am *ArenaManager) QueueJoinHandler(ctx context.Context, user *boiler.Playe
 	nextRepairDurationSeconds := db.GetIntWithDefault(db.KeyAutoRepairDurationSeconds, 600)
 
 	// insert mech from the input order
-	for _, mechID := range req.Payload.MechIDs {
+	for i, mechID := range req.Payload.MechIDs {
+		if i >= availableSlot {
+			continue
+		}
+
 		idx := slices.IndexFunc(mcis, func(mci *boiler.CollectionItem) bool {
 			return mci.ItemID == mechID
 		})
@@ -490,6 +514,28 @@ func (am *ArenaManager) QueueLeaveHandler(ctx context.Context, user *boiler.Play
 				return err
 			}
 		}
+	}
+
+	for _, mechID := range mechIDs {
+		// broadcast queue detail
+		go func(mechID string) {
+			collectionItem, err := boiler.CollectionItems(
+				boiler.CollectionItemWhere.OwnerID.EQ(user.ID),
+				boiler.CollectionItemWhere.ItemType.EQ(boiler.ItemTypeMech),
+				boiler.CollectionItemWhere.ItemID.EQ(mechID),
+			).One(gamedb.StdConn)
+			if err != nil {
+				gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("Failed to get mech collection item")
+				return
+			}
+
+			qs, err := db.GetCollectionItemStatus(*collectionItem)
+			if err != nil {
+				gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("Failed to get mech arena status")
+				return
+			}
+			ws.PublishMessage(fmt.Sprintf("/faction/%s/queue/%s", factionID, mechID), WSPlayerAssetMechQueueSubscribe, qs)
+		}(mechID)
 	}
 
 	// Send updated battle queue status to all subscribers
