@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/ninja-software/terror/v2"
 	"github.com/ninja-syndicate/ws"
+	"github.com/sasha-s/go-deadlock"
 	"github.com/shopspring/decimal"
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
@@ -170,16 +171,163 @@ func (am *ArenaManager) SetDefaultPublicBattleLobbies() error {
 
 	// check every minutes
 	go func() {
-		ticker := time.NewTicker(1 * time.Minute)
+		publicLobbyTicker := time.NewTicker(1 * time.Minute)
+		expireLobbyTicker := time.NewTicker(5 * time.Second)
 
 		for {
-			<-ticker.C
-			err = am.DefaultPublicLobbiesCheck()
-			if err != nil {
-				gamelog.L.Error().Err(err).Msg("Failed to check default public lobbies.")
+			select {
+			case <-publicLobbyTicker.C:
+				err = am.DefaultPublicLobbiesCheck()
+				if err != nil {
+					gamelog.L.Error().Err(err).Msg("Failed to check default public lobbies.")
+				}
+
+			case <-expireLobbyTicker.C:
+				err = am.ExpiredExhibitionLobbyCleanUp()
+				if err != nil {
+					gamelog.L.Error().Err(err).Msg("Failed to clean up expired exhibition lobbies")
+				}
 			}
+
 		}
 	}()
+
+	return nil
+}
+
+func (am *ArenaManager) ExpiredExhibitionLobbyCleanUp() error {
+	// load the lobbies is expired and not ready
+	bls, err := boiler.BattleLobbies(
+		boiler.BattleLobbyWhere.ExpiredAt.IsNotNull(),
+		boiler.BattleLobbyWhere.ExpiredAt.LTE(null.TimeFrom(time.Now())),
+		boiler.BattleLobbyWhere.ReadyAt.IsNull(),
+		qm.Load(
+			boiler.BattleLobbyRels.BattleLobbiesMechs,
+			boiler.BattleLobbiesMechWhere.RefundTXID.IsNull(),
+			boiler.BattleLobbiesMechWhere.DeletedAt.IsNull(),
+		),
+		qm.Load(
+			boiler.BattleLobbyRels.BattleLobbyExtraSupsRewards,
+			boiler.BattleLobbyExtraSupsRewardWhere.RefundedTXID.IsNull(),
+			boiler.BattleLobbyExtraSupsRewardWhere.DeletedAt.IsNull(),
+		),
+	).All(gamedb.StdConn)
+	if err != nil {
+		return terror.Error(err, "Failed to load expired battle lobbies.")
+	}
+
+	// skip, if there is no expired battle lobbies
+	if bls == nil || len(bls) == 0 {
+		return nil
+	}
+
+	// lock queue func
+	am.BattleQueueFuncMx.Lock()
+	defer am.BattleQueueFuncMx.Unlock()
+
+	wg := deadlock.WaitGroup{}
+	for _, bl := range bls {
+		wg.Add(1)
+		go func(battleLobby *boiler.BattleLobby) {
+			l := gamelog.L.With().Str("func", "ExpiredExhibitionLobbyCleanUp").Interface("battle lobby", battleLobby).Logger()
+
+			tx, err := gamedb.StdConn.Begin()
+			if err != nil {
+				l.Error().Err(err).Msg("Failed to start db transaction.")
+				return
+			}
+
+			defer func() {
+				tx.Rollback()
+				wg.Done()
+			}()
+
+			battleLobby.DeletedAt = null.TimeFrom(time.Now())
+			_, err = battleLobby.Update(tx, boil.Whitelist(boiler.BattleLobbyColumns.DeletedAt))
+			if err != nil {
+				l.Error().Err(err).Msg("Failed to soft delete battle lobby")
+				return
+			}
+
+			var refundFns []func()
+			refund := func() {
+				for _, fn := range refundFns {
+					fn()
+				}
+			}
+
+			if battleLobby.R != nil {
+				// refund battle lobby mechs' entry fee
+				for _, battleLobbyMech := range battleLobby.R.BattleLobbiesMechs {
+					battleLobbyMech.DeletedAt = null.TimeFrom(time.Now())
+					updatedColumns := []string{
+						boiler.BattleLobbiesMechColumns.DeletedAt,
+					}
+
+					if battleLobby.EntryFee.GreaterThan(decimal.Zero) && battleLobbyMech.PaidTXID.Valid {
+						refundTxID, err := am.RPCClient.RefundSupsMessage(battleLobbyMech.PaidTXID.String)
+						if err != nil {
+							refund()
+							l.Error().Err(err).Msg("Failed to refund entry fee.")
+							return
+						}
+
+						battleLobbyMech.RefundTXID = null.StringFrom(refundTxID)
+						updatedColumns = append(updatedColumns, boiler.BattleLobbiesMechColumns.RefundTXID)
+
+						refundFns = append(refundFns, func() {
+							_, err = am.RPCClient.RefundSupsMessage(refundTxID)
+							if err != nil {
+								l.Error().Err(err).Msg("Failed to refund refund entry fee")
+							}
+						})
+					}
+
+					_, err = battleLobbyMech.Update(tx, boil.Whitelist(updatedColumns...))
+					if err != nil {
+						refund()
+						l.Error().Err(err).Msg("Failed to update battle lobby mech")
+						return
+					}
+				}
+
+				// refund any extra sups reward
+				for _, esr := range battleLobby.R.BattleLobbyExtraSupsRewards {
+					refundTxID, err := am.RPCClient.RefundSupsMessage(esr.PaidTXID)
+					if err != nil {
+						refund()
+						l.Error().Err(err).Msg("Failed to refund entry fee.")
+						return
+					}
+
+					refundFns = append(refundFns, func() {
+						_, err = am.RPCClient.RefundSupsMessage(refundTxID)
+						if err != nil {
+							l.Error().Err(err).Msg("Failed to refund refund entry fee")
+						}
+					})
+
+					esr.RefundedTXID = null.StringFrom(refundTxID)
+					esr.DeletedAt = null.TimeFrom(time.Now())
+					_, err = esr.Update(tx, boil.Whitelist(boiler.BattleLobbyExtraSupsRewardColumns.RefundedTXID, boiler.BattleLobbyExtraSupsRewardColumns.DeletedAt))
+					if err != nil {
+						refund()
+						l.Error().Err(err).Interface("extra sups reward", esr).Msg("Failed to update extra sups reward")
+						return
+					}
+				}
+			}
+
+			err = tx.Commit()
+			if err != nil {
+				refund()
+				l.Error().Err(err).Msg("Failed to commit db transaction.")
+				return
+			}
+		}(bl)
+	}
+
+	wg.Wait()
 
 	return nil
 }

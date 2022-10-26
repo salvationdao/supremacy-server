@@ -96,6 +96,9 @@ const KeyOpenNewArenaEveryXAmountOfBattleLobbies KVKey = "open_new_arena_after_x
 
 const KeyDeductBlockCountFromBomb KVKey = "deduct_block_count_from_bomb"
 
+const KeyAutoFillLobbyAfterDurationSecond KVKey = "auto_fill_lobby_after_duration_second"
+const KeyPublicExhibitionLobbyExpireAfterDurationSecond KVKey = "public_exhibition_lobby_expire_after_duration_second"
+
 func get(key KVKey) string {
 	kv, err := boiler.KVS(boiler.KVWhere.Key.EQ(string(key))).One(gamedb.StdConn)
 	if err != nil {

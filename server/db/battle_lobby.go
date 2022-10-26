@@ -111,7 +111,7 @@ func GetBattleLobbyViaAccessCode(accessCode string) (*boiler.BattleLobby, error)
 // GetNextBattleLobby finds the next upcoming battle
 func GetNextBattleLobby(battleLobbyIDs []string) (*boiler.BattleLobby, error) {
 	excludingPlayerIDs, err := playersInLobbies(battleLobbyIDs)
-	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+	if err != nil {
 		return nil, err
 	}
 	// build excluding player query
@@ -164,7 +164,7 @@ func GetNextBattleLobby(battleLobbyIDs []string) (*boiler.BattleLobby, error) {
 	return bl, nil
 }
 
-// PlayersInLobbies takes a list of battle lobby ids, and return a list of users in them battle lobbies
+// PlayersInLobbies takes a list of battle lobby ids, and return a list of users in them battle lobbies (excluding AI player)
 func playersInLobbies(battleLobbyIDs []string) ([]string, error) {
 	players := []string{}
 	if len(battleLobbyIDs) > 0 {
@@ -198,12 +198,16 @@ func playersInLobbies(battleLobbyIDs []string) ([]string, error) {
 				battleLobbyQuery,
 			)),
 			qm.InnerJoin(fmt.Sprintf(
-				"(SELECT %s, %s FROM %s WHERE %s ISNULL AND %s ISNULL) _blm ON _blm.%s = _bl.%s",
-				boiler.BattleLobbiesMechColumns.BattleLobbyID,
-				boiler.BattleLobbiesMechColumns.QueuedByID,
+				"(SELECT %s, %s FROM %s WHERE %s ISNULL AND %s ISNULL AND EXISTS(SELECT 1 FROM %s WHERE %s = %s AND %s = FALSE)) _blm ON _blm.%s = _bl.%s",
+				boiler.BattleLobbiesMechTableColumns.BattleLobbyID,
+				boiler.BattleLobbiesMechTableColumns.QueuedByID,
 				boiler.TableNames.BattleLobbiesMechs,
-				boiler.BattleLobbiesMechColumns.RefundTXID,
-				boiler.BattleLobbiesMechColumns.DeletedAt,
+				boiler.BattleLobbiesMechTableColumns.RefundTXID,
+				boiler.BattleLobbiesMechTableColumns.DeletedAt,
+				boiler.TableNames.Players,
+				boiler.PlayerTableColumns.ID,
+				boiler.BattleLobbiesMechTableColumns.QueuedByID,
+				boiler.PlayerTableColumns.IsAi,
 				boiler.BattleLobbiesMechColumns.BattleLobbyID,
 				boiler.BattleLobbyColumns.ID,
 			)),
