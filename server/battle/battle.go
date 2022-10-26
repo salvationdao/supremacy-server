@@ -847,34 +847,10 @@ func (btl *Battle) RewardBattleMechOwners(winningFactionOrder []string) {
 	}
 
 	// reward sups process
+	firstRankingFactionReward := db.GetDecimalWithDefault(db.KeyFirstRankFactionRewardSups, decimal.New(20, 18))
+	secondRankingFactionReward := db.GetDecimalWithDefault(db.KeySecondRankFactionRewardSups, decimal.New(10, 18))
+	thirdRankingFactionReward := db.GetDecimalWithDefault(db.KeyThirdRankFactionRewardSups, decimal.New(5, 18))
 	taxRatio := db.GetDecimalWithDefault(db.KeyBattleRewardTaxRatio, decimal.NewFromFloat(0.025))
-
-	enoughReward := true
-	// check challenge fund balance
-	rewardedMechs, err := boiler.BattleMechs(
-		boiler.BattleMechWhere.BattleID.EQ(btl.ID),
-		qm.Where(fmt.Sprintf(
-			"EXISTS (SELECT 1 FROM %s WHERE %s = %s AND %s = %s )",
-			boiler.TableNames.MechMoveCommandLogs,
-			boiler.MechMoveCommandLogTableColumns.BattleID,
-			boiler.BattleMechTableColumns.BattleID,
-			boiler.MechMoveCommandLogTableColumns.MechID,
-			boiler.BattleMechTableColumns.MechID,
-		)),
-	).All(gamedb.StdConn)
-	if err != nil {
-		gamelog.L.Error().Err(err).Msg("Failed to load battle active mechs.")
-	}
-	if rewardedMechs != nil {
-		// load challenge fund
-		challengeFund := btl.arena.RPCClient.UserBalanceGet(uuid.FromStringOrNil(server.SupremacyChallengeFundUserID))
-
-		// set bonus sups, if challenge fund has enough sups to distribute
-		if challengeFund.LessThan(decimal.New(int64(len(rewardedMechs)*10), 18)) {
-			gamelog.L.Warn().Msg("Not enough sups in challenge fund!!!")
-			enoughReward = false
-		}
-	}
 
 	afkMechIDs := btl.AFKChecker()
 
@@ -892,9 +868,9 @@ func (btl *Battle) RewardBattleMechOwners(winningFactionOrder []string) {
 						bq.MechID,
 						player,
 						"FIRST",
+						firstRankingFactionReward,
 						taxRatio,
 						slices.Index(afkMechIDs, bq.MechID) != -1, // if mech is in the afk mech list
-						enoughReward,
 						false,
 					)
 				}
@@ -912,9 +888,9 @@ func (btl *Battle) RewardBattleMechOwners(winningFactionOrder []string) {
 						bq.MechID,
 						player,
 						"SECOND",
+						secondRankingFactionReward,
 						taxRatio,
 						slices.Index(afkMechIDs, bq.MechID) != -1, // if mech is in the afk mech list
-						enoughReward,
 						false,
 					)
 				}
@@ -934,9 +910,9 @@ func (btl *Battle) RewardBattleMechOwners(winningFactionOrder []string) {
 						bq.MechID,
 						player,
 						"THIRD",
+						thirdRankingFactionReward,
 						taxRatio,
 						slices.Index(afkMechIDs, bq.MechID) != -1, // if mech is in the afk mech list
-						enoughReward,
 						true,
 					)
 				}
@@ -997,9 +973,9 @@ func (btl *Battle) RewardMechOwner(
 	mechID string,
 	owner *boiler.Player,
 	ranking string,
+	rewardedSups decimal.Decimal,
 	taxRatio decimal.Decimal,
 	isAFK bool,
-	enoughReward bool,
 	rewardAbility bool,
 ) {
 	// trigger challenge fund update
@@ -1010,17 +986,13 @@ func (btl *Battle) RewardMechOwner(
 	l := gamelog.L.With().Str("function", "RewardMechOwner").Logger()
 	pw := &PlayerBattleCompleteMessage{
 		PlayerID:          owner.ID,
-		RewardedSups:      decimal.Zero,
+		RewardedSups:      rewardedSups,
 		RewardedSupsBonus: decimal.Zero,
 		FactionRank:       ranking,
 	}
 
-	if enoughReward {
-		pw.RewardedSups = decimal.New(10, 18)
-	}
-
 	// reward sups
-	if enoughReward && !isAFK {
+	if !isAFK {
 		reward := pw.RewardedSups
 		tax := reward.Mul(taxRatio)
 		challengeFund := decimal.New(1, 18)
@@ -1028,7 +1000,7 @@ func (btl *Battle) RewardMechOwner(
 		func() {
 			// otherwise, pay battle reward to the actual player
 			_, err := btl.arena.RPCClient.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
-				FromUserID:           uuid.Must(uuid.FromString(server.SupremacyChallengeFundUserID)),
+				FromUserID:           uuid.UUID(server.XsynTreasuryUserID),
 				ToUserID:             uuid.Must(uuid.FromString(owner.ID)),
 				Amount:               reward.StringFixed(0),
 				TransactionReference: server.TransactionReference(fmt.Sprintf("battle_reward|%s|%d", btl.ID, time.Now().UnixNano())),
@@ -1038,7 +1010,7 @@ func (btl *Battle) RewardMechOwner(
 			})
 			if err != nil {
 				l.Error().Err(err).
-					Str("from", server.SupremacyChallengeFundUserID).
+					Str("from", server.XsynTreasuryUserID.String()).
 					Str("to", owner.ID).
 					Str("amount", reward.StringFixed(0)).
 					Msg("Failed to pay player battle reward")
@@ -1048,7 +1020,7 @@ func (btl *Battle) RewardMechOwner(
 			// pay reward tax
 			_, err = btl.arena.RPCClient.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
 				FromUserID:           uuid.Must(uuid.FromString(owner.ID)),
-				ToUserID:             uuid.FromStringOrNil(server.SupremacyChallengeFundUserID), // NOTE: send fees to challenge fund for now. (was treasury)
+				ToUserID:             uuid.UUID(server.XsynTreasuryUserID),
 				Amount:               tax.StringFixed(0),
 				TransactionReference: server.TransactionReference(fmt.Sprintf("battle_reward_tax|%s|%d", btl.ID, time.Now().UnixNano())),
 				Group:                string(server.TransactionGroupSupremacy),
@@ -1058,7 +1030,7 @@ func (btl *Battle) RewardMechOwner(
 			if err != nil {
 				l.Error().Err(err).
 					Str("from", owner.ID).
-					Str("to", server.SupremacyChallengeFundUserID).
+					Str("to", server.XsynTreasuryUserID.String()).
 					Str("amount", tax.StringFixed(0)).
 					Msg("Failed to pay player battle reward")
 				return
@@ -1067,7 +1039,7 @@ func (btl *Battle) RewardMechOwner(
 			// pay challenge fund
 			_, err = btl.arena.RPCClient.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
 				FromUserID:           uuid.Must(uuid.FromString(owner.ID)),
-				ToUserID:             uuid.Must(uuid.FromString(server.SupremacyChallengeFundUserID)),
+				ToUserID:             uuid.UUID(server.XsynTreasuryUserID),
 				Amount:               challengeFund.StringFixed(0),
 				TransactionReference: server.TransactionReference(fmt.Sprintf("supremacy_challenge_fund|%s|%d", btl.ID, time.Now().UnixNano())),
 				Group:                string(server.TransactionGroupSupremacy),
@@ -1077,7 +1049,7 @@ func (btl *Battle) RewardMechOwner(
 			if err != nil {
 				l.Error().Err(err).
 					Str("from", owner.ID).
-					Str("to", server.SupremacyChallengeFundUserID).
+					Str("to", server.XsynTreasuryUserID.String()).
 					Str("amount", challengeFund.StringFixed(0)).
 					Msg("Failed to pay player battle reward")
 				return
