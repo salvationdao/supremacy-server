@@ -977,8 +977,8 @@ func (btl *Battle) RewardMechOwner(
 		FactionRank:       ranking,
 	}
 
-	// reward sups
-	if !isAFK && !owner.IsAi {
+	// reward sups only if the mech is not AI, and it is not AFK
+	if !owner.IsAi && !isAFK {
 		reward := pw.RewardedSups
 		tax := reward.Mul(taxRatio)
 		challengeFund := decimal.New(1, 18)
