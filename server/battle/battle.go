@@ -860,10 +860,6 @@ func (btl *Battle) RewardBattleMechOwners(winningFactionOrder []string) {
 			for _, bq := range bqs {
 				if bq.FactionID == factionID && bq.R != nil && bq.R.Owner != nil {
 					player := bq.R.Owner
-					// skip AI player, when it is in production
-					if server.IsProductionEnv() && player.IsAi {
-						continue
-					}
 					btl.RewardMechOwner(
 						bq.MechID,
 						player,
@@ -880,10 +876,6 @@ func (btl *Battle) RewardBattleMechOwners(winningFactionOrder []string) {
 			for _, bq := range bqs {
 				if bq.FactionID == factionID && bq.R != nil && bq.R.Owner != nil {
 					player := bq.R.Owner
-					// skip AI player, when it is in production
-					if server.IsProductionEnv() && player.IsAi {
-						continue
-					}
 					btl.RewardMechOwner(
 						bq.MechID,
 						player,
@@ -900,12 +892,6 @@ func (btl *Battle) RewardBattleMechOwners(winningFactionOrder []string) {
 			for _, bq := range bqs {
 				if bq.FactionID == factionID && bq.R != nil && bq.R.Owner != nil {
 					player := bq.R.Owner
-
-					// skip AI player, when it is in production
-					if server.IsProductionEnv() && player.IsAi {
-						continue
-					}
-
 					btl.RewardMechOwner(
 						bq.MechID,
 						player,
@@ -992,7 +978,7 @@ func (btl *Battle) RewardMechOwner(
 	}
 
 	// reward sups
-	if !isAFK {
+	if !isAFK && !owner.IsAi {
 		reward := pw.RewardedSups
 		tax := reward.Mul(taxRatio)
 		challengeFund := decimal.New(1, 18)
