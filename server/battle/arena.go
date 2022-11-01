@@ -1575,6 +1575,8 @@ func (arena *Arena) GameClientJsonDataParser() {
 
 			btl.start()
 
+			btl.AIControl()
+
 		case "BATTLE:WAR_MACHINE_DESTROYED":
 			// do not process, if battle already ended
 			if btl.stage.Load() == BattleStageEnd {
