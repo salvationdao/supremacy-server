@@ -83,6 +83,10 @@ const KeyAutoRepairDurationSeconds KVKey = "auto_repair_duration_seconds"
 
 const KeyMinimumMechActionCount KVKey = "minimum_mech_action_count"
 
+const KeyAutoFillCountdownSecond KVKey = "auto_fill_countdown_second"
+const KeyAutoFillDurationBase KVKey = "auto_fill_duration_base"
+const KeyAutoFillDurationVariable KVKey = "auto_fill_duration_variable"
+
 func get(key KVKey) string {
 	kv, err := boiler.KVS(boiler.KVWhere.Key.EQ(string(key))).One(gamedb.StdConn)
 	if err != nil {

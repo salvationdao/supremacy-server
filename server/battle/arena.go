@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"math/rand"
 	"net"
 	"net/http"
 	"server"
@@ -18,6 +19,7 @@ import (
 	"server/system_messages"
 	"server/telegram"
 	"server/xsyn_rpcclient"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -67,7 +69,7 @@ type ArenaManager struct {
 
 	ChallengeFundUpdateChan chan bool
 
-	BattleQueueMx deadlock.Mutex
+	BattleQueueMx *deadlock.Mutex
 }
 
 type Opts struct {
@@ -97,6 +99,7 @@ func NewArenaManager(opts *Opts) (*ArenaManager, error) {
 		arenas:                   make(map[string]*Arena),
 
 		ChallengeFundUpdateChan: make(chan bool),
+		BattleQueueMx:           &deadlock.Mutex{},
 	}
 
 	// clean up queued mechs
@@ -429,6 +432,8 @@ func (am *ArenaManager) NewArena(wsConn *websocket.Conn) (*Arena, error) {
 		QuestManager:             am.QuestManager,
 		ChallengeFundUpdateChan:  am.ChallengeFundUpdateChan,
 		isIdle:                   *atomic.NewBool(true),
+		autoQueueFlagChan:        make(chan bool),
+		BattleQueueMx:            am.BattleQueueMx,
 	}
 
 	arena.AIPlayers, err = db.DefaultFactionPlayers()
@@ -448,6 +453,8 @@ func (am *ArenaManager) NewArena(wsConn *websocket.Conn) (*Arena, error) {
 	go arena.warMachinePositionBroadcaster()
 
 	am.arenas[arena.ID] = arena
+
+	go arena.AutoQueueProcess()
 
 	return arena, nil
 }
@@ -485,6 +492,9 @@ type Arena struct {
 
 	beginBattleMux sync.Mutex
 	isIdle         atomic.Bool
+
+	autoQueueFlagChan chan bool
+	BattleQueueMx     *deadlock.Mutex
 }
 
 type MechCommandCheckMap struct {
@@ -1425,6 +1435,8 @@ type WarMachineStatusPayload struct {
 
 func (arena *Arena) start() {
 	ctx := context.Background()
+	// trigger auto queue countdown
+	arena.autoQueueFlagChan <- true
 	arena.BeginBattle()
 
 	for {
@@ -1614,6 +1626,9 @@ func (arena *Arena) GameClientJsonDataParser() {
 
 			// set idle is true
 			arena.isIdle.Store(true)
+
+			// trigger auto queue countdown
+			arena.autoQueueFlagChan <- true
 
 			// begin battle
 			arena.BeginBattle()
@@ -1862,8 +1877,8 @@ func (arena *Arena) BeginBattle() {
 	}
 
 	// set arena to idle if not enough mech
-	if !server.IsDevelopmentEnv() && len(q) < (db.FACTION_MECH_LIMIT*3) {
-		gamelog.L.Warn().Msg("not enough mechs to field a battle. waiting for more mechs to be placed in queue before starting next battle.")
+	if len(q) < (db.FACTION_MECH_LIMIT * 3) {
+		gamelog.L.Debug().Msg("not enough mechs to field a battle. waiting for more mechs to be placed in queue before starting next battle.")
 		arena.UpdateArenaStatus(true)
 		return
 	}
@@ -2516,4 +2531,153 @@ func ReversePlayerAbilities(battleID string, battleNumber int) {
 			ws.PublishMessage(fmt.Sprintf("/secure/user/%s/system_messages", playerID), server.HubKeySystemMessageListUpdatedSubscribe, true)
 		}
 	}
+}
+
+func (arena *Arena) AutoQueueProcess() {
+	// set default timer to 1 hour
+	autoQueueCountdownTimer := time.NewTimer(1 * time.Hour)
+	autoFillTick := time.NewTimer(1 * time.Hour)
+
+	for {
+		select {
+		// reset flag on every signal
+		case <-arena.autoQueueFlagChan:
+			autoQueueCountdownTimer.Reset(time.Duration(db.GetIntWithDefault(db.KeyAutoFillCountdownSecond, 120)) * time.Second)
+
+			// start auto-filling process
+		case <-autoQueueCountdownTimer.C:
+			autoFillTick.Reset(time.Duration(rand.Intn(db.GetIntWithDefault(db.KeyAutoFillDurationVariable, 10))+db.GetIntWithDefault(db.KeyAutoFillDurationBase, 10)) * time.Second)
+
+		case <-autoFillTick.C:
+			// auto fill ai mech
+			if arena.autoFillAIMech() {
+				autoFillTick.Reset(time.Duration(rand.Intn(db.GetIntWithDefault(db.KeyAutoFillDurationVariable, 10))+db.GetIntWithDefault(db.KeyAutoFillDurationBase, 10)) * time.Second)
+			}
+		}
+	}
+}
+
+func (arena *Arena) autoFillAIMech() bool {
+	// build default available slot list
+	availableSlots := []struct {
+		factionID string
+		emptySlot int
+	}{
+		{
+			factionID: server.RedMountainFactionID,
+			emptySlot: 3,
+		},
+		{
+			factionID: server.BostonCyberneticsFactionID,
+			emptySlot: 3,
+		},
+		{
+			factionID: server.ZaibatsuFactionID,
+			emptySlot: 3,
+		},
+	}
+
+	arena.BattleQueueMx.Lock()
+	defer arena.BattleQueueMx.Unlock()
+
+	// load battle queue
+	bqs, err := boiler.BattleQueues().All(gamedb.StdConn)
+	if err != nil {
+		gamelog.L.Error().Err(err).Msg("Failed to load current battle queue list.")
+		return false
+	}
+	for _, bq := range bqs {
+		switch bq.FactionID {
+		case server.RedMountainFactionID:
+			availableSlots[0].emptySlot -= 1
+		case server.BostonCyberneticsFactionID:
+			availableSlots[1].emptySlot -= 1
+		case server.ZaibatsuFactionID:
+			availableSlots[2].emptySlot -= 1
+		}
+	}
+	sort.Slice(availableSlots, func(i, j int) bool { return availableSlots[i].emptySlot > availableSlots[j].emptySlot })
+	mostEmptyFaction := availableSlots[0]
+
+	if mostEmptyFaction.emptySlot <= 0 {
+		return false
+	}
+
+	mechID := ""
+	ownerID := ""
+	factionID := ""
+	// load mechs
+	err = boiler.NewQuery(
+		qm.Select(
+			boiler.CollectionItemTableColumns.ItemID,
+			boiler.CollectionItemTableColumns.OwnerID,
+			boiler.PlayerTableColumns.FactionID,
+		),
+		qm.From(fmt.Sprintf(
+			`(
+					SELECT * FROM %s 
+					WHERE %s = 'mech' AND NOT EXISTS (SELECT 1 FROM %s WHERE %s = %s)
+				) %s`,
+			boiler.TableNames.CollectionItems,
+			boiler.CollectionItemTableColumns.ItemType,
+			boiler.TableNames.BattleQueue,
+			boiler.BattleQueueTableColumns.MechID,
+			boiler.CollectionItemTableColumns.ItemID,
+			boiler.TableNames.CollectionItems,
+		)),
+		qm.InnerJoin(fmt.Sprintf(
+			"%s ON %s = %s AND %s = TRUE AND %s = '%s'",
+			boiler.TableNames.Players,
+			boiler.PlayerTableColumns.ID,
+			boiler.CollectionItemTableColumns.OwnerID,
+			boiler.PlayerTableColumns.IsAi,
+			boiler.PlayerTableColumns.FactionID,
+			mostEmptyFaction.factionID,
+		)),
+		qm.Limit(1),
+	).QueryRow(gamedb.StdConn).Scan(&mechID, &ownerID, &factionID)
+	if err != nil {
+		gamelog.L.Error().Err(err).Msg("Failed to load remain AI mech")
+		return false
+	}
+
+	// change mech name
+	_, err = boiler.Mechs(
+		boiler.MechWhere.ID.EQ(mechID),
+	).UpdateAll(gamedb.StdConn, boiler.M{
+		boiler.MechColumns.Name: helpers.GenerateStupidName(),
+	})
+	if err != nil {
+		gamelog.L.Error().Err(err).Msg("Failed to update mech's name.")
+		return false
+	}
+
+	bq := boiler.BattleQueue{
+		MechID:    mechID,
+		OwnerID:   ownerID,
+		FactionID: factionID,
+		Notified:  true,
+	}
+
+	err = bq.Insert(gamedb.StdConn, boil.Infer())
+	if err != nil {
+		gamelog.L.Error().Err(err).Msg("Failed to insert battle queue.")
+		return false
+	}
+
+	// broadcast queue detail
+	go func() {
+		qs, err := db.GetNextBattle()
+		if err != nil && !errors.Is(err, sql.ErrNoRows) {
+			gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("Failed to get mech arena status")
+			return
+		}
+
+		ws.PublishMessage("/public/arena/upcomming_battle", HubKeyNextBattleDetails, qs)
+	}()
+
+	// kick arena
+	go arena.BeginBattle()
+
+	return true
 }

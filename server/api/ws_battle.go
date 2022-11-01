@@ -363,7 +363,7 @@ func (api *API) BattleEndDetail(ctx context.Context, key string, payload []byte,
 func (api *API) NextBattleDetails(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
 
 	// details
-	resp, err := db.GetNextBattle(ctx)
+	resp, err := db.GetNextBattle()
 	if err != nil {
 		return terror.Error(err, "failed getting uppcoming battle details")
 	}
