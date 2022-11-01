@@ -300,7 +300,7 @@ func (am *ArenaManager) QueueJoinHandler(ctx context.Context, user *boiler.Playe
 
 		// broadcast queue detail
 		go func() {
-			qs, err := db.GetNextBattle(ctx)
+			qs, err := db.GetNextBattle()
 			if err != nil && !errors.Is(err, sql.ErrNoRows) {
 				gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("Failed to get mech arena status")
 				return
@@ -543,7 +543,7 @@ func (am *ArenaManager) QueueLeaveHandler(ctx context.Context, user *boiler.Play
 
 	// broadcast queue detail
 	go func() {
-		qs, err := db.GetNextBattle(ctx)
+		qs, err := db.GetNextBattle()
 		if err != nil && !errors.Is(err, sql.ErrNoRows) {
 			gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("Failed to get mech arena status")
 			return

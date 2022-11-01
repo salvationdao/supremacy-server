@@ -422,7 +422,7 @@ func (btl *Battle) start() {
 	}
 
 	go func() {
-		qs, err := db.GetNextBattle(nil)
+		qs, err := db.GetNextBattle()
 		if err != nil && !errors.Is(err, sql.ErrNoRows) {
 			gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("Failed to get next battle details")
 			return
@@ -1244,7 +1244,7 @@ func (btl *Battle) end(payload *BattleEndPayload) {
 
 	// broadcast upcoming battle
 	go func() {
-		qs, err := db.GetNextBattle(nil)
+		qs, err := db.GetNextBattle()
 		if err != nil && !errors.Is(err, sql.ErrNoRows) {
 			gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("Failed to get mech arena status")
 			return

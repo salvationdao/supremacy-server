@@ -207,7 +207,7 @@ func (ev EventType) String() string {
 	return [...]string{"killed", "kill", "spawned_ai", "ability_triggered"}[ev]
 }
 
-//DefaultFactionPlayers return default mech players
+// DefaultFactionPlayers return default mech players
 func DefaultFactionPlayers() (map[string]PlayerWithFaction, error) {
 	players, err := boiler.Players(qm.Where("is_ai = true"), boiler.PlayerWhere.FactionID.IsNotNull()).All(gamedb.StdConn)
 	if err != nil {
@@ -463,7 +463,7 @@ type NextBattle struct {
 	RMMechIDs  []string `json:"rm_mech_ids,omitempty"`
 }
 
-func GetNextBattle(ctx context.Context) (*NextBattle, error) {
+func GetNextBattle() (*NextBattle, error) {
 	// get next 6 mechs for each faction (the first 3 might be in battle)
 	queue, err := LoadBattleQueue(context.Background(), 6, true)
 	if err != nil {
