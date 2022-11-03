@@ -1179,19 +1179,19 @@ func (pac *PlayerAssetsControllerWS) OpenCrateHandler(ctx context.Context, user 
 type PlayerAssetMechEquipRequest struct {
 	*hub.HubCommandRequest
 	Payload struct {
-		MechID         string         `json:"mech_id"`
-		EquipUtility   []EquipUtility `json:"equip_utility"`
-		EquipWeapons   []EquipWeapon  `json:"equip_weapons"`
-		EquipPowerCore EquipPowerCore `json:"equip_power_core"`
-		EquipMechSkin  EquipMechSkin  `json:"equip_mech_skin"`
+		MechID                string         `json:"mech_id"`
+		InheritAllWeaponSkins bool           `json:"inherit_all_weapon_skins"`
+		EquipUtility          []EquipUtility `json:"equip_utility"`
+		EquipWeapons          []EquipWeapon  `json:"equip_weapons"`
+		EquipPowerCore        EquipPowerCore `json:"equip_power_core"`
+		EquipMechSkin         EquipMechSkin  `json:"equip_mech_skin"`
 	} `json:"payload"`
 }
 
 type EquipWeapon struct {
-	WeaponID    string `json:"weapon_id"`
-	SlotNumber  int    `json:"slot_number"`
-	InheritSkin bool   `json:"inherit_skin"`
-	Unequip     bool   `json:"unequip"`
+	WeaponID   string `json:"weapon_id"`
+	SlotNumber int    `json:"slot_number"`
+	Unequip    bool   `json:"unequip"`
 }
 
 type EquipUtility struct {
@@ -1252,6 +1252,39 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetMechEquipHandler(ctx context.Con
 		return terror.Error(err, errorMsg)
 	}
 	defer tx.Rollback()
+
+	if mech.InheritAllWeaponSkins != req.Payload.InheritAllWeaponSkins {
+		inheritMech, err := boiler.FindMech(tx, mech.ID)
+		if err != nil {
+			l.Error().Err(err).Msg("failed to get mech to inherit all weapon skins on")
+			return terror.Error(err, errorMsg)
+		}
+		l = l.With().Interface("inheritMech", inheritMech).Logger()
+
+		inheritMech.InheritAllWeaponSkins = req.Payload.InheritAllWeaponSkins
+		_, err = inheritMech.Update(tx, boil.Infer())
+		if err != nil {
+			l.Error().Err(err).Msg("failed to inherit all weapon skins on mech")
+			return terror.Error(err, errorMsg)
+		}
+
+		mech.InheritAllWeaponSkins = req.Payload.InheritAllWeaponSkins
+
+		// Update all weapons with that skin
+		mechWeapons, err := boiler.MechWeapons(boiler.MechWeaponWhere.ChassisID.EQ(mech.ID)).All(tx)
+		if err != nil {
+			l.Error().Err(err).Msg("failed to get all weapons on mech to inherit skins")
+			return terror.Error(err, errorMsg)
+		}
+
+		_, err = mechWeapons.UpdateAll(tx, boiler.M{
+			boiler.MechWeaponColumns.IsSkinInherited: mech.InheritAllWeaponSkins,
+		})
+		if err != nil {
+			l.Error().Err(err).Msg("failed to inherit skins on all weapons")
+			return terror.Error(err, errorMsg)
+		}
+	}
 
 	if req.Payload.EquipPowerCore.Unequip {
 		// Power core unequip
@@ -1799,7 +1832,7 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetMechEquipHandler(ctx context.Con
 				}
 
 				mw.WeaponID = null.StringFrom(ew.WeaponID)
-				mw.IsSkinInherited = ew.InheritSkin
+				mw.IsSkinInherited = mech.InheritAllWeaponSkins
 				mw.AllowMelee = weapon.R.Blueprint.IsMelee
 				_, err = mw.Update(tx, boil.Infer())
 				if err != nil {

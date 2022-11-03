@@ -4,13 +4,14 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"github.com/shopspring/decimal"
 	"server"
 	"server/benchmark"
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
 	"strconv"
+
+	"github.com/shopspring/decimal"
 
 	"github.com/gofrs/uuid"
 	"github.com/ninja-software/terror/v2"
@@ -135,6 +136,7 @@ func getDefaultMechQueryMods() []qm.QueryMod {
 				qm.Rels("_bm", boiler.BlueprintMechColumns.ID),
 				qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.BlueprintID),
 			),
+			boiler.MechTableColumns.InheritAllWeaponSkins,
 		),
 		qm.From(boiler.TableNames.CollectionItems),
 		// inner join mechs
@@ -577,6 +579,7 @@ func Mech(conn boil.Executor, mechID string) (*server.Mech, error) {
 			&mc.Utility,
 			&mc.ItemSaleID,
 			&mc.BattleReady,
+			&mc.InheritAllWeaponSkins,
 		)
 		if err != nil {
 			gamelog.L.Error().Err(err).Msg("failed to get mech")
@@ -711,6 +714,7 @@ func Mechs(mechIDs ...string) ([]*server.Mech, error) {
 			&mc.Utility,
 			&mc.ItemSaleID,
 			&mc.BattleReady,
+			&mc.InheritAllWeaponSkins,
 		)
 		if err != nil {
 			return nil, err
