@@ -46,7 +46,7 @@ type BattleLobby struct {
 	DeletedAt             null.Time       `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
 	Name                  string          `boiler:"name" boil:"name" json:"name" toml:"name" yaml:"name"`
 	MaxDeployPerPlayer    int             `boiler:"max_deploy_per_player" boil:"max_deploy_per_player" json:"max_deploy_per_player" toml:"max_deploy_per_player" yaml:"max_deploy_per_player"`
-	ExpiredAt             null.Time       `boiler:"expired_at" boil:"expired_at" json:"expired_at,omitempty" toml:"expired_at" yaml:"expired_at,omitempty"`
+	ExpiresAt             null.Time       `boiler:"expires_at" boil:"expires_at" json:"expires_at,omitempty" toml:"expires_at" yaml:"expires_at,omitempty"`
 
 	R *battleLobbyR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L battleLobbyL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -75,7 +75,7 @@ var BattleLobbyColumns = struct {
 	DeletedAt             string
 	Name                  string
 	MaxDeployPerPlayer    string
-	ExpiredAt             string
+	ExpiresAt             string
 }{
 	ID:                    "id",
 	HostByID:              "host_by_id",
@@ -99,7 +99,7 @@ var BattleLobbyColumns = struct {
 	DeletedAt:             "deleted_at",
 	Name:                  "name",
 	MaxDeployPerPlayer:    "max_deploy_per_player",
-	ExpiredAt:             "expired_at",
+	ExpiresAt:             "expires_at",
 }
 
 var BattleLobbyTableColumns = struct {
@@ -125,7 +125,7 @@ var BattleLobbyTableColumns = struct {
 	DeletedAt             string
 	Name                  string
 	MaxDeployPerPlayer    string
-	ExpiredAt             string
+	ExpiresAt             string
 }{
 	ID:                    "battle_lobbies.id",
 	HostByID:              "battle_lobbies.host_by_id",
@@ -149,7 +149,7 @@ var BattleLobbyTableColumns = struct {
 	DeletedAt:             "battle_lobbies.deleted_at",
 	Name:                  "battle_lobbies.name",
 	MaxDeployPerPlayer:    "battle_lobbies.max_deploy_per_player",
-	ExpiredAt:             "battle_lobbies.expired_at",
+	ExpiresAt:             "battle_lobbies.expires_at",
 }
 
 // Generated where
@@ -177,7 +177,7 @@ var BattleLobbyWhere = struct {
 	DeletedAt             whereHelpernull_Time
 	Name                  whereHelperstring
 	MaxDeployPerPlayer    whereHelperint
-	ExpiredAt             whereHelpernull_Time
+	ExpiresAt             whereHelpernull_Time
 }{
 	ID:                    whereHelperstring{field: "\"battle_lobbies\".\"id\""},
 	HostByID:              whereHelperstring{field: "\"battle_lobbies\".\"host_by_id\""},
@@ -201,7 +201,7 @@ var BattleLobbyWhere = struct {
 	DeletedAt:             whereHelpernull_Time{field: "\"battle_lobbies\".\"deleted_at\""},
 	Name:                  whereHelperstring{field: "\"battle_lobbies\".\"name\""},
 	MaxDeployPerPlayer:    whereHelperint{field: "\"battle_lobbies\".\"max_deploy_per_player\""},
-	ExpiredAt:             whereHelpernull_Time{field: "\"battle_lobbies\".\"expired_at\""},
+	ExpiresAt:             whereHelpernull_Time{field: "\"battle_lobbies\".\"expires_at\""},
 }
 
 // BattleLobbyRels is where relationship names are stored.
@@ -246,9 +246,9 @@ func (*battleLobbyR) NewStruct() *battleLobbyR {
 type battleLobbyL struct{}
 
 var (
-	battleLobbyAllColumns            = []string{"id", "host_by_id", "number", "entry_fee", "first_faction_cut", "second_faction_cut", "third_faction_cut", "each_faction_mech_amount", "game_map_id", "generated_by_system", "access_code", "will_not_start_until", "ready_at", "assigned_to_battle_id", "ended_at", "assigned_to_arena_id", "is_ai_driven_match", "created_at", "updated_at", "deleted_at", "name", "max_deploy_per_player", "expired_at"}
+	battleLobbyAllColumns            = []string{"id", "host_by_id", "number", "entry_fee", "first_faction_cut", "second_faction_cut", "third_faction_cut", "each_faction_mech_amount", "game_map_id", "generated_by_system", "access_code", "will_not_start_until", "ready_at", "assigned_to_battle_id", "ended_at", "assigned_to_arena_id", "is_ai_driven_match", "created_at", "updated_at", "deleted_at", "name", "max_deploy_per_player", "expires_at"}
 	battleLobbyColumnsWithoutDefault = []string{"host_by_id"}
-	battleLobbyColumnsWithDefault    = []string{"id", "number", "entry_fee", "first_faction_cut", "second_faction_cut", "third_faction_cut", "each_faction_mech_amount", "game_map_id", "generated_by_system", "access_code", "will_not_start_until", "ready_at", "assigned_to_battle_id", "ended_at", "assigned_to_arena_id", "is_ai_driven_match", "created_at", "updated_at", "deleted_at", "name", "max_deploy_per_player", "expired_at"}
+	battleLobbyColumnsWithDefault    = []string{"id", "number", "entry_fee", "first_faction_cut", "second_faction_cut", "third_faction_cut", "each_faction_mech_amount", "game_map_id", "generated_by_system", "access_code", "will_not_start_until", "ready_at", "assigned_to_battle_id", "ended_at", "assigned_to_arena_id", "is_ai_driven_match", "created_at", "updated_at", "deleted_at", "name", "max_deploy_per_player", "expires_at"}
 	battleLobbyPrimaryKeyColumns     = []string{"id"}
 	battleLobbyGeneratedColumns      = []string{}
 )

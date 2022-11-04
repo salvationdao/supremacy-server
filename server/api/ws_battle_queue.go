@@ -136,12 +136,12 @@ func (api *API) BattleLobbyCreate(ctx context.Context, user *boiler.Player, fact
 			EachFactionMechAmount: db.FACTION_MECH_LIMIT,
 			MaxDeployPerPlayer:    req.Payload.MaxDeployNumber,
 			WillNotStartUntil:     req.Payload.WillNotStartUntil,
-			ExpiredAt:             null.TimeFrom(time.Now().Add(time.Duration(publicExhibitionLobbyExpireAfterSecond) * time.Second)),
+			ExpiresAt:             null.TimeFrom(time.Now().Add(time.Duration(publicExhibitionLobbyExpireAfterSecond) * time.Second)),
 		}
 
 		if req.Payload.AccessCode.Valid && req.Payload.AccessCode.String != "" {
 			bl.AccessCode = req.Payload.AccessCode
-			bl.ExpiredAt = null.TimeFromPtr(nil)
+			bl.ExpiresAt = null.TimeFromPtr(nil)
 		}
 
 		err = bl.Insert(tx, boil.Infer())
@@ -390,7 +390,7 @@ func (api *API) BattleLobbyJoin(ctx context.Context, user *boiler.Player, factio
 			return terror.Error(fmt.Errorf("battle lobby not exist"), "Battle lobby does not exist.")
 		}
 
-		if bl.ExpiredAt.Valid && bl.ExpiredAt.Time.Before(time.Now()) {
+		if bl.ExpiresAt.Valid && bl.ExpiresAt.Time.Before(time.Now()) {
 			return terror.Error(fmt.Errorf("battle lobby is expired"), "Battle lobby has already expired.")
 		}
 
@@ -780,7 +780,7 @@ func (api *API) BattleLobbyLeave(ctx context.Context, user *boiler.Player, facti
 
 			// skip, if the battle lobby is expired.
 			// NOTE: all the mechs in the expired lobbies SHOULD be evacuated from expire lobby func
-			if bl.ExpiredAt.Valid && bl.ExpiredAt.Time.Before(time.Now()) {
+			if bl.ExpiresAt.Valid && bl.ExpiresAt.Time.Before(time.Now()) {
 				continue
 			}
 

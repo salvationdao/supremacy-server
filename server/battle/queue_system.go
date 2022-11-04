@@ -101,7 +101,7 @@ func (am *ArenaManager) broadcastBattleLobbyUpdate(battleLobbyIDs ...string) {
 	// broadcast to individual
 	for _, bl := range battleLobbies {
 		// set AI mech fill_at field
-		bl.FilledAt = am.GetAIMechFillingProcessTime(bl.ID)
+		bl.FillAt = am.GetAIMechFillingProcessTime(bl.ID)
 
 		// build public/private lobby list
 		if !bl.AccessCode.Valid {
@@ -215,8 +215,8 @@ func (am *ArenaManager) ExpiredExhibitionLobbyCleanUp() error {
 
 	// load the non-private lobbies which are expired and not ready
 	bls, err := boiler.BattleLobbies(
-		boiler.BattleLobbyWhere.ExpiredAt.IsNotNull(),
-		boiler.BattleLobbyWhere.ExpiredAt.LTE(null.TimeFrom(time.Now())),
+		boiler.BattleLobbyWhere.ExpiresAt.IsNotNull(),
+		boiler.BattleLobbyWhere.ExpiresAt.LTE(null.TimeFrom(time.Now())),
 		boiler.BattleLobbyWhere.ReadyAt.IsNull(),
 		boiler.BattleLobbyWhere.GeneratedBySystem.EQ(false),
 		boiler.BattleLobbyWhere.AccessCode.IsNull(),
