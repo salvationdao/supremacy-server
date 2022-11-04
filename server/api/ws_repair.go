@@ -1447,7 +1447,6 @@ func (api *API) NextRepairBlock(ctx context.Context, user *boiler.Player, key st
 	rgl := &boiler.RepairGameBlockLog{
 		RepairAgentID:       ra.ID,
 		RepairGameBlockType: boiler.RepairGameBlockTypeNORMAL,
-		SizeMultiplier:      decimal.NewFromInt(1),
 		SpeedMultiplier:     decimal.NewFromInt(1),
 		TriggerKey:          boiler.RepairGameBlockTriggerKeySPACEBAR,
 		Width:               decimal.NewFromInt(10),

@@ -27,7 +27,6 @@ type RepairGameBlockLog struct {
 	ID                  string              `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
 	RepairAgentID       string              `boiler:"repair_agent_id" boil:"repair_agent_id" json:"repair_agent_id" toml:"repair_agent_id" yaml:"repair_agent_id"`
 	RepairGameBlockType string              `boiler:"repair_game_block_type" boil:"repair_game_block_type" json:"repair_game_block_type" toml:"repair_game_block_type" yaml:"repair_game_block_type"`
-	SizeMultiplier      decimal.Decimal     `boiler:"size_multiplier" boil:"size_multiplier" json:"size_multiplier" toml:"size_multiplier" yaml:"size_multiplier"`
 	SpeedMultiplier     decimal.Decimal     `boiler:"speed_multiplier" boil:"speed_multiplier" json:"speed_multiplier" toml:"speed_multiplier" yaml:"speed_multiplier"`
 	TriggerKey          string              `boiler:"trigger_key" boil:"trigger_key" json:"trigger_key" toml:"trigger_key" yaml:"trigger_key"`
 	Width               decimal.Decimal     `boiler:"width" boil:"width" json:"width" toml:"width" yaml:"width"`
@@ -48,7 +47,6 @@ var RepairGameBlockLogColumns = struct {
 	ID                  string
 	RepairAgentID       string
 	RepairGameBlockType string
-	SizeMultiplier      string
 	SpeedMultiplier     string
 	TriggerKey          string
 	Width               string
@@ -64,7 +62,6 @@ var RepairGameBlockLogColumns = struct {
 	ID:                  "id",
 	RepairAgentID:       "repair_agent_id",
 	RepairGameBlockType: "repair_game_block_type",
-	SizeMultiplier:      "size_multiplier",
 	SpeedMultiplier:     "speed_multiplier",
 	TriggerKey:          "trigger_key",
 	Width:               "width",
@@ -82,7 +79,6 @@ var RepairGameBlockLogTableColumns = struct {
 	ID                  string
 	RepairAgentID       string
 	RepairGameBlockType string
-	SizeMultiplier      string
 	SpeedMultiplier     string
 	TriggerKey          string
 	Width               string
@@ -98,7 +94,6 @@ var RepairGameBlockLogTableColumns = struct {
 	ID:                  "repair_game_block_logs.id",
 	RepairAgentID:       "repair_game_block_logs.repair_agent_id",
 	RepairGameBlockType: "repair_game_block_logs.repair_game_block_type",
-	SizeMultiplier:      "repair_game_block_logs.size_multiplier",
 	SpeedMultiplier:     "repair_game_block_logs.speed_multiplier",
 	TriggerKey:          "repair_game_block_logs.trigger_key",
 	Width:               "repair_game_block_logs.width",
@@ -118,7 +113,6 @@ var RepairGameBlockLogWhere = struct {
 	ID                  whereHelperstring
 	RepairAgentID       whereHelperstring
 	RepairGameBlockType whereHelperstring
-	SizeMultiplier      whereHelperdecimal_Decimal
 	SpeedMultiplier     whereHelperdecimal_Decimal
 	TriggerKey          whereHelperstring
 	Width               whereHelperdecimal_Decimal
@@ -134,7 +128,6 @@ var RepairGameBlockLogWhere = struct {
 	ID:                  whereHelperstring{field: "\"repair_game_block_logs\".\"id\""},
 	RepairAgentID:       whereHelperstring{field: "\"repair_game_block_logs\".\"repair_agent_id\""},
 	RepairGameBlockType: whereHelperstring{field: "\"repair_game_block_logs\".\"repair_game_block_type\""},
-	SizeMultiplier:      whereHelperdecimal_Decimal{field: "\"repair_game_block_logs\".\"size_multiplier\""},
 	SpeedMultiplier:     whereHelperdecimal_Decimal{field: "\"repair_game_block_logs\".\"speed_multiplier\""},
 	TriggerKey:          whereHelperstring{field: "\"repair_game_block_logs\".\"trigger_key\""},
 	Width:               whereHelperdecimal_Decimal{field: "\"repair_game_block_logs\".\"width\""},
@@ -169,9 +162,9 @@ func (*repairGameBlockLogR) NewStruct() *repairGameBlockLogR {
 type repairGameBlockLogL struct{}
 
 var (
-	repairGameBlockLogAllColumns            = []string{"id", "repair_agent_id", "repair_game_block_type", "size_multiplier", "speed_multiplier", "trigger_key", "width", "depth", "stacked_at", "stacked_width", "stacked_depth", "is_failed", "created_at", "updated_at", "deleted_at"}
+	repairGameBlockLogAllColumns            = []string{"id", "repair_agent_id", "repair_game_block_type", "speed_multiplier", "trigger_key", "width", "depth", "stacked_at", "stacked_width", "stacked_depth", "is_failed", "created_at", "updated_at", "deleted_at"}
 	repairGameBlockLogColumnsWithoutDefault = []string{"repair_agent_id", "trigger_key"}
-	repairGameBlockLogColumnsWithDefault    = []string{"id", "repair_game_block_type", "size_multiplier", "speed_multiplier", "width", "depth", "stacked_at", "stacked_width", "stacked_depth", "is_failed", "created_at", "updated_at", "deleted_at"}
+	repairGameBlockLogColumnsWithDefault    = []string{"id", "repair_game_block_type", "speed_multiplier", "width", "depth", "stacked_at", "stacked_width", "stacked_depth", "is_failed", "created_at", "updated_at", "deleted_at"}
 	repairGameBlockLogPrimaryKeyColumns     = []string{"id"}
 	repairGameBlockLogGeneratedColumns      = []string{}
 )
