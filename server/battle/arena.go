@@ -130,7 +130,17 @@ func NewArenaManager(opts *Opts) (*ArenaManager, error) {
 		return nil, terror.Error(err, "Failed to delete unfinished AI battles.")
 	}
 
-	_, err = boiler.BattleLobbiesMechs().UpdateAll(gamedb.StdConn, boiler.M{
+	_, err = boiler.BattleLobbiesMechs(
+		boiler.BattleLobbiesMechWhere.EndedAt.IsNull(),
+		boiler.BattleLobbiesMechWhere.LockedAt.IsNotNull(),
+		qm.Where(fmt.Sprintf(
+			"EXISTS (SELECT 1 FROM %s WHERE %s = %s AND %s = TRUE)",
+			boiler.TableNames.BattleLobbies,
+			boiler.BattleLobbyTableColumns.ID,
+			boiler.BattleLobbiesMechTableColumns.BattleLobbyID,
+			boiler.BattleLobbyTableColumns.IsAiDrivenMatch,
+		)),
+	).UpdateAll(gamedb.StdConn, boiler.M{
 		boiler.BattleLobbiesMechColumns.DeletedAt: null.TimeFrom(time.Now()),
 		boiler.BattleLobbiesMechColumns.EndedAt:   null.TimeFrom(time.Now()),
 	})
