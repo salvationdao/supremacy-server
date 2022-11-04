@@ -163,7 +163,7 @@ func (am *ArenaManager) broadcastBattleLobbyUpdate(battleLobbyIDs ...string) {
 	}
 
 	// broadcast public lobbies
-	if len(publicLobbies) > 0 {
+	if len(publicLobbies) > 0 || len(deletedLobbies) > 0 {
 		go ws.PublishMessage(fmt.Sprintf("/faction/%s/battle_lobbies", server.RedMountainFactionID), server.HubKeyBattleLobbyListUpdate, append(server.BattleLobbiesFactionFilter(publicLobbies, server.RedMountainFactionID, ""), deletedLobbies...))
 		go ws.PublishMessage(fmt.Sprintf("/faction/%s/battle_lobbies", server.BostonCyberneticsFactionID), server.HubKeyBattleLobbyListUpdate, append(server.BattleLobbiesFactionFilter(publicLobbies, server.BostonCyberneticsFactionID, ""), deletedLobbies...))
 		go ws.PublishMessage(fmt.Sprintf("/faction/%s/battle_lobbies", server.ZaibatsuFactionID), server.HubKeyBattleLobbyListUpdate, append(server.BattleLobbiesFactionFilter(publicLobbies, server.ZaibatsuFactionID, ""), deletedLobbies...))
@@ -271,9 +271,11 @@ func (am *ArenaManager) ExpiredExhibitionLobbyCleanUp() error {
 				}
 			}
 
+			lobbyMechIDs := []string{}
 			if battleLobby.R != nil {
 				// refund battle lobby mechs' entry fee
 				for _, battleLobbyMech := range battleLobby.R.BattleLobbiesMechs {
+					lobbyMechIDs = append(lobbyMechIDs, battleLobbyMech.MechID)
 					battleLobbyMech.DeletedAt = null.TimeFrom(time.Now())
 					updatedColumns := []string{
 						boiler.BattleLobbiesMechColumns.DeletedAt,
@@ -339,6 +341,13 @@ func (am *ArenaManager) ExpiredExhibitionLobbyCleanUp() error {
 				l.Error().Err(err).Msg("Failed to commit db transaction.")
 				return
 			}
+
+			// broadcast battle lobby
+			am.BattleLobbyDebounceBroadcastChan <- []string{battleLobby.ID}
+
+			// broadcast the status changes of the lobby mechs
+			go BroadcastMechQueueStatus(lobbyMechIDs)
+
 		}(bl)
 	}
 
@@ -830,6 +839,7 @@ func (am *ArenaManager) AddAIMechFillingProcess(battleLobbyID string) {
 			q := fmt.Sprintf(
 				"INSERT INTO %s (%s, %s, %s, %s)  VALUES ",
 				boiler.TableNames.BattleLobbiesMechs,
+				boiler.BattleLobbiesMechColumns.BattleLobbyID,
 				boiler.BattleLobbiesMechColumns.MechID,
 				boiler.BattleLobbiesMechColumns.QueuedByID,
 				boiler.BattleLobbiesMechColumns.FactionID,

@@ -969,6 +969,10 @@ func (api *API) BattleLobbyListUpdate(ctx context.Context, user *boiler.Player, 
 		return err
 	}
 
+	for _, bl := range resp {
+		bl.FillAt = api.ArenaManager.GetAIMechFillingProcessTime(bl.ID)
+	}
+
 	reply(server.BattleLobbiesFactionFilter(resp, factionID, user.ID))
 
 	return nil
