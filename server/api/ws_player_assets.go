@@ -52,6 +52,7 @@ func NewPlayerAssetsController(api *API) *PlayerAssetsControllerWS {
 	api.SecureUserCommand(HubKeyPlayerAssetWeaponList, pac.PlayerAssetWeaponListHandler)
 	api.SecureUserCommand(HubKeyPlayerAssetWeaponListDetailed, pac.PlayerAssetWeaponListDetailedHandler)
 	api.SecureUserCommand(HubKeyPlayerAssetPowerCoreList, pac.PlayerAssetPowerCoreListHandler)
+	api.SecureUserCommand(HubKeyPlayerAssetPowerCoreListDetailed, pac.PlayerAssetPowerCoreListDetailedHandler)
 	api.SecureUserCommand(HubKeyPlayerAssetUtilityList, pac.PlayerAssetUtilityListHandler)
 	api.SecureUserCommand(HubKeyPlayerAssetMysteryCrateList, pac.PlayerAssetMysteryCrateListHandler)
 	api.SecureUserCommand(HubKeyPlayerAssetMysteryCrateGet, pac.PlayerAssetMysteryCrateGetHandler)
@@ -1253,7 +1254,6 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetMechEquipHandler(ctx context.Con
 	}
 	defer tx.Rollback()
 
-	l.Info().Msg("request")
 	if req.Payload.InheritAllWeaponSkins.Valid && mech.InheritAllWeaponSkins != req.Payload.InheritAllWeaponSkins.Bool {
 		inheritMech, err := boiler.FindMech(tx, mech.ID)
 		if err != nil {
@@ -2542,6 +2542,7 @@ type PlayerAssetPowerCoreListRequest struct {
 		PageSize               int                          `json:"page_size"`
 		Page                   int                          `json:"page"`
 		DisplayXsynLocked      bool                         `json:"display_xsyn_locked"`
+		DisplayHidden          bool                         `json:"display_hidden"`
 		ExcludeMarketLocked    bool                         `json:"exclude_market_locked"`
 		IncludeMarketListed    bool                         `json:"include_market_listed"`
 		ExcludeIDs             []string                     `json:"exclude_ids"`
@@ -2605,6 +2606,64 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetPowerCoreListHandler(ctx context
 	}
 
 	reply(&PlayerAssetPowerCoreListResp{
+		Total:      total,
+		PowerCores: powerCores,
+	})
+	return nil
+}
+
+type PlayerAssePowerCoreListDetailedResponse struct {
+	Total      int64               `json:"total"`
+	PowerCores []*server.PowerCore `json:"power_cores"`
+}
+
+const HubKeyPlayerAssetPowerCoreListDetailed = "PLAYER:ASSET:POWER_CORE:DETAIL:LIST"
+
+func (pac *PlayerAssetsControllerWS) PlayerAssetPowerCoreListDetailedHandler(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
+	req := &PlayerAssetPowerCoreListRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return terror.Error(err, "Invalid request received.")
+	}
+
+	if !user.FactionID.Valid {
+		return terror.Error(fmt.Errorf("user has no faction"), "You need a faction to see assets.")
+	}
+
+	listOpts := &db.PowerCoreListOpts{
+		Search:                 req.Payload.Search,
+		PageSize:               req.Payload.PageSize,
+		Page:                   req.Payload.Page,
+		OwnerID:                user.ID,
+		Filter:                 req.Payload.Filter,
+		SortBy:                 req.Payload.SortBy,
+		SortDir:                req.Payload.SortDir,
+		DisplayXsynLocked:      req.Payload.DisplayXsynLocked,
+		DisplayHidden:          req.Payload.DisplayHidden,
+		ExcludeMarketLocked:    req.Payload.ExcludeMarketLocked,
+		IncludeMarketListed:    req.Payload.IncludeMarketListed,
+		ExcludeIDs:             req.Payload.ExcludeIDs,
+		FilterRarities:         req.Payload.FilterRarities,
+		FilterSizes:            req.Payload.FilterSizes,
+		FilterEquippedStatuses: req.Payload.FilterEquippedStatuses,
+		FilterStatCapacity:     req.Payload.FilterStatCapacity,
+		FilterStatMaxDrawRate:  req.Payload.FilterStatMaxDrawRate,
+		FilterStatRechargeRate: req.Payload.FilterStatRechargeRate,
+		FilterStatArmour:       req.Payload.FilterStatArmour,
+		FilterStatMaxHitpoints: req.Payload.FilterStatMaxHitpoints,
+	}
+	if req.Payload.SortBy != "" && req.Payload.SortDir.IsValid() {
+		listOpts.SortBy = req.Payload.SortBy
+		listOpts.SortDir = req.Payload.SortDir
+	}
+
+	total, powerCores, err := db.PowerCoreListDetailed(listOpts)
+	if err != nil {
+		gamelog.L.Error().Interface("req.Payload", req.Payload).Err(err).Msg("issue getting mechs")
+		return terror.Error(err, "Failed to find your War Machine assets, please try again or contact support.")
+	}
+
+	reply(&PlayerAssePowerCoreListDetailedResponse{
 		Total:      total,
 		PowerCores: powerCores,
 	})

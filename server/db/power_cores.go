@@ -253,6 +253,219 @@ func PowerCoreList(opts *PowerCoreListOpts) (int64, []*PlayerAsset, error) {
 	return total, powerCores, nil
 }
 
+func PowerCoreListDetailed(opts *PowerCoreListOpts) (int64, []*server.PowerCore, error) {
+	queryMods := getDefaultPowerCoreQueryMods()
+
+	if opts.OwnerID != "" {
+		queryMods = append(queryMods, boiler.CollectionItemWhere.OwnerID.EQ(opts.OwnerID))
+	}
+	if !opts.DisplayXsynLocked {
+		queryMods = append(queryMods, boiler.CollectionItemWhere.XsynLocked.EQ(false))
+	}
+	if !opts.IncludeMarketListed {
+		queryMods = append(queryMods, boiler.CollectionItemWhere.LockedToMarketplace.EQ(false))
+	}
+	if opts.ExcludeMarketLocked {
+		queryMods = append(queryMods, boiler.CollectionItemWhere.MarketLocked.EQ(false))
+	}
+	if !opts.DisplayHidden {
+		queryMods = append(queryMods, boiler.CollectionItemWhere.AssetHidden.IsNull())
+	}
+
+	// Filters
+	if opts.Filter != nil {
+		// if we have filter
+		for i, f := range opts.Filter.Items {
+			// validate it is the right table and valid column
+			if f.Table == boiler.TableNames.PowerCores && IsMechColumn(f.Column) {
+				queryMods = append(queryMods, GenerateListFilterQueryMod(*f, i+1, opts.Filter.LinkOperator))
+			}
+		}
+	}
+
+	if len(opts.ExcludeIDs) > 0 {
+		queryMods = append(queryMods, boiler.PowerCoreWhere.ID.NIN(opts.ExcludeIDs))
+	}
+
+	if len(opts.FilterRarities) > 0 {
+		queryMods = append(queryMods, boiler.BlueprintPowerCoreWhere.Tier.IN(opts.FilterRarities))
+	}
+
+	if len(opts.FilterEquippedStatuses) > 0 {
+		showEquipped := false
+		showUnequipped := false
+		for _, s := range opts.FilterEquippedStatuses {
+			if s == "equipped" {
+				showEquipped = true
+			} else if s == "unequipped" {
+				showUnequipped = true
+			}
+			if showEquipped && showUnequipped {
+				break
+			}
+		}
+
+		if showEquipped && !showUnequipped {
+			queryMods = append(queryMods, boiler.PowerCoreWhere.EquippedOn.IsNotNull())
+		} else if showUnequipped && !showEquipped {
+			queryMods = append(queryMods, boiler.PowerCoreWhere.EquippedOn.IsNull())
+		}
+	}
+
+	if len(opts.FilterSizes) > 0 {
+		queryMods = append(queryMods, boiler.BlueprintPowerCoreWhere.Size.IN(opts.FilterSizes))
+	}
+
+	// Filter - Weapon Stats
+	if opts.FilterStatCapacity != nil {
+		queryMods = append(queryMods, GeneratePowerCoreStatFilterQueryMods(boiler.BlueprintPowerCoreColumns.Capacity, opts.FilterStatCapacity)...)
+	}
+	if opts.FilterStatMaxDrawRate != nil {
+		queryMods = append(queryMods, GeneratePowerCoreStatFilterQueryMods(boiler.BlueprintPowerCoreColumns.MaxDrawRate, opts.FilterStatMaxDrawRate)...)
+	}
+	if opts.FilterStatRechargeRate != nil {
+		queryMods = append(queryMods, GeneratePowerCoreStatFilterQueryMods(boiler.BlueprintPowerCoreColumns.RechargeRate, opts.FilterStatRechargeRate)...)
+	}
+	if opts.FilterStatArmour != nil {
+		queryMods = append(queryMods, GeneratePowerCoreStatFilterQueryMods(boiler.BlueprintPowerCoreColumns.Armour, opts.FilterStatArmour)...)
+	}
+	if opts.FilterStatMaxHitpoints != nil {
+		queryMods = append(queryMods, GeneratePowerCoreStatFilterQueryMods(boiler.BlueprintPowerCoreColumns.MaxHitpoints, opts.FilterStatMaxHitpoints)...)
+	}
+
+	// Search
+	if opts.Search != "" {
+		xSearch := ParseQueryText(opts.Search, true)
+		if len(xSearch) > 0 {
+			queryMods = append(queryMods,
+				qm.And(fmt.Sprintf(
+					"((to_tsvector('english', %s) @@ to_tsquery(?))",
+					qm.Rels(boiler.TableNames.BlueprintPowerCores, boiler.BlueprintPowerCoreColumns.Label),
+				),
+					xSearch,
+				))
+		}
+	}
+	total, err := boiler.CollectionItems(
+		queryMods...,
+	).Count(gamedb.StdConn)
+	if err != nil {
+		return 0, nil, err
+	}
+	// Limit/Offset
+	if opts.PageSize > 0 {
+		queryMods = append(queryMods, qm.Limit(opts.PageSize))
+	}
+	if opts.Page > 0 {
+		queryMods = append(queryMods, qm.Offset(opts.PageSize*(opts.Page-1)))
+	}
+
+	// Build query
+	queryMods = append(queryMods,
+		qm.Select(
+			// CollectionItem
+			boiler.CollectionItemTableColumns.CollectionSlug,
+			boiler.CollectionItemTableColumns.Hash,
+			boiler.CollectionItemTableColumns.TokenID,
+			boiler.CollectionItemTableColumns.ItemType,
+			boiler.CollectionItemTableColumns.ItemID,
+			boiler.CollectionItemTableColumns.Tier,
+			boiler.CollectionItemTableColumns.OwnerID,
+			boiler.CollectionItemTableColumns.MarketLocked,
+			boiler.CollectionItemTableColumns.XsynLocked,
+			boiler.CollectionItemTableColumns.LockedToMarketplace,
+			boiler.CollectionItemTableColumns.AssetHidden,
+			// Images
+			boiler.BlueprintPowerCoreTableColumns.ImageURL,
+			boiler.BlueprintPowerCoreTableColumns.CardAnimationURL,
+			boiler.BlueprintPowerCoreTableColumns.AvatarURL,
+			boiler.BlueprintPowerCoreTableColumns.LargeImageURL,
+			boiler.BlueprintPowerCoreTableColumns.BackgroundColor,
+			boiler.BlueprintPowerCoreTableColumns.AnimationURL,
+			boiler.BlueprintPowerCoreTableColumns.YoutubeURL,
+			// Other fields
+			boiler.PowerCoreTableColumns.ID,
+			boiler.PowerCoreTableColumns.BlueprintID,
+			boiler.BlueprintPowerCoreTableColumns.Label,
+			boiler.BlueprintPowerCoreTableColumns.Size,
+			boiler.BlueprintPowerCoreTableColumns.Capacity,
+			boiler.BlueprintPowerCoreTableColumns.MaxDrawRate,
+			boiler.BlueprintPowerCoreTableColumns.RechargeRate,
+			boiler.BlueprintPowerCoreTableColumns.Armour,
+			boiler.BlueprintPowerCoreTableColumns.MaxHitpoints,
+			boiler.PowerCoreTableColumns.EquippedOn,
+			boiler.PowerCoreTableColumns.CreatedAt,
+		),
+		qm.From(boiler.TableNames.CollectionItems),
+	)
+
+	if opts.SortBy != "" && opts.SortDir.IsValid() {
+		if opts.SortBy == "alphabetical" {
+			queryMods = append(queryMods, qm.OrderBy(fmt.Sprintf("%s %s", qm.Rels(boiler.TableNames.BlueprintPowerCores, boiler.BlueprintPowerCoreColumns.Label), opts.SortDir)))
+		} else if opts.SortBy == "rarity" {
+			queryMods = append(queryMods, GenerateTierSort(qm.Rels(boiler.TableNames.BlueprintPowerCores, boiler.BlueprintPowerCoreColumns.Tier), opts.SortDir))
+		}
+	} else {
+		queryMods = append(queryMods, qm.OrderBy(fmt.Sprintf("%s ASC", qm.Rels(boiler.TableNames.BlueprintPowerCores, boiler.BlueprintPowerCoreColumns.Label))))
+	}
+
+	rows, err := boiler.NewQuery(
+		queryMods...,
+	).Query(gamedb.StdConn)
+	if err != nil {
+		return 0, nil, err
+	}
+	defer rows.Close()
+
+	var powerCores []*server.PowerCore
+	for rows.Next() {
+		pc := &server.PowerCore{
+			CollectionItem: &server.CollectionItem{},
+			Images:         &server.Images{},
+		}
+
+		scanArgs := []interface{}{
+			&pc.CollectionItem.CollectionSlug,
+			&pc.CollectionItem.Hash,
+			&pc.CollectionItem.TokenID,
+			&pc.CollectionItem.ItemType,
+			&pc.CollectionItem.ItemID,
+			&pc.CollectionItem.Tier,
+			&pc.CollectionItem.OwnerID,
+			&pc.CollectionItem.MarketLocked,
+			&pc.CollectionItem.XsynLocked,
+			&pc.CollectionItem.LockedToMarketplace,
+			&pc.CollectionItem.AssetHidden,
+			&pc.Images.ImageURL,
+			&pc.Images.CardAnimationURL,
+			&pc.Images.AvatarURL,
+			&pc.Images.LargeImageURL,
+			&pc.Images.BackgroundColor,
+			&pc.Images.AnimationURL,
+			&pc.Images.YoutubeURL,
+			&pc.ID,
+			&pc.BlueprintID,
+			&pc.Label,
+			&pc.Size,
+			&pc.Capacity,
+			&pc.MaxDrawRate,
+			&pc.RechargeRate,
+			&pc.Armour,
+			&pc.MaxHitpoints,
+			&pc.EquippedOn,
+			&pc.CreatedAt,
+		}
+
+		err = rows.Scan(scanArgs...)
+		if err != nil {
+			return total, powerCores, err
+		}
+		powerCores = append(powerCores, pc)
+	}
+
+	return total, powerCores, nil
+}
+
 func InsertNewPowerCore(tx boil.Executor, ownerID uuid.UUID, pc *server.BlueprintPowerCore) (*server.PowerCore, error) {
 	newPowerCore := boiler.PowerCore{
 		BlueprintID:           pc.ID,
