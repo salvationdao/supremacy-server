@@ -2399,7 +2399,7 @@ func (btl *Battle) MechsToWarMachines(mechs []*server.Mech) []*WarMachine {
 			},
 
 			PowerCore: PowerCoreFromServer(mech.PowerCore),
-			Weapons:   WeaponsFromServer(mech.Weapons, mech.ChassisSkin.BlueprintWeaponSkinID, mech.InheritAllWeaponSkins),
+			Weapons:   WeaponsFromServer(mech.Weapons, mech.BlueprintWeaponIDsWithSkinInheritance, mech.ChassisSkin.BlueprintWeaponSkinID, mech.InheritAllWeaponSkins),
 			Utility:   UtilitiesFromServer(mech.Utility),
 			Stats: &Stats{
 				TotalWins:       mech.Stats.TotalWins,

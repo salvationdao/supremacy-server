@@ -294,18 +294,27 @@ func WarMachineToClient(wm *WarMachine) *WarMachineGameClient {
 	return wmgc
 }
 
-func WeaponsFromServer(wpns []*server.Weapon, inheritedSkinID null.String, inheritAll bool) []*Weapon {
+func WeaponsFromServer(wpns []*server.Weapon, compatibilityList []string, inheritedSkinID null.String, inheritAll bool) []*Weapon {
 	var weapons []*Weapon
 	for _, wpn := range wpns {
-		weapons = append(weapons, WeaponFromServer(wpn, inheritedSkinID, inheritAll))
+		weapons = append(weapons, WeaponFromServer(wpn, compatibilityList, inheritedSkinID, inheritAll))
 	}
 	return weapons
 }
 
-func WeaponFromServer(weapon *server.Weapon, inheritedSkinID null.String, inheritAll bool) *Weapon {
+func WeaponFromServer(weapon *server.Weapon, compatibilityList []string, inheritedSkinID null.String, inheritAll bool) *Weapon {
 	skinID := weapon.WeaponSkin.BlueprintID
 	if inheritedSkinID.Valid && inheritedSkinID.String != "" && (inheritAll || weapon.InheritSkin) {
-		skinID = inheritedSkinID.String
+		isCompatible := false
+		for _, c := range compatibilityList {
+			if c == weapon.BlueprintID {
+				isCompatible = true
+				break
+			}
+		}
+		if isCompatible {
+			skinID = inheritedSkinID.String
+		}
 	}
 	if !weapon.InheritSkin {
 		skinID = weapon.WeaponSkin.BlueprintID
