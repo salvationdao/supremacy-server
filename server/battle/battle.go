@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/ninja-software/terror/v2"
 	"math/rand"
 	"server"
 	"server/db"
@@ -20,6 +19,8 @@ import (
 	"sort"
 	"strings"
 	"time"
+
+	"github.com/ninja-software/terror/v2"
 
 	"golang.org/x/exp/slices"
 
@@ -2398,7 +2399,7 @@ func (btl *Battle) MechsToWarMachines(mechs []*server.Mech) []*WarMachine {
 			},
 
 			PowerCore: PowerCoreFromServer(mech.PowerCore),
-			Weapons:   WeaponsFromServer(mech.Weapons),
+			Weapons:   WeaponsFromServer(mech.Weapons, mech.ChassisSkin.BlueprintWeaponSkinID, mech.InheritAllWeaponSkins),
 			Utility:   UtilitiesFromServer(mech.Utility),
 			Stats: &Stats{
 				TotalWins:       mech.Stats.TotalWins,
