@@ -1,7 +1,9 @@
 package battle
 
 import (
+	"database/sql"
 	"fmt"
+	"github.com/friendsofgo/errors"
 	"github.com/ninja-software/terror/v2"
 	"github.com/ninja-syndicate/ws"
 	"github.com/sasha-s/go-deadlock"
@@ -9,6 +11,7 @@ import (
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
+	"go.uber.org/atomic"
 	"golang.org/x/exp/slices"
 	"math/rand"
 	"server"
@@ -48,7 +51,7 @@ func (am *ArenaManager) DebounceSendBattleLobbiesUpdate() {
 
 		case <-timer.C:
 			// broadcast battle lobby update
-			broadcastBattleLobbyUpdate(impactedBattleLobbyIDs...)
+			am.broadcastBattleLobbyUpdate(impactedBattleLobbyIDs...)
 
 			// clean up battle lobby id list
 			impactedBattleLobbyIDs = []string{}
@@ -57,7 +60,7 @@ func (am *ArenaManager) DebounceSendBattleLobbiesUpdate() {
 }
 
 // broadcastBattleLobbyUpdate broadcast the updated lobbies to each faction
-func broadcastBattleLobbyUpdate(battleLobbyIDs ...string) {
+func (am *ArenaManager) broadcastBattleLobbyUpdate(battleLobbyIDs ...string) {
 	if battleLobbyIDs == nil || len(battleLobbyIDs) == 0 {
 		return
 	}
@@ -91,10 +94,27 @@ func broadcastBattleLobbyUpdate(battleLobbyIDs ...string) {
 		bls       []*server.BattleLobby
 	}
 
+	var publicLobbies []*server.BattleLobby
+	var privateLobbies []*server.BattleLobby
 	playerInvolvedLobbiesMap := make(map[string]*playerInvolveLobby)
+
 	// broadcast to individual
 	for _, bl := range battleLobbies {
+		// set AI mech fill_at field
+		bl.FilledAt = am.GetAIMechFillingProcessTime(bl.ID)
 
+		// build public/private lobby list
+		if !bl.AccessCode.Valid {
+			// append public lobbies
+			publicLobbies = append(publicLobbies, bl)
+
+		} else {
+			// append private lobbies
+			privateLobbies = append(privateLobbies, bl)
+
+		}
+
+		// build player involved lobby map
 		if bl.HostBy != nil && bl.HostBy.FactionID.Valid {
 			host := bl.HostBy
 			// check host player
@@ -135,29 +155,23 @@ func broadcastBattleLobbyUpdate(battleLobbyIDs ...string) {
 		}
 	}
 
-	// broadcast the lobbies which players are involved in
-	for playerID, pil := range playerInvolvedLobbiesMap {
-		ws.PublishMessage(fmt.Sprintf("/secure/user/%s/involved_battle_lobbies", playerID), server.HubKeyInvolvedBattleLobbyListUpdate, server.BattleLobbiesFactionFilter(pil.bls, pil.factionID, playerID))
-	}
-
-	// separate public and private lobbies
-	var publicLobbies []*server.BattleLobby
-
-	for _, battleLobby := range battleLobbies {
-		if !battleLobby.AccessCode.Valid {
-			publicLobbies = append(publicLobbies, battleLobby)
-			continue
-		}
-		// broadcast private lobby individually
+	// broadcast private lobbies individually
+	for _, battleLobby := range privateLobbies {
 		go ws.PublishMessage(fmt.Sprintf("/faction/%s/private_battle_lobby/%s", server.RedMountainFactionID, battleLobby.AccessCode.String), server.HubKeyPrivateBattleLobbyUpdate, server.BattleLobbyInfoFilter(battleLobby, server.RedMountainFactionID, false))
 		go ws.PublishMessage(fmt.Sprintf("/faction/%s/private_battle_lobby/%s", server.BostonCyberneticsFactionID, battleLobby.AccessCode.String), server.HubKeyPrivateBattleLobbyUpdate, server.BattleLobbyInfoFilter(battleLobby, server.BostonCyberneticsFactionID, false))
 		go ws.PublishMessage(fmt.Sprintf("/faction/%s/private_battle_lobby/%s", server.ZaibatsuFactionID, battleLobby.AccessCode.String), server.HubKeyPrivateBattleLobbyUpdate, server.BattleLobbyInfoFilter(battleLobby, server.ZaibatsuFactionID, false))
 	}
 
+	// broadcast public lobbies
 	if len(publicLobbies) > 0 {
 		go ws.PublishMessage(fmt.Sprintf("/faction/%s/battle_lobbies", server.RedMountainFactionID), server.HubKeyBattleLobbyListUpdate, append(server.BattleLobbiesFactionFilter(publicLobbies, server.RedMountainFactionID, ""), deletedLobbies...))
 		go ws.PublishMessage(fmt.Sprintf("/faction/%s/battle_lobbies", server.BostonCyberneticsFactionID), server.HubKeyBattleLobbyListUpdate, append(server.BattleLobbiesFactionFilter(publicLobbies, server.BostonCyberneticsFactionID, ""), deletedLobbies...))
 		go ws.PublishMessage(fmt.Sprintf("/faction/%s/battle_lobbies", server.ZaibatsuFactionID), server.HubKeyBattleLobbyListUpdate, append(server.BattleLobbiesFactionFilter(publicLobbies, server.ZaibatsuFactionID, ""), deletedLobbies...))
+	}
+
+	// broadcast the lobbies which players are involved in
+	for playerID, pil := range playerInvolvedLobbiesMap {
+		ws.PublishMessage(fmt.Sprintf("/secure/user/%s/involved_battle_lobbies", playerID), server.HubKeyInvolvedBattleLobbyListUpdate, server.BattleLobbiesFactionFilter(pil.bls, pil.factionID, playerID))
 	}
 }
 
@@ -169,7 +183,6 @@ func (am *ArenaManager) SetDefaultPublicBattleLobbies() error {
 		return err
 	}
 
-	// check every minutes
 	go func() {
 		publicLobbyTicker := time.NewTicker(1 * time.Minute)
 		expireLobbyTicker := time.NewTicker(5 * time.Second)
@@ -196,11 +209,17 @@ func (am *ArenaManager) SetDefaultPublicBattleLobbies() error {
 }
 
 func (am *ArenaManager) ExpiredExhibitionLobbyCleanUp() error {
-	// load the lobbies is expired and not ready
+	// lock queue func
+	am.BattleQueueFuncMx.Lock()
+	defer am.BattleQueueFuncMx.Unlock()
+
+	// load the non-private lobbies which are expired and not ready
 	bls, err := boiler.BattleLobbies(
 		boiler.BattleLobbyWhere.ExpiredAt.IsNotNull(),
 		boiler.BattleLobbyWhere.ExpiredAt.LTE(null.TimeFrom(time.Now())),
 		boiler.BattleLobbyWhere.ReadyAt.IsNull(),
+		boiler.BattleLobbyWhere.GeneratedBySystem.EQ(false),
+		boiler.BattleLobbyWhere.AccessCode.IsNull(),
 		qm.Load(
 			boiler.BattleLobbyRels.BattleLobbiesMechs,
 			boiler.BattleLobbiesMechWhere.RefundTXID.IsNull(),
@@ -220,10 +239,6 @@ func (am *ArenaManager) ExpiredExhibitionLobbyCleanUp() error {
 	if bls == nil || len(bls) == 0 {
 		return nil
 	}
-
-	// lock queue func
-	am.BattleQueueFuncMx.Lock()
-	defer am.BattleQueueFuncMx.Unlock()
 
 	wg := deadlock.WaitGroup{}
 	for _, bl := range bls {
@@ -631,4 +646,270 @@ func GenerateAIDrivenBattle() (*boiler.BattleLobby, error) {
 	}
 
 	return bl, nil
+}
+
+// SystemLobbyFillingProcess record the next filling time of the
+type SystemLobbyFillingProcess struct {
+	Map map[string]*AIMechFillingProcess
+	deadlock.RWMutex
+}
+
+type AIMechFillingProcess struct {
+	FillAt       time.Time
+	isTerminated *atomic.Bool
+}
+
+func (am *ArenaManager) GetAIMechFillingProcessTime(battleLobbyID string) null.Time {
+	am.SystemLobbyFillingProcess.RLock()
+	defer am.SystemLobbyFillingProcess.RUnlock()
+
+	sfp, ok := am.SystemLobbyFillingProcess.Map[battleLobbyID]
+	if !ok {
+		return null.TimeFromPtr(nil)
+	}
+
+	return null.TimeFrom(sfp.FillAt)
+}
+
+// TerminateAIMechFillingProcess terminate system lobby filling process
+// IMPORTANT: this function MUST be wrapped inside the "ArenaManager.SendBattleQueueFunc()" function
+func (am *ArenaManager) TerminateAIMechFillingProcess(battleLobbyID string) {
+	am.SystemLobbyFillingProcess.Lock()
+	defer am.SystemLobbyFillingProcess.Unlock()
+
+	sfp, ok := am.SystemLobbyFillingProcess.Map[battleLobbyID]
+	if !ok || sfp.isTerminated.Load() {
+		return
+	}
+
+	sfp.isTerminated.Store(true)
+	delete(am.SystemLobbyFillingProcess.Map, battleLobbyID)
+}
+
+// AddAIMechFillingProcess system lobby to the filling map
+// IMPORTANT: this function MUST be wrapped inside the "ArenaManager.SendBattleQueueFunc()" function
+func (am *ArenaManager) AddAIMechFillingProcess(battleLobbyID string) {
+	duration := time.Duration(db.GetIntWithDefault(db.KeyAutoFillLobbyAfterDurationSecond, 120)) * time.Second
+	am.SystemLobbyFillingProcess.Lock()
+	defer am.SystemLobbyFillingProcess.Unlock()
+	_, ok := am.SystemLobbyFillingProcess.Map[battleLobbyID]
+
+	// skip, if the filling process of the lobby is already set
+	if ok {
+		return
+	}
+
+	now := time.Now()
+	timer := time.NewTimer(duration)
+
+	afp := &AIMechFillingProcess{
+		FillAt:       now.Add(duration),
+		isTerminated: atomic.NewBool(false),
+	}
+
+	am.SystemLobbyFillingProcess.Map[battleLobbyID] = afp
+
+	go func(am *ArenaManager, fillingProcess *AIMechFillingProcess, timer *time.Timer) {
+		// load AI mechs
+		cis, err := boiler.CollectionItems(
+			boiler.CollectionItemWhere.ItemType.EQ(boiler.ItemTypeMech),
+			qm.Where(fmt.Sprintf(
+				"EXISTS (SELECT 1 FROM %s WHERE %s = %s AND %s = TRUE)",
+				boiler.TableNames.Players,
+				boiler.PlayerTableColumns.ID,
+				boiler.CollectionItemTableColumns.OwnerID,
+				boiler.PlayerTableColumns.IsAi,
+			)),
+			qm.Load(boiler.CollectionItemRels.Owner),
+		).All(gamedb.StdConn)
+		if err != nil {
+			gamelog.L.Error().Err(err).Msg("Failed to load AI mechs.")
+			return
+		}
+
+		// wait until the time is up,
+		<-timer.C
+
+		// start filling AI mechs
+		err = am.SendBattleQueueFunc(func() error {
+			// exit, if it is terminated
+			if fillingProcess.isTerminated.Load() {
+				return nil
+			}
+
+			// load the battle lobby and its queued mechs
+			bl, err := boiler.BattleLobbies(
+				boiler.BattleLobbyWhere.ID.EQ(battleLobbyID),
+				qm.Load(boiler.BattleLobbyRels.BattleLobbiesMechs),
+			).One(gamedb.StdConn)
+			if err != nil && !errors.Is(err, sql.ErrNoRows) {
+				gamelog.L.Error().Err(err).Str("battle lobby id", battleLobbyID).Msg("Failed to load battle lobby")
+				return terror.Error(err, "Failed to load battle lobby")
+			}
+
+			// terminate the process if the lobby is not exists
+			if bl == nil {
+				return nil
+			}
+
+			// terminate the process if there is no mech queued in the lobby
+			if bl.R == nil || bl.R.BattleLobbiesMechs == nil || len(bl.R.BattleLobbiesMechs) == 0 {
+				return nil
+			}
+
+			// terminate the process if the lobby is full
+			if len(bl.R.BattleLobbiesMechs) == bl.EachFactionMechAmount*3 {
+				return nil
+			}
+
+			// fill the lobby with AI mechs
+			factionSlots := []struct {
+				factionID      string
+				availableSlots int
+			}{
+				{server.RedMountainFactionID, bl.EachFactionMechAmount},
+				{server.BostonCyberneticsFactionID, bl.EachFactionMechAmount},
+				{server.ZaibatsuFactionID, bl.EachFactionMechAmount},
+			}
+
+			lobbyMechIDs := []string{}
+			for _, blm := range bl.R.BattleLobbiesMechs {
+				lobbyMechIDs = append(lobbyMechIDs, blm.MechID)
+				// find faction slot
+				index := slices.IndexFunc(factionSlots, func(fs struct {
+					factionID      string
+					availableSlots int
+				}) bool {
+					return fs.factionID == blm.FactionID
+				})
+				// should never happen, but just in case.
+				if index == -1 {
+					gamelog.L.Error().Str("faction id", blm.FactionID).Msg("Detect a faction id that is not exist in the system!!!")
+					return terror.Error(err, "Unexpected faction id occur.")
+				}
+
+				factionSlots[index].availableSlots -= 1
+			}
+
+			var insertRows []string
+			for _, factionSlot := range factionSlots {
+				if factionSlot.availableSlots <= 0 {
+					continue
+				}
+
+				// generate insert rows
+				for _, ci := range cis {
+					// skip, if the faction id not match
+					if ci.R == nil || ci.R.Owner == nil || ci.R.Owner.FactionID.String != factionSlot.factionID {
+						continue
+					}
+
+					// fill AI mechs into the slots
+					insertRows = append(insertRows, fmt.Sprintf(
+						"('%s', '%s', '%s', '%s')",
+						battleLobbyID,
+						ci.ItemID,
+						ci.OwnerID,
+						ci.R.Owner.FactionID.String,
+					))
+
+					factionSlot.availableSlots -= 1
+
+					// break, no available slot
+					if factionSlot.availableSlots == 0 {
+						break
+					}
+				}
+			}
+
+			if len(insertRows) == 0 {
+				return nil
+			}
+
+			// insert AI mech into the lobby
+			q := fmt.Sprintf(
+				"INSERT INTO %s (%s, %s, %s, %s)  VALUES ",
+				boiler.TableNames.BattleLobbiesMechs,
+				boiler.BattleLobbiesMechColumns.MechID,
+				boiler.BattleLobbiesMechColumns.QueuedByID,
+				boiler.BattleLobbiesMechColumns.FactionID,
+			)
+
+			for i, insertRow := range insertRows {
+				q += insertRow
+				if i < len(insertRows)-1 {
+					q += ","
+					continue
+				}
+				q += ";"
+			}
+
+			tx, err := gamedb.StdConn.Begin()
+			if err != nil {
+				gamelog.L.Error().Err(err).Msg("Failed to start db transaction")
+				return terror.Error(err, "Failed to start db transaction.")
+			}
+
+			defer tx.Rollback()
+
+			_, err = tx.Exec(q)
+			if err != nil {
+				gamelog.L.Error().Err(err).Str("query", q).Msg("Failed to insert battle lobby mechs")
+				return terror.Error(err, "Failed to insert battle lobby mechs.")
+			}
+
+			bl.ReadyAt = null.TimeFrom(time.Now())
+			bl.AccessCode = null.StringFromPtr(nil)
+			_, err = bl.Update(tx, boil.Whitelist(boiler.BattleLobbyColumns.ReadyAt, boiler.BattleLobbyColumns.AccessCode))
+			if err != nil {
+				gamelog.L.Error().Interface("battle lobby", bl).Err(err).Msg("Failed to update battle lobby.")
+				return terror.Error(err, "Failed to update battle lobby.")
+			}
+
+			_, err = bl.BattleLobbiesMechs(
+				boiler.BattleLobbiesMechWhere.RefundTXID.IsNull(),
+			).UpdateAll(tx, boiler.M{boiler.BattleLobbiesMechColumns.LockedAt: bl.ReadyAt})
+			if err != nil {
+				gamelog.L.Error().Interface("battle lobby", bl).Err(err).Msg("Failed to lock battle lobby mechs.")
+				return terror.Error(err, "Failed to lock battle lobby mechs.")
+			}
+
+			// generate another system lobby
+			newBattleLobby := &boiler.BattleLobby{
+				HostByID:              bl.HostByID,
+				EntryFee:              bl.EntryFee, // free to join
+				FirstFactionCut:       bl.FirstFactionCut,
+				SecondFactionCut:      bl.SecondFactionCut,
+				ThirdFactionCut:       bl.ThirdFactionCut,
+				EachFactionMechAmount: bl.EachFactionMechAmount,
+				GameMapID:             bl.GameMapID,
+				GeneratedBySystem:     true,
+			}
+
+			err = newBattleLobby.Insert(tx, boil.Infer())
+			if err != nil {
+				gamelog.L.Error().Err(err).Msg("Failed to insert new battle lobby.")
+				return terror.Error(err, "Failed to insert new new battle lobby")
+			}
+
+			err = tx.Commit()
+			if err != nil {
+				return terror.Error(err, "Failed to commit db transaction.")
+			}
+
+			// broadcast battle lobby
+			am.BattleLobbyDebounceBroadcastChan <- []string{newBattleLobby.ID, bl.ID}
+
+			// broadcast the status changes of the lobby mechs
+			go BroadcastMechQueueStatus(lobbyMechIDs)
+
+			// Terminate filling process
+			am.TerminateAIMechFillingProcess(battleLobbyID)
+
+			return nil
+		})
+		if err != nil {
+			gamelog.L.Error().Err(err).Msg("Failed to fill AI mechs into system lobby.")
+		}
+	}(am, afp, timer)
 }

@@ -506,19 +506,6 @@ func (api *API) BattleLobbyJoin(ctx context.Context, user *boiler.Player, factio
 			battleLobbyMechs = append(battleLobbyMechs, blm)
 		}
 
-		// set auto fill time, when battle lobby is generate by system
-		if bl.GeneratedBySystem && !bl.AutoFillAt.Valid {
-			autoFillAfterDurationSeconds := db.GetIntWithDefault(db.KeyAutoFillLobbyAfterDurationSecond, 120)
-
-			bl.AutoFillAt = null.TimeFrom(time.Now().Add(time.Duration(autoFillAfterDurationSeconds) * time.Second))
-			_, err = bl.Update(tx, boil.Whitelist(boiler.BattleLobbyColumns.AutoFillAt))
-			if err != nil {
-				refund(refundFns)
-				gamelog.L.Error().Err(err).Msg("Failed to update auto fill field")
-				return terror.Error(err, "Failed to update auto fill field.")
-			}
-		}
-
 		// mark battle lobby to ready
 		if lobbyReady {
 			bl.ReadyAt = null.TimeFrom(now)
@@ -569,6 +556,18 @@ func (api *API) BattleLobbyJoin(ctx context.Context, user *boiler.Player, factio
 			refund(refundFns)
 			gamelog.L.Error().Err(err).Msg("Failed to commit db transaction.")
 			return terror.Error(err, "Failed to queue your mech.")
+		}
+
+		if bl.GeneratedBySystem {
+			if !lobbyReady {
+				// trigger auto-filling process if lobby is not ready
+				api.ArenaManager.AddAIMechFillingProcess(bl.ID)
+
+			} else {
+				// terminate the auto-filling process if the lobby is ready
+				api.ArenaManager.TerminateAIMechFillingProcess(bl.ID)
+
+			}
 		}
 
 		// pause mechs repair case
@@ -855,15 +854,9 @@ func (api *API) BattleLobbyLeave(ctx context.Context, user *boiler.Player, facti
 		for _, bl := range bls {
 			lobbyIDs = append(lobbyIDs, bl.ID)
 
-			// clean up battle lobby
+			// clean up the filling process of system battle lobby
 			if bl.GeneratedBySystem && (bl.R == nil || bl.R.BattleLobbiesMechs == nil || len(bl.R.BattleLobbiesMechs) == 0) {
-				bl.AutoFillAt = null.TimeFromPtr(nil)
-				_, err = bl.Update(tx, boil.Whitelist(boiler.BattleLobbyColumns.AutoFillAt))
-				if err != nil {
-					refund(refundFns)
-					gamelog.L.Error().Err(err).Msg("Failed to clear auto fill field")
-					return terror.Error(err, "Failed to clear auto fill field.")
-				}
+				api.ArenaManager.TerminateAIMechFillingProcess(bl.ID)
 			}
 
 			// skip, if the player is the host of the lobby

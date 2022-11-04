@@ -74,6 +74,8 @@ type ArenaManager struct {
 	LobbyFuncMx                      *deadlock.Mutex
 
 	RepairGameBlockMx deadlock.RWMutex
+
+	SystemLobbyFillingProcess *SystemLobbyFillingProcess
 }
 
 type Opts struct {
@@ -105,6 +107,9 @@ func NewArenaManager(opts *Opts) (*ArenaManager, error) {
 		BattleLobbyDebounceBroadcastChan: make(chan []string, 10),
 		LobbyFuncMx:                      &deadlock.Mutex{},
 		RepairGameBlockMx:                deadlock.RWMutex{},
+		SystemLobbyFillingProcess: &SystemLobbyFillingProcess{
+			Map: make(map[string]*AIMechFillingProcess),
+		},
 	}
 
 	am.server = &http.Server{
@@ -346,7 +351,7 @@ func (am *ArenaManager) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				go func(battle boiler.Battle, replayID string) {
 					err = replay.RecordReplayRequest(&battle, replayID, replay.StopRecording)
 					if err != nil {
-						gamelog.L.Error().Str("battle_id", btl.ID).Str("replay_id", btl.replaySession.ReplaySession.ID).Err(err).Msg("failed to stop recording during game client disconnection")
+						gamelog.L.Error().Str("battle_id", btl.ID).Str("replay_id", btl.replaySession.ReplaySession.ID).Err(err).Msg("failed to isTerminated recording during game client disconnection")
 					}
 				}(battle, btl.replaySession.ReplaySession.ID)
 
@@ -400,8 +405,8 @@ func (am *ArenaManager) NewArena(battleArena *boiler.BattleArena, wsConn *websoc
 		// change arena state to hijacked
 		a.Stage.Store(ArenaStageHijacked)
 
-		// stop recording from previous arena
-		// stop war machine stat broadcast
+		// isTerminated recording from previous arena
+		// isTerminated war machine stat broadcast
 		select {
 		case a.WarMachineStatBroadcastStopChan <- true:
 		case <-time.After(1 * time.Second): // timeout
@@ -430,7 +435,7 @@ func (am *ArenaManager) NewArena(battleArena *boiler.BattleArena, wsConn *websoc
 			if btl.replaySession.ReplaySession != nil {
 				err = replay.RecordReplayRequest(btl.Battle, btl.replaySession.ReplaySession.ID, replay.StopRecording)
 				if err != nil {
-					gamelog.L.Error().Str("battle_id", btl.ID).Str("replay_id", btl.replaySession.ReplaySession.ID).Err(err).Msg("failed to stop recording during game client disconnection")
+					gamelog.L.Error().Str("battle_id", btl.ID).Str("replay_id", btl.replaySession.ReplaySession.ID).Err(err).Msg("failed to isTerminated recording during game client disconnection")
 				}
 
 				var eventByte []byte
