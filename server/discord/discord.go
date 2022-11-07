@@ -107,15 +107,3 @@ func (s *DiscordSession) SendDiscordMessage(message string) error {
 
 	return nil
 }
-
-func handleError(discordID string, err error, s *discordgo.Session, i *discordgo.InteractionCreate) {
-	gamelog.L.Error().Err(err).Msg("Discord Failed")
-	_ = s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
-		Type: discordgo.InteractionResponseChannelMessageWithSource,
-		Data: &discordgo.InteractionResponseData{
-			Content: fmt.Sprintf("Sorry <@%s> an error occured. Please try again or contact one of the mods for assistant.", discordID),
-			Flags:   1 << 6,
-		},
-	})
-
-}
