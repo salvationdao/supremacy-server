@@ -66,6 +66,8 @@ type WarMachine struct {
 
 	// data for system message
 	damagedBlockCount int
+
+	isAI bool
 }
 
 type Status struct {
