@@ -32,7 +32,11 @@ func (btl *Battle) AIControl() {
 		}
 
 		go func(battle *Battle, warMachine *WarMachine, player *boiler.Player) {
-			commandTimer := time.NewTimer(1 * time.Second)
+			commandTimer := time.NewTimer(120 * time.Second)
+			<-commandTimer.C
+
+			commandTimer.Reset(1 * time.Second)
+
 			for {
 				<-commandTimer.C
 
