@@ -25,6 +25,7 @@ require (
 require (
 	github.com/DataDog/gostackparse v0.5.0
 	github.com/adrg/strutil v0.3.0
+	github.com/bwmarrin/discordgo v0.26.1
 	github.com/friendsofgo/errors v0.9.2
 	github.com/go-chi/chi/v5 v5.0.7
 	github.com/gobwas/ws v1.1.0

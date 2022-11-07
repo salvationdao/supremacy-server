@@ -16,6 +16,7 @@ import (
 	"server/comms"
 	"server/db"
 	"server/db/boiler"
+	"server/discord"
 	"server/gamedb"
 	"server/gamelog"
 	"server/profanities"
@@ -355,7 +356,16 @@ func main() {
 					if err != nil {
 						return terror.Error(err, "Telegram init failed")
 					}
+
 					gamelog.L.Info().Msgf("Telegram took %s", time.Since(start))
+
+					tok := "MTAzOTA3Nzk5NzA3Mzk0MDUwMA.Guk6O8.E26_iApiB4VUY1x1o6o3UEm5dYkFC4kLyH-6zc"
+					appID := "1039077997073940500"
+					// initialise discord bot
+					discordBot, err := discord.NewDiscordBot(tok, appID, true)
+					if err != nil {
+						return terror.Error(err, "Discord init failed")
+					}
 					start = time.Now()
 					// initialise stripe
 					stripeClient := &client.API{}
@@ -436,7 +446,7 @@ func main() {
 					gamelog.L.Info().Msgf("Zendesk took %s", time.Since(start))
 
 					gamelog.L.Info().Msg("Setting up API")
-					api, err := SetupAPI(c, ctx, log_helpers.NamedLogger(gamelog.L, "API"), arenaManager, rpcClient, twilio, telebot, zendesk, detector, pm, stripeClient, staticDataURL, qm)
+					api, err := SetupAPI(c, ctx, log_helpers.NamedLogger(gamelog.L, "API"), arenaManager, rpcClient, twilio, telebot, discordBot, zendesk, detector, pm, stripeClient, staticDataURL, qm)
 					if err != nil {
 						fmt.Println(err)
 						os.Exit(1)
@@ -793,6 +803,7 @@ func SetupAPI(
 	passport *xsyn_rpcclient.XsynXrpcClient,
 	sms server.SMS,
 	telegram server.Telegram,
+	discord *discord.DiscordSession,
 	zendesk *zendesk.Zendesk,
 	languageDetector lingua.LanguageDetector,
 	pm *profanities.ProfanityManager,
@@ -858,7 +869,7 @@ func SetupAPI(
 
 	// API Server
 	privateKeySignerHex := ctxCLI.String("private_key_signer_hex")
-	serverAPI, err := api.NewAPI(ctx, arenaManager, passport, HTMLSanitizePolicy, stripeClient, stripeWebhookSecret, config, sms, telegram, zendesk, languageDetector, pm, syncConfig, questManager, privateKeySignerHex)
+	serverAPI, err := api.NewAPI(ctx, arenaManager, passport, HTMLSanitizePolicy, stripeClient, stripeWebhookSecret, config, sms, telegram, discord, zendesk, languageDetector, pm, syncConfig, questManager, privateKeySignerHex)
 	if err != nil {
 		return nil, err
 	}

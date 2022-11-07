@@ -5,8 +5,6 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
-	"github.com/friendsofgo/errors"
-	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 	"os"
 	"server"
 	"server/db"
@@ -15,6 +13,9 @@ import (
 	"server/gamelog"
 	"server/slack"
 	"time"
+
+	"github.com/friendsofgo/errors"
+	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 
 	"github.com/gofrs/uuid"
 	"github.com/ninja-software/terror/v2"
@@ -197,6 +198,12 @@ func (api *API) ModToolBanUser(ctx context.Context, user *boiler.Player, key str
 		err = slack.SendSlackNotification(slackMessage, db.GetStrWithDefault(db.KeySlackModChannelID, "C03GDHLV9FE"), slack.ModToolsAppToken)
 		if err != nil {
 			gamelog.L.Err(err).Msg("Failed to send slack notification for banning user")
+		}
+
+		// send discord notif
+		err = api.Discord.SendDiscordMessage(slackMessage)
+		if err != nil {
+			gamelog.L.Err(err).Msg("Failed to send discord notification for banning user")
 		}
 
 		gamelog.L.Info().Str("Mod Action", "Ban").Interface("Mod Audit", audit).Msg("Mod tool event")

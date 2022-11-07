@@ -1,0 +1,110 @@
+package discord
+
+import (
+	"fmt"
+	"server/db"
+	"server/gamelog"
+
+	"github.com/bwmarrin/discordgo"
+	"github.com/ninja-software/terror/v2"
+)
+
+type DiscordSession struct {
+	s                  *discordgo.Session
+	registeredCommands []*discordgo.ApplicationCommand
+	appID              string
+	guildID            string
+	IsActive           bool
+}
+
+var Session *DiscordSession
+
+func NewDiscordBot(token, appID string, isBotBinary bool) (*DiscordSession, error) {
+	session := &DiscordSession{
+		IsActive: true,
+	}
+	Session = session
+	guildID := "1034448717006258186"
+	session.guildID = guildID
+
+	bot, err := discordgo.New(fmt.Sprintf("Bot %s", token))
+	if err != nil {
+		return nil, terror.Error(err, "Failed to initialize discord bot")
+	}
+
+	session.s = bot
+	session.appID = appID
+
+	if isBotBinary {
+		commands := []*discordgo.ApplicationCommand{{}}
+		session.s.AddHandler(func(DiscordSession *discordgo.Session, r *discordgo.Ready) {
+			gamelog.L.Info().Msg("Discord session ready")
+		})
+
+		err = session.s.Open()
+		if err != nil {
+			gamelog.L.Err(err).Msg("Discord session failed to open")
+			return nil, err
+		}
+
+		for _, command := range commands {
+			session.s.ApplicationCommandCreate(appID, Session.guildID, command)
+			session.registeredCommands = append(session.registeredCommands, command)
+		}
+	}
+
+	return Session, nil
+}
+
+func (s *DiscordSession) CloseSession() {
+	if !s.IsActive {
+		return
+	}
+
+	registeredCommands, err := s.s.ApplicationCommands(s.appID, "1034448717006258186")
+	if err != nil {
+		gamelog.L.Err(err).Msg("failed to get all apps command")
+	}
+
+	if len(registeredCommands) > 0 {
+		for _, cmd := range registeredCommands {
+			err := s.s.ApplicationCommandDelete(s.appID, Session.guildID, cmd.ID)
+			if err != nil {
+				gamelog.L.Err(err).Interface("command", cmd).Msg("failed to delete app command")
+			}
+		}
+
+	}
+
+	s.s.Close()
+}
+
+func (s *DiscordSession) SendDiscordMessage(message string) error {
+	if !s.IsActive {
+		return nil
+	}
+
+	devID := "1034448717006258189"
+
+	channelID := db.GetStrWithDefault("", devID)
+
+	_, err := s.s.ChannelMessageSend(channelID, message)
+	if err != nil {
+		gamelog.L.Error().Err(err).Msg("failed to get send discord message for announcing")
+		return err
+	}
+
+	return nil
+}
+
+func handleError(discordID string, err error, s *discordgo.Session, i *discordgo.InteractionCreate) {
+	gamelog.L.Error().Err(err).Msg("Discord Failed")
+	_ = s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+		Type: discordgo.InteractionResponseChannelMessageWithSource,
+		Data: &discordgo.InteractionResponseData{
+			Content: fmt.Sprintf("Sorry <@%s> an error occured. Please try again or contact one of the mods for assistant.", discordID),
+			Flags:   1 << 6,
+		},
+	})
+
+}
