@@ -2,6 +2,7 @@ package discord
 
 import (
 	"fmt"
+	"server"
 	"server/db"
 	"server/gamelog"
 
@@ -24,7 +25,14 @@ func NewDiscordBot(token, appID string, isBotBinary bool) (*DiscordSession, erro
 		IsActive: true,
 	}
 	Session = session
-	guildID := "1034448717006258186"
+
+	guildID := db.GetStrWithDefault(db.KeyDiscordGuildID, "927761469775441930")
+
+	if server.IsDevelopmentEnv() {
+		guildID = "1034448717006258186"
+	} else if server.IsStagingEnv() {
+		guildID = "685421530477232138"
+	}
 	session.guildID = guildID
 
 	bot, err := discordgo.New(fmt.Sprintf("Bot %s", token))
@@ -57,11 +65,11 @@ func NewDiscordBot(token, appID string, isBotBinary bool) (*DiscordSession, erro
 }
 
 func (s *DiscordSession) CloseSession() {
-	if !s.IsActive {
+	if !s.IsActive || s.guildID == "" {
 		return
 	}
 
-	registeredCommands, err := s.s.ApplicationCommands(s.appID, "1034448717006258186")
+	registeredCommands, err := s.s.ApplicationCommands(s.appID, s.guildID)
 	if err != nil {
 		gamelog.L.Err(err).Msg("failed to get all apps command")
 	}
@@ -84,9 +92,12 @@ func (s *DiscordSession) SendDiscordMessage(message string) error {
 		return nil
 	}
 
-	devID := "1034448717006258189"
-
-	channelID := db.GetStrWithDefault("", devID)
+	channelID := db.GetStrWithDefault(db.KeyDiscordChannelID, "946873011368251412")
+	if server.IsDevelopmentEnv() {
+		channelID = "1034448717006258189"
+	} else if server.IsStagingEnv() {
+		channelID = "1034448717006258189"
+	}
 
 	_, err := s.s.ChannelMessageSend(channelID, message)
 	if err != nil {

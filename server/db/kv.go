@@ -96,6 +96,9 @@ const KeyOpenNewArenaEveryXAmountOfBattleLobbies KVKey = "open_new_arena_after_x
 
 const KeyDeductBlockCountFromBomb KVKey = "deduct_block_count_from_bomb"
 
+const KeyDiscordChannelID KVKey = "discord_channel_id"
+const KeyDiscordGuildID KVKey = "discord_guild_id"
+
 func get(key KVKey) string {
 	kv, err := boiler.KVS(boiler.KVWhere.Key.EQ(string(key))).One(gamedb.StdConn)
 	if err != nil {

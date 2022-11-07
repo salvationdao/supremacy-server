@@ -185,6 +185,9 @@ func main() {
 					// Crypto signatures for battle histories
 					&cli.StringFlag{Name: "private_key_signer_hex", Value: "0x5f3b57101caf01c3d91e50809e70d84fcc404dd108aa8a9aa3e1a6c482267f48", EnvVars: []string{envPrefix + "_PRIVATE_KEY_SIGNER_HEX"}, Usage: "Private key for signing battle records (default is testnet dev private key)"},
 					&cli.StringFlag{Name: "ovenmedia_signed_key", Value: "aKq#1kj", EnvVars: []string{envPrefix + "_OVENMEDIA_SIGNED_KEY"}, Usage: "Ovenmedia secret sign key"},
+
+					&cli.StringFlag{Name: "discord_auth_token", Value: "", EnvVars: []string{envPrefix + "_DISCORD_AUTH_TOKEN"}, Usage: "Discord bot auth token"},
+					&cli.StringFlag{Name: "discord_app_id", Value: "", EnvVars: []string{envPrefix + "_DISCORD_APP_ID"}, Usage: "Discord bot app id"},
 				},
 				Usage: "run server",
 				Action: func(c *cli.Context) error {
@@ -225,6 +228,9 @@ func main() {
 					ctx, cancel := context.WithCancel(c.Context)
 					defer cancel()
 					environment := c.String("environment")
+
+					discordAuthToken := c.String("discord_auth_token")
+					discordAppID := c.String("discord_app_id")
 
 					replay.OvenMediaAuthKey = c.String("ovenmedia_auth_key")
 					voice_chat.VoiceChatSecretKey = c.String("ovenmedia_signed_key")
@@ -359,13 +365,12 @@ func main() {
 
 					gamelog.L.Info().Msgf("Telegram took %s", time.Since(start))
 
-					tok := "MTAzOTA3Nzk5NzA3Mzk0MDUwMA.Guk6O8.E26_iApiB4VUY1x1o6o3UEm5dYkFC4kLyH-6zc"
-					appID := "1039077997073940500"
 					// initialise discord bot
-					discordBot, err := discord.NewDiscordBot(tok, appID, true)
+					discordBot, err := discord.NewDiscordBot(discordAuthToken, discordAppID, true)
 					if err != nil {
 						return terror.Error(err, "Discord init failed")
 					}
+
 					start = time.Now()
 					// initialise stripe
 					stripeClient := &client.API{}
