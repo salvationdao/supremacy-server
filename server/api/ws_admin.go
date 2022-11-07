@@ -458,16 +458,40 @@ func (ac *AdminController) FiatProductUpdate(ctx context.Context, user *boiler.P
 		return terror.Error(err, errMsg)
 	}
 
-	var pricingUSD *boiler.FiatProductPricing
+	priceUSD := decimal.NewFromInt(req.Payload.PriceDollars*100 + req.Payload.PriceCents)
+
 	for _, p := range product.R.FiatProductPricings {
 		if p.CurrencyCode == server.FiatCurrencyCodeUSD {
-			pricingUSD = p
-			pricingUSD.Amount = decimal.NewFromInt(req.Payload.PriceDollars*100 + req.Payload.PriceCents)
-			_, err = pricingUSD.Update(tx, boil.Whitelist(boiler.FiatProductPricingColumns.Amount))
+			p.Amount = priceUSD
+			_, err = p.Update(tx, boil.Whitelist(boiler.FiatProductPricingColumns.Amount))
 			if err != nil {
 				return terror.Error(err, errMsg)
 			}
-			break
+		} else if p.CurrencyCode == server.FiatCurrencyCodeSUPS {
+			if !req.Payload.EnableSups {
+				_, err := p.Delete(tx)
+				if err != nil {
+					return terror.Error(err, errMsg)
+				}
+				continue
+			}
+
+			// Calculate SUPS
+			supToUSDRate, err := ac.API.Passport.GetCurrentSupPrice()
+			if err != nil {
+				return terror.Error(err, errMsg)
+			}
+
+			fiatToSupConversionCut := db.GetDecimalWithDefault(db.KeyFiatToSUPCut, decimal.NewFromInt(1).Div(decimal.NewFromInt(5))) // 20% by default
+
+			p.Amount = priceUSD.Div(decimal.NewFromInt(100)).
+				Div(supToUSDRate).
+				Mul(decimal.New(1, 0).Sub(fiatToSupConversionCut)).
+				Mul(decimal.New(1, 18))
+			_, err = p.Update(tx, boil.Whitelist(boiler.FiatProductPricingColumns.Amount))
+			if err != nil {
+				return terror.Error(err, errMsg)
+			}
 		}
 	}
 
