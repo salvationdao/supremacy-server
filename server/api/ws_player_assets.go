@@ -2200,7 +2200,6 @@ type PlayerAssetMechSubmodelListRequest struct {
 	Payload struct {
 		Search                   string                `json:"search"`
 		Filter                   *db.ListFilterRequest `json:"filter"`
-		Sort                     *db.ListSortRequest   `json:"sort"`
 		SortBy                   db.SortBy             `json:"sort_by"`
 		SortDir                  db.SortByDir          `json:"sort_dir"`
 		PageSize                 int                   `json:"page_size"`
@@ -2241,7 +2240,6 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetMechSubmodelListDetailedHandler(
 	listOpts := &db.MechSkinListOpts{
 		Search:                   req.Payload.Search,
 		Filter:                   req.Payload.Filter,
-		Sort:                     req.Payload.Sort,
 		PageSize:                 req.Payload.PageSize,
 		Page:                     req.Payload.Page,
 		OwnerID:                  user.ID,
