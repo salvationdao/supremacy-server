@@ -99,8 +99,28 @@ func (api *API) BattleLobbyCreate(ctx context.Context, user *boiler.Player, fact
 	}
 
 	publicExhibitionLobbyExpireAfterSecond := db.GetIntWithDefault(db.KeyPublicExhibitionLobbyExpireAfterDurationSecond, 1800)
+	lobbyHostingLimit := db.GetIntWithDefault(db.KeyLobbyHostingMaximumAmount, 5)
+
 	// start process
 	err = api.ArenaManager.SendBattleQueueFunc(func() error {
+
+		// check hosted lobbies limitation, if it is a public lobby
+		if !req.Payload.AccessCode.Valid {
+			hostBattleLobbies, err := boiler.BattleLobbies(
+				boiler.BattleLobbyWhere.HostByID.EQ(user.ID),
+				boiler.BattleLobbyWhere.AccessCode.IsNull(),
+				boiler.BattleLobbyWhere.EndedAt.IsNull(),
+			).All(gamedb.StdConn)
+			if err != nil {
+				gamelog.L.Error().Err(err).Msg("Failed to load hosted battle lobbies.")
+				return terror.Error(err, "Failed to check hosted lobby amount")
+			}
+
+			if hostBattleLobbies != nil && len(hostBattleLobbies) >= lobbyHostingLimit {
+				return terror.Error(fmt.Errorf("exceed lobby host limit"), "You have exceed the lobby hosting limit.")
+			}
+		}
+
 		// check mech in queue
 		availableMechIDs, err = db.FilterOutMechAlreadyInQueue(availableMechIDs)
 		if err != nil {

@@ -12,7 +12,6 @@ import (
 )
 
 func GetBattleLobbyViaIDs(lobbyIDs []string) ([]*boiler.BattleLobby, error) {
-	// TODO: change this to row query, so it can support querying deleted battle lobbies
 	bl, err := boiler.BattleLobbies(
 		boiler.BattleLobbyWhere.ID.IN(lobbyIDs),
 		qm.Load(boiler.BattleLobbyRels.GameMap),

@@ -270,11 +270,16 @@ func (am *ArenaManager) ExpiredExhibitionLobbyCleanUp() error {
 					fn()
 				}
 			}
-
+			involvedPlayerIDs := []string{battleLobby.HostByID}
 			lobbyMechIDs := []string{}
 			if battleLobby.R != nil {
 				// refund battle lobby mechs' entry fee
 				for _, battleLobbyMech := range battleLobby.R.BattleLobbiesMechs {
+					// record involved player id
+					if slices.Index(involvedPlayerIDs, battleLobbyMech.QueuedByID) == -1 {
+						involvedPlayerIDs = append(involvedPlayerIDs, battleLobbyMech.QueuedByID)
+					}
+
 					lobbyMechIDs = append(lobbyMechIDs, battleLobbyMech.MechID)
 					battleLobbyMech.DeletedAt = null.TimeFrom(time.Now())
 					updatedColumns := []string{
@@ -344,6 +349,15 @@ func (am *ArenaManager) ExpiredExhibitionLobbyCleanUp() error {
 
 			// broadcast battle lobby
 			am.BattleLobbyDebounceBroadcastChan <- []string{battleLobby.ID}
+
+			for _, playerID := range involvedPlayerIDs {
+				ws.PublishMessage(fmt.Sprintf("/secure/user/%s/involved_battle_lobbies", playerID), server.HubKeyInvolvedBattleLobbyListUpdate, []*boiler.BattleLobby{
+					{
+						ID:        battleLobby.ID,
+						DeletedAt: null.TimeFrom(time.Now()),
+					},
+				})
+			}
 
 			// broadcast the status changes of the lobby mechs
 			go BroadcastMechQueueStatus(lobbyMechIDs)
