@@ -105,7 +105,8 @@ func (btl *Battle) AIControl() {
 				var aiOpponentPositions []mechStat
 
 				for _, wwm := range battle.WarMachines {
-					if wwm.FactionID == warMachine.FactionID || wwm.Health <= 0 {
+					// skip self and dead mechs
+					if wwm.ID == warMachine.ID || wwm.Health <= 0 {
 						continue
 					}
 
@@ -354,7 +355,7 @@ func triggerRepair(battle *Battle, warMachine *WarMachine, gameAbilityRepair *bo
 	}
 
 	if lastTrigger != nil {
-		return false
+		return true
 	}
 
 	now := time.Now()
