@@ -96,7 +96,7 @@ func (s *DiscordSession) SendDiscordMessage(message string) error {
 	if server.IsDevelopmentEnv() {
 		channelID = "1034448717006258189"
 	} else if server.IsStagingEnv() {
-		channelID = "1034448717006258189"
+		channelID = "685850676534050860"
 	}
 
 	_, err := s.s.ChannelMessageSend(channelID, message)
