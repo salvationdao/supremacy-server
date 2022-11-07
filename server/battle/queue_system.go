@@ -2,6 +2,7 @@ package battle
 
 import (
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"github.com/friendsofgo/errors"
 	"github.com/ninja-software/terror/v2"
@@ -20,6 +21,7 @@ import (
 	"server/gamedb"
 	"server/gamelog"
 	"server/helpers"
+	"server/system_messages"
 	"time"
 )
 
@@ -208,6 +210,11 @@ func (am *ArenaManager) SetDefaultPublicBattleLobbies() error {
 	return nil
 }
 
+type ExpiredLobbyMessage struct {
+	PlayerID   string               `json:"player_id"`
+	MechBriefs []*SystemMessageMech `json:"mech_briefs"`
+}
+
 func (am *ArenaManager) ExpiredExhibitionLobbyCleanUp() error {
 	// lock queue func
 	am.BattleQueueFuncMx.Lock()
@@ -270,15 +277,31 @@ func (am *ArenaManager) ExpiredExhibitionLobbyCleanUp() error {
 					fn()
 				}
 			}
-			involvedPlayerIDs := []string{battleLobby.HostByID}
+			involvedPlayerMechs := []*ExpiredLobbyMessage{
+				{
+					PlayerID:   battleLobby.HostByID,
+					MechBriefs: []*SystemMessageMech{},
+				},
+			}
+
 			lobbyMechIDs := []string{}
 			if battleLobby.R != nil {
 				// refund battle lobby mechs' entry fee
 				for _, battleLobbyMech := range battleLobby.R.BattleLobbiesMechs {
 					// record involved player id
-					if slices.Index(involvedPlayerIDs, battleLobbyMech.QueuedByID) == -1 {
-						involvedPlayerIDs = append(involvedPlayerIDs, battleLobbyMech.QueuedByID)
+					index := slices.IndexFunc(involvedPlayerMechs, func(ip *ExpiredLobbyMessage) bool { return ip.PlayerID == battleLobbyMech.QueuedByID })
+					if index == -1 {
+						involvedPlayerMechs = append(involvedPlayerMechs, &ExpiredLobbyMessage{
+							PlayerID:   battleLobbyMech.QueuedByID,
+							MechBriefs: []*SystemMessageMech{},
+						})
+						index = len(involvedPlayerMechs) - 1
 					}
+
+					involvedPlayerMechs[index].MechBriefs = append(involvedPlayerMechs[index].MechBriefs, &SystemMessageMech{
+						MechID:    battleLobbyMech.MechID,
+						FactionID: battleLobbyMech.FactionID,
+					})
 
 					lobbyMechIDs = append(lobbyMechIDs, battleLobbyMech.MechID)
 					battleLobbyMech.DeletedAt = null.TimeFrom(time.Now())
@@ -350,13 +373,154 @@ func (am *ArenaManager) ExpiredExhibitionLobbyCleanUp() error {
 			// broadcast battle lobby
 			am.BattleLobbyDebounceBroadcastChan <- []string{battleLobby.ID}
 
-			for _, playerID := range involvedPlayerIDs {
-				ws.PublishMessage(fmt.Sprintf("/secure/user/%s/involved_battle_lobbies", playerID), server.HubKeyInvolvedBattleLobbyListUpdate, []*boiler.BattleLobby{
-					{
-						ID:        battleLobby.ID,
-						DeletedAt: null.TimeFrom(time.Now()),
-					},
-				})
+			// load mech data
+			for _, playerMechs := range involvedPlayerMechs {
+
+				go func(pms *ExpiredLobbyMessage) {
+					ws.PublishMessage(fmt.Sprintf("/secure/user/%s/involved_battle_lobbies", pms.PlayerID), server.HubKeyInvolvedBattleLobbyListUpdate, []*boiler.BattleLobby{
+						{
+							ID:        battleLobby.ID,
+							DeletedAt: null.TimeFrom(time.Now()),
+						},
+					})
+
+					// send system message
+					if len(pms.MechBriefs) > 0 {
+						// collect mech brief data
+						mechIDWhereIn := fmt.Sprintf("%s IN (", boiler.MechTableColumns.ID)
+						for i, mb := range pms.MechBriefs {
+							mechIDWhereIn += "'" + mb.MechID + "'"
+							if i < len(pms.MechBriefs)-1 {
+								mechIDWhereIn += ","
+								continue
+							}
+
+							mechIDWhereIn += ")"
+						}
+
+						queries := []qm.QueryMod{
+							qm.Select(
+								boiler.MechTableColumns.ID,
+								boiler.MechTableColumns.Name,
+								boiler.BlueprintMechTableColumns.Label,
+								boiler.BlueprintMechSkinTableColumns.Tier,
+								boiler.MechModelSkinCompatibilityTableColumns.AvatarURL,
+								boiler.BlueprintMechTableColumns.RepairBlocks,
+								fmt.Sprintf(
+									`COALESCE(
+										(SELECT %s - %s FROM %s WHERE %s = %s AND %s ISNULL AND %s ISNULL),
+										0
+									) AS damaged_blocks`,
+									boiler.RepairCaseTableColumns.BlocksRequiredRepair,
+									boiler.RepairCaseTableColumns.BlocksRepaired,
+									boiler.TableNames.RepairCases,
+									boiler.RepairCaseTableColumns.MechID,
+									boiler.MechTableColumns.ID,
+									boiler.RepairCaseTableColumns.CompletedAt,
+									boiler.RepairCaseTableColumns.DeletedAt,
+								),
+							),
+
+							qm.From(fmt.Sprintf(
+								`(SELECT * FROM %[1]s WHERE %[2]s) %[1]s`,
+								boiler.TableNames.Mechs,
+								mechIDWhereIn,
+							)),
+
+							// inner join blueprint mech
+							qm.InnerJoin(fmt.Sprintf(
+								"%s ON %s = %s",
+								boiler.TableNames.BlueprintMechs,
+								boiler.MechTableColumns.BlueprintID,
+								boiler.BlueprintMechTableColumns.ID,
+							)),
+
+							// inner join mech skin
+							qm.InnerJoin(fmt.Sprintf(
+								"%s ON %s = %s",
+								boiler.TableNames.MechSkin,
+								boiler.MechTableColumns.ChassisSkinID,
+								boiler.MechSkinTableColumns.ID,
+							)),
+
+							// inner join blueprint mech skin
+							qm.InnerJoin(fmt.Sprintf(
+								"%s ON %s = %s",
+								boiler.TableNames.BlueprintMechSkin,
+								boiler.MechSkinTableColumns.BlueprintID,
+								boiler.BlueprintMechSkinTableColumns.ID,
+							)),
+
+							qm.InnerJoin(fmt.Sprintf(
+								"%s ON %s = %s AND %s = %s",
+								boiler.TableNames.MechModelSkinCompatibilities,
+								boiler.MechModelSkinCompatibilityTableColumns.MechModelID,
+								boiler.MechTableColumns.BlueprintID,
+								boiler.MechModelSkinCompatibilityTableColumns.BlueprintMechSkinID,
+								boiler.MechSkinTableColumns.BlueprintID,
+							)),
+						}
+
+						rows, err := boiler.NewQuery(queries...).Query(gamedb.StdConn)
+						if err != nil {
+							gamelog.L.Error().Err(err).Interface("boiler query", queries).Msg("Failed to load mech data for system message")
+							return
+						}
+
+						for rows.Next() {
+							mechID := ""
+							name := ""
+							label := ""
+							tier := ""
+							avatarURL := ""
+							totalBlocks := 0
+							damagedBlocks := 0
+
+							err = rows.Scan(&mechID, &name, &label, &tier, &avatarURL, &totalBlocks, &damagedBlocks)
+							if err != nil {
+								gamelog.L.Error().Err(err).Msg("Failed to scan mech detail for system message of expired lobby.")
+								return
+							}
+
+							// fill the mech data
+							index := slices.IndexFunc(pms.MechBriefs, func(mb *SystemMessageMech) bool { return mb.MechID == mechID })
+							if index != -1 {
+								pms.MechBriefs[index].Name = name
+								pms.MechBriefs[index].TotalBlocks = totalBlocks
+								pms.MechBriefs[index].DamagedBlocks = damagedBlocks
+								pms.MechBriefs[index].Tier = tier
+								pms.MechBriefs[index].ImageUrl = avatarURL
+								if name == "" {
+									pms.MechBriefs[index].Name = label
+								}
+							}
+						}
+
+						// send battle reward system message
+						b, err := json.Marshal(pms.MechBriefs)
+						if err != nil {
+							gamelog.L.Error().Interface("player reward data", pms.MechBriefs).Err(err).Msg("Failed to marshal mech data into json.")
+							return
+						}
+
+						sysMsg := boiler.SystemMessage{
+							PlayerID: pms.PlayerID,
+							SenderID: server.SupremacyBattleUserID,
+							DataType: null.StringFrom(string(system_messages.SystemMessageDataTypeExpiredBattleLobby)),
+							Title:    "Expired Battle Lobby",
+							Message:  fmt.Sprintf("Unfortunately, the battle lobby '%s' you joined has expired.", battleLobby.Name),
+							Data:     null.JSONFrom(b),
+						}
+
+						err = sysMsg.Insert(gamedb.StdConn, boil.Infer())
+						if err != nil {
+							gamelog.L.Error().Err(err).Interface("newSystemMessage", sysMsg).Msg("failed to insert new system message into db")
+							return
+						}
+						ws.PublishMessage(fmt.Sprintf("/secure/user/%s/system_messages", pms.PlayerID), server.HubKeySystemMessageListUpdatedSubscribe, true)
+					}
+
+				}(playerMechs)
 			}
 
 			// broadcast the status changes of the lobby mechs
