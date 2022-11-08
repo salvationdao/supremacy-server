@@ -85,7 +85,7 @@ func (f *FiatController) processStorefrontSupPrices() {
 		), server.FiatCurrencyCodeSUPS),
 	).All(gamedb.StdConn)
 	if err != nil {
-		l.Error().Err(err).Msg("failed to load storefront mystery crates")
+		l.Error().Err(err).Msg("failed to load fiat products")
 		return
 	}
 
@@ -137,7 +137,7 @@ func (f *FiatController) processStorefrontSupPrices() {
 			ws.PublishMessage(fmt.Sprintf("/faction/%s/crate/%s", p.FactionID, p.R.StorefrontMysteryCrate.ID), server.HubKeyMysteryCrateSubscribe, resp)
 		}
 
-		pl.Debug().Msg("Mystery Crate sup price updated")
+		pl.Debug().Msg("Fiat Product sup price updated")
 	}
 }
 
