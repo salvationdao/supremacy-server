@@ -27,7 +27,6 @@ func NewDiscordBot(token, appID string, isBotBinary bool) (*DiscordSession, erro
 	Session = session
 
 	guildID := db.GetStrWithDefault(db.KeyDiscordGuildID, "927761469775441930")
-
 	if server.IsDevelopmentEnv() {
 		guildID = "1034448717006258186"
 	} else if server.IsStagingEnv() {
@@ -92,7 +91,7 @@ func (s *DiscordSession) SendDiscordMessage(message string) error {
 		return nil
 	}
 
-	channelID := db.GetStrWithDefault(db.KeyDiscordChannelID, "946873011368251412")
+	channelID := db.GetStrWithDefault(db.KeyDiscordChannelID, "928914251404443678")
 	if server.IsDevelopmentEnv() {
 		channelID = "1034448717006258189"
 	} else if server.IsStagingEnv() {
