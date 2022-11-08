@@ -70,7 +70,7 @@ func (am *ArenaManager) CloseRepairOffers(repairOfferIDs []string, offerCloseRea
 	}
 
 	// NOTE: this need to be at the outside of db transaction scope,
-	// so it can isTerminated repair blocks from being inserted through db trigger
+	// so it can stop repair blocks from being inserted through db trigger
 	_, err = ros.UpdateAll(gamedb.StdConn, boiler.M{
 		boiler.RepairOfferColumns.ClosedAt:       null.TimeFrom(now),
 		boiler.RepairOfferColumns.FinishedReason: null.StringFrom(offerCloseReason),

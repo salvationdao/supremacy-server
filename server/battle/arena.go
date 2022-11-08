@@ -361,7 +361,7 @@ func (am *ArenaManager) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				go func(battle boiler.Battle, replayID string) {
 					err = replay.RecordReplayRequest(&battle, replayID, replay.StopRecording)
 					if err != nil {
-						gamelog.L.Error().Str("battle_id", btl.ID).Str("replay_id", btl.replaySession.ReplaySession.ID).Err(err).Msg("failed to isTerminated recording during game client disconnection")
+						gamelog.L.Error().Str("battle_id", btl.ID).Str("replay_id", btl.replaySession.ReplaySession.ID).Err(err).Msg("failed to stop recording during game client disconnection")
 					}
 				}(battle, btl.replaySession.ReplaySession.ID)
 
@@ -415,8 +415,7 @@ func (am *ArenaManager) NewArena(battleArena *boiler.BattleArena, wsConn *websoc
 		// change arena state to hijacked
 		a.Stage.Store(ArenaStageHijacked)
 
-		// isTerminated recording from previous arena
-		// isTerminated war machine stat broadcast
+		// stop war machine stat broadcast
 		select {
 		case a.WarMachineStatBroadcastStopChan <- true:
 		case <-time.After(1 * time.Second): // timeout
@@ -442,10 +441,11 @@ func (am *ArenaManager) NewArena(battleArena *boiler.BattleArena, wsConn *websoc
 				}
 			}
 
+			// stop recording from previous arena
 			if btl.replaySession.ReplaySession != nil {
 				err = replay.RecordReplayRequest(btl.Battle, btl.replaySession.ReplaySession.ID, replay.StopRecording)
 				if err != nil {
-					gamelog.L.Error().Str("battle_id", btl.ID).Str("replay_id", btl.replaySession.ReplaySession.ID).Err(err).Msg("failed to isTerminated recording during game client disconnection")
+					gamelog.L.Error().Str("battle_id", btl.ID).Str("replay_id", btl.replaySession.ReplaySession.ID).Err(err).Msg("failed to stop recording during game client disconnection")
 				}
 
 				var eventByte []byte

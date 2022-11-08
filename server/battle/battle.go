@@ -250,7 +250,7 @@ func cleanUpBattleRecord(battleID string) {
 		err = replay.RecordReplayRequest(reRunBattle, prevReplay.ID, replay.StopRecording)
 		if err != nil {
 			if err != replay.ErrDontLogRecordingStatus {
-				gamelog.L.Error().Err(err).Str("battle_id", battleID).Str("replay_id", prevReplay.ID).Msg("Failed to isTerminated recording")
+				gamelog.L.Error().Err(err).Str("battle_id", battleID).Str("replay_id", prevReplay.ID).Msg("Failed to stop recording")
 				return
 			}
 			return
