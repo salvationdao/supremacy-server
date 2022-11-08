@@ -70,7 +70,8 @@ type Battle struct {
 	abilityDetails []*AbilityDetail
 
 	MiniMapAbilityDisplayList *MiniMapAbilityDisplayList
-	MapEventList              *MapEventList
+
+	MapEventList *MapEventList
 
 	deadlock.RWMutex
 
@@ -99,8 +100,10 @@ type KillInfo struct {
 }
 
 type MiniMapAbilityDisplayList struct {
-	m map[string]*MiniMapAbilityContent // map [offeringID] *MiniMapAbilityContent
+	list []*MiniMapAbilityContent
 	deadlock.RWMutex
+
+	broadcastChan chan []*MiniMapAbilityContent
 }
 
 type MiniMapAbilityContent struct {
@@ -114,44 +117,49 @@ type MiniMapAbilityContent struct {
 	LocationSelectType       string              `json:"location_select_type"`
 	Radius                   null.Int            `json:"radius,omitempty"`
 	LaunchingAt              null.Time           `json:"launching_at,omitempty"`
+	IsRemoved                bool                `json:"is_removed"`
 	UpdatedAt                time.Time           `json:"-"`
 }
 
 // Add new pending ability and return a copy of current list
-func (dap *MiniMapAbilityDisplayList) Add(offeringID string, dac *MiniMapAbilityContent) []MiniMapAbilityContent {
+func (dap *MiniMapAbilityDisplayList) Add(offeringID string, dac *MiniMapAbilityContent) []*MiniMapAbilityContent {
 	dap.Lock()
 	defer dap.Unlock()
 
 	// change updated at
 	dac.UpdatedAt = time.Now()
 
-	dap.m[offeringID] = dac
-
-	result := []MiniMapAbilityContent{}
-	for _, d := range dap.m {
-		result = append(result, *d)
+	lastIndex := len(dap.list) - 1
+	index := slices.IndexFunc(dap.list, func(da *MiniMapAbilityContent) bool { return da.OfferingID == dac.OfferingID })
+	if index != -1 {
+		dap.list[index] = dap.list[lastIndex] // replace target element with the last element
+		dap.list[lastIndex] = nil             // free up the memory of target element
+		dap.list = dap.list[:lastIndex]       // truncate the list
 	}
 
-	sort.Slice(result, func(i, j int) bool { return result[i].UpdatedAt.After(result[j].UpdatedAt) })
+	dap.list = append(dap.list, dac)
 
-	return result
+	sort.Slice(dap.list, func(i, j int) bool { return dap.list[i].UpdatedAt.After(dap.list[j].UpdatedAt) })
+
+	return dap.list
 }
 
 // Remove pending ability and return a copy of current list
-func (dap *MiniMapAbilityDisplayList) Remove(offeringID string) []MiniMapAbilityContent {
+func (dap *MiniMapAbilityDisplayList) Remove(offeringID string) []*MiniMapAbilityContent {
 	dap.Lock()
 	defer dap.Unlock()
 
-	delete(dap.m, offeringID)
-
-	result := []MiniMapAbilityContent{}
-	for _, dac := range dap.m {
-		result = append(result, *dac)
+	lastIndex := len(dap.list) - 1
+	index := slices.IndexFunc(dap.list, func(da *MiniMapAbilityContent) bool { return da.OfferingID == offeringID })
+	if index != -1 {
+		dap.list[index] = dap.list[lastIndex] // replace target element with the last element
+		dap.list[lastIndex] = nil             // free up the memory of target element
+		dap.list = dap.list[:lastIndex]       // truncate the list
 	}
 
-	sort.Slice(result, func(i, j int) bool { return result[i].UpdatedAt.After(result[j].UpdatedAt) })
+	sort.Slice(dap.list, func(i, j int) bool { return dap.list[i].UpdatedAt.After(dap.list[j].UpdatedAt) })
 
-	return result
+	return dap.list
 }
 
 // Get a mini map ability from givent offering id
@@ -164,6 +172,29 @@ func (dap *MiniMapAbilityDisplayList) Get(offingID string) *MiniMapAbilityConten
 		return nil
 	}
 	return da
+}
+
+func (dap *MiniMapAbilityDisplayList) debounceBroadcastMiniMapDisplay() {
+	interval := 150 * time.Millisecond
+	timer := time.NewTimer(interval)
+	var broadcastList []*MiniMapAbilityContent{}
+
+	for {
+		select {
+
+		case list := <-dap.broadcastChan:
+			for _, l := range broadcastList{
+				index := slices.IndexFunc(broadcastList, func(bl *MiniMapAbilityContent) bool{return bl.OfferingID == l.OfferingID})
+				if index != -1 {
+
+				}
+			}
+
+		case <-timer.C:
+
+		}
+	}
+
 }
 
 // List a copy of current pending list
@@ -2004,7 +2035,7 @@ func (btl *Battle) Destroyed(dp *BattleWMDestroyedPayload) {
 			}
 
 			if dp.RelatedEventIDString != "" {
-				bh.RelatedID = null.StringFrom(dp.RelatedEventIDString)
+				bh.BattleAbilityOfferingID = null.StringFrom(dp.RelatedEventIDString)
 			}
 
 			err = bh.Insert(gamedb.StdConn, boil.Infer())

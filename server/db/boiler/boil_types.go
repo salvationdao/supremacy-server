@@ -58,6 +58,13 @@ const (
 	AbilityKillingPowerLevelNONE   = "NONE"
 )
 
+// Enum values for AbilityTriggerType
+const (
+	AbilityTriggerTypeBATTLE_ABILITY = "BATTLE_ABILITY"
+	AbilityTriggerTypeMECH_ABILITY   = "MECH_ABILITY"
+	AbilityTriggerTypePLAYER_ABILITY = "PLAYER_ABILITY"
+)
+
 // Enum values for AbilityTypeEnum
 const (
 	AbilityTypeEnumAIRSTRIKE      = "AIRSTRIKE"
@@ -71,13 +78,6 @@ const (
 	AbilityTypeEnumLANDMINE       = "LANDMINE"
 )
 
-// Enum values for AbilityTriggerType
-const (
-	AbilityTriggerTypeBATTLE_ABILITY = "BATTLE_ABILITY"
-	AbilityTriggerTypeMECH_ABILITY   = "MECH_ABILITY"
-	AbilityTriggerTypePLAYER_ABILITY = "PLAYER_ABILITY"
-)
-
 // Enum values for BattleEvent
 const (
 	BattleEventKilled           = "killed"
@@ -85,6 +85,8 @@ const (
 	BattleEventKill             = "kill"
 	BattleEventAbilityTriggered = "ability_triggered"
 	BattleEventPickup           = "pickup"
+	BattleEventStunned          = "stunned"
+	BattleEventHacked           = "hacked"
 )
 
 // Enum values for RecordingStatus

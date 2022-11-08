@@ -277,8 +277,10 @@ func (am *ArenaManager) PlayerSupportAbilityUse(ctx context.Context, user *boile
 		return err
 	}
 
+	btl := arena.CurrentBattle()
+
 	// skip, if current not battle
-	if arena.CurrentBattleState() != BattlingState {
+	if btl == nil || btl.state.Load() != BattlingState {
 		gamelog.L.Warn().Str("func", "PlayerAbilityUse").Msg("no current battle")
 		return terror.Error(fmt.Errorf("wrong battle state"), "There is no battle currently to use this ability on.")
 	}
@@ -314,6 +316,15 @@ func (am *ArenaManager) PlayerSupportAbilityUse(ctx context.Context, user *boile
 	}
 
 	offeringID := uuid.Must(uuid.NewV4())
+	bat := boiler.BattleAbilityTrigger{
+		PlayerID:          null.StringFrom(user.ID),
+		BattleID:          btl.ID,
+		FactionID:         factionID,
+		AbilityLabel:      pa.R.GameAbility.Label,
+		AbilityOfferingID: offeringID.String(),
+		GameAbilityID:     pa.GameAbilityID,
+		TriggerType:       boiler.AbilityTriggerTypeBATTLE_ABILITY,
+	}
 
 	userID := uuid.FromStringOrNil(user.ID)
 	var event *server.GameAbilityEvent
@@ -363,6 +374,8 @@ func (am *ArenaManager) PlayerSupportAbilityUse(ctx context.Context, user *boile
 			FactionID:           &user.FactionID.String,
 			WarMachineHash:      &req.Payload.MechHash,
 		}
+
+		bat.OnMechID = null.StringFrom(wm.ID)
 	case boiler.LocationSelectTypeEnumMECH_SELECT_ALLIED:
 		if req.Payload.MechHash == "" {
 			gamelog.L.Error().Str("log_name", "battle arena").Interface("request payload", req.Payload).Err(err).Msgf("no mech hash was provided for executing ability of type %s", boiler.LocationSelectTypeEnumMECH_SELECT)
@@ -392,6 +405,9 @@ func (am *ArenaManager) PlayerSupportAbilityUse(ctx context.Context, user *boile
 			FactionID:           &user.FactionID.String,
 			WarMachineHash:      &req.Payload.MechHash,
 		}
+
+		bat.OnMechID = null.StringFrom(wm.ID)
+
 	case boiler.LocationSelectTypeEnumMECH_SELECT_OPPONENT:
 		if req.Payload.MechHash == "" {
 			gamelog.L.Error().Str("log_name", "battle arena").Interface("request payload", req.Payload).Err(err).Msgf("no mech hash was provided for executing ability of type %s", boiler.LocationSelectTypeEnumMECH_SELECT)
@@ -427,6 +443,9 @@ func (am *ArenaManager) PlayerSupportAbilityUse(ctx context.Context, user *boile
 			FactionID:           &user.FactionID.String,
 			WarMachineHash:      &req.Payload.MechHash,
 		}
+
+		bat.OnMechID = null.StringFrom(wm.ID)
+
 	case boiler.LocationSelectTypeEnumLOCATION_SELECT:
 		if req.Payload.StartCoords == nil {
 			gamelog.L.Error().Str("log_name", "battle arena").Interface("request payload", req.Payload).Msgf("no start coords was provided for executing ability of type %s", boiler.LocationSelectTypeEnumLOCATION_SELECT)
@@ -467,6 +486,11 @@ func (am *ArenaManager) PlayerSupportAbilityUse(ctx context.Context, user *boile
 		return terror.Error(err, "Issue purchasing player ability, please try again or contact support.")
 	}
 	defer tx.Rollback()
+
+	err = bat.Insert(tx, boil.Infer())
+	if err != nil {
+		return terror.Error(err, "Failed to record battle ability trigger.")
+	}
 
 	// check if using support war machine
 	if pa.R.GameAbility.GameClientAbilityID == SupportMechGameAbility {
@@ -875,6 +899,7 @@ func (am *ArenaManager) PlayerAbilityUse(ctx context.Context, user *boiler.Playe
 		TextColour:          bpa.TextColour,
 		LocationSelectType:  bpa.LocationSelectType,
 		ConsumedAt:          time.Now(),
+		OfferingID:          offeringID.String(),
 	}
 	err = ca.Insert(tx, boil.Infer())
 	if err != nil {
