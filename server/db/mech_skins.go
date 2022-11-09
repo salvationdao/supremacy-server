@@ -137,8 +137,6 @@ type MechSkinListOpts struct {
 }
 
 func MechSkinListDetailed(opts *MechSkinListOpts) (int64, []*server.MechSkin, error) {
-	var mechSkins []*server.MechSkin
-
 	var queryMods []qm.QueryMod
 
 	queryMods = append(queryMods,
@@ -424,6 +422,7 @@ func MechSkinListDetailed(opts *MechSkinListOpts) (int64, []*server.MechSkin, er
 	}
 	defer rows.Close()
 
+	mechSkins := make([]*server.MechSkin, 0)
 	for rows.Next() {
 		mc := &server.MechSkin{
 			CollectionItem: &server.CollectionItem{},

@@ -339,7 +339,7 @@ func PowerCoreListDetailed(opts *PowerCoreListOpts) (int64, []*server.PowerCore,
 		if len(xSearch) > 0 {
 			queryMods = append(queryMods,
 				qm.And(fmt.Sprintf(
-					"((to_tsvector('english', %s) @@ to_tsquery(?))",
+					"(to_tsvector('english', %s) @@ to_tsquery(?))",
 					qm.Rels(boiler.TableNames.BlueprintPowerCores, boiler.BlueprintPowerCoreColumns.Label),
 				),
 					xSearch,
@@ -417,7 +417,7 @@ func PowerCoreListDetailed(opts *PowerCoreListOpts) (int64, []*server.PowerCore,
 	}
 	defer rows.Close()
 
-	var powerCores []*server.PowerCore
+	powerCores := make([]*server.PowerCore, 0)
 	for rows.Next() {
 		pc := &server.PowerCore{
 			CollectionItem: &server.CollectionItem{},
