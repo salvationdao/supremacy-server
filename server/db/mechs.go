@@ -1031,7 +1031,7 @@ func MechList(opts *MechListOpts) (int64, []*server.Mech, error) {
 		hasMarketplaceToggled := false
 		hasInQueueToggled := false
 		hasBattleReadyToggled := false
-
+		hasDamagedToggled := false
 		statusFilters := []qm.QueryMod{}
 
 		for _, s := range opts.FilterStatuses {
@@ -1153,6 +1153,23 @@ func MechList(opts *MechListOpts) (int64, []*server.Mech, error) {
 					qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.BlueprintID),
 					boiler.AvailabilityColumns.ID,
 					boiler.AvailabilityColumns.AvailableAt,
+				)))
+			case "DAMAGED":
+				if hasDamagedToggled {
+					continue
+				}
+				hasDamagedToggled = true
+				statusFilters = append(statusFilters, qm.Or(fmt.Sprintf(
+					`EXISTS (
+						SELECT 1 
+						FROM %s _rc
+						WHERE _rc.%s = %s AND %s ISNULL AND %s ISNULL
+					)`,
+					boiler.TableNames.RepairCases,
+					boiler.RepairCaseColumns.MechID,
+					boiler.MechTableColumns.ID,
+					boiler.RepairCaseColumns.CompletedAt,
+					boiler.RepairCaseColumns.DeletedAt,
 				)))
 			}
 			if hasIdleToggled && hasInBattleToggled && hasMarketplaceToggled && hasInQueueToggled && hasBattleReadyToggled {

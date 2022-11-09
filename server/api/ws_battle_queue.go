@@ -98,8 +98,29 @@ func (api *API) BattleLobbyCreate(ctx context.Context, user *boiler.Player, fact
 		return terror.Error(fmt.Errorf("total must be 100"), "The total of the reward cut must equal 100.")
 	}
 
+	publicExhibitionLobbyExpireAfterSecond := db.GetIntWithDefault(db.KeyPublicExhibitionLobbyExpireAfterDurationSecond, 1800)
+	lobbyHostingLimit := db.GetIntWithDefault(db.KeyLobbyHostingMaximumAmount, 5)
+
 	// start process
 	err = api.ArenaManager.SendBattleQueueFunc(func() error {
+
+		// check hosted lobbies limitation, if it is a public lobby
+		if !req.Payload.AccessCode.Valid {
+			hostBattleLobbies, err := boiler.BattleLobbies(
+				boiler.BattleLobbyWhere.HostByID.EQ(user.ID),
+				boiler.BattleLobbyWhere.AccessCode.IsNull(),
+				boiler.BattleLobbyWhere.EndedAt.IsNull(),
+			).All(gamedb.StdConn)
+			if err != nil {
+				gamelog.L.Error().Err(err).Msg("Failed to load hosted battle lobbies.")
+				return terror.Error(err, "Failed to check hosted lobby amount")
+			}
+
+			if hostBattleLobbies != nil && len(hostBattleLobbies) >= lobbyHostingLimit {
+				return terror.Error(fmt.Errorf("exceed lobby host limit"), "You have exceed the lobby hosting limit.")
+			}
+		}
+
 		// check mech in queue
 		availableMechIDs, err = db.FilterOutMechAlreadyInQueue(availableMechIDs)
 		if err != nil {
@@ -135,10 +156,12 @@ func (api *API) BattleLobbyCreate(ctx context.Context, user *boiler.Player, fact
 			EachFactionMechAmount: db.FACTION_MECH_LIMIT,
 			MaxDeployPerPlayer:    req.Payload.MaxDeployNumber,
 			WillNotStartUntil:     req.Payload.WillNotStartUntil,
+			ExpiresAt:             null.TimeFrom(time.Now().Add(time.Duration(publicExhibitionLobbyExpireAfterSecond) * time.Second)),
 		}
 
 		if req.Payload.AccessCode.Valid && req.Payload.AccessCode.String != "" {
 			bl.AccessCode = req.Payload.AccessCode
+			bl.ExpiresAt = null.TimeFromPtr(nil)
 		}
 
 		err = bl.Insert(tx, boil.Infer())
@@ -381,8 +404,14 @@ func (api *API) BattleLobbyJoin(ctx context.Context, user *boiler.Player, factio
 			return terror.Error(err, "Failed to load battle lobby")
 		}
 
+		// check available amount
+
 		if bl == nil {
 			return terror.Error(fmt.Errorf("battle lobby not exist"), "Battle lobby does not exist.")
+		}
+
+		if bl.ExpiresAt.Valid && bl.ExpiresAt.Time.Before(time.Now()) {
+			return terror.Error(fmt.Errorf("battle lobby is expired"), "Battle lobby has already expired.")
 		}
 
 		if bl.ReadyAt.Valid {
@@ -392,27 +421,36 @@ func (api *API) BattleLobbyJoin(ctx context.Context, user *boiler.Player, factio
 		var battleLobbyMechs []*boiler.BattleLobbiesMech
 		deployedMechIDs := []string{}
 		availableSlotCount := bl.EachFactionMechAmount
+		availableMaxDeployCount := bl.MaxDeployPerPlayer
 		// check available slot
 		if bl.R != nil {
-			for _, blm := range bl.R.BattleLobbiesMechs {
-				if blm.FactionID == factionID {
+			for _, battleLobbyMech := range bl.R.BattleLobbiesMechs {
+				if battleLobbyMech.FactionID == factionID {
 					availableSlotCount -= 1
 				}
 
+				if battleLobbyMech.QueuedByID == user.ID {
+					availableMaxDeployCount -= 1
+				}
+
 				// record the mechs in the battle lobby
-				battleLobbyMechs = append(battleLobbyMechs, blm)
+				battleLobbyMechs = append(battleLobbyMechs, battleLobbyMech)
 			}
 
 			// return error, if not enough slots
 			if availableSlotCount == 0 {
 				return terror.Error(fmt.Errorf("battle lobby is already full"), "The battle lobby is already full.")
 			}
+
+			if availableMaxDeployCount == 0 {
+				return terror.Error(fmt.Errorf("reach max deploy count"), "You have reach the max deploy count.")
+			}
 		}
 
 		// filled mech in remain slots
 		for _, mechID := range availableMechIDs {
-			// break, if no slot left
-			if len(deployedMechIDs) == availableSlotCount {
+			// break, if no slot left or already reach max deploy count
+			if len(deployedMechIDs) == availableSlotCount || len(deployedMechIDs) == availableMaxDeployCount {
 				break
 			}
 
@@ -538,6 +576,18 @@ func (api *API) BattleLobbyJoin(ctx context.Context, user *boiler.Player, factio
 			refund(refundFns)
 			gamelog.L.Error().Err(err).Msg("Failed to commit db transaction.")
 			return terror.Error(err, "Failed to queue your mech.")
+		}
+
+		if bl.GeneratedBySystem {
+			if !lobbyReady {
+				// trigger auto-filling process if lobby is not ready
+				api.ArenaManager.AddAIMechFillingProcess(bl.ID)
+
+			} else {
+				// terminate the auto-filling process if the lobby is ready
+				api.ArenaManager.TerminateAIMechFillingProcess(bl.ID)
+
+			}
 		}
 
 		// pause mechs repair case
@@ -748,6 +798,12 @@ func (api *API) BattleLobbyLeave(ctx context.Context, user *boiler.Player, facti
 
 			bl := blm.R.BattleLobby
 
+			// skip, if the battle lobby is expired.
+			// NOTE: all the mechs in the expired lobbies SHOULD be evacuated from expire lobby func
+			if bl.ExpiresAt.Valid && bl.ExpiresAt.Time.Before(time.Now()) {
+				continue
+			}
+
 			blm.DeletedAt = null.TimeFrom(now)
 
 			// refund entry fee
@@ -817,6 +873,11 @@ func (api *API) BattleLobbyLeave(ctx context.Context, user *boiler.Player, facti
 		lobbyIDs := []string{}
 		for _, bl := range bls {
 			lobbyIDs = append(lobbyIDs, bl.ID)
+
+			// clean up the filling process of system battle lobby
+			if bl.GeneratedBySystem && (bl.R == nil || bl.R.BattleLobbiesMechs == nil || len(bl.R.BattleLobbiesMechs) == 0) {
+				api.ArenaManager.TerminateAIMechFillingProcess(bl.ID)
+			}
 
 			// skip, if the player is the host of the lobby
 			if bl.HostByID == user.ID {
@@ -926,6 +987,10 @@ func (api *API) BattleLobbyListUpdate(ctx context.Context, user *boiler.Player, 
 	resp, err := server.BattleLobbiesFromBoiler(bls)
 	if err != nil {
 		return err
+	}
+
+	for _, bl := range resp {
+		bl.FillAt = api.ArenaManager.GetAIMechFillingProcessTime(bl.ID)
 	}
 
 	reply(server.BattleLobbiesFactionFilter(resp, factionID, user.ID))
