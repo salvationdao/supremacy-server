@@ -213,6 +213,8 @@ func (dap *MiniMapAbilityDisplayList) debounceBroadcastMiniMapDisplay() {
 				server.HubKeyMiniMapAbilityContentSubscribe,
 				broadcastList,
 			)
+
+			broadcastList = []*MiniMapAbilityContent{}
 		}
 	}
 }
