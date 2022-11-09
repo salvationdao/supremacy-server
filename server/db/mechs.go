@@ -1532,22 +1532,25 @@ func MechBattleReady(mechID string) (bool, error) {
 }
 
 type MechBrief struct {
-	ID                  string      `json:"id" db:"id"`
-	FactionID           null.String `json:"faction_id"`
-	OwnerID             string      `json:"owner_id" db:"owner_id"`
-	MarketLocked        bool        `json:"market_locked" db:"market_locked"`
-	XsynLocked          bool        `json:"xsyn_locked" db:"xsyn_locked"`
-	LockedToMarketplace bool        `json:"locked_to_marketplace" db:"locked_to_marketplace"`
-	Name                string      `json:"name" db:"name"`
-	ChassisSkinID       string      `json:"chassis_skin_id" db:"chassis_skin_id"`
-	PowerCoreID         null.String `json:"power_core_id,omitempty" db:"power_core_id,omitempty"`
-	IntroAnimationID    null.String `json:"intro_animation_id,omitempty" db:"intro_animation_id,omitempty"`
-	OutroAnimationID    null.String `json:"outro_animation_id,omitempty" db:"outro_animation_id,omitempty"`
-	Label               string      `json:"label" db:"label"`
-	RepairBlocks        int         `json:"repair_blocks" db:"repair_blocks"`
-	Tier                string      `json:"tier" db:"tier"`
-	ImageUrl            string      `json:"image_url" db:"image_url"`
-	AvatarUrl           string      `json:"avatar_url" db:"avatar_url"`
+	ID                  string         `json:"id" db:"id"`
+	Owner               *boiler.Player `json:"owner"`
+	FactionID           null.String    `json:"faction_id"`
+	OwnerID             string         `json:"owner_id" db:"owner_id"`
+	MarketLocked        bool           `json:"market_locked" db:"market_locked"`
+	XsynLocked          bool           `json:"xsyn_locked" db:"xsyn_locked"`
+	LockedToMarketplace bool           `json:"locked_to_marketplace" db:"locked_to_marketplace"`
+	Name                string         `json:"name" db:"name"`
+	ChassisSkinID       string         `json:"chassis_skin_id" db:"chassis_skin_id"`
+	PowerCoreID         null.String    `json:"power_core_id,omitempty" db:"power_core_id,omitempty"`
+	IntroAnimationID    null.String    `json:"intro_animation_id,omitempty" db:"intro_animation_id,omitempty"`
+	OutroAnimationID    null.String    `json:"outro_animation_id,omitempty" db:"outro_animation_id,omitempty"`
+	Label               string         `json:"label" db:"label"`
+	RepairBlocks        int            `json:"repair_blocks" db:"repair_blocks"`
+	Tier                string         `json:"tier" db:"tier"`
+	SkinLabel           string         `json:"skin_label" db:"skin_label"`
+	SkinImageURL        null.String    `json:"skin_image_url,omitempty" db:"skin_image_url,omitempty"`
+	ImageUrl            string         `json:"image_url" db:"image_url"`
+	AvatarUrl           string         `json:"avatar_url" db:"avatar_url"`
 
 	MechType         string      `json:"mech_type" db:"mech_type"`
 	BoostStat        null.String `json:"boost_stat,omitempty" db:"boost_stat,omitempty"`
@@ -1585,8 +1588,11 @@ type MechBrief struct {
 	Status    server.MechArenaStatus `json:"status"` // "QUEUE" | "BATTLE" | "MARKET" | "IDLE"
 	CanDeploy bool                   `json:"can_deploy"`
 
-	PowerCore   *server.PowerCore    `json:"power_core"`
-	WeaponSlots []*server.WeaponSlot `json:"weapon_slots"`
+	Stats *server.Stats `json:"stats"`
+
+	PowerCore   *server.PowerCore     `json:"power_core"`
+	WeaponSlots []*server.WeaponSlot  `json:"weapon_slots"`
+	Utilities   []*server.UtilitySlot `json:"utilities"`
 }
 
 // LobbyMechsBrief return list for mech for quick deploy
@@ -1631,8 +1637,10 @@ func LobbyMechsBrief(playerID string, mechIDs ...string) ([]*MechBrief, error) {
 	queries := []qm.QueryMod{
 		qm.Select(
 			fmt.Sprintf("_m.%s", boiler.MechColumns.ID),
+			boiler.PlayerTableColumns.ID,
+			boiler.PlayerTableColumns.Gid,
+			boiler.PlayerTableColumns.Username,
 			boiler.PlayerTableColumns.FactionID,
-			fmt.Sprintf("_ci.%s", boiler.CollectionItemColumns.OwnerID),
 			fmt.Sprintf("_ci.%s", boiler.CollectionItemColumns.MarketLocked),
 			fmt.Sprintf("_ci.%s", boiler.CollectionItemColumns.XsynLocked),
 			fmt.Sprintf("_ci.%s", boiler.CollectionItemColumns.LockedToMarketplace),
@@ -1656,6 +1664,8 @@ func LobbyMechsBrief(playerID string, mechIDs ...string) ([]*MechBrief, error) {
 			fmt.Sprintf("_bm.%s", boiler.BlueprintMechColumns.ShieldRechargePowerCost),
 			fmt.Sprintf("_ms.%s", boiler.MechSkinColumns.Level),
 			fmt.Sprintf("_bms.%s", boiler.BlueprintMechSkinColumns.Tier),
+			fmt.Sprintf("_bms.%s", boiler.BlueprintMechSkinColumns.Label),
+			fmt.Sprintf("_bms.%s", boiler.BlueprintMechSkinColumns.ImageURL),
 			fmt.Sprintf("_mmsc.%s", boiler.MechModelSkinCompatibilityColumns.ImageURL),
 			fmt.Sprintf("_mmsc.%s", boiler.MechModelSkinCompatibilityColumns.AvatarURL),
 			fmt.Sprintf("_blm.%s", boiler.BattleLobbiesMechColumns.LockedAt),
@@ -1696,6 +1706,7 @@ func LobbyMechsBrief(playerID string, mechIDs ...string) ([]*MechBrief, error) {
 				boiler.MechColumns.ID,
 			),
 			fmt.Sprintf("%s NOTNULL AS is_staked", boiler.StakedMechTableColumns.MechID),
+			fmt.Sprintf("TO_JSON(%s) AS mech_stat", boiler.TableNames.MechStats),
 		),
 
 		qm.From(fmt.Sprintf(
@@ -1752,9 +1763,11 @@ func LobbyMechsBrief(playerID string, mechIDs ...string) ([]*MechBrief, error) {
 		)),
 
 		qm.InnerJoin(fmt.Sprintf(
-			"(SELECT %s, %s FROM %s) _bms ON _bms.%s = _ms.%s",
+			"(SELECT %s, %s, %s, %s FROM %s) _bms ON _bms.%s = _ms.%s",
 			boiler.BlueprintMechSkinColumns.ID,
 			boiler.BlueprintMechSkinColumns.Tier,
+			boiler.BlueprintMechSkinColumns.Label,
+			boiler.BlueprintMechSkinColumns.ImageURL,
 			boiler.TableNames.BlueprintMechSkin,
 			boiler.BlueprintMechSkinColumns.ID,
 			boiler.MechSkinColumns.BlueprintID,
@@ -1819,6 +1832,14 @@ func LobbyMechsBrief(playerID string, mechIDs ...string) ([]*MechBrief, error) {
 			boiler.StakedMechTableColumns.MechID,
 			boiler.MechColumns.ID,
 		)),
+
+		// mech stat
+		qm.LeftOuterJoin(fmt.Sprintf(
+			"%s ON %s = _m.%s",
+			boiler.TableNames.MechStats,
+			boiler.MechStatTableColumns.MechID,
+			boiler.MechColumns.ID,
+		)),
 	}
 
 	rows, err := boiler.NewQuery(queries...).Query(gamedb.StdConn)
@@ -1832,12 +1853,17 @@ func LobbyMechsBrief(playerID string, mechIDs ...string) ([]*MechBrief, error) {
 	includedMechIDs := []string{}
 	resp := []*MechBrief{}
 	for rows.Next() {
-		mb := &MechBrief{}
+		mb := &MechBrief{
+			Owner: &boiler.Player{},
+		}
 		pc := &server.PowerCore{}
+		stats := &server.Stats{}
 		err = rows.Scan(
 			&mb.ID,
-			&mb.FactionID,
-			&mb.OwnerID,
+			&mb.Owner.ID,
+			&mb.Owner.Gid,
+			&mb.Owner.Username,
+			&mb.Owner.FactionID,
 			&mb.MarketLocked,
 			&mb.XsynLocked,
 			&mb.LockedToMarketplace,
@@ -1861,6 +1887,8 @@ func LobbyMechsBrief(playerID string, mechIDs ...string) ([]*MechBrief, error) {
 			&mb.ShieldRechargePowerCost,
 			&mb.MechSkinLevel,
 			&mb.Tier,
+			&mb.SkinLabel,
+			&mb.SkinImageURL,
 			&mb.ImageUrl,
 			&mb.AvatarUrl,
 			&mb.LobbyLockedAt,
@@ -1875,6 +1903,8 @@ func LobbyMechsBrief(playerID string, mechIDs ...string) ([]*MechBrief, error) {
 
 			&mb.EquippedUtilityCount,
 			&mb.IsStaked,
+
+			&stats,
 		)
 		if err != nil {
 			gamelog.L.Error().Err(err).Msg("Failed to scan player battle spectated from db.")
@@ -1882,6 +1912,18 @@ func LobbyMechsBrief(playerID string, mechIDs ...string) ([]*MechBrief, error) {
 		}
 
 		mb.PowerCore = pc
+
+		// set mech stats
+		if stats == nil {
+			stats = &server.Stats{
+				TotalWins:       0,
+				TotalDeaths:     0,
+				TotalKills:      0,
+				BattlesSurvived: 0,
+				TotalLosses:     0,
+			}
+		}
+		mb.Stats = stats
 
 		// parse queue stat
 		mb.Status = server.MechArenaStatusIdle
@@ -1926,42 +1968,60 @@ func LobbyMechsBrief(playerID string, mechIDs ...string) ([]*MechBrief, error) {
 	}
 
 	// fill up mech weapon slots
-	if len(includedMechIDs) > 0 {
-		impactedMechWhereInClause := fmt.Sprintf("WHERE %s IN (", boiler.MechWeaponTableColumns.ChassisID)
-		for i, mechID := range includedMechIDs {
-			impactedMechWhereInClause += "'" + mechID + "'"
+	err = fillMechWeapons(resp)
+	if err != nil {
+		return nil, err
+	}
 
-			if i < len(includedMechIDs)-1 {
-				impactedMechWhereInClause += ","
-				continue
-			}
+	// fill up mech utility slots
+	err = fillMechUtilities(resp)
+	if err != nil {
+		return nil, err
+	}
 
-			impactedMechWhereInClause += ")"
+	return resp, nil
+}
+
+func fillMechWeapons(mechs []*MechBrief) error {
+	if len(mechs) == 0 {
+		return nil
+	}
+
+	impactedMechWhereInClause := fmt.Sprintf("WHERE %s IN (", boiler.MechWeaponTableColumns.ChassisID)
+	for i, mech := range mechs {
+		impactedMechWhereInClause += "'" + mech.ID + "'"
+
+		if i < len(mechs)-1 {
+			impactedMechWhereInClause += ","
+			continue
 		}
 
-		queries = []qm.QueryMod{
-			qm.Select(
-				boiler.MechWeaponTableColumns.ChassisID,
-				boiler.MechWeaponTableColumns.WeaponID,
-				boiler.MechWeaponTableColumns.SlotNumber,
-				boiler.MechWeaponTableColumns.AllowMelee,
-				boiler.MechWeaponTableColumns.IsSkinInherited,
-				fmt.Sprintf("TO_JSON(%s)", boiler.TableNames.Weapons),
-			),
-			qm.From(fmt.Sprintf(
-				"(SELECT %s, %s, %s, %s, %s FROM %s %s) %s",
-				boiler.MechWeaponTableColumns.ChassisID,
-				boiler.MechWeaponTableColumns.WeaponID,
-				boiler.MechWeaponTableColumns.SlotNumber,
-				boiler.MechWeaponTableColumns.AllowMelee,
-				boiler.MechWeaponTableColumns.IsSkinInherited,
-				boiler.TableNames.MechWeapons,
-				impactedMechWhereInClause,
-				boiler.TableNames.MechWeapons,
-			)),
+		impactedMechWhereInClause += ")"
+	}
 
-			qm.LeftOuterJoin(fmt.Sprintf(
-				`(SELECT 
+	queries := []qm.QueryMod{
+		qm.Select(
+			boiler.MechWeaponTableColumns.ChassisID,
+			boiler.MechWeaponTableColumns.WeaponID,
+			boiler.MechWeaponTableColumns.SlotNumber,
+			boiler.MechWeaponTableColumns.AllowMelee,
+			boiler.MechWeaponTableColumns.IsSkinInherited,
+			fmt.Sprintf("TO_JSON(%s)", boiler.TableNames.Weapons),
+		),
+		qm.From(fmt.Sprintf(
+			"(SELECT %s, %s, %s, %s, %s FROM %s %s) %s",
+			boiler.MechWeaponTableColumns.ChassisID,
+			boiler.MechWeaponTableColumns.WeaponID,
+			boiler.MechWeaponTableColumns.SlotNumber,
+			boiler.MechWeaponTableColumns.AllowMelee,
+			boiler.MechWeaponTableColumns.IsSkinInherited,
+			boiler.TableNames.MechWeapons,
+			impactedMechWhereInClause,
+			boiler.TableNames.MechWeapons,
+		)),
+
+		qm.LeftOuterJoin(fmt.Sprintf(
+			`(SELECT 
 							%[1]s AS weapon_id, 
 							%[2]s.*, 
 							%[3]s.*,
@@ -1972,52 +2032,137 @@ func LobbyMechsBrief(playerID string, mechIDs ...string) ([]*MechBrief, error) {
 					INNER JOIN %[3]s ON %[10]s = %[11]s
 					INNER JOIN %[13]s ON %[14]s = %[6]s AND %[15]s = %[11]s
 				) %[4]s ON %[4]s.weapon_id = %[12]s`,
-				boiler.WeaponTableColumns.ID,                                          // 1
-				boiler.TableNames.BlueprintWeapons,                                    // 2
-				boiler.TableNames.BlueprintWeaponSkin,                                 // 3
-				boiler.TableNames.Weapons,                                             // 4
-				boiler.TableNames.BlueprintWeapons,                                    // 5
-				boiler.WeaponTableColumns.BlueprintID,                                 // 6
-				boiler.BlueprintWeaponTableColumns.ID,                                 // 7
-				boiler.TableNames.WeaponSkin,                                          // 8
-				boiler.WeaponSkinTableColumns.EquippedOn,                              // 9
-				boiler.BlueprintWeaponSkinTableColumns.ID,                             // 10
-				boiler.WeaponSkinTableColumns.BlueprintID,                             // 11
-				boiler.MechWeaponTableColumns.WeaponID,                                // 12
-				boiler.TableNames.WeaponModelSkinCompatibilities,                      // 13
-				boiler.WeaponModelSkinCompatibilityTableColumns.WeaponModelID,         // 14
-				boiler.WeaponModelSkinCompatibilityTableColumns.BlueprintWeaponSkinID, // 15
-			)),
+			boiler.WeaponTableColumns.ID,                                          // 1
+			boiler.TableNames.BlueprintWeapons,                                    // 2
+			boiler.TableNames.BlueprintWeaponSkin,                                 // 3
+			boiler.TableNames.Weapons,                                             // 4
+			boiler.TableNames.BlueprintWeapons,                                    // 5
+			boiler.WeaponTableColumns.BlueprintID,                                 // 6
+			boiler.BlueprintWeaponTableColumns.ID,                                 // 7
+			boiler.TableNames.WeaponSkin,                                          // 8
+			boiler.WeaponSkinTableColumns.EquippedOn,                              // 9
+			boiler.BlueprintWeaponSkinTableColumns.ID,                             // 10
+			boiler.WeaponSkinTableColumns.BlueprintID,                             // 11
+			boiler.MechWeaponTableColumns.WeaponID,                                // 12
+			boiler.TableNames.WeaponModelSkinCompatibilities,                      // 13
+			boiler.WeaponModelSkinCompatibilityTableColumns.WeaponModelID,         // 14
+			boiler.WeaponModelSkinCompatibilityTableColumns.BlueprintWeaponSkinID, // 15
+		)),
 
-			qm.OrderBy(boiler.MechWeaponTableColumns.SlotNumber),
-		}
+		qm.OrderBy(boiler.MechWeaponTableColumns.SlotNumber),
+	}
 
-		rows, err = boiler.NewQuery(queries...).Query(gamedb.StdConn)
+	rows, err := boiler.NewQuery(queries...).Query(gamedb.StdConn)
+	if err != nil {
+		gamelog.L.Error().Err(err).Msg("Failed to load mech weapon slots")
+		return terror.Error(err, "Failed to load mech weapon slots.")
+	}
+
+	for rows.Next() {
+		weaponSlot := &server.WeaponSlot{}
+		var weapon *server.Weapon
+		err = rows.Scan(&weaponSlot.MechID, &weaponSlot.WeaponID, &weaponSlot.SlotNumber, &weaponSlot.AllowMelee, &weaponSlot.IsSkinInherited, &weapon)
 		if err != nil {
-			gamelog.L.Error().Err(err).Msg("Failed to load mech weapon slots")
-			return nil, terror.Error(err, "Failed to load mech weapon slots.")
+			gamelog.L.Error().Err(err).Msg("Failed to scan mech weapon slots.")
+			return terror.Error(err, "Failed to scan mech weapon slots.")
 		}
 
-		for rows.Next() {
-			weaponSlot := &server.WeaponSlot{}
-			var weapon *server.Weapon
-			err = rows.Scan(&weaponSlot.MechID, &weaponSlot.WeaponID, &weaponSlot.SlotNumber, &weaponSlot.AllowMelee, &weaponSlot.IsSkinInherited, &weapon)
-			if err != nil {
-				gamelog.L.Error().Err(err).Msg("Failed to scan mech weapon slots.")
-				return nil, terror.Error(err, "Failed to scan mech weapon slots.")
+		weaponSlot.Weapon = weapon
+
+		for _, m := range mechs {
+			if weaponSlot.MechID != m.ID {
+				continue
 			}
 
-			weaponSlot.Weapon = weapon
-
-			for _, m := range resp {
-				if weaponSlot.MechID != m.ID {
-					continue
-				}
-
-				m.WeaponSlots = append(m.WeaponSlots, weaponSlot)
-			}
+			m.WeaponSlots = append(m.WeaponSlots, weaponSlot)
 		}
 	}
 
-	return resp, nil
+	return nil
+}
+
+func fillMechUtilities(mechs []*MechBrief) error {
+	if len(mechs) == 0 {
+		return nil
+	}
+
+	impactedMechWhereInClause := fmt.Sprintf("WHERE %s IN (", boiler.MechUtilityTableColumns.ChassisID)
+	for i, mech := range mechs {
+		impactedMechWhereInClause += "'" + mech.ID + "'"
+
+		if i < len(mechs)-1 {
+			impactedMechWhereInClause += ","
+			continue
+		}
+
+		impactedMechWhereInClause += ")"
+	}
+
+	queries := []qm.QueryMod{
+		qm.Select(
+			boiler.MechUtilityTableColumns.ChassisID,
+			boiler.MechUtilityTableColumns.UtilityID,
+			boiler.MechUtilityTableColumns.SlotNumber,
+			fmt.Sprintf("TO_JSON(%s) AS utility", boiler.TableNames.Utility),
+		),
+
+		qm.From(fmt.Sprintf(
+			"(SELECT %s, %s, %s FROM %s %s) %s",
+			boiler.MechUtilityTableColumns.ChassisID,
+			boiler.MechUtilityTableColumns.UtilityID,
+			boiler.MechUtilityTableColumns.SlotNumber,
+			boiler.TableNames.MechUtility,
+			impactedMechWhereInClause,
+			boiler.TableNames.MechUtility,
+		)),
+
+		qm.LeftOuterJoin(fmt.Sprintf(
+			`(
+				SELECT %s, %s, %s, %s, %s FROM %s
+				INNER JOIN %s ON %s = %s
+			) %s ON %s = %s`,
+			boiler.UtilityTableColumns.ID,
+			boiler.BlueprintUtilityTableColumns.Label,
+			boiler.BlueprintUtilityTableColumns.Tier,
+			boiler.BlueprintUtilityTableColumns.ImageURL,
+			boiler.BlueprintUtilityTableColumns.AvatarURL,
+			boiler.TableNames.Utility,
+			boiler.TableNames.BlueprintUtility,
+			boiler.UtilityTableColumns.BlueprintID,
+			boiler.BlueprintUtilityTableColumns.ID,
+			boiler.TableNames.Utility,
+			boiler.UtilityTableColumns.ID,
+			boiler.MechUtilityTableColumns.UtilityID,
+		)),
+
+		qm.OrderBy(boiler.MechUtilityTableColumns.SlotNumber),
+	}
+
+	rows, err := boiler.NewQuery(queries...).Query(gamedb.StdConn)
+	if err != nil {
+		gamelog.L.Error().Err(err).Msg("Failed to load mech utility slots.")
+		return terror.Error(err, "Failed to load mech utility slots.")
+	}
+
+	for rows.Next() {
+		utilitySlot := &server.UtilitySlot{}
+		var utility *server.Utility
+		err = rows.Scan(&utilitySlot.MechID, &utilitySlot.UtilityID, &utilitySlot.SlotNumber, &utility)
+		if err != nil {
+			gamelog.L.Error().Err(err).Msg("Failed to scan mech utility slots.")
+			return terror.Error(err, "Failed to scan mech utility slots.")
+		}
+
+		utilitySlot.Utility = utility
+
+		for _, m := range mechs {
+			if utilitySlot.MechID != m.ID {
+				continue
+			}
+
+			m.Utilities = append(m.Utilities, utilitySlot)
+		}
+	}
+
+	return nil
 }

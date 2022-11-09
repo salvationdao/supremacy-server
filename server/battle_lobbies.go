@@ -59,6 +59,13 @@ type BattleLobbiesMech struct {
 	WeaponSlots []*WeaponSlot `json:"weapon_slots"`
 }
 
+type UtilitySlot struct {
+	MechID     string      `json:"mech_id"`
+	UtilityID  null.String `json:"utility_id"`
+	SlotNumber int         `json:"slot_number"`
+	Utility    *Utility    `json:"utility"`
+}
+
 type WeaponSlot struct {
 	MechID          string      `json:"mech_id"`
 	WeaponID        null.String `json:"weapon_id"`

@@ -13,6 +13,13 @@ import (
 /*
 	THIS FILE SHOULD CONTAIN ZERO BOILER STRUCTS
 */
+func (b *Stats) Scan(value interface{}) error {
+	v, ok := value.([]byte)
+	if !ok {
+		return fmt.Errorf("unable to scan value into byte array")
+	}
+	return json.Unmarshal(v, b)
+}
 
 type Stats struct {
 	TotalWins       int `json:"total_wins"`
@@ -133,27 +140,27 @@ func (b *BlueprintMech) Scan(value interface{}) error {
 
 func BlueprintMechFromBoiler(mech *boiler.BlueprintMech) *BlueprintMech {
 	return &BlueprintMech{
-		ID: mech.ID,
-		Label: mech.Label,
-		CreatedAt: mech.CreatedAt,
-		DefaultChassisSkinID: mech.DefaultChassisSkinID,
-		BrandID: mech.BrandID,
-		MechType: mech.MechType,
-		RepairBlocks: mech.RepairBlocks,
-		BoostStat: mech.BoostStat,
-		WeaponHardpoints: mech.WeaponHardpoints,
-		PowerCoreSize: mech.PowerCoreSize,
-		UtilitySlots: mech.UtilitySlots,
-		Speed: mech.Speed,
-		MaxHitpoints: mech.MaxHitpoints,
-		Collection: mech.Collection,
-		AvailabilityID: mech.AvailabilityID,
-		ShieldTypeID: mech.ShieldTypeID,
-		ShieldMax: mech.ShieldMax,
-		ShieldRechargeRate: mech.ShieldRechargeRate,
+		ID:                      mech.ID,
+		Label:                   mech.Label,
+		CreatedAt:               mech.CreatedAt,
+		DefaultChassisSkinID:    mech.DefaultChassisSkinID,
+		BrandID:                 mech.BrandID,
+		MechType:                mech.MechType,
+		RepairBlocks:            mech.RepairBlocks,
+		BoostStat:               mech.BoostStat,
+		WeaponHardpoints:        mech.WeaponHardpoints,
+		PowerCoreSize:           mech.PowerCoreSize,
+		UtilitySlots:            mech.UtilitySlots,
+		Speed:                   mech.Speed,
+		MaxHitpoints:            mech.MaxHitpoints,
+		Collection:              mech.Collection,
+		AvailabilityID:          mech.AvailabilityID,
+		ShieldTypeID:            mech.ShieldTypeID,
+		ShieldMax:               mech.ShieldMax,
+		ShieldRechargeRate:      mech.ShieldRechargeRate,
 		ShieldRechargePowerCost: mech.ShieldRechargePowerCost,
-		ShieldRechargeDelay: mech.ShieldRechargeDelay,
-		HeightMeters: mech.HeightMeters,
+		ShieldRechargeDelay:     mech.ShieldRechargeDelay,
+		HeightMeters:            mech.HeightMeters,
 	}
 }
 
