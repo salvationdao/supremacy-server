@@ -27,6 +27,7 @@ const (
 	SystemMessageDataTypePlayerAbilityRefunded SystemMessageDataType = "PLAYER_ABILITY_REFUNDED"
 	SystemMessageDataTypeGlobal                SystemMessageDataType = "GLOBAL"
 	SystemMessageDataTypeFaction               SystemMessageDataType = "FACTION"
+	SystemMessageDataTypeExpiredBattleLobby    SystemMessageDataType = "EXPIRED_BATTLE_LOBBY"
 )
 
 var bm = bluemonday.StrictPolicy()

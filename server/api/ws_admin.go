@@ -130,6 +130,7 @@ type AdminFiatProductCreateRequest struct {
 		WeaponSkinBlueprintIDs    []string `json:"weapon_skin_blueprint_ids"`
 		PriceDollars              int64    `json:"price_dollars"`
 		PriceCents                int64    `json:"price_cents"`
+		EnableSups                bool     `json:"enable_sups"`
 	} `json:"payload"`
 }
 
@@ -170,6 +171,22 @@ func (ac *AdminController) FiatProductCreate(ctx context.Context, user *boiler.P
 	}
 	defer tx.Rollback()
 
+	priceUSD := decimal.NewFromInt(req.Payload.PriceDollars*100 + req.Payload.PriceCents)
+	priceSUPS := decimal.NullDecimal{}
+	if req.Payload.EnableSups {
+		supToUSDRate, err := ac.API.Passport.GetCurrentSupPrice()
+		if err != nil {
+			return terror.Error(err, errMsg)
+		}
+
+		fiatToSupConversionCut := db.GetDecimalWithDefault(db.KeyFiatToSUPCut, decimal.NewFromInt(1).Div(decimal.NewFromInt(5))) // 20% by default
+
+		priceSUPS = decimal.NewNullDecimal(priceUSD.Div(decimal.NewFromInt(100)).
+			Div(supToUSDRate).
+			Mul(decimal.New(1, 0).Sub(fiatToSupConversionCut)).
+			Mul(decimal.New(1, 18)))
+	}
+
 	factionProcessed := map[string]struct{}{}
 	for _, factionID := range req.Payload.Factions {
 		if factionID != server.RedMountainFactionID && factionID != server.ZaibatsuFactionID && factionID != server.BostonCyberneticsFactionID {
@@ -197,6 +214,18 @@ func (ac *AdminController) FiatProductCreate(ctx context.Context, user *boiler.P
 		err = pricing.Insert(tx, boil.Infer())
 		if err != nil {
 			return terror.Error(err, errMsg)
+		}
+
+		if priceSUPS.Valid {
+			pricing := &boiler.FiatProductPricing{
+				FiatProductID: product.ID,
+				CurrencyCode:  server.FiatCurrencyCodeSUPS,
+				Amount:        priceSUPS.Decimal,
+			}
+			err = pricing.Insert(tx, boil.Infer())
+			if err != nil {
+				return terror.Error(err, errMsg)
+			}
 		}
 
 		if req.Payload.ProductType == boiler.ItemTypeMech {
@@ -375,6 +404,7 @@ type AdminFiatProductUpdateRequest struct {
 		Description  string `json:"description"`
 		PriceDollars int64  `json:"price_dollars"`
 		PriceCents   int64  `json:"price_cents"`
+		EnableSups   bool   `json:"enable_sups"`
 	} `json:"payload"`
 }
 
@@ -428,16 +458,54 @@ func (ac *AdminController) FiatProductUpdate(ctx context.Context, user *boiler.P
 		return terror.Error(err, errMsg)
 	}
 
-	var pricingUSD *boiler.FiatProductPricing
+	priceUSD := decimal.NewFromInt(req.Payload.PriceDollars*100 + req.Payload.PriceCents)
+	priceSUPS := decimal.NullDecimal{}
+	if req.Payload.EnableSups {
+		supToUSDRate, err := ac.API.Passport.GetCurrentSupPrice()
+		if err != nil {
+			return terror.Error(err, errMsg)
+		}
+
+		fiatToSupConversionCut := db.GetDecimalWithDefault(db.KeyFiatToSUPCut, decimal.NewFromInt(1).Div(decimal.NewFromInt(5))) // 20% by default
+
+		priceSUPS = decimal.NewNullDecimal(priceUSD.Div(decimal.NewFromInt(100)).
+			Div(supToUSDRate).
+			Mul(decimal.New(1, 0).Sub(fiatToSupConversionCut)).
+			Mul(decimal.New(1, 18)))
+	}
+
 	for _, p := range product.R.FiatProductPricings {
 		if p.CurrencyCode == server.FiatCurrencyCodeUSD {
-			pricingUSD = p
-			pricingUSD.Amount = decimal.NewFromInt(req.Payload.PriceDollars*100 + req.Payload.PriceCents)
-			_, err = pricingUSD.Update(tx, boil.Whitelist(boiler.FiatProductPricingColumns.Amount))
+			p.Amount = priceUSD
+			_, err = p.Update(tx, boil.Whitelist(boiler.FiatProductPricingColumns.Amount))
 			if err != nil {
 				return terror.Error(err, errMsg)
 			}
-			break
+		} else if p.CurrencyCode == server.FiatCurrencyCodeSUPS {
+			if !req.Payload.EnableSups || !priceSUPS.Valid {
+				_, err := p.Delete(tx)
+				if err != nil {
+					return terror.Error(err, errMsg)
+				}
+				continue
+			}
+			p.Amount = priceSUPS.Decimal
+			_, err := p.Update(tx, boil.Whitelist(boiler.FiatProductPricingColumns.Amount))
+			if err != nil {
+				return terror.Error(err, errMsg)
+			}
+			priceSUPS = decimal.NullDecimal{}
+		}
+	}
+	if priceSUPS.Valid {
+		pricing := &boiler.FiatProductPricing{
+			FiatProductID: product.ID,
+			CurrencyCode:  server.FiatCurrencyCodeSUPS,
+			Amount:        priceSUPS.Decimal,
+		}
+		err = pricing.Insert(tx, boil.Infer())
+		if err != nil {
+			return terror.Error(err, errMsg)
 		}
 	}
 
