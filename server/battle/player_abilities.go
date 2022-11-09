@@ -573,23 +573,13 @@ func (am *ArenaManager) PlayerSupportAbilityUse(ctx context.Context, user *boile
 				mma.LaunchingAt = null.TimeFrom(time.Now().Add(time.Duration(pa.R.GameAbility.LaunchingDelaySeconds) * time.Second))
 			}
 
-			ws.PublishMessage(
-				fmt.Sprintf("/mini_map/arena/%s/public/mini_map_ability_display_list", arena.ID),
-				server.HubKeyMiniMapAbilityContentSubscribe,
-				btl.MiniMapAbilityDisplayList.Add(offeringID.String(), mma),
-			)
+			btl.MiniMapAbilityDisplayList.Add(mma)
 
 			if pa.R.GameAbility.AnimationDurationSeconds > 0 {
 				go func(battle *Battle, bpa *boiler.GameAbility) {
 					time.Sleep(time.Duration(bpa.AnimationDurationSeconds) * time.Second)
 					if battle != nil && battle.state.Load() == BattlingState {
-						if ab := battle.MiniMapAbilityDisplayList.Get(offeringID.String()); ab != nil {
-							ws.PublishMessage(
-								fmt.Sprintf("/mini_map/arena/%s/public/mini_map_ability_display_list", arena.ID),
-								server.HubKeyMiniMapAbilityContentSubscribe,
-								battle.MiniMapAbilityDisplayList.Remove(offeringID.String()),
-							)
-						}
+						battle.MiniMapAbilityDisplayList.Remove(offeringID.String())
 					}
 				}(btl, pa.R.GameAbility)
 			}
@@ -972,23 +962,13 @@ func (am *ArenaManager) PlayerAbilityUse(ctx context.Context, user *boiler.Playe
 				mma.LaunchingAt = null.TimeFrom(time.Now().Add(time.Duration(bpa.LaunchingDelaySeconds) * time.Second))
 			}
 
-			ws.PublishMessage(
-				fmt.Sprintf("/mini_map/arena/%s/public/mini_map_ability_display_list", arena.ID),
-				server.HubKeyMiniMapAbilityContentSubscribe,
-				btl.MiniMapAbilityDisplayList.Add(offeringID.String(), mma),
-			)
+			btl.MiniMapAbilityDisplayList.Add(mma)
 
 			if bpa.AnimationDurationSeconds > 0 {
 				go func(battle *Battle, bpa *boiler.BlueprintPlayerAbility) {
 					time.Sleep(time.Duration(bpa.AnimationDurationSeconds) * time.Second)
 					if battle != nil && battle.state.Load() == BattlingState {
-						if ab := battle.MiniMapAbilityDisplayList.Get(offeringID.String()); ab != nil {
-							ws.PublishMessage(
-								fmt.Sprintf("/mini_map/arena/%s/public/mini_map_ability_display_list", arena.ID),
-								server.HubKeyMiniMapAbilityContentSubscribe,
-								battle.MiniMapAbilityDisplayList.Remove(offeringID.String()),
-							)
-						}
+						battle.MiniMapAbilityDisplayList.Remove(offeringID.String())
 					}
 				}(btl, bpa)
 			}
@@ -1316,20 +1296,12 @@ func (am *ArenaManager) MechAbilityTriggerHandler(ctx context.Context, user *boi
 				MechID:                   wm.ID,
 			}
 
-			ws.PublishMessage(
-				fmt.Sprintf("/mini_map/arena/%s/public/mini_map_ability_display_list", arena.ID),
-				server.HubKeyMiniMapAbilityContentSubscribe,
-				btl.MiniMapAbilityDisplayList.Add(offeringID.String(), mma),
-			)
+			btl.MiniMapAbilityDisplayList.Add(mma)
 
 			// cancel ability after animation end
 			if gameAbility.AnimationDurationSeconds > 0 {
 				time.Sleep(time.Duration(gameAbility.AnimationDurationSeconds) * time.Second)
-				ws.PublishMessage(
-					fmt.Sprintf("/mini_map/arena/%s/public/mini_map_ability_display_list", arena.ID),
-					server.HubKeyMiniMapAbilityContentSubscribe,
-					btl.MiniMapAbilityDisplayList.Remove(offeringID.String()),
-				)
+				btl.MiniMapAbilityDisplayList.Remove(offeringID.String())
 			}
 		}(arena, ga, wm.ID)
 	}

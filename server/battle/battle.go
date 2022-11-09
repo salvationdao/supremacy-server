@@ -100,10 +100,12 @@ type KillInfo struct {
 }
 
 type MiniMapAbilityDisplayList struct {
-	list []*MiniMapAbilityContent
+	arenaID string
+	list    []*MiniMapAbilityContent
 	deadlock.RWMutex
 
-	broadcastChan chan []*MiniMapAbilityContent
+	broadcastChan chan *MiniMapAbilityContent
+	stop          chan bool
 }
 
 type MiniMapAbilityContent struct {
@@ -122,12 +124,13 @@ type MiniMapAbilityContent struct {
 }
 
 // Add new pending ability and return a copy of current list
-func (dap *MiniMapAbilityDisplayList) Add(offeringID string, dac *MiniMapAbilityContent) []*MiniMapAbilityContent {
+func (dap *MiniMapAbilityDisplayList) Add(dac *MiniMapAbilityContent) {
+	// set updated at
+	dac.UpdatedAt = time.Now()
+
+	// update mini map ability list
 	dap.Lock()
 	defer dap.Unlock()
-
-	// change updated at
-	dac.UpdatedAt = time.Now()
 
 	lastIndex := len(dap.list) - 1
 	index := slices.IndexFunc(dap.list, func(da *MiniMapAbilityContent) bool { return da.OfferingID == dac.OfferingID })
@@ -141,75 +144,77 @@ func (dap *MiniMapAbilityDisplayList) Add(offeringID string, dac *MiniMapAbility
 
 	sort.Slice(dap.list, func(i, j int) bool { return dap.list[i].UpdatedAt.After(dap.list[j].UpdatedAt) })
 
-	return dap.list
+	// broadcast changes
+	select {
+	case dap.broadcastChan <- dac:
+	case <-time.After(100 * time.Millisecond):
+		// timeout
+	}
 }
 
 // Remove pending ability and return a copy of current list
-func (dap *MiniMapAbilityDisplayList) Remove(offeringID string) []*MiniMapAbilityContent {
+func (dap *MiniMapAbilityDisplayList) Remove(offeringID string) {
 	dap.Lock()
 	defer dap.Unlock()
 
-	lastIndex := len(dap.list) - 1
 	index := slices.IndexFunc(dap.list, func(da *MiniMapAbilityContent) bool { return da.OfferingID == offeringID })
-	if index != -1 {
-		dap.list[index] = dap.list[lastIndex] // replace target element with the last element
-		dap.list[lastIndex] = nil             // free up the memory of target element
-		dap.list = dap.list[:lastIndex]       // truncate the list
+	if index == -1 {
+		return
 	}
+
+	// broadcast changes
+	dac := dap.list[index]
+	dac.IsRemoved = true
+	select {
+	case dap.broadcastChan <- dac:
+	case <-time.After(100 * time.Millisecond):
+		// timeout
+	}
+
+	// remove data
+	lastIndex := len(dap.list) - 1
+	dap.list[index] = dap.list[lastIndex] // replace target element with the last element
+	dap.list[lastIndex] = nil             // free up the memory of target element
+	dap.list = dap.list[:lastIndex]       // truncate the list
 
 	sort.Slice(dap.list, func(i, j int) bool { return dap.list[i].UpdatedAt.After(dap.list[j].UpdatedAt) })
-
-	return dap.list
 }
 
-// Get a mini map ability from givent offering id
-func (dap *MiniMapAbilityDisplayList) Get(offingID string) *MiniMapAbilityContent {
+// List a copy of current pending list
+func (dap *MiniMapAbilityDisplayList) List() []*MiniMapAbilityContent {
 	dap.RLock()
 	defer dap.RUnlock()
-
-	da, ok := dap.m[offingID]
-	if !ok {
-		return nil
-	}
-	return da
+	return dap.list
 }
 
 func (dap *MiniMapAbilityDisplayList) debounceBroadcastMiniMapDisplay() {
 	interval := 150 * time.Millisecond
-	timer := time.NewTimer(interval)
-	var broadcastList []*MiniMapAbilityContent{}
+	timer := time.NewTimer(5 * time.Minute)
+	var broadcastList []*MiniMapAbilityContent
 
 	for {
 		select {
+		case <-dap.stop:
+			return
 
-		case list := <-dap.broadcastChan:
-			for _, l := range broadcastList{
-				index := slices.IndexFunc(broadcastList, func(bl *MiniMapAbilityContent) bool{return bl.OfferingID == l.OfferingID})
-				if index != -1 {
-
-				}
+		case dac := <-dap.broadcastChan:
+			index := slices.IndexFunc(broadcastList, func(bl *MiniMapAbilityContent) bool { return bl.OfferingID == dac.OfferingID })
+			if index != -1 {
+				broadcastList[index] = dac
+			} else {
+				broadcastList = append(broadcastList, dac)
 			}
 
-		case <-timer.C:
+			timer.Reset(interval)
 
+		case <-timer.C:
+			ws.PublishMessage(
+				fmt.Sprintf("/mini_map/arena/%s/public/mini_map_ability_display_list", dap.arenaID),
+				server.HubKeyMiniMapAbilityContentSubscribe,
+				broadcastList,
+			)
 		}
 	}
-
-}
-
-// List a copy of current pending list
-func (dap *MiniMapAbilityDisplayList) List() []MiniMapAbilityContent {
-	dap.RLock()
-	defer dap.RUnlock()
-
-	result := []MiniMapAbilityContent{}
-	for _, dac := range dap.m {
-		result = append(result, *dac)
-	}
-
-	sort.Slice(result, func(i, j int) bool { return result[i].UpdatedAt.After(result[j].UpdatedAt) })
-
-	return result
 }
 
 type RecordingSession struct {
@@ -1302,6 +1307,9 @@ func (btl *Battle) end(payload *BattleEndPayload) {
 			gamelog.LogPanicRecovery("panic! panic! panic! Panic at the battle end!", r)
 		}
 	}()
+
+	// stop mini map ability display list
+	btl.MiniMapAbilityDisplayList.stop <- true
 
 	// pre-assign next battle lobby
 	btl.arena.beginBattleMux.Lock()

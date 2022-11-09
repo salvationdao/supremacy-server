@@ -1485,19 +1485,8 @@ func (arena *Arena) AbilityRelatedChan() {
 				continue
 			}
 
-			eventID := dataPayload.EventID
-
-			// skip if ability not exists, or it is not a picked-up ability
-			if da := btl.MiniMapAbilityDisplayList.Get(eventID); da == nil {
-				continue
-			}
-
 			// remove repair from pending list, and broadcast
-			ws.PublishMessage(
-				fmt.Sprintf("/mini_map/arena/%s/public/mini_map_ability_display_list", btl.ArenaID),
-				server.HubKeyMiniMapAbilityContentSubscribe,
-				btl.MiniMapAbilityDisplayList.Remove(dataPayload.EventID),
-			)
+			btl.MiniMapAbilityDisplayList.Remove(dataPayload.EventID)
 
 		case "BATTLE:WAR_MACHINE_STATUS":
 			// do not process, if battle already ended
@@ -1571,33 +1560,17 @@ func (arena *Arena) AbilityRelatedChan() {
 				case 12: // EMP
 					if wm.Status.IsStunned {
 						// add ability onto pending list, and broadcast
-						ws.PublishMessage(
-							fmt.Sprintf("/mini_map/arena/%s/public/mini_map_ability_display_list", btl.ArenaID),
-							server.HubKeyMiniMapAbilityContentSubscribe,
-							btl.MiniMapAbilityDisplayList.Add(offeringID, mma),
-						)
+						btl.MiniMapAbilityDisplayList.Add(mma)
 						continue
 					}
-					ws.PublishMessage(
-						fmt.Sprintf("/mini_map/arena/%s/public/mini_map_ability_display_list", btl.ArenaID),
-						server.HubKeyMiniMapAbilityContentSubscribe,
-						btl.MiniMapAbilityDisplayList.Remove(offeringID),
-					)
+					btl.MiniMapAbilityDisplayList.Remove(offeringID)
 				case 13: // HACKER DRONE
 					if wm.Status.IsHacked {
 						// add ability onto pending list, and broadcast
-						ws.PublishMessage(
-							fmt.Sprintf("/mini_map/arena/%s/public/mini_map_ability_display_list", btl.ArenaID),
-							server.HubKeyMiniMapAbilityContentSubscribe,
-							btl.MiniMapAbilityDisplayList.Add(offeringID, mma),
-						)
+						btl.MiniMapAbilityDisplayList.Add(mma)
 						continue
 					}
-					ws.PublishMessage(
-						fmt.Sprintf("/mini_map/arena/%s/public/mini_map_ability_display_list", btl.ArenaID),
-						server.HubKeyMiniMapAbilityContentSubscribe,
-						btl.MiniMapAbilityDisplayList.Remove(offeringID),
-					)
+					btl.MiniMapAbilityDisplayList.Remove(offeringID)
 				}
 			}
 		case "BATTLE:ABILITY_MOVE_COMMAND_RESPONSE":
@@ -1627,19 +1600,8 @@ func (arena *Arena) AbilityRelatedChan() {
 				continue
 			}
 
-			eventID := dataPayload.EventID
-
-			// skip if ability not exists, or it is a picked-up ability
-			if da := btl.MiniMapAbilityDisplayList.Get(eventID); da == nil {
-				continue
-			}
-
 			// remove ability from pending list, and broadcast
-			ws.PublishMessage(
-				fmt.Sprintf("/mini_map/arena/%s/public/mini_map_ability_display_list", btl.ArenaID),
-				server.HubKeyMiniMapAbilityContentSubscribe,
-				btl.MiniMapAbilityDisplayList.Remove(eventID),
-			)
+			btl.MiniMapAbilityDisplayList.Remove(dataPayload.EventID)
 		default:
 			L.Warn().Err(err).Msg("Battle Arena WS: no command response")
 		}
@@ -2240,8 +2202,10 @@ func (arena *Arena) BeginBattle() {
 		state:                  atomic.NewInt32(SetupState),
 		destroyedWarMachineMap: make(map[string]*WMDestroyedRecord),
 		MiniMapAbilityDisplayList: &MiniMapAbilityDisplayList{
+			arenaID:       arena.ID,
 			list:          []*MiniMapAbilityContent{},
-			broadcastChan: make(chan []*MiniMapAbilityContent),
+			broadcastChan: make(chan *MiniMapAbilityContent),
+			stop:          make(chan bool),
 		},
 		MapEventList: NewMapEventList(gameMap.Name),
 		replaySession: &RecordingSession{
@@ -2254,6 +2218,8 @@ func (arena *Arena) BeginBattle() {
 		},
 	}
 	ws.PublishMessage(fmt.Sprintf("/public/arena/%s/battle_state", btl.ArenaID), server.HubKeyBattleState, SetupState)
+
+	go btl.MiniMapAbilityDisplayList.debounceBroadcastMiniMapDisplay()
 
 	// hold arena for the pre intro phase
 	prebattleTime := db.GetIntWithDefault(db.KeyPreBattleTimeSeconds, 20)
