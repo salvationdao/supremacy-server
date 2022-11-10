@@ -1144,8 +1144,18 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetMechEquipHandler(ctx context.Con
 
 		mech.InheritAllWeaponSkins = req.Payload.InheritAllWeaponSkins.Bool
 
-		// Update all weapons with that skin
-		mechWeapons, err := boiler.MechWeapons(boiler.MechWeaponWhere.ChassisID.EQ(mech.ID)).All(tx)
+		// Update all compatible weapons with that skin
+		boil.DebugMode = true
+		mechWeapons, err := boiler.MechWeapons(
+			boiler.MechWeaponWhere.ChassisID.EQ(mech.ID),
+			boiler.WeaponWhere.BlueprintID.IN(mech.BlueprintWeaponIDsWithSkinInheritance),
+			qm.InnerJoin(fmt.Sprintf("%s on %s = %s",
+				boiler.TableNames.Weapons,
+				boiler.WeaponTableColumns.ID,
+				boiler.MechWeaponTableColumns.WeaponID,
+			)),
+		).All(tx)
+		boil.DebugMode = false
 		if err != nil {
 			l.Error().Err(err).Msg("failed to get all weapons on mech to inherit skins")
 			return terror.Error(err, errorMsg)
@@ -1705,8 +1715,16 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetMechEquipHandler(ctx context.Con
 					return terror.Error(err, errorMsg)
 				}
 
+				canSkinBeInherited := false
+				for _, s := range mech.BlueprintWeaponIDsWithSkinInheritance {
+					if s == weapon.BlueprintID {
+						canSkinBeInherited = true
+						break
+					}
+				}
+
+				mw.IsSkinInherited = canSkinBeInherited && mech.InheritAllWeaponSkins
 				mw.WeaponID = null.StringFrom(ew.WeaponID)
-				mw.IsSkinInherited = mech.InheritAllWeaponSkins
 				mw.AllowMelee = weapon.R.Blueprint.IsMelee
 				_, err = mw.Update(tx, boil.Infer())
 				if err != nil {
