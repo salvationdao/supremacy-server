@@ -2,7 +2,6 @@ package discord
 
 import (
 	"fmt"
-	"server"
 	"server/db"
 	"server/gamelog"
 
@@ -28,11 +27,6 @@ func NewDiscordBot(token, appID string, isBotBinary bool) (*DiscordSession, erro
 
 	guildID := db.GetStrWithDefault(db.KeyDiscordGuildID, "927761469775441930")
 
-	if server.IsDevelopmentEnv() {
-		guildID = "1034448717006258186"
-	} else if server.IsStagingEnv() {
-		guildID = "685421530477232138"
-	}
 	session.guildID = guildID
 
 	bot, err := discordgo.New(fmt.Sprintf("Bot %s", token))
@@ -93,11 +87,6 @@ func (s *DiscordSession) SendDiscordMessage(message string) error {
 	}
 
 	channelID := db.GetStrWithDefault(db.KeyDiscordChannelID, "946873011368251412")
-	if server.IsDevelopmentEnv() {
-		channelID = "1034448717006258189"
-	} else if server.IsStagingEnv() {
-		channelID = "685850676534050860"
-	}
 
 	_, err := s.s.ChannelMessageSend(channelID, message)
 	if err != nil {

@@ -37,6 +37,7 @@ type BattleLobby struct {
 	IsPrivate                  bool                    `json:"is_private"`
 	StageOrder                 BattleLobbyStageOrder   `json:"stage_order"`
 	SupsPool                   decimal.Decimal         `json:"sups_pool"`
+	FillAt                     null.Time               `json:"fill_at,omitempty"`
 }
 
 type BattleLobbiesMech struct {
@@ -565,6 +566,7 @@ func BattleLobbyInfoFilter(bl *BattleLobby, keepDataForFactionID string, keepAcc
 		IsPrivate:          bl.IsPrivate,
 		StageOrder:         bl.StageOrder,
 		SupsPool:           bl.SupsPool,
+		FillAt:             bl.FillAt,
 	}
 
 	if !keepAccessCode {

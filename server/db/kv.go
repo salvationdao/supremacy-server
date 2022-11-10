@@ -99,6 +99,10 @@ const KeyDeductBlockCountFromBomb KVKey = "deduct_block_count_from_bomb"
 const KeyDiscordChannelID KVKey = "discord_channel_id"
 const KeyDiscordGuildID KVKey = "discord_guild_id"
 
+const KeyAutoFillLobbyAfterDurationSecond KVKey = "auto_fill_lobby_after_duration_second"
+const KeyPublicExhibitionLobbyExpireAfterDurationSecond KVKey = "public_exhibition_lobby_expire_after_duration_second"
+const KeyLobbyHostingMaximumAmount KVKey = "lobby_hosting_maximum_amount"
+
 func get(key KVKey) string {
 	kv, err := boiler.KVS(boiler.KVWhere.Key.EQ(string(key))).One(gamedb.StdConn)
 	if err != nil {

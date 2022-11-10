@@ -1138,8 +1138,8 @@ github.com/ninja-syndicate/hub v1.9.2 h1:eM3BPPxipuQaAoWLkLk98s8BpseA6RiXZN++kpP
 github.com/ninja-syndicate/hub v1.9.2/go.mod h1:1nWmVtwMNyHwQqDc8q3+N3FxvGD8LKOLtNWztCErgTo=
 github.com/ninja-syndicate/supremacy-bridge v0.1.49 h1:yG3mlRL5ws03flnZeiMHhKmfkxe4ehT1G6lKqVUZ4V0=
 github.com/ninja-syndicate/supremacy-bridge v0.1.49/go.mod h1:Oq2bsCSyiza9gAg/D542GVkAfW4vSMn29SV/4mi1MWA=
-github.com/ninja-syndicate/ws v0.18.1 h1:Un5j6D7yPTvPB+1ddK3B+3IaYaHZPed9vksAP04uiFw=
-github.com/ninja-syndicate/ws v0.18.1/go.mod h1:g/avE83VgPN1lqPUE7i006pMyXLPFkMo9/RFtdRvCVo=
+github.com/ninja-syndicate/ws v0.18.2 h1:KcxBm3L78Y0EO84qOybMArI6vEBheHt+p9QhNQ2j7WM=
+github.com/ninja-syndicate/ws v0.18.2/go.mod h1:g/avE83VgPN1lqPUE7i006pMyXLPFkMo9/RFtdRvCVo=
 github.com/nxadm/tail v1.4.4/go.mod h1:kenIhsEOeOJmVchQTgglprH7qJGnHDVpk1VPCcaMI8A=
 github.com/oklog/ulid v1.3.1/go.mod h1:CirwcVhetQ6Lv90oh/F+FBtV6XMibvdAFo93nm5qn4U=
 github.com/olekukonko/tablewriter v0.0.0-20170122224234-a0225b3f23b5/go.mod h1:vsDQFd/mU46D+Z4whnwzcISnGGzXWMclvtLoiIKAKIo=

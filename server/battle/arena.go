@@ -74,6 +74,8 @@ type ArenaManager struct {
 	LobbyFuncMx                      *deadlock.Mutex
 
 	RepairGameBlockMx deadlock.RWMutex
+
+	SystemLobbyFillingProcess *SystemLobbyFillingProcess
 }
 
 type Opts struct {
@@ -105,6 +107,9 @@ func NewArenaManager(opts *Opts) (*ArenaManager, error) {
 		BattleLobbyDebounceBroadcastChan: make(chan []string, 10),
 		LobbyFuncMx:                      &deadlock.Mutex{},
 		RepairGameBlockMx:                deadlock.RWMutex{},
+		SystemLobbyFillingProcess: &SystemLobbyFillingProcess{
+			Map: make(map[string]*AIMechFillingProcess),
+		},
 	}
 
 	am.server = &http.Server{
@@ -125,7 +130,17 @@ func NewArenaManager(opts *Opts) (*ArenaManager, error) {
 		return nil, terror.Error(err, "Failed to delete unfinished AI battles.")
 	}
 
-	_, err = boiler.BattleLobbiesMechs().UpdateAll(gamedb.StdConn, boiler.M{
+	_, err = boiler.BattleLobbiesMechs(
+		boiler.BattleLobbiesMechWhere.EndedAt.IsNull(),
+		boiler.BattleLobbiesMechWhere.LockedAt.IsNotNull(),
+		qm.Where(fmt.Sprintf(
+			"EXISTS (SELECT 1 FROM %s WHERE %s = %s AND %s = TRUE)",
+			boiler.TableNames.BattleLobbies,
+			boiler.BattleLobbyTableColumns.ID,
+			boiler.BattleLobbiesMechTableColumns.BattleLobbyID,
+			boiler.BattleLobbyTableColumns.IsAiDrivenMatch,
+		)),
+	).UpdateAll(gamedb.StdConn, boiler.M{
 		boiler.BattleLobbiesMechColumns.DeletedAt: null.TimeFrom(time.Now()),
 		boiler.BattleLobbiesMechColumns.EndedAt:   null.TimeFrom(time.Now()),
 	})
@@ -400,7 +415,6 @@ func (am *ArenaManager) NewArena(battleArena *boiler.BattleArena, wsConn *websoc
 		// change arena state to hijacked
 		a.Stage.Store(ArenaStageHijacked)
 
-		// stop recording from previous arena
 		// stop war machine stat broadcast
 		select {
 		case a.WarMachineStatBroadcastStopChan <- true:
@@ -427,6 +441,7 @@ func (am *ArenaManager) NewArena(battleArena *boiler.BattleArena, wsConn *websoc
 				}
 			}
 
+			// stop recording from previous arena
 			if btl.replaySession.ReplaySession != nil {
 				err = replay.RecordReplayRequest(btl.Battle, btl.replaySession.ReplaySession.ID, replay.StopRecording)
 				if err != nil {
