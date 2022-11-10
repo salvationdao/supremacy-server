@@ -26,7 +26,6 @@ func NewDiscordBot(token, appID string, isBotBinary bool) (*DiscordSession, erro
 	Session = session
 
 	guildID := db.GetStrWithDefault(db.KeyDiscordGuildID, "927761469775441930")
-
 	session.guildID = guildID
 
 	bot, err := discordgo.New(fmt.Sprintf("Bot %s", token))
