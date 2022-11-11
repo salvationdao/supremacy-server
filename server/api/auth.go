@@ -4,7 +4,6 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
-	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 	"net/http"
 	"server"
 	"server/db"
@@ -14,6 +13,8 @@ import (
 	"server/helpers"
 	"strings"
 	"time"
+
+	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 
 	"github.com/ethereum/go-ethereum/common"
 
@@ -27,7 +28,7 @@ import (
 
 func AuthRouter(api *API) chi.Router {
 	r := chi.NewRouter()
-	r.Get("/xsyn", api.XSYNAuth)
+	r.Post("/xsyn", WithError((api.XSYNAuth)))
 	r.Post("/check", WithError(api.AuthCheckHandler))
 	r.Get("/logout", WithError(api.LogoutHandler))
 	r.Get("/bot_check", WithError(api.AuthBotCheckHandler))
@@ -38,39 +39,32 @@ func AuthRouter(api *API) chi.Router {
 	return r
 }
 
-func (api *API) XSYNAuth(w http.ResponseWriter, r *http.Request) {
-	isHangar := r.URL.Query().Get("isHangar") != ""
-
-	token := r.URL.Query().Get("token")
-	if token == "" {
-		http.Error(w, `token missing`, http.StatusBadRequest)
-		return
+func (api *API) XSYNAuth(w http.ResponseWriter, r *http.Request) (int, error) {
+	req := &struct {
+		IssueToken *string `json:"issue_token"`
+	}{}
+	err := json.NewDecoder(r.Body).Decode(req)
+	if err != nil {
+		return http.StatusInternalServerError, err
 	}
 
-	resp, err := api.Passport.OneTimeTokenLogin(token, r.UserAgent(), "auth")
+	resp, err := api.Passport.TokenLogin(*req.IssueToken)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+		gamelog.L.Warn().Msg("No token found")
+		return http.StatusBadRequest, terror.Warn(fmt.Errorf("no token are provided"), "User are not signed in.")
 	}
 
 	err = api.UpsertPlayer(resp.ID, null.StringFrom(resp.Username), resp.PublicAddress, resp.FactionID, nil, resp.AcceptsMarketing)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+		gamelog.L.Warn().Msg("No token found")
+		return http.StatusBadRequest, terror.Warn(fmt.Errorf("no token are provided"), "Unable to update player")
 	}
 
-	err = api.WriteCookie(w, r, resp.Token)
+	err = api.WriteCookie(w, r, *req.IssueToken)
 	if err != nil {
-
-		return
+		return http.StatusInternalServerError, terror.Error(err, "Failed to write cookie")
 	}
-
-	callbackUrl := api.Config.AuthCallbackURL
-	if isHangar {
-		callbackUrl = api.Config.AuthHangarCallbackURL
-	}
-
-	http.Redirect(w, r, callbackUrl+"?token=true", http.StatusSeeOther)
+	return helpers.EncodeJSON(w, resp)
 }
 
 func (api *API) AuthCheckHandler(w http.ResponseWriter, r *http.Request) (int, error) {
