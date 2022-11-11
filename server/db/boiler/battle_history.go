@@ -23,72 +23,79 @@ import (
 
 // BattleHistory is an object representing the database table.
 type BattleHistory struct {
-	ID              string      `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
-	BattleID        string      `boiler:"battle_id" boil:"battle_id" json:"battle_id" toml:"battle_id" yaml:"battle_id"`
-	RelatedID       null.String `boiler:"related_id" boil:"related_id" json:"related_id,omitempty" toml:"related_id" yaml:"related_id,omitempty"`
-	EventType       string      `boiler:"event_type" boil:"event_type" json:"event_type" toml:"event_type" yaml:"event_type"`
-	CreatedAt       time.Time   `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
-	WarMachineOneID string      `boiler:"war_machine_one_id" boil:"war_machine_one_id" json:"war_machine_one_id" toml:"war_machine_one_id" yaml:"war_machine_one_id"`
-	WarMachineTwoID null.String `boiler:"war_machine_two_id" boil:"war_machine_two_id" json:"war_machine_two_id,omitempty" toml:"war_machine_two_id" yaml:"war_machine_two_id,omitempty"`
+	ID                      string      `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
+	BattleID                string      `boiler:"battle_id" boil:"battle_id" json:"battle_id" toml:"battle_id" yaml:"battle_id"`
+	BattleAbilityOfferingID null.String `boiler:"battle_ability_offering_id" boil:"battle_ability_offering_id" json:"battle_ability_offering_id,omitempty" toml:"battle_ability_offering_id" yaml:"battle_ability_offering_id,omitempty"`
+	EventType               string      `boiler:"event_type" boil:"event_type" json:"event_type" toml:"event_type" yaml:"event_type"`
+	CreatedAt               time.Time   `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
+	WarMachineOneID         string      `boiler:"war_machine_one_id" boil:"war_machine_one_id" json:"war_machine_one_id" toml:"war_machine_one_id" yaml:"war_machine_one_id"`
+	WarMachineTwoID         null.String `boiler:"war_machine_two_id" boil:"war_machine_two_id" json:"war_machine_two_id,omitempty" toml:"war_machine_two_id" yaml:"war_machine_two_id,omitempty"`
+	PlayerAbilityOfferingID null.String `boiler:"player_ability_offering_id" boil:"player_ability_offering_id" json:"player_ability_offering_id,omitempty" toml:"player_ability_offering_id" yaml:"player_ability_offering_id,omitempty"`
 
 	R *battleHistoryR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L battleHistoryL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 }
 
 var BattleHistoryColumns = struct {
-	ID              string
-	BattleID        string
-	RelatedID       string
-	EventType       string
-	CreatedAt       string
-	WarMachineOneID string
-	WarMachineTwoID string
+	ID                      string
+	BattleID                string
+	BattleAbilityOfferingID string
+	EventType               string
+	CreatedAt               string
+	WarMachineOneID         string
+	WarMachineTwoID         string
+	PlayerAbilityOfferingID string
 }{
-	ID:              "id",
-	BattleID:        "battle_id",
-	RelatedID:       "related_id",
-	EventType:       "event_type",
-	CreatedAt:       "created_at",
-	WarMachineOneID: "war_machine_one_id",
-	WarMachineTwoID: "war_machine_two_id",
+	ID:                      "id",
+	BattleID:                "battle_id",
+	BattleAbilityOfferingID: "battle_ability_offering_id",
+	EventType:               "event_type",
+	CreatedAt:               "created_at",
+	WarMachineOneID:         "war_machine_one_id",
+	WarMachineTwoID:         "war_machine_two_id",
+	PlayerAbilityOfferingID: "player_ability_offering_id",
 }
 
 var BattleHistoryTableColumns = struct {
-	ID              string
-	BattleID        string
-	RelatedID       string
-	EventType       string
-	CreatedAt       string
-	WarMachineOneID string
-	WarMachineTwoID string
+	ID                      string
+	BattleID                string
+	BattleAbilityOfferingID string
+	EventType               string
+	CreatedAt               string
+	WarMachineOneID         string
+	WarMachineTwoID         string
+	PlayerAbilityOfferingID string
 }{
-	ID:              "battle_history.id",
-	BattleID:        "battle_history.battle_id",
-	RelatedID:       "battle_history.related_id",
-	EventType:       "battle_history.event_type",
-	CreatedAt:       "battle_history.created_at",
-	WarMachineOneID: "battle_history.war_machine_one_id",
-	WarMachineTwoID: "battle_history.war_machine_two_id",
+	ID:                      "battle_history.id",
+	BattleID:                "battle_history.battle_id",
+	BattleAbilityOfferingID: "battle_history.battle_ability_offering_id",
+	EventType:               "battle_history.event_type",
+	CreatedAt:               "battle_history.created_at",
+	WarMachineOneID:         "battle_history.war_machine_one_id",
+	WarMachineTwoID:         "battle_history.war_machine_two_id",
+	PlayerAbilityOfferingID: "battle_history.player_ability_offering_id",
 }
 
 // Generated where
 
 var BattleHistoryWhere = struct {
-	ID              whereHelperstring
-	BattleID        whereHelperstring
-	RelatedID       whereHelpernull_String
-	EventType       whereHelperstring
-	CreatedAt       whereHelpertime_Time
-	WarMachineOneID whereHelperstring
-	WarMachineTwoID whereHelpernull_String
+	ID                      whereHelperstring
+	BattleID                whereHelperstring
+	BattleAbilityOfferingID whereHelpernull_String
+	EventType               whereHelperstring
+	CreatedAt               whereHelpertime_Time
+	WarMachineOneID         whereHelperstring
+	WarMachineTwoID         whereHelpernull_String
+	PlayerAbilityOfferingID whereHelpernull_String
 }{
-	ID:              whereHelperstring{field: "\"battle_history\".\"id\""},
-	BattleID:        whereHelperstring{field: "\"battle_history\".\"battle_id\""},
-	RelatedID:       whereHelpernull_String{field: "\"battle_history\".\"related_id\""},
-	EventType:       whereHelperstring{field: "\"battle_history\".\"event_type\""},
-	CreatedAt:       whereHelpertime_Time{field: "\"battle_history\".\"created_at\""},
-	WarMachineOneID: whereHelperstring{field: "\"battle_history\".\"war_machine_one_id\""},
-	WarMachineTwoID: whereHelpernull_String{field: "\"battle_history\".\"war_machine_two_id\""},
+	ID:                      whereHelperstring{field: "\"battle_history\".\"id\""},
+	BattleID:                whereHelperstring{field: "\"battle_history\".\"battle_id\""},
+	BattleAbilityOfferingID: whereHelpernull_String{field: "\"battle_history\".\"battle_ability_offering_id\""},
+	EventType:               whereHelperstring{field: "\"battle_history\".\"event_type\""},
+	CreatedAt:               whereHelpertime_Time{field: "\"battle_history\".\"created_at\""},
+	WarMachineOneID:         whereHelperstring{field: "\"battle_history\".\"war_machine_one_id\""},
+	WarMachineTwoID:         whereHelpernull_String{field: "\"battle_history\".\"war_machine_two_id\""},
+	PlayerAbilityOfferingID: whereHelpernull_String{field: "\"battle_history\".\"player_ability_offering_id\""},
 }
 
 // BattleHistoryRels is where relationship names are stored.
@@ -118,9 +125,9 @@ func (*battleHistoryR) NewStruct() *battleHistoryR {
 type battleHistoryL struct{}
 
 var (
-	battleHistoryAllColumns            = []string{"id", "battle_id", "related_id", "event_type", "created_at", "war_machine_one_id", "war_machine_two_id"}
+	battleHistoryAllColumns            = []string{"id", "battle_id", "battle_ability_offering_id", "event_type", "created_at", "war_machine_one_id", "war_machine_two_id", "player_ability_offering_id"}
 	battleHistoryColumnsWithoutDefault = []string{"battle_id", "event_type", "war_machine_one_id"}
-	battleHistoryColumnsWithDefault    = []string{"id", "related_id", "created_at", "war_machine_two_id"}
+	battleHistoryColumnsWithDefault    = []string{"id", "battle_ability_offering_id", "created_at", "war_machine_two_id", "player_ability_offering_id"}
 	battleHistoryPrimaryKeyColumns     = []string{"id"}
 	battleHistoryGeneratedColumns      = []string{}
 )
