@@ -1145,7 +1145,6 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetMechEquipHandler(ctx context.Con
 		mech.InheritAllWeaponSkins = req.Payload.InheritAllWeaponSkins.Bool
 
 		// Update all compatible weapons with that skin
-		boil.DebugMode = true
 		mechWeapons, err := boiler.MechWeapons(
 			boiler.MechWeaponWhere.ChassisID.EQ(mech.ID),
 			boiler.WeaponWhere.BlueprintID.IN(mech.BlueprintWeaponIDsWithSkinInheritance),
@@ -1155,7 +1154,6 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetMechEquipHandler(ctx context.Con
 				boiler.MechWeaponTableColumns.WeaponID,
 			)),
 		).All(tx)
-		boil.DebugMode = false
 		if err != nil {
 			l.Error().Err(err).Msg("failed to get all weapons on mech to inherit skins")
 			return terror.Error(err, errorMsg)
