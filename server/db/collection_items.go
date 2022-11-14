@@ -32,7 +32,7 @@ const (
 	ForbiddenAssetModificationReasonBattle      ForbiddenAssetModificationReason = 4
 	ForbiddenAssetModificationReasonOwner       ForbiddenAssetModificationReason = 5
 	ForbiddenAssetModificationReasonMechLocked  ForbiddenAssetModificationReason = 6
-	ForbiddenAssetModificationReasonStaked      ForbiddenAssetModificationReason = 7
+	ForbiddenAssetModificationReasonOldStaked      ForbiddenAssetModificationReason = 7
 )
 
 func (f ForbiddenAssetModificationReason) String() string {
