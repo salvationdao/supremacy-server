@@ -1,14 +1,14 @@
 ALTER TABLE blueprint_mechs
     ADD COLUMN walk_speed_modifier numeric NOT NULL DEFAULT 1,
     ADD COLUMN sprint_spread_modifier numeric NOT NULL DEFAULT 1,
-    ADD COLUMN idle_drain int NOT NULL DEFAULT 1,
-    ADD COLUMN walk_drain int NOT NULL DEFAULT 2,
-    ADD COLUMN run_drain int NOT NULL DEFAULT 3;
+    ADD COLUMN idle_drain numeric NOT NULL DEFAULT 1,
+    ADD COLUMN walk_drain numeric NOT NULL DEFAULT 2,
+    ADD COLUMN run_drain numeric NOT NULL DEFAULT 3;
 
 ALTER TABLE blueprint_weapons
     ADD COLUMN dot_tick_duration int NOT NULL DEFAULT 0,
     ADD COLUMN projectile_life_span int NOT NULL DEFAULT 50,
-    ADD COLUMN recoil_force numberic NOT NULL DEFAULT 1,
+    ADD COLUMN recoil_force numeric NOT NULL DEFAULT 1,
     ADD COLUMN idle_power_cost int NOT NULL DEFAULT 0;
 
 ALTER TABLE blueprint_power_cores
