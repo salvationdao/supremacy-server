@@ -88,6 +88,21 @@ func (pp *XsynXrpcClient) TokenLogin(tokenBase64 string) (*UserResp, error) {
 	return resp, nil
 }
 
+type LogoutResp struct {
+	LogoutSuccess bool
+}
+
+func (pp *XsynXrpcClient) TokenLogout(tokenBase64 string) (*LogoutResp, error) {
+	resp := &LogoutResp{}
+	err := pp.XrpcClient.Call("S.TokenLogout", TokenReq{pp.ApiKey, tokenBase64}, resp)
+
+	if err != nil || !resp.LogoutSuccess {
+		gamelog.L.Err(err).Str("method", "TokenLogout").Msg("rpc error")
+		return nil, terror.Error(err, "Failed to logout user")
+	}
+	return resp, nil
+}
+
 type UserBalanceGetReq struct {
 	ApiKey string    `json:"apiKey"`
 	UserID uuid.UUID `json:"userID"`
