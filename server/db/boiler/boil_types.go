@@ -139,6 +139,7 @@ const (
 	PowercoreSizeSMALL  = "SMALL"
 	PowercoreSizeMEDIUM = "MEDIUM"
 	PowercoreSizeLARGE  = "LARGE"
+	PowercoreSizeTURBO  = "TURBO"
 )
 
 // Enum values for  are not proper Go identifiers, cannot emit constants
