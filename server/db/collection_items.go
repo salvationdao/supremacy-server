@@ -32,6 +32,7 @@ const (
 	ForbiddenAssetModificationReasonBattle      ForbiddenAssetModificationReason = 4
 	ForbiddenAssetModificationReasonOwner       ForbiddenAssetModificationReason = 5
 	ForbiddenAssetModificationReasonMechLocked  ForbiddenAssetModificationReason = 6
+	ForbiddenAssetModificationReasonStaked      ForbiddenAssetModificationReason = 7
 )
 
 func (f ForbiddenAssetModificationReason) String() string {
@@ -48,6 +49,8 @@ func (f ForbiddenAssetModificationReason) String() string {
 		return "You do not own this asset."
 	case ForbiddenAssetModificationReasonMechLocked:
 		return "The asset is locked to its mech."
+	case ForbiddenAssetModificationReasonStaked:
+		return "The asset is currently staked on the old contract."
 	}
 	return "The asset cannot be modified, unequipped, or equipped."
 }
@@ -97,6 +100,10 @@ func CanAssetBeModifiedOrMoved(exec boil.Executor, itemID string, itemType strin
 		return false, ForbiddenAssetModificationReasonOwner, nil
 	}
 
+	if ci.MarketLocked {
+		l.Debug().Msg("item is staked on the old staking contract")
+		return false, ForbiddenAssetModificationReasonStaked, nil
+	}
 	if ci.LockedToMarketplace {
 		l.Debug().Msg("item is locked to marketplace")
 		return false, ForbiddenAssetModificationReasonMarketplace, nil
