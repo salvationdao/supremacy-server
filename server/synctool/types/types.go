@@ -1,6 +1,8 @@
 package types
 
-import "github.com/volatiletech/null/v8"
+import (
+	"github.com/volatiletech/null/v8"
+)
 
 type MechModel struct {
 	ID                      string      `json:"id"`
@@ -22,6 +24,11 @@ type MechModel struct {
 	ShieldTypeID            string      `json:"shield_type_id"`
 	ShieldRechargeDelay     string      `json:"shield_recharge_delay"`
 	HeightMeters            string      `json:"height_meter"`
+	WalkSpeedModifier       string      `json:"walk_speed_modifier"`
+	SprintSpreadModifier    string      `json:"sprint_spread_modifier"`
+	IdleDrain               string      `json:"idle_drain"`
+	WalkDrain               string      `json:"walk_drain"`
+	RunDrain                string      `json:"run_drain"`
 }
 
 type Brands struct {
@@ -117,6 +124,10 @@ type Weapon struct {
 	ChargeTimeSeconds   string      `json:"charge_time_seconds"`
 	BurstRateOfFire     string      `json:"burst_rate_of_fire"`
 	PowerInstantDrain   string      `json:"power_instant_drain"`
+	DotTickDuration     string      `boiler:"dot_tick_duration"`
+	ProjectileLifeSpan  string      `boiler:"projectile_life_span"`
+	RecoilForce         string      `boiler:"recoil_force"`
+	IdlePowerCost       string      `boiler:"idle_power_cost"`
 }
 
 type WeaponSkin struct {

@@ -343,6 +343,11 @@ func SyncMechModels(f io.Reader, db *sql.DB) error {
 			ShieldTypeID:            record[17],
 			ShieldRechargeDelay:     record[18],
 			HeightMeters:            record[19],
+			WalkSpeedModifier:       record[20],
+			SprintSpreadModifier:    record[21],
+			IdleDrain:               record[22],
+			WalkDrain:               record[23],
+			RunDrain:                record[24],
 		}
 
 		MechModels = append(MechModels, *mechModel)
@@ -371,9 +376,14 @@ func SyncMechModels(f io.Reader, db *sql.DB) error {
 												shield_recharge_power_cost,
 			                             		shield_type_id,
 			                             		shield_recharge_delay,
-			                             		height_meters
+			                             		height_meters,
+												walk_speed_modifier,
+												sprint_spread_modifier,
+												idle_drain,
+												walk_drain,
+												run_drain
 			                                   )
-			VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19)
+			VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24)
 			ON CONFLICT (id)
 			DO
 				UPDATE SET 
@@ -395,7 +405,12 @@ func SyncMechModels(f io.Reader, db *sql.DB) error {
 							shield_recharge_power_cost=$16,
 							shield_type_id=$17,
 							shield_recharge_delay=$18,
-							height_meters=$19;
+							height_meters=$19,
+							walk_speed_modifier=$20,
+							sprint_spread_modifier=$21,
+							idle_drain=$22,
+							walk_drain=$23,
+							run_drain=$24;
 		`,
 			mechModel.ID,
 			mechModel.Label,
@@ -416,6 +431,11 @@ func SyncMechModels(f io.Reader, db *sql.DB) error {
 			mechModel.ShieldTypeID,
 			mechModel.ShieldRechargeDelay,
 			mechModel.HeightMeters,
+			mechModel.WalkSpeedModifier,
+			mechModel.SprintSpreadModifier,
+			mechModel.IdleDrain,
+			mechModel.WalkDrain,
+			mechModel.RunDrain,
 		)
 		if err != nil {
 			fmt.Println("ERROR: " + err.Error())
@@ -879,6 +899,10 @@ func SyncWeaponModel(f io.Reader, db *sql.DB) error {
 			ChargeTimeSeconds:   record[23],
 			BurstRateOfFire:     record[24],
 			PowerInstantDrain:   record[25],
+			DotTickDuration:     record[26],
+			ProjectileLifeSpan:  record[27],
+			RecoilForce:         record[28],
+			IdlePowerCost:       record[29],
 		}
 
 		WeaponModels = append(WeaponModels, *weaponModel)
@@ -888,11 +912,11 @@ func SyncWeaponModel(f io.Reader, db *sql.DB) error {
 
 		_, err = db.Exec(`
 			INSERT INTO blueprint_weapons(
-			                          id, 
-			                          brand_id, 
-			                          label, 
-			                          weapon_type, 
-			                          default_skin_id, 
+										id, 
+										brand_id, 
+										label, 
+										weapon_type, 
+										default_skin_id, 
 										damage,
 										damage_falloff,
 										damage_falloff_rate,
@@ -907,15 +931,19 @@ func SyncWeaponModel(f io.Reader, db *sql.DB) error {
 										game_client_weapon_id,
 										collection,
 										default_damage_type,
-									    projectile_amount,
-			                            dot_tick_damage,
-			                            dot_max_ticks,
-			                            is_arced,
-			                            charge_time_seconds,
-			                            burst_rate_of_fire,
-									  	power_instant_drain
+										projectile_amount,
+										dot_tick_damage,
+										dot_max_ticks,
+										is_arced,
+										charge_time_seconds,
+										burst_rate_of_fire,
+										power_instant_drain,
+										dot_tick_duration,
+										projectile_life_span,
+										recoil_force,
+										idle_power_cost
 			                          )
-			VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26)
+			VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28,$29,$30)
 			ON CONFLICT (id)
 			DO 
 			    UPDATE SET 
@@ -944,7 +972,12 @@ func SyncWeaponModel(f io.Reader, db *sql.DB) error {
 							is_arced=$23,
 							charge_time_seconds=$24,
 							burst_rate_of_fire=$25,
-							power_instant_drain=$26;
+							power_instant_drain=$26,
+							dot_tick_duration=$27,
+							projectile_life_span=$28,
+							recoil_force=$29,
+							idle_power_cost=$30
+							;
 		`,
 			weaponModel.ID,
 			weaponModel.BrandID,
@@ -972,6 +1005,10 @@ func SyncWeaponModel(f io.Reader, db *sql.DB) error {
 			weaponModel.ChargeTimeSeconds,
 			weaponModel.BurstRateOfFire,
 			weaponModel.PowerInstantDrain,
+			weaponModel.DotTickDuration,
+			weaponModel.ProjectileLifeSpan,
+			weaponModel.RecoilForce,
+			weaponModel.IdlePowerCost,
 		)
 		if err != nil {
 			fmt.Println(err.Error()+weaponModel.ID, weaponModel.Label, weaponModel.WeaponType)

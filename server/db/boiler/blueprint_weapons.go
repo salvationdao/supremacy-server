@@ -53,10 +53,10 @@ type BlueprintWeapon struct {
 	IsArced             null.Bool           `boiler:"is_arced" boil:"is_arced" json:"is_arced,omitempty" toml:"is_arced" yaml:"is_arced,omitempty"`
 	ChargeTimeSeconds   decimal.NullDecimal `boiler:"charge_time_seconds" boil:"charge_time_seconds" json:"charge_time_seconds,omitempty" toml:"charge_time_seconds" yaml:"charge_time_seconds,omitempty"`
 	BurstRateOfFire     decimal.NullDecimal `boiler:"burst_rate_of_fire" boil:"burst_rate_of_fire" json:"burst_rate_of_fire,omitempty" toml:"burst_rate_of_fire" yaml:"burst_rate_of_fire,omitempty"`
-	DotTickDuration     decimal.Decimal     `boiler:"dot_tick_duration" boil:"dot_tick_duration" json:"dot_tick_duration" toml:"dot_tick_duration" yaml:"dot_tick_duration"`
-	ProjectileLifeSpan  decimal.Decimal     `boiler:"projectile_life_span" boil:"projectile_life_span" json:"projectile_life_span" toml:"projectile_life_span" yaml:"projectile_life_span"`
+	DotTickDuration     int                 `boiler:"dot_tick_duration" boil:"dot_tick_duration" json:"dot_tick_duration" toml:"dot_tick_duration" yaml:"dot_tick_duration"`
+	ProjectileLifeSpan  int                 `boiler:"projectile_life_span" boil:"projectile_life_span" json:"projectile_life_span" toml:"projectile_life_span" yaml:"projectile_life_span"`
 	RecoilForce         decimal.Decimal     `boiler:"recoil_force" boil:"recoil_force" json:"recoil_force" toml:"recoil_force" yaml:"recoil_force"`
-	IdlePowerCost       decimal.Decimal     `boiler:"idle_power_cost" boil:"idle_power_cost" json:"idle_power_cost" toml:"idle_power_cost" yaml:"idle_power_cost"`
+	IdlePowerCost       int                 `boiler:"idle_power_cost" boil:"idle_power_cost" json:"idle_power_cost" toml:"idle_power_cost" yaml:"idle_power_cost"`
 
 	R *blueprintWeaponR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L blueprintWeaponL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -234,10 +234,10 @@ var BlueprintWeaponWhere = struct {
 	IsArced             whereHelpernull_Bool
 	ChargeTimeSeconds   whereHelperdecimal_NullDecimal
 	BurstRateOfFire     whereHelperdecimal_NullDecimal
-	DotTickDuration     whereHelperdecimal_Decimal
-	ProjectileLifeSpan  whereHelperdecimal_Decimal
+	DotTickDuration     whereHelperint
+	ProjectileLifeSpan  whereHelperint
 	RecoilForce         whereHelperdecimal_Decimal
-	IdlePowerCost       whereHelperdecimal_Decimal
+	IdlePowerCost       whereHelperint
 }{
 	ID:                  whereHelperstring{field: "\"blueprint_weapons\".\"id\""},
 	BrandID:             whereHelpernull_String{field: "\"blueprint_weapons\".\"brand_id\""},
@@ -268,10 +268,10 @@ var BlueprintWeaponWhere = struct {
 	IsArced:             whereHelpernull_Bool{field: "\"blueprint_weapons\".\"is_arced\""},
 	ChargeTimeSeconds:   whereHelperdecimal_NullDecimal{field: "\"blueprint_weapons\".\"charge_time_seconds\""},
 	BurstRateOfFire:     whereHelperdecimal_NullDecimal{field: "\"blueprint_weapons\".\"burst_rate_of_fire\""},
-	DotTickDuration:     whereHelperdecimal_Decimal{field: "\"blueprint_weapons\".\"dot_tick_duration\""},
-	ProjectileLifeSpan:  whereHelperdecimal_Decimal{field: "\"blueprint_weapons\".\"projectile_life_span\""},
+	DotTickDuration:     whereHelperint{field: "\"blueprint_weapons\".\"dot_tick_duration\""},
+	ProjectileLifeSpan:  whereHelperint{field: "\"blueprint_weapons\".\"projectile_life_span\""},
 	RecoilForce:         whereHelperdecimal_Decimal{field: "\"blueprint_weapons\".\"recoil_force\""},
-	IdlePowerCost:       whereHelperdecimal_Decimal{field: "\"blueprint_weapons\".\"idle_power_cost\""},
+	IdlePowerCost:       whereHelperint{field: "\"blueprint_weapons\".\"idle_power_cost\""},
 }
 
 // BlueprintWeaponRels is where relationship names are stored.
