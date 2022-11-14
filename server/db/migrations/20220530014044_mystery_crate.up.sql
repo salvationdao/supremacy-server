@@ -415,7 +415,7 @@ $$
                                      INSERT INTO mystery_crate_blueprints (mystery_crate_id, blueprint_type, blueprint_id)
                                      VALUES (mechcrate.id, 'POWER_CORE', (SELECT id
                                                                           FROM blueprint_power_cores c
-                                                                          WHERE c.size = 'SMALL'));
+                                                                          WHERE c.label = 'Standard Power Core A'));
 
                                      PERFORM insert_weapon_into_crate(mechcrate.id, 'Flak', faction);
                                      PERFORM insert_weapon_skin_into_crate(i, mechcrate.id, 'Flak',
@@ -442,7 +442,7 @@ $$
 
                                  INSERT INTO mystery_crate_blueprints (mystery_crate_id, blueprint_type, blueprint_id)
                                  VALUES (mechcrate.id, 'POWER_CORE',
-                                         (SELECT id FROM blueprint_power_cores c WHERE c.size = 'TURBO'));
+                                         (SELECT id FROM blueprint_power_cores c WHERE c.label = 'Turbo Power Core A'));
 
 
                                  PERFORM insert_weapon_into_crate(mechcrate.id, 'Flak', faction);

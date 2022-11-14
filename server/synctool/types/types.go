@@ -187,6 +187,9 @@ type PowerCores struct {
 	BackgroundColor  string `json:"background_color"`
 	AnimationUrl     string `json:"animation_url"`
 	YoutubeUrl       string `json:"youtube_url"`
+	WeaponShare      string `json:"weapon_share"`
+	MovementShare    string `json:"movement_share"`
+	UtilityShare     string `json:"utility_share"`
 }
 
 type BlueprintWeapons struct {

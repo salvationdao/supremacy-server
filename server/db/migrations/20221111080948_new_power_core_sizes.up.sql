@@ -46,4 +46,3 @@ WHERE
                     WHERE
                         blueprint_type = 'MECH'
                         AND bm.mech_type = 'PLATFORM'));
-

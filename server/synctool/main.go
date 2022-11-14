@@ -6,7 +6,6 @@ import (
 	"database/sql"
 	"encoding/csv"
 	"fmt"
-	"github.com/volatiletech/null/v8"
 	"io"
 	"log"
 	"net/http"
@@ -16,6 +15,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/volatiletech/null/v8"
 
 	"github.com/volatiletech/sqlboiler/v4/boil"
 )
@@ -1517,6 +1518,9 @@ func SyncPowerCores(f io.Reader, db *sql.DB) error {
 			BackgroundColor:  record[15],
 			AnimationUrl:     record[16],
 			YoutubeUrl:       record[17],
+			WeaponShare:      record[18],
+			MovementShare:    record[19],
+			UtilityShare:     record[20],
 		}
 
 		PowerCores = append(PowerCores, *powerCore)
@@ -1559,12 +1563,12 @@ func SyncPowerCores(f io.Reader, db *sql.DB) error {
 		}
 
 		_, err = db.Exec(`
-			INSERT INTO blueprint_power_cores(id, collection, label, size, capacity, max_draw_rate, recharge_rate, armour, max_hitpoints, tier, image_url, card_animation_url, avatar_url, large_image_url, background_color, animation_url, youtube_url)
-			VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)
+			INSERT INTO blueprint_power_cores(id, collection, label, size, capacity, max_draw_rate, recharge_rate, armour, max_hitpoints, tier, image_url, card_animation_url, avatar_url, large_image_url, background_color, animation_url, youtube_url, weapon_share, movement_share, utility_share)
+			VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20)
 			ON CONFLICT (id)
 			DO 
-			    UPDATE SET id=$1, collection=$2, label=$3, size=$4, capacity=$5, max_draw_rate=$6, recharge_rate=$7, armour=$8, max_hitpoints=$9, tier=$10, image_url=$11, card_animation_url=$12, avatar_url=$13, large_image_url=$14, background_color=$15, animation_url=$16, youtube_url=$17;
-		`, powerCore.ID, powerCore.Collection, powerCore.Label, powerCore.Size, powerCore.Capacity, powerCore.MaxDrawRate, powerCore.RechargeRate, powerCore.Armour, powerCore.MaxHitpoints, powerCore.Tier, imageURL, cardAnimationURL, avatarURL, largeImageURL, backgroundColor, animationURL, youtubeURL)
+			    UPDATE SET id=$1, collection=$2, label=$3, size=$4, capacity=$5, max_draw_rate=$6, recharge_rate=$7, armour=$8, max_hitpoints=$9, tier=$10, image_url=$11, card_animation_url=$12, avatar_url=$13, large_image_url=$14, background_color=$15, animation_url=$16, youtube_url=$17, weapon_share=$18, movement_share=$19, utility_share=$20;
+		`, powerCore.ID, powerCore.Collection, powerCore.Label, powerCore.Size, powerCore.Capacity, powerCore.MaxDrawRate, powerCore.RechargeRate, powerCore.Armour, powerCore.MaxHitpoints, powerCore.Tier, imageURL, cardAnimationURL, avatarURL, largeImageURL, backgroundColor, animationURL, youtubeURL, powerCore.WeaponShare, powerCore.MovementShare, powerCore.UtilityShare)
 		if err != nil {
 			fmt.Println(err.Error()+powerCore.ID, powerCore.Collection, powerCore.Label)
 			return err
