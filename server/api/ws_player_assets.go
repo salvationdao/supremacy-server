@@ -15,7 +15,6 @@ import (
 	"server/helpers"
 	"server/rpctypes"
 	"strings"
-	"time"
 	"unicode"
 
 	"github.com/go-chi/chi/v5"
@@ -52,6 +51,7 @@ func NewPlayerAssetsController(api *API) *PlayerAssetsControllerWS {
 	api.SecureUserCommand(HubKeyPlayerAssetWeaponList, pac.PlayerAssetWeaponListHandler)
 	api.SecureUserCommand(HubKeyPlayerAssetWeaponListDetailed, pac.PlayerAssetWeaponListDetailedHandler)
 	api.SecureUserCommand(HubKeyPlayerAssetPowerCoreList, pac.PlayerAssetPowerCoreListHandler)
+	api.SecureUserCommand(HubKeyPlayerAssetPowerCoreListDetailed, pac.PlayerAssetPowerCoreListDetailedHandler)
 	api.SecureUserCommand(HubKeyPlayerAssetUtilityList, pac.PlayerAssetUtilityListHandler)
 	api.SecureUserCommand(HubKeyPlayerAssetMysteryCrateList, pac.PlayerAssetMysteryCrateListHandler)
 	api.SecureUserCommand(HubKeyPlayerAssetMysteryCrateGet, pac.PlayerAssetMysteryCrateGetHandler)
@@ -89,52 +89,9 @@ type PlayerAssetMechListRequest struct {
 	} `json:"payload"`
 }
 
-type PlayerAssetMech struct {
-	CollectionSlug      string   `json:"collection_slug"`
-	Hash                string   `json:"hash"`
-	TokenID             int64    `json:"token_id"`
-	ItemType            string   `json:"item_type"`
-	Tier                string   `json:"tier"`
-	OwnerID             string   `json:"owner_id"`
-	MarketLocked        bool     `json:"market_locked"`
-	XsynLocked          bool     `json:"xsyn_locked"`
-	LockedToMarketplace bool     `json:"locked_to_marketplace"`
-	QueuePosition       null.Int `json:"queue_position"`
-
-	ID                    string     `json:"id"`
-	Label                 string     `json:"label"`
-	WeaponHardpoints      int        `json:"weapon_hardpoints"`
-	UtilitySlots          int        `json:"utility_slots"`
-	Speed                 int        `json:"speed"`
-	MaxHitpoints          int        `json:"max_hitpoints"`
-	IsDefault             bool       `json:"is_default"`
-	IsInsured             bool       `json:"is_insured"`
-	Name                  string     `json:"name"`
-	GenesisTokenID        null.Int64 `json:"genesis_token_id,omitempty"`
-	LimitedReleaseTokenID null.Int64 `json:"limited_release_token_id,omitempty"`
-	PowerCoreSize         string     `json:"power_core_size"`
-	BlueprintID           string     `json:"blueprint_id"`
-	BrandID               string     `json:"brand_id"`
-	FactionID             string     `json:"faction_id"`
-
-	// Connected objects
-	ChassisSkinID    string      `json:"chassis_skin_id"`
-	IntroAnimationID null.String `json:"intro_animation_id,omitempty"`
-	OutroAnimationID null.String `json:"outro_animation_id,omitempty"`
-	PowerCoreID      null.String `json:"power_core_id,omitempty"`
-
-	UpdatedAt time.Time `json:"updated_at"`
-	CreatedAt time.Time `json:"created_at"`
-}
-
-type PlayerAssetMechWithQueueStatus struct {
-	*PlayerAssetMech
-	InQueue bool `json:"in_queue"`
-}
-
 type PlayerAssetMechListResp struct {
-	Total int64                             `json:"total"`
-	Mechs []*PlayerAssetMechWithQueueStatus `json:"mechs"`
+	Total int64                 `json:"total"`
+	Mechs []*db.PlayerAssetMech `json:"mechs"`
 }
 
 func (pac *PlayerAssetsControllerWS) PlayerAssetMechListHandler(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
@@ -176,51 +133,9 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetMechListHandler(ctx context.Cont
 		gamelog.L.Error().Interface("req.Payload", req.Payload).Err(err).Msg("issue getting mechs")
 		return terror.Error(err, "Failed to find your War Machine assets, please try again or contact support.")
 	}
-
-	playerAssetMechs := []*PlayerAssetMechWithQueueStatus{}
-
-	for _, m := range mechs {
-		playerAssetMechs = append(playerAssetMechs, &PlayerAssetMechWithQueueStatus{
-			PlayerAssetMech: &PlayerAssetMech{
-				ID:                    m.ID,
-				Label:                 m.Label,
-				WeaponHardpoints:      m.WeaponHardpoints,
-				UtilitySlots:          m.UtilitySlots,
-				Speed:                 m.Speed,
-				MaxHitpoints:          m.MaxHitpoints,
-				IsDefault:             m.IsDefault,
-				IsInsured:             m.IsInsured,
-				Name:                  m.Name,
-				GenesisTokenID:        m.GenesisTokenID,
-				LimitedReleaseTokenID: m.LimitedReleaseTokenID,
-				PowerCoreSize:         m.PowerCoreSize,
-				BlueprintID:           m.BlueprintID,
-				BrandID:               m.BrandID,
-				FactionID:             m.FactionID.String,
-				ChassisSkinID:         m.ChassisSkinID,
-				IntroAnimationID:      m.IntroAnimationID,
-				OutroAnimationID:      m.OutroAnimationID,
-				PowerCoreID:           m.PowerCoreID,
-				UpdatedAt:             m.UpdatedAt,
-				CreatedAt:             m.CreatedAt,
-				CollectionSlug:        m.CollectionItem.CollectionSlug,
-				Hash:                  m.CollectionItem.Hash,
-				TokenID:               m.CollectionItem.TokenID,
-				ItemType:              m.CollectionItem.ItemType,
-				Tier:                  m.CollectionItem.Tier,
-				OwnerID:               m.CollectionItem.OwnerID,
-				XsynLocked:            m.CollectionItem.XsynLocked,
-				MarketLocked:          m.CollectionItem.MarketLocked,
-				LockedToMarketplace:   m.CollectionItem.LockedToMarketplace,
-				QueuePosition:         m.QueuePosition,
-			},
-			InQueue: m.QueuePosition.Valid,
-		})
-	}
-
 	reply(&PlayerAssetMechListResp{
 		Total: total,
-		Mechs: playerAssetMechs,
+		Mechs: mechs,
 	})
 	return nil
 }
@@ -273,50 +188,9 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetMechListPublicHandler(ctx contex
 		return terror.Error(err, "Failed to find your War Machine assets, please try again or contact support.")
 	}
 
-	playerAssetMechs := []*PlayerAssetMechWithQueueStatus{}
-
-	for _, m := range mechs {
-		playerAssetMechs = append(playerAssetMechs, &PlayerAssetMechWithQueueStatus{
-			PlayerAssetMech: &PlayerAssetMech{
-				ID:                    m.ID,
-				Label:                 m.Label,
-				WeaponHardpoints:      m.WeaponHardpoints,
-				UtilitySlots:          m.UtilitySlots,
-				Speed:                 m.Speed,
-				MaxHitpoints:          m.MaxHitpoints,
-				IsDefault:             m.IsDefault,
-				IsInsured:             m.IsInsured,
-				Name:                  m.Name,
-				GenesisTokenID:        m.GenesisTokenID,
-				LimitedReleaseTokenID: m.LimitedReleaseTokenID,
-				PowerCoreSize:         m.PowerCoreSize,
-				BlueprintID:           m.BlueprintID,
-				BrandID:               m.BrandID,
-				FactionID:             m.FactionID.String,
-				ChassisSkinID:         m.ChassisSkinID,
-				IntroAnimationID:      m.IntroAnimationID,
-				OutroAnimationID:      m.OutroAnimationID,
-				PowerCoreID:           m.PowerCoreID,
-				UpdatedAt:             m.UpdatedAt,
-				CreatedAt:             m.CreatedAt,
-				CollectionSlug:        m.CollectionItem.CollectionSlug,
-				Hash:                  m.CollectionItem.Hash,
-				TokenID:               m.CollectionItem.TokenID,
-				ItemType:              m.CollectionItem.ItemType,
-				Tier:                  m.CollectionItem.Tier,
-				OwnerID:               m.CollectionItem.OwnerID,
-				XsynLocked:            m.CollectionItem.XsynLocked,
-				MarketLocked:          m.CollectionItem.MarketLocked,
-				LockedToMarketplace:   m.CollectionItem.LockedToMarketplace,
-				QueuePosition:         m.QueuePosition,
-			},
-			InQueue: m.QueuePosition.Valid,
-		})
-	}
-
 	reply(&PlayerAssetMechListResp{
 		Total: total,
-		Mechs: playerAssetMechs,
+		Mechs: mechs,
 	})
 	return nil
 }
@@ -1179,19 +1053,19 @@ func (pac *PlayerAssetsControllerWS) OpenCrateHandler(ctx context.Context, user 
 type PlayerAssetMechEquipRequest struct {
 	*hub.HubCommandRequest
 	Payload struct {
-		MechID         string         `json:"mech_id"`
-		EquipUtility   []EquipUtility `json:"equip_utility"`
-		EquipWeapons   []EquipWeapon  `json:"equip_weapons"`
-		EquipPowerCore EquipPowerCore `json:"equip_power_core"`
-		EquipMechSkin  EquipMechSkin  `json:"equip_mech_skin"`
+		MechID                string         `json:"mech_id"`
+		InheritAllWeaponSkins null.Bool      `json:"inherit_all_weapon_skins"`
+		EquipUtility          []EquipUtility `json:"equip_utility"`
+		EquipWeapons          []EquipWeapon  `json:"equip_weapons"`
+		EquipPowerCore        EquipPowerCore `json:"equip_power_core"`
+		EquipMechSkin         EquipMechSkin  `json:"equip_mech_skin"`
 	} `json:"payload"`
 }
 
 type EquipWeapon struct {
-	WeaponID    string `json:"weapon_id"`
-	SlotNumber  int    `json:"slot_number"`
-	InheritSkin bool   `json:"inherit_skin"`
-	Unequip     bool   `json:"unequip"`
+	WeaponID   string `json:"weapon_id"`
+	SlotNumber int    `json:"slot_number"`
+	Unequip    bool   `json:"unequip"`
 }
 
 type EquipUtility struct {
@@ -1252,6 +1126,47 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetMechEquipHandler(ctx context.Con
 		return terror.Error(err, errorMsg)
 	}
 	defer tx.Rollback()
+
+	if req.Payload.InheritAllWeaponSkins.Valid && mech.InheritAllWeaponSkins != req.Payload.InheritAllWeaponSkins.Bool {
+		inheritMech, err := boiler.FindMech(tx, mech.ID)
+		if err != nil {
+			l.Error().Err(err).Msg("failed to get mech to inherit all weapon skins on")
+			return terror.Error(err, errorMsg)
+		}
+		l = l.With().Interface("inheritMech", inheritMech).Logger()
+
+		inheritMech.InheritAllWeaponSkins = req.Payload.InheritAllWeaponSkins.Bool
+		_, err = inheritMech.Update(tx, boil.Infer())
+		if err != nil {
+			l.Error().Err(err).Msg("failed to inherit all weapon skins on mech")
+			return terror.Error(err, errorMsg)
+		}
+
+		mech.InheritAllWeaponSkins = req.Payload.InheritAllWeaponSkins.Bool
+
+		// Update all compatible weapons with that skin
+		mechWeapons, err := boiler.MechWeapons(
+			boiler.MechWeaponWhere.ChassisID.EQ(mech.ID),
+			boiler.WeaponWhere.BlueprintID.IN(mech.BlueprintWeaponIDsWithSkinInheritance),
+			qm.InnerJoin(fmt.Sprintf("%s on %s = %s",
+				boiler.TableNames.Weapons,
+				boiler.WeaponTableColumns.ID,
+				boiler.MechWeaponTableColumns.WeaponID,
+			)),
+		).All(tx)
+		if err != nil {
+			l.Error().Err(err).Msg("failed to get all weapons on mech to inherit skins")
+			return terror.Error(err, errorMsg)
+		}
+
+		_, err = mechWeapons.UpdateAll(tx, boiler.M{
+			boiler.MechWeaponColumns.IsSkinInherited: mech.InheritAllWeaponSkins,
+		})
+		if err != nil {
+			l.Error().Err(err).Msg("failed to inherit skins on all weapons")
+			return terror.Error(err, errorMsg)
+		}
+	}
 
 	if req.Payload.EquipPowerCore.Unequip {
 		// Power core unequip
@@ -1798,8 +1713,16 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetMechEquipHandler(ctx context.Con
 					return terror.Error(err, errorMsg)
 				}
 
+				canSkinBeInherited := false
+				for _, s := range mech.BlueprintWeaponIDsWithSkinInheritance {
+					if s == weapon.BlueprintID {
+						canSkinBeInherited = true
+						break
+					}
+				}
+
+				mw.IsSkinInherited = canSkinBeInherited && mech.InheritAllWeaponSkins
 				mw.WeaponID = null.StringFrom(ew.WeaponID)
-				mw.IsSkinInherited = ew.InheritSkin
 				mw.AllowMelee = weapon.R.Blueprint.IsMelee
 				_, err = mw.Update(tx, boil.Infer())
 				if err != nil {
@@ -2166,7 +2089,6 @@ type PlayerAssetMechSubmodelListRequest struct {
 	Payload struct {
 		Search                   string                `json:"search"`
 		Filter                   *db.ListFilterRequest `json:"filter"`
-		Sort                     *db.ListSortRequest   `json:"sort"`
 		SortBy                   db.SortBy             `json:"sort_by"`
 		SortDir                  db.SortByDir          `json:"sort_dir"`
 		PageSize                 int                   `json:"page_size"`
@@ -2207,7 +2129,6 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetMechSubmodelListDetailedHandler(
 	listOpts := &db.MechSkinListOpts{
 		Search:                   req.Payload.Search,
 		Filter:                   req.Payload.Filter,
-		Sort:                     req.Payload.Sort,
 		PageSize:                 req.Payload.PageSize,
 		Page:                     req.Payload.Page,
 		OwnerID:                  user.ID,
@@ -2508,6 +2429,7 @@ type PlayerAssetPowerCoreListRequest struct {
 		PageSize               int                          `json:"page_size"`
 		Page                   int                          `json:"page"`
 		DisplayXsynLocked      bool                         `json:"display_xsyn_locked"`
+		DisplayHidden          bool                         `json:"display_hidden"`
 		ExcludeMarketLocked    bool                         `json:"exclude_market_locked"`
 		IncludeMarketListed    bool                         `json:"include_market_listed"`
 		ExcludeIDs             []string                     `json:"exclude_ids"`
@@ -2571,6 +2493,64 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetPowerCoreListHandler(ctx context
 	}
 
 	reply(&PlayerAssetPowerCoreListResp{
+		Total:      total,
+		PowerCores: powerCores,
+	})
+	return nil
+}
+
+type PlayerAssePowerCoreListDetailedResponse struct {
+	Total      int64               `json:"total"`
+	PowerCores []*server.PowerCore `json:"power_cores"`
+}
+
+const HubKeyPlayerAssetPowerCoreListDetailed = "PLAYER:ASSET:POWER_CORE:DETAIL:LIST"
+
+func (pac *PlayerAssetsControllerWS) PlayerAssetPowerCoreListDetailedHandler(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
+	req := &PlayerAssetPowerCoreListRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return terror.Error(err, "Invalid request received.")
+	}
+
+	if !user.FactionID.Valid {
+		return terror.Error(fmt.Errorf("user has no faction"), "You need a faction to see assets.")
+	}
+
+	listOpts := &db.PowerCoreListOpts{
+		Search:                 req.Payload.Search,
+		PageSize:               req.Payload.PageSize,
+		Page:                   req.Payload.Page,
+		OwnerID:                user.ID,
+		Filter:                 req.Payload.Filter,
+		SortBy:                 req.Payload.SortBy,
+		SortDir:                req.Payload.SortDir,
+		DisplayXsynLocked:      req.Payload.DisplayXsynLocked,
+		DisplayHidden:          req.Payload.DisplayHidden,
+		ExcludeMarketLocked:    req.Payload.ExcludeMarketLocked,
+		IncludeMarketListed:    req.Payload.IncludeMarketListed,
+		ExcludeIDs:             req.Payload.ExcludeIDs,
+		FilterRarities:         req.Payload.FilterRarities,
+		FilterSizes:            req.Payload.FilterSizes,
+		FilterEquippedStatuses: req.Payload.FilterEquippedStatuses,
+		FilterStatCapacity:     req.Payload.FilterStatCapacity,
+		FilterStatMaxDrawRate:  req.Payload.FilterStatMaxDrawRate,
+		FilterStatRechargeRate: req.Payload.FilterStatRechargeRate,
+		FilterStatArmour:       req.Payload.FilterStatArmour,
+		FilterStatMaxHitpoints: req.Payload.FilterStatMaxHitpoints,
+	}
+	if req.Payload.SortBy != "" && req.Payload.SortDir.IsValid() {
+		listOpts.SortBy = req.Payload.SortBy
+		listOpts.SortDir = req.Payload.SortDir
+	}
+
+	total, powerCores, err := db.PowerCoreListDetailed(listOpts)
+	if err != nil {
+		gamelog.L.Error().Interface("req.Payload", req.Payload).Err(err).Msg("issue getting mechs")
+		return terror.Error(err, "Failed to find your War Machine assets, please try again or contact support.")
+	}
+
+	reply(&PlayerAssePowerCoreListDetailedResponse{
 		Total:      total,
 		PowerCores: powerCores,
 	})

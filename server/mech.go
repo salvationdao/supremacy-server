@@ -3,9 +3,10 @@ package server
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/shopspring/decimal"
 	"server/db/boiler"
 	"time"
+
+	"github.com/shopspring/decimal"
 
 	"github.com/volatiletech/null/v8"
 )
@@ -89,6 +90,7 @@ type Mech struct {
 	CreatedAt                             time.Time      `json:"created_at"`
 	BlueprintWeaponIDsWithSkinInheritance []string       `json:"blueprint_weapon_ids_with_skin_inheritance"`
 	CompatibleBlueprintMechSkinIDs        []string       `json:"compatible_blueprint_mech_skin_ids"`
+	InheritAllWeaponSkins                 bool           `json:"inherit_all_weapon_skins"`
 }
 
 type BlueprintMech struct {
@@ -133,27 +135,27 @@ func (b *BlueprintMech) Scan(value interface{}) error {
 
 func BlueprintMechFromBoiler(mech *boiler.BlueprintMech) *BlueprintMech {
 	return &BlueprintMech{
-		ID: mech.ID,
-		Label: mech.Label,
-		CreatedAt: mech.CreatedAt,
-		DefaultChassisSkinID: mech.DefaultChassisSkinID,
-		BrandID: mech.BrandID,
-		MechType: mech.MechType,
-		RepairBlocks: mech.RepairBlocks,
-		BoostStat: mech.BoostStat,
-		WeaponHardpoints: mech.WeaponHardpoints,
-		PowerCoreSize: mech.PowerCoreSize,
-		UtilitySlots: mech.UtilitySlots,
-		Speed: mech.Speed,
-		MaxHitpoints: mech.MaxHitpoints,
-		Collection: mech.Collection,
-		AvailabilityID: mech.AvailabilityID,
-		ShieldTypeID: mech.ShieldTypeID,
-		ShieldMax: mech.ShieldMax,
-		ShieldRechargeRate: mech.ShieldRechargeRate,
+		ID:                      mech.ID,
+		Label:                   mech.Label,
+		CreatedAt:               mech.CreatedAt,
+		DefaultChassisSkinID:    mech.DefaultChassisSkinID,
+		BrandID:                 mech.BrandID,
+		MechType:                mech.MechType,
+		RepairBlocks:            mech.RepairBlocks,
+		BoostStat:               mech.BoostStat,
+		WeaponHardpoints:        mech.WeaponHardpoints,
+		PowerCoreSize:           mech.PowerCoreSize,
+		UtilitySlots:            mech.UtilitySlots,
+		Speed:                   mech.Speed,
+		MaxHitpoints:            mech.MaxHitpoints,
+		Collection:              mech.Collection,
+		AvailabilityID:          mech.AvailabilityID,
+		ShieldTypeID:            mech.ShieldTypeID,
+		ShieldMax:               mech.ShieldMax,
+		ShieldRechargeRate:      mech.ShieldRechargeRate,
 		ShieldRechargePowerCost: mech.ShieldRechargePowerCost,
-		ShieldRechargeDelay: mech.ShieldRechargeDelay,
-		HeightMeters: mech.HeightMeters,
+		ShieldRechargeDelay:     mech.ShieldRechargeDelay,
+		HeightMeters:            mech.HeightMeters,
 	}
 }
 
