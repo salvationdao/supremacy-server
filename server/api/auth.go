@@ -120,7 +120,8 @@ func (api *API) AuthCheckHandler(w http.ResponseWriter, r *http.Request) (int, e
 	}
 
 	var token string
-	if err = api.Cookie.DecryptBase64(cookie.Value, &token); err != nil {
+	err = api.Cookie.DecryptBase64(cookie.Value, &token)
+	if err != nil {
 		return http.StatusBadRequest, terror.Error(err, "Failed to decrypt token")
 	}
 
@@ -267,10 +268,21 @@ func (api *API) AuthQRCodeLoginHandler(w http.ResponseWriter, r *http.Request) (
 }
 
 func (api *API) LogoutHandler(w http.ResponseWriter, r *http.Request) (int, error) {
-
-	_, err := r.Cookie("xsyn-token")
+	cookie, err := r.Cookie("xsyn-token")
 	if err != nil {
-		return http.StatusBadRequest, terror.Error(err, "Player is not login")
+		return http.StatusBadRequest, terror.Error(err, "Player is not logged in")
+	}
+
+	var token string
+	err = api.Cookie.DecryptBase64(cookie.Value, &token)
+	if err != nil {
+		return http.StatusBadRequest, terror.Error(err, "Failed to decrypt token")
+	}
+
+	resp, err := api.Passport.TokenLogout(token)
+	if err != nil || !resp.LogoutSuccess {
+		gamelog.L.Warn().Msg("No token found")
+		return http.StatusBadRequest, terror.Warn(fmt.Errorf("no token are provided"), "User was not signed in.")
 	}
 
 	api.DeleteCookie(w, r)
