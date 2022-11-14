@@ -1,4 +1,4 @@
--- Update genesis mechs power cores to be of size TURBO
+-- Update genesis mechs power cores to be of size MEDIUM
 UPDATE
     power_cores
 SET
@@ -10,7 +10,7 @@ WHERE
         FROM
             mechs m
         WHERE
-            m.blueprint_id IN ('5d3a973b-c62b-4438-b746-d3de2699d42a', 'ac27f3b9-753d-4ace-84a9-21c041195344', '02ba91b7-55dc-450a-9fbd-e7337ae97a2b'));
+            m.blueprint_id IN ('5d3a973b-c62b-4438-b746-d3de2699d42a', 'ac27f3b9-753d-4ace-84a9-21c041195344', '625cd381-7c66-4e2f-9f69-f81589105730'));
 
 -- Update nexus platform mechs power cores to be of size TURBO
 UPDATE
@@ -46,3 +46,4 @@ WHERE
                     WHERE
                         blueprint_type = 'MECH'
                         AND bm.mech_type = 'PLATFORM'));
+
