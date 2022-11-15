@@ -41,30 +41,30 @@ func AuthRouter(api *API) chi.Router {
 
 func (api *API) XSYNAuth(w http.ResponseWriter, r *http.Request) (int, error) {
 	req := &struct {
-		IssueToken *string `json:"issue_token"`
+		IssueToken  *string      `json:"issue_token"`
+		Fingerprint *Fingerprint `json:"fingerprint"`
 	}{}
 	err := json.NewDecoder(r.Body).Decode(req)
 	if err != nil {
 		return http.StatusInternalServerError, err
 	}
 
-	resp, err := api.Passport.TokenLogin(*req.IssueToken)
+	player, err := api.TokenLogin(*req.IssueToken)
 	if err != nil {
 		gamelog.L.Warn().Msg("No token found")
 		return http.StatusBadRequest, terror.Warn(fmt.Errorf("no token are provided"), "User are not signed in.")
 	}
 
-	err = api.UpsertPlayer(resp.ID, null.StringFrom(resp.Username), resp.PublicAddress, resp.FactionID, nil, resp.AcceptsMarketing)
+	err = api.UpsertPlayer(player.ID, player.Username, player.PublicAddress, player.FactionID, req.Fingerprint, player.AcceptsMarketing)
 	if err != nil {
-		gamelog.L.Warn().Msg("No token found")
-		return http.StatusBadRequest, terror.Warn(fmt.Errorf("no token are provided"), "Unable to update player")
+		return http.StatusInternalServerError, terror.Error(err, "Failed to update player.")
 	}
 
 	err = api.WriteCookie(w, r, *req.IssueToken)
 	if err != nil {
 		return http.StatusInternalServerError, terror.Error(err, "Failed to write cookie")
 	}
-	return helpers.EncodeJSON(w, resp)
+	return helpers.EncodeJSON(w, player)
 }
 
 func (api *API) AuthCheckHandler(w http.ResponseWriter, r *http.Request) (int, error) {
