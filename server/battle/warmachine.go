@@ -187,15 +187,16 @@ type Weapon struct {
 	RateOfFire          float64    `json:"rate_of_fire"`          // Rounds per minute
 	ProjectileSpeed     int        `json:"projectile_speed"`      // cm/s
 	MaxAmmo             int        `json:"max_ammo"`              // The max amount of ammo this weapon can hold
-	PowerCost           float64    `json:"power_cost"`
-	PowerInstantDrain   bool       `json:"power_instant_drain"`
-	ProjectileAmount    int        `json:"projectile_amount"`
-	DotTickDamage       float64    `json:"dot_tick_damage"`
-	DotMaxTicks         int        `json:"dot_max_ticks"`
-	IsArced             bool       `json:"is_arced"`
-	ChargeTimeSeconds   float64    `json:"charge_time"`
-	BurstRateOfFire     float64    `json:"burst_rate_of_fire"`
-	SocketIndex         int        `json:"socket_index"`
+	CurrentAmmo         int
+	PowerCost           float64 `json:"power_cost"`
+	PowerInstantDrain   bool    `json:"power_instant_drain"`
+	ProjectileAmount    int     `json:"projectile_amount"`
+	DotTickDamage       float64 `json:"dot_tick_damage"`
+	DotMaxTicks         int     `json:"dot_max_ticks"`
+	IsArced             bool    `json:"is_arced"`
+	ChargeTimeSeconds   float64 `json:"charge_time"`
+	BurstRateOfFire     float64 `json:"burst_rate_of_fire"`
+	SocketIndex         int     `json:"socket_index"`
 }
 
 type Utility struct {

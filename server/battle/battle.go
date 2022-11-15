@@ -1613,11 +1613,27 @@ func (btl *Battle) Tick(payload []byte) {
 			warmachine.Shield = shield
 			wms.Shield = shield
 		}
-		warmachine.Unlock()
+
 		// Energy
 		if booleans[3] {
 			offset += 4
 		}
+
+		updatedWeapons := int(payload[offset])
+		offset += 1
+
+		i := 0
+		for i < updatedWeapons {
+			weaponIndex := int(payload[offset])
+			offset += 1
+
+			currentAmmo := binary.BigEndian.Uint32(payload[offset : offset+4])
+			offset += 4
+
+			warmachine.Weapons[weaponIndex].CurrentAmmo = int(currentAmmo)
+		}
+
+		warmachine.Unlock()
 
 		// Hidden/Incognito
 		if btl.playerAbilityManager().IsWarMachineHidden(warmachine.Hash) {
