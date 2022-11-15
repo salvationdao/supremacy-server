@@ -45,6 +45,11 @@ type BlueprintMech struct {
 	ShieldRechargePowerCost int             `boiler:"shield_recharge_power_cost" boil:"shield_recharge_power_cost" json:"shield_recharge_power_cost" toml:"shield_recharge_power_cost" yaml:"shield_recharge_power_cost"`
 	ShieldRechargeDelay     decimal.Decimal `boiler:"shield_recharge_delay" boil:"shield_recharge_delay" json:"shield_recharge_delay" toml:"shield_recharge_delay" yaml:"shield_recharge_delay"`
 	HeightMeters            decimal.Decimal `boiler:"height_meters" boil:"height_meters" json:"height_meters" toml:"height_meters" yaml:"height_meters"`
+	WalkSpeedModifier       decimal.Decimal `boiler:"walk_speed_modifier" boil:"walk_speed_modifier" json:"walk_speed_modifier" toml:"walk_speed_modifier" yaml:"walk_speed_modifier"`
+	SprintSpreadModifier    decimal.Decimal `boiler:"sprint_spread_modifier" boil:"sprint_spread_modifier" json:"sprint_spread_modifier" toml:"sprint_spread_modifier" yaml:"sprint_spread_modifier"`
+	IdleDrain               decimal.Decimal `boiler:"idle_drain" boil:"idle_drain" json:"idle_drain" toml:"idle_drain" yaml:"idle_drain"`
+	WalkDrain               decimal.Decimal `boiler:"walk_drain" boil:"walk_drain" json:"walk_drain" toml:"walk_drain" yaml:"walk_drain"`
+	RunDrain                decimal.Decimal `boiler:"run_drain" boil:"run_drain" json:"run_drain" toml:"run_drain" yaml:"run_drain"`
 
 	R *blueprintMechR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L blueprintMechL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -72,6 +77,11 @@ var BlueprintMechColumns = struct {
 	ShieldRechargePowerCost string
 	ShieldRechargeDelay     string
 	HeightMeters            string
+	WalkSpeedModifier       string
+	SprintSpreadModifier    string
+	IdleDrain               string
+	WalkDrain               string
+	RunDrain                string
 }{
 	ID:                      "id",
 	Label:                   "label",
@@ -94,6 +104,11 @@ var BlueprintMechColumns = struct {
 	ShieldRechargePowerCost: "shield_recharge_power_cost",
 	ShieldRechargeDelay:     "shield_recharge_delay",
 	HeightMeters:            "height_meters",
+	WalkSpeedModifier:       "walk_speed_modifier",
+	SprintSpreadModifier:    "sprint_spread_modifier",
+	IdleDrain:               "idle_drain",
+	WalkDrain:               "walk_drain",
+	RunDrain:                "run_drain",
 }
 
 var BlueprintMechTableColumns = struct {
@@ -118,6 +133,11 @@ var BlueprintMechTableColumns = struct {
 	ShieldRechargePowerCost string
 	ShieldRechargeDelay     string
 	HeightMeters            string
+	WalkSpeedModifier       string
+	SprintSpreadModifier    string
+	IdleDrain               string
+	WalkDrain               string
+	RunDrain                string
 }{
 	ID:                      "blueprint_mechs.id",
 	Label:                   "blueprint_mechs.label",
@@ -140,6 +160,11 @@ var BlueprintMechTableColumns = struct {
 	ShieldRechargePowerCost: "blueprint_mechs.shield_recharge_power_cost",
 	ShieldRechargeDelay:     "blueprint_mechs.shield_recharge_delay",
 	HeightMeters:            "blueprint_mechs.height_meters",
+	WalkSpeedModifier:       "blueprint_mechs.walk_speed_modifier",
+	SprintSpreadModifier:    "blueprint_mechs.sprint_spread_modifier",
+	IdleDrain:               "blueprint_mechs.idle_drain",
+	WalkDrain:               "blueprint_mechs.walk_drain",
+	RunDrain:                "blueprint_mechs.run_drain",
 }
 
 // Generated where
@@ -166,6 +191,11 @@ var BlueprintMechWhere = struct {
 	ShieldRechargePowerCost whereHelperint
 	ShieldRechargeDelay     whereHelperdecimal_Decimal
 	HeightMeters            whereHelperdecimal_Decimal
+	WalkSpeedModifier       whereHelperdecimal_Decimal
+	SprintSpreadModifier    whereHelperdecimal_Decimal
+	IdleDrain               whereHelperdecimal_Decimal
+	WalkDrain               whereHelperdecimal_Decimal
+	RunDrain                whereHelperdecimal_Decimal
 }{
 	ID:                      whereHelperstring{field: "\"blueprint_mechs\".\"id\""},
 	Label:                   whereHelperstring{field: "\"blueprint_mechs\".\"label\""},
@@ -188,6 +218,11 @@ var BlueprintMechWhere = struct {
 	ShieldRechargePowerCost: whereHelperint{field: "\"blueprint_mechs\".\"shield_recharge_power_cost\""},
 	ShieldRechargeDelay:     whereHelperdecimal_Decimal{field: "\"blueprint_mechs\".\"shield_recharge_delay\""},
 	HeightMeters:            whereHelperdecimal_Decimal{field: "\"blueprint_mechs\".\"height_meters\""},
+	WalkSpeedModifier:       whereHelperdecimal_Decimal{field: "\"blueprint_mechs\".\"walk_speed_modifier\""},
+	SprintSpreadModifier:    whereHelperdecimal_Decimal{field: "\"blueprint_mechs\".\"sprint_spread_modifier\""},
+	IdleDrain:               whereHelperdecimal_Decimal{field: "\"blueprint_mechs\".\"idle_drain\""},
+	WalkDrain:               whereHelperdecimal_Decimal{field: "\"blueprint_mechs\".\"walk_drain\""},
+	RunDrain:                whereHelperdecimal_Decimal{field: "\"blueprint_mechs\".\"run_drain\""},
 }
 
 // BlueprintMechRels is where relationship names are stored.
@@ -238,9 +273,9 @@ func (*blueprintMechR) NewStruct() *blueprintMechR {
 type blueprintMechL struct{}
 
 var (
-	blueprintMechAllColumns            = []string{"id", "label", "created_at", "default_chassis_skin_id", "brand_id", "mech_type", "repair_blocks", "boost_stat", "weapon_hardpoints", "power_core_size", "utility_slots", "speed", "max_hitpoints", "collection", "availability_id", "shield_type_id", "shield_max", "shield_recharge_rate", "shield_recharge_power_cost", "shield_recharge_delay", "height_meters"}
+	blueprintMechAllColumns            = []string{"id", "label", "created_at", "default_chassis_skin_id", "brand_id", "mech_type", "repair_blocks", "boost_stat", "weapon_hardpoints", "power_core_size", "utility_slots", "speed", "max_hitpoints", "collection", "availability_id", "shield_type_id", "shield_max", "shield_recharge_rate", "shield_recharge_power_cost", "shield_recharge_delay", "height_meters", "walk_speed_modifier", "sprint_spread_modifier", "idle_drain", "walk_drain", "run_drain"}
 	blueprintMechColumnsWithoutDefault = []string{"label", "default_chassis_skin_id", "brand_id", "mech_type", "shield_type_id"}
-	blueprintMechColumnsWithDefault    = []string{"id", "created_at", "repair_blocks", "boost_stat", "weapon_hardpoints", "power_core_size", "utility_slots", "speed", "max_hitpoints", "collection", "availability_id", "shield_max", "shield_recharge_rate", "shield_recharge_power_cost", "shield_recharge_delay", "height_meters"}
+	blueprintMechColumnsWithDefault    = []string{"id", "created_at", "repair_blocks", "boost_stat", "weapon_hardpoints", "power_core_size", "utility_slots", "speed", "max_hitpoints", "collection", "availability_id", "shield_max", "shield_recharge_rate", "shield_recharge_power_cost", "shield_recharge_delay", "height_meters", "walk_speed_modifier", "sprint_spread_modifier", "idle_drain", "walk_drain", "run_drain"}
 	blueprintMechPrimaryKeyColumns     = []string{"id"}
 	blueprintMechGeneratedColumns      = []string{}
 )

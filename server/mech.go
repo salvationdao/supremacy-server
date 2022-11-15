@@ -3,9 +3,10 @@ package server
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/shopspring/decimal"
 	"server/db/boiler"
 	"time"
+
+	"github.com/shopspring/decimal"
 
 	"github.com/volatiletech/null/v8"
 )
@@ -96,6 +97,7 @@ type Mech struct {
 	CreatedAt                             time.Time      `json:"created_at"`
 	BlueprintWeaponIDsWithSkinInheritance []string       `json:"blueprint_weapon_ids_with_skin_inheritance"`
 	CompatibleBlueprintMechSkinIDs        []string       `json:"compatible_blueprint_mech_skin_ids"`
+	InheritAllWeaponSkins                 bool           `json:"inherit_all_weapon_skins"`
 }
 
 type BlueprintMech struct {

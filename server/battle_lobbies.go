@@ -3,15 +3,16 @@ package server
 import (
 	"database/sql"
 	"fmt"
+	"server/db/boiler"
+	"server/gamedb"
+	"server/gamelog"
+
 	"github.com/friendsofgo/errors"
 	"github.com/ninja-software/terror/v2"
 	"github.com/shopspring/decimal"
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 	"golang.org/x/exp/slices"
-	"server/db/boiler"
-	"server/gamedb"
-	"server/gamelog"
 )
 
 type BattleLobbyStageOrder int
@@ -57,6 +58,7 @@ type BattleLobbiesMech struct {
 	QueuedBy *PublicPlayer `json:"queued_by"`
 
 	WeaponSlots []*WeaponSlot `json:"weapon_slots"`
+	PowerCore   *PowerCore    `json:"power_core,omitempty"`
 }
 
 type UtilitySlot struct {
@@ -291,6 +293,7 @@ func BattleLobbiesFromBoiler(bls []*boiler.BattleLobby) ([]*BattleLobby, error) 
 
 			// queue by player
 			"TO_JSON(_queued_by_player.*) AS queued_by_player",
+			fmt.Sprintf("TO_JSON( _pc )"),
 		),
 
 		// from filtered collection item
@@ -367,6 +370,21 @@ func BattleLobbiesFromBoiler(bls []*boiler.BattleLobby) ([]*BattleLobby, error) 
 			boiler.MechSkinTableColumns.BlueprintID,
 			boiler.BlueprintMechSkinTableColumns.ID,
 		)),
+
+		// outer join power cores
+		qm.LeftOuterJoin(fmt.Sprintf(`(
+			SELECT %s AS power_core_id, %s.*
+			FROM %s
+			INNER JOIN %s ON %s = %s
+			) _pc ON _pc.power_core_id = %s`,
+			boiler.PowerCoreTableColumns.ID,
+			boiler.TableNames.BlueprintPowerCores,
+			boiler.TableNames.PowerCores,
+			boiler.TableNames.BlueprintPowerCores,
+			boiler.BlueprintPowerCoreTableColumns.ID,
+			boiler.PowerCoreTableColumns.BlueprintID,
+			boiler.MechTableColumns.PowerCoreID,
+		)),
 	}
 
 	rows, err := boiler.NewQuery(queries...).Query(gamedb.StdConn)
@@ -382,7 +400,7 @@ func BattleLobbiesFromBoiler(bls []*boiler.BattleLobby) ([]*BattleLobby, error) 
 			Owner: &boiler.Player{},
 		}
 		queuedByPlayer := &PublicPlayer{}
-
+		pc := &PowerCore{}
 		bm := &BlueprintMech{}
 		skinLevel := int64(0)
 		err = rows.Scan(
@@ -399,6 +417,7 @@ func BattleLobbiesFromBoiler(bls []*boiler.BattleLobby) ([]*BattleLobby, error) 
 			&blm.Owner.Gid,
 			&blm.Owner.Rank,
 			&queuedByPlayer,
+			&pc,
 		)
 		if err != nil {
 			gamelog.L.Error().Err(err).Msg("Failed to scan battle lobby.")
@@ -409,6 +428,7 @@ func BattleLobbiesFromBoiler(bls []*boiler.BattleLobby) ([]*BattleLobby, error) 
 		bm.BoostedSpeed = int64(bm.Speed)
 		bm.BoostedMaxHitpoints = int64(bm.MaxHitpoints)
 		bm.BoostedShieldRechargeRate = int64(bm.ShieldRechargeRate)
+		blm.PowerCore = pc
 
 		// mech boosted stat
 		if bm.BoostStat.Valid {
@@ -532,6 +552,8 @@ func BattleLobbiesFromBoiler(bls []*boiler.BattleLobby) ([]*BattleLobby, error) 
 		}
 	}
 
+	// fill mech power core
+
 	// fill mech in to lobby
 	for _, bl := range resp {
 		for _, blm := range blms {
@@ -589,6 +611,7 @@ func BattleLobbyInfoFilter(bl *BattleLobby, keepDataForFactionID string, keepAcc
 			Tier:          blm.Tier,
 			IsDestroyed:   blm.IsDestroyed,
 			FactionID:     blm.Owner.FactionID,
+			PowerCore:     blm.PowerCore,
 		}
 
 		if blm.Owner != nil && blm.Owner.FactionID.String == keepDataForFactionID {

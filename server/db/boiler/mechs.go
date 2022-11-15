@@ -43,6 +43,7 @@ type Mech struct {
 	IntroAnimationID        null.String `boiler:"intro_animation_id" boil:"intro_animation_id" json:"intro_animation_id,omitempty" toml:"intro_animation_id" yaml:"intro_animation_id,omitempty"`
 	OutroAnimationID        null.String `boiler:"outro_animation_id" boil:"outro_animation_id" json:"outro_animation_id,omitempty" toml:"outro_animation_id" yaml:"outro_animation_id,omitempty"`
 	BlueprintIDOld          null.String `boiler:"blueprint_id_old" boil:"blueprint_id_old" json:"blueprint_id_old,omitempty" toml:"blueprint_id_old" yaml:"blueprint_id_old,omitempty"`
+	InheritAllWeaponSkins   bool        `boiler:"inherit_all_weapon_skins" boil:"inherit_all_weapon_skins" json:"inherit_all_weapon_skins" toml:"inherit_all_weapon_skins" yaml:"inherit_all_weapon_skins"`
 
 	R *mechR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L mechL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -69,6 +70,7 @@ var MechColumns = struct {
 	IntroAnimationID        string
 	OutroAnimationID        string
 	BlueprintIDOld          string
+	InheritAllWeaponSkins   string
 }{
 	ID:                      "id",
 	WeaponHardpointsDontUse: "weapon_hardpoints_dont_use",
@@ -90,6 +92,7 @@ var MechColumns = struct {
 	IntroAnimationID:        "intro_animation_id",
 	OutroAnimationID:        "outro_animation_id",
 	BlueprintIDOld:          "blueprint_id_old",
+	InheritAllWeaponSkins:   "inherit_all_weapon_skins",
 }
 
 var MechTableColumns = struct {
@@ -113,6 +116,7 @@ var MechTableColumns = struct {
 	IntroAnimationID        string
 	OutroAnimationID        string
 	BlueprintIDOld          string
+	InheritAllWeaponSkins   string
 }{
 	ID:                      "mechs.id",
 	WeaponHardpointsDontUse: "mechs.weapon_hardpoints_dont_use",
@@ -134,6 +138,7 @@ var MechTableColumns = struct {
 	IntroAnimationID:        "mechs.intro_animation_id",
 	OutroAnimationID:        "mechs.outro_animation_id",
 	BlueprintIDOld:          "mechs.blueprint_id_old",
+	InheritAllWeaponSkins:   "mechs.inherit_all_weapon_skins",
 }
 
 // Generated where
@@ -159,6 +164,7 @@ var MechWhere = struct {
 	IntroAnimationID        whereHelpernull_String
 	OutroAnimationID        whereHelpernull_String
 	BlueprintIDOld          whereHelpernull_String
+	InheritAllWeaponSkins   whereHelperbool
 }{
 	ID:                      whereHelperstring{field: "\"mechs\".\"id\""},
 	WeaponHardpointsDontUse: whereHelperint{field: "\"mechs\".\"weapon_hardpoints_dont_use\""},
@@ -180,6 +186,7 @@ var MechWhere = struct {
 	IntroAnimationID:        whereHelpernull_String{field: "\"mechs\".\"intro_animation_id\""},
 	OutroAnimationID:        whereHelpernull_String{field: "\"mechs\".\"outro_animation_id\""},
 	BlueprintIDOld:          whereHelpernull_String{field: "\"mechs\".\"blueprint_id_old\""},
+	InheritAllWeaponSkins:   whereHelperbool{field: "\"mechs\".\"inherit_all_weapon_skins\""},
 }
 
 // MechRels is where relationship names are stored.
@@ -299,9 +306,9 @@ func (*mechR) NewStruct() *mechR {
 type mechL struct{}
 
 var (
-	mechAllColumns            = []string{"id", "weapon_hardpoints_dont_use", "utility_slots_dont_use", "speed_dont_use", "max_hitpoints_dont_use", "deleted_at", "updated_at", "created_at", "blueprint_id", "is_default", "is_insured", "name", "genesis_token_id", "limited_release_token_id", "power_core_size_dont_use", "chassis_skin_id", "power_core_id", "intro_animation_id", "outro_animation_id", "blueprint_id_old"}
+	mechAllColumns            = []string{"id", "weapon_hardpoints_dont_use", "utility_slots_dont_use", "speed_dont_use", "max_hitpoints_dont_use", "deleted_at", "updated_at", "created_at", "blueprint_id", "is_default", "is_insured", "name", "genesis_token_id", "limited_release_token_id", "power_core_size_dont_use", "chassis_skin_id", "power_core_id", "intro_animation_id", "outro_animation_id", "blueprint_id_old", "inherit_all_weapon_skins"}
 	mechColumnsWithoutDefault = []string{"weapon_hardpoints_dont_use", "utility_slots_dont_use", "speed_dont_use", "max_hitpoints_dont_use", "blueprint_id", "chassis_skin_id"}
-	mechColumnsWithDefault    = []string{"id", "deleted_at", "updated_at", "created_at", "is_default", "is_insured", "name", "genesis_token_id", "limited_release_token_id", "power_core_size_dont_use", "power_core_id", "intro_animation_id", "outro_animation_id", "blueprint_id_old"}
+	mechColumnsWithDefault    = []string{"id", "deleted_at", "updated_at", "created_at", "is_default", "is_insured", "name", "genesis_token_id", "limited_release_token_id", "power_core_size_dont_use", "power_core_id", "intro_animation_id", "outro_animation_id", "blueprint_id_old", "inherit_all_weapon_skins"}
 	mechPrimaryKeyColumns     = []string{"id"}
 	mechGeneratedColumns      = []string{}
 )

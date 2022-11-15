@@ -8,6 +8,7 @@ import (
 	"server"
 	"server/battle"
 	"server/db"
+	"server/discord"
 	"server/fiat"
 	"server/gamelog"
 	"server/marketplace"
@@ -50,6 +51,7 @@ type API struct {
 	SMS                      server.SMS
 	Passport                 *xsyn_rpcclient.XsynXrpcClient
 	Telegram                 server.Telegram
+	Discord                  *discord.DiscordSession
 	Zendesk                  *zendesk.Zendesk
 	LanguageDetector         lingua.LanguageDetector
 	Cookie                   *securebytes.SecureBytes
@@ -106,6 +108,7 @@ func NewAPI(
 	config *server.Config,
 	sms server.SMS,
 	telegram server.Telegram,
+	discord *discord.DiscordSession,
 	zendesk *zendesk.Zendesk,
 	languageDetector lingua.LanguageDetector,
 	pm *profanities.ProfanityManager,
@@ -129,6 +132,7 @@ func NewAPI(
 		Passport:                 pp,
 		SMS:                      sms,
 		Telegram:                 telegram,
+		Discord:                  discord,
 		StripeClient:             stripeClient,
 		StripeWebhookSecret:      stripeWebhookSecret,
 		Zendesk:                  zendesk,

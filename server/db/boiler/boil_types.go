@@ -58,6 +58,13 @@ const (
 	AbilityKillingPowerLevelNONE   = "NONE"
 )
 
+// Enum values for AbilityTriggerType
+const (
+	AbilityTriggerTypeBATTLE_ABILITY = "BATTLE_ABILITY"
+	AbilityTriggerTypeMECH_ABILITY   = "MECH_ABILITY"
+	AbilityTriggerTypePLAYER_ABILITY = "PLAYER_ABILITY"
+)
+
 // Enum values for AbilityTypeEnum
 const (
 	AbilityTypeEnumAIRSTRIKE      = "AIRSTRIKE"
@@ -71,13 +78,6 @@ const (
 	AbilityTypeEnumLANDMINE       = "LANDMINE"
 )
 
-// Enum values for AbilityTriggerType
-const (
-	AbilityTriggerTypeBATTLE_ABILITY = "BATTLE_ABILITY"
-	AbilityTriggerTypeMECH_ABILITY   = "MECH_ABILITY"
-	AbilityTriggerTypePLAYER_ABILITY = "PLAYER_ABILITY"
-)
-
 // Enum values for BattleEvent
 const (
 	BattleEventKilled           = "killed"
@@ -85,6 +85,8 @@ const (
 	BattleEventKill             = "kill"
 	BattleEventAbilityTriggered = "ability_triggered"
 	BattleEventPickup           = "pickup"
+	BattleEventStunned          = "stunned"
+	BattleEventHacked           = "hacked"
 )
 
 // Enum values for RecordingStatus
@@ -103,14 +105,14 @@ const (
 	WeaponTypeFlak            = "Flak"
 	WeaponTypeMachineGun      = "Machine Gun"
 	WeaponTypeFlamethrower    = "Flamethrower"
-	WeaponTypeMissileLauncher = "Missile Launcher"
+	WeaponTypeRocketPods      = "Rocket Pods"
 	WeaponTypeLaserBeam       = "Laser Beam"
 	WeaponTypeLightningGun    = "Lightning Gun"
 	WeaponTypeBFG             = "BFG"
 	WeaponTypeRifle           = "Rifle"
 	WeaponTypeSniperRifle     = "Sniper Rifle"
 	WeaponTypeSword           = "Sword"
-	WeaponTypeRocketPods      = "Rocket Pods"
+	WeaponTypeMissileLauncher = "Missile Launcher"
 )
 
 // Enum values for  are not proper Go identifiers, cannot emit constants
@@ -137,6 +139,7 @@ const (
 	PowercoreSizeSMALL  = "SMALL"
 	PowercoreSizeMEDIUM = "MEDIUM"
 	PowercoreSizeLARGE  = "LARGE"
+	PowercoreSizeTURBO  = "TURBO"
 )
 
 // Enum values for  are not proper Go identifiers, cannot emit constants

@@ -179,7 +179,7 @@ func (tkj *TeamKillDefendant) judging(relatedOfferingID string) {
 	}
 
 	bhs, err := boiler.BattleHistories(
-		boiler.BattleHistoryWhere.RelatedID.EQ(null.StringFrom(relatedOfferingID)),
+		boiler.BattleHistoryWhere.BattleAbilityOfferingID.EQ(null.StringFrom(relatedOfferingID)),
 		boiler.BattleHistoryWhere.EventType.EQ(boiler.BattleEventKilled),
 	).All(gamedb.StdConn)
 	if err != nil {

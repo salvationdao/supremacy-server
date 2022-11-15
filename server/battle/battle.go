@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/ninja-software/terror/v2"
 	"math/rand"
 	"server"
 	"server/db"
@@ -20,6 +19,8 @@ import (
 	"sort"
 	"strings"
 	"time"
+
+	"github.com/ninja-software/terror/v2"
 
 	"golang.org/x/exp/slices"
 
@@ -70,7 +71,8 @@ type Battle struct {
 	abilityDetails []*AbilityDetail
 
 	MiniMapAbilityDisplayList *MiniMapAbilityDisplayList
-	MapEventList              *MapEventList
+
+	MapEventList *MapEventList
 
 	deadlock.RWMutex
 
@@ -99,8 +101,12 @@ type KillInfo struct {
 }
 
 type MiniMapAbilityDisplayList struct {
-	m map[string]*MiniMapAbilityContent // map [offeringID] *MiniMapAbilityContent
+	arenaID string
+	list    []*MiniMapAbilityContent
 	deadlock.RWMutex
+
+	broadcastChan chan *MiniMapAbilityContent
+	stop          chan bool
 }
 
 type MiniMapAbilityContent struct {
@@ -114,71 +120,104 @@ type MiniMapAbilityContent struct {
 	LocationSelectType       string              `json:"location_select_type"`
 	Radius                   null.Int            `json:"radius,omitempty"`
 	LaunchingAt              null.Time           `json:"launching_at,omitempty"`
+	IsRemoved                bool                `json:"is_removed"`
 	UpdatedAt                time.Time           `json:"-"`
 }
 
 // Add new pending ability and return a copy of current list
-func (dap *MiniMapAbilityDisplayList) Add(offeringID string, dac *MiniMapAbilityContent) []MiniMapAbilityContent {
+func (dap *MiniMapAbilityDisplayList) Add(dac *MiniMapAbilityContent) {
+	// set updated at
+	dac.UpdatedAt = time.Now()
+
+	// update mini map ability list
 	dap.Lock()
 	defer dap.Unlock()
 
-	// change updated at
-	dac.UpdatedAt = time.Now()
-
-	dap.m[offeringID] = dac
-
-	result := []MiniMapAbilityContent{}
-	for _, d := range dap.m {
-		result = append(result, *d)
+	lastIndex := len(dap.list) - 1
+	index := slices.IndexFunc(dap.list, func(da *MiniMapAbilityContent) bool { return da.OfferingID == dac.OfferingID })
+	if index != -1 {
+		dap.list[index] = dap.list[lastIndex] // replace target element with the last element
+		dap.list[lastIndex] = nil             // free up the memory of target element
+		dap.list = dap.list[:lastIndex]       // truncate the list
 	}
 
-	sort.Slice(result, func(i, j int) bool { return result[i].UpdatedAt.After(result[j].UpdatedAt) })
+	dap.list = append(dap.list, dac)
 
-	return result
+	sort.Slice(dap.list, func(i, j int) bool { return dap.list[i].UpdatedAt.After(dap.list[j].UpdatedAt) })
+
+	// broadcast changes
+	select {
+	case dap.broadcastChan <- dac:
+	case <-time.After(100 * time.Millisecond):
+		// timeout
+	}
 }
 
 // Remove pending ability and return a copy of current list
-func (dap *MiniMapAbilityDisplayList) Remove(offeringID string) []MiniMapAbilityContent {
+func (dap *MiniMapAbilityDisplayList) Remove(offeringID string) {
 	dap.Lock()
 	defer dap.Unlock()
 
-	delete(dap.m, offeringID)
-
-	result := []MiniMapAbilityContent{}
-	for _, dac := range dap.m {
-		result = append(result, *dac)
+	index := slices.IndexFunc(dap.list, func(da *MiniMapAbilityContent) bool { return da.OfferingID == offeringID })
+	if index == -1 {
+		return
 	}
 
-	sort.Slice(result, func(i, j int) bool { return result[i].UpdatedAt.After(result[j].UpdatedAt) })
-
-	return result
-}
-
-// Get a mini map ability from givent offering id
-func (dap *MiniMapAbilityDisplayList) Get(offingID string) *MiniMapAbilityContent {
-	dap.RLock()
-	defer dap.RUnlock()
-
-	da, ok := dap.m[offingID]
-	if !ok {
-		return nil
+	// broadcast changes
+	dac := dap.list[index]
+	dac.IsRemoved = true
+	select {
+	case dap.broadcastChan <- dac:
+	case <-time.After(100 * time.Millisecond):
+		// timeout
 	}
-	return da
+
+	// remove data
+	lastIndex := len(dap.list) - 1
+	dap.list[index] = dap.list[lastIndex] // replace target element with the last element
+	dap.list[lastIndex] = nil             // free up the memory of target element
+	dap.list = dap.list[:lastIndex]       // truncate the list
+
+	sort.Slice(dap.list, func(i, j int) bool { return dap.list[i].UpdatedAt.After(dap.list[j].UpdatedAt) })
 }
 
 // List a copy of current pending list
-func (dap *MiniMapAbilityDisplayList) List() []MiniMapAbilityContent {
+func (dap *MiniMapAbilityDisplayList) List() []*MiniMapAbilityContent {
 	dap.RLock()
 	defer dap.RUnlock()
+	return dap.list
+}
 
-	result := []MiniMapAbilityContent{}
-	for _, dac := range dap.m {
-		result = append(result, *dac)
+func (dap *MiniMapAbilityDisplayList) debounceBroadcastMiniMapDisplay() {
+	interval := 150 * time.Millisecond
+	timer := time.NewTimer(5 * time.Minute)
+	var broadcastList []*MiniMapAbilityContent
+
+	for {
+		select {
+		case <-dap.stop:
+			return
+
+		case dac := <-dap.broadcastChan:
+			index := slices.IndexFunc(broadcastList, func(bl *MiniMapAbilityContent) bool { return bl.OfferingID == dac.OfferingID })
+			if index != -1 {
+				broadcastList[index] = dac
+			} else {
+				broadcastList = append(broadcastList, dac)
+			}
+
+			timer.Reset(interval)
+
+		case <-timer.C:
+			ws.PublishMessage(
+				fmt.Sprintf("/mini_map/arena/%s/public/mini_map_ability_display_list", dap.arenaID),
+				server.HubKeyMiniMapAbilityContentSubscribe,
+				broadcastList,
+			)
+
+			broadcastList = []*MiniMapAbilityContent{}
+		}
 	}
-
-	sort.Slice(result, func(i, j int) bool { return result[i].UpdatedAt.After(result[j].UpdatedAt) })
-
-	return result
 }
 
 type RecordingSession struct {
@@ -1272,6 +1311,9 @@ func (btl *Battle) end(payload *BattleEndPayload) {
 		}
 	}()
 
+	// stop mini map ability display list
+	btl.MiniMapAbilityDisplayList.stop <- true
+
 	// pre-assign next battle lobby
 	btl.arena.beginBattleMux.Lock()
 	defer btl.arena.beginBattleMux.Unlock()
@@ -2004,7 +2046,7 @@ func (btl *Battle) Destroyed(dp *BattleWMDestroyedPayload) {
 			}
 
 			if dp.RelatedEventIDString != "" {
-				bh.RelatedID = null.StringFrom(dp.RelatedEventIDString)
+				bh.BattleAbilityOfferingID = null.StringFrom(dp.RelatedEventIDString)
 			}
 
 			err = bh.Insert(gamedb.StdConn, boil.Infer())
@@ -2398,7 +2440,7 @@ func (btl *Battle) MechsToWarMachines(mechs []*server.Mech) []*WarMachine {
 			},
 
 			PowerCore: PowerCoreFromServer(mech.PowerCore),
-			Weapons:   WeaponsFromServer(mech.Weapons),
+			Weapons:   WeaponsFromServer(mech.Weapons, mech.BlueprintWeaponIDsWithSkinInheritance, mech.ChassisSkin.BlueprintWeaponSkinID, mech.InheritAllWeaponSkins),
 			Utility:   UtilitiesFromServer(mech.Utility),
 			Stats: &Stats{
 				TotalWins:       mech.Stats.TotalWins,
