@@ -366,7 +366,7 @@ func main() {
 					gamelog.L.Info().Msgf("Telegram took %s", time.Since(start))
 
 					// initialise discord bot
-					discordBot, err := discord.NewDiscordBot(discordAuthToken, discordAppID, true)
+					discordBot, err := discord.NewDiscordBot(discordAuthToken, discordAppID, !server.IsDevelopmentEnv())
 					if err != nil {
 						return terror.Error(err, "Discord init failed")
 					}
