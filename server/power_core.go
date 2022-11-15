@@ -92,7 +92,7 @@ func BlueprintPowerCoreFromBoiler(core *boiler.BlueprintPowerCore) *BlueprintPow
 	}
 }
 
-func PowerCoreFromBoiler(skin *boiler.PowerCore, collection *boiler.CollectionItem) *PowerCore {
+func PowerCoreFromBoiler(pc *boiler.PowerCore, collection *boiler.CollectionItem) *PowerCore {
 	return &PowerCore{
 		CollectionItem: &CollectionItem{
 			CollectionSlug: collection.CollectionSlug,
@@ -107,24 +107,24 @@ func PowerCoreFromBoiler(skin *boiler.PowerCore, collection *boiler.CollectionIt
 			AssetHidden:    collection.AssetHidden,
 		},
 		Images: &Images{
-			ImageURL:         skin.R.Blueprint.ImageURL,
-			CardAnimationURL: skin.R.Blueprint.CardAnimationURL,
-			AvatarURL:        skin.R.Blueprint.AvatarURL,
-			LargeImageURL:    skin.R.Blueprint.LargeImageURL,
-			BackgroundColor:  skin.R.Blueprint.BackgroundColor,
-			AnimationURL:     skin.R.Blueprint.AnimationURL,
-			YoutubeURL:       skin.R.Blueprint.YoutubeURL,
+			ImageURL:         pc.R.Blueprint.ImageURL,
+			CardAnimationURL: pc.R.Blueprint.CardAnimationURL,
+			AvatarURL:        pc.R.Blueprint.AvatarURL,
+			LargeImageURL:    pc.R.Blueprint.LargeImageURL,
+			BackgroundColor:  pc.R.Blueprint.BackgroundColor,
+			AnimationURL:     pc.R.Blueprint.AnimationURL,
+			YoutubeURL:       pc.R.Blueprint.YoutubeURL,
 		},
-		ID:           skin.ID,
-		BlueprintID:  skin.BlueprintID,
-		Label:        skin.R.Blueprint.Label,
-		Size:         skin.R.Blueprint.Size,
-		Capacity:     skin.R.Blueprint.Capacity,
-		MaxDrawRate:  skin.R.Blueprint.MaxDrawRate,
-		RechargeRate: skin.R.Blueprint.RechargeRate,
-		Armour:       skin.R.Blueprint.Armour,
-		MaxHitpoints: skin.R.Blueprint.MaxHitpoints,
-		EquippedOn:   skin.EquippedOn,
-		CreatedAt:    skin.CreatedAt,
+		ID:           pc.ID,
+		BlueprintID:  pc.BlueprintID,
+		Label:        pc.R.Blueprint.Label,
+		Size:         pc.R.Blueprint.Size,
+		Capacity:     pc.R.Blueprint.Capacity,
+		MaxDrawRate:  pc.R.Blueprint.MaxDrawRate,
+		RechargeRate: pc.R.Blueprint.RechargeRate,
+		Armour:       pc.R.Blueprint.Armour,
+		MaxHitpoints: pc.R.Blueprint.MaxHitpoints,
+		EquippedOn:   pc.EquippedOn,
+		CreatedAt:    pc.CreatedAt,
 	}
 }

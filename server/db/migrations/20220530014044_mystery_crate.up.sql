@@ -415,7 +415,7 @@ $$
                                      INSERT INTO mystery_crate_blueprints (mystery_crate_id, blueprint_type, blueprint_id)
                                      VALUES (mechcrate.id, 'POWER_CORE', (SELECT id
                                                                           FROM blueprint_power_cores c
-                                                                          WHERE c.label = 'Standard Energy Core'));
+                                                                          WHERE c.label = 'Standard Power Core A'));
 
                                      PERFORM insert_weapon_into_crate(mechcrate.id, 'Flak', faction);
                                      PERFORM insert_weapon_skin_into_crate(i, mechcrate.id, 'Flak',
@@ -436,13 +436,13 @@ $$
                                          get_mech_skin_label_rarity(i, 'MECH', (.2 * mechcratelen), .8 * mechcratelen,
                                                                     faction);
 
-                                 PERFORM insert_mech_into_crate('MEDIUM', mechcrate.id, faction);
+                                 PERFORM insert_mech_into_crate('TURBO', mechcrate.id, faction);
                                  PERFORM insert_mech_skin_into_crate(mechcrate.id, 'PLATFORM',
                                                                      mech_skin_label, faction);
 
                                  INSERT INTO mystery_crate_blueprints (mystery_crate_id, blueprint_type, blueprint_id)
                                  VALUES (mechcrate.id, 'POWER_CORE',
-                                         (SELECT id FROM blueprint_power_cores c WHERE c.size = 'MEDIUM'));
+                                         (SELECT id FROM blueprint_power_cores c WHERE c.label = 'Turbo Power Core A'));
 
 
                                  PERFORM insert_weapon_into_crate(mechcrate.id, 'Flak', faction);

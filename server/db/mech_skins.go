@@ -118,7 +118,6 @@ func IsMechSkinColumn(col string) bool {
 type MechSkinListOpts struct {
 	Search                   string
 	Filter                   *ListFilterRequest
-	Sort                     *ListSortRequest
 	SortBy                   SortBy
 	SortDir                  SortByDir
 	PageSize                 int
@@ -138,8 +137,6 @@ type MechSkinListOpts struct {
 }
 
 func MechSkinListDetailed(opts *MechSkinListOpts) (int64, []*server.MechSkin, error) {
-	var mechSkins []*server.MechSkin
-
 	var queryMods []qm.QueryMod
 
 	queryMods = append(queryMods,
@@ -372,16 +369,7 @@ func MechSkinListDetailed(opts *MechSkinListOpts) (int64, []*server.MechSkin, er
 	)
 
 	// Sort
-	if opts.Sort != nil && opts.Sort.Table == boiler.TableNames.MechSkin && IsMechSkinColumn(opts.Sort.Column) && opts.Sort.Direction.IsValid() {
-		orderBy := fmt.Sprintf("%s.%s %s", boiler.TableNames.MechSkin, opts.Sort.Column, opts.Sort.Direction)
-		if opts.DisplayUnique {
-			orderBy = fmt.Sprintf("%s, %s.%s %s",
-				boiler.MechSkinTableColumns.BlueprintID,
-				boiler.TableNames.MechSkin, opts.Sort.Column, opts.Sort.Direction,
-			)
-		}
-		queryMods = append(queryMods, qm.OrderBy(orderBy))
-	} else if opts.SortBy != "" && opts.SortDir.IsValid() {
+	if opts.SortBy != "" && opts.SortDir.IsValid() {
 		switch opts.SortBy {
 		case SortByAlphabetical:
 			orderBy := fmt.Sprintf("(%s) %s",
@@ -434,6 +422,7 @@ func MechSkinListDetailed(opts *MechSkinListOpts) (int64, []*server.MechSkin, er
 	}
 	defer rows.Close()
 
+	mechSkins := make([]*server.MechSkin, 0)
 	for rows.Next() {
 		mc := &server.MechSkin{
 			CollectionItem: &server.CollectionItem{},

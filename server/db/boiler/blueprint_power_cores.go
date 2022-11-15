@@ -42,6 +42,9 @@ type BlueprintPowerCore struct {
 	BackgroundColor  null.String     `boiler:"background_color" boil:"background_color" json:"background_color,omitempty" toml:"background_color" yaml:"background_color,omitempty"`
 	AnimationURL     null.String     `boiler:"animation_url" boil:"animation_url" json:"animation_url,omitempty" toml:"animation_url" yaml:"animation_url,omitempty"`
 	YoutubeURL       null.String     `boiler:"youtube_url" boil:"youtube_url" json:"youtube_url,omitempty" toml:"youtube_url" yaml:"youtube_url,omitempty"`
+	WeaponShare      int             `boiler:"weapon_share" boil:"weapon_share" json:"weapon_share" toml:"weapon_share" yaml:"weapon_share"`
+	MovementShare    int             `boiler:"movement_share" boil:"movement_share" json:"movement_share" toml:"movement_share" yaml:"movement_share"`
+	UtilityShare     int             `boiler:"utility_share" boil:"utility_share" json:"utility_share" toml:"utility_share" yaml:"utility_share"`
 
 	R *blueprintPowerCoreR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L blueprintPowerCoreL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -66,6 +69,9 @@ var BlueprintPowerCoreColumns = struct {
 	BackgroundColor  string
 	AnimationURL     string
 	YoutubeURL       string
+	WeaponShare      string
+	MovementShare    string
+	UtilityShare     string
 }{
 	ID:               "id",
 	Collection:       "collection",
@@ -85,6 +91,9 @@ var BlueprintPowerCoreColumns = struct {
 	BackgroundColor:  "background_color",
 	AnimationURL:     "animation_url",
 	YoutubeURL:       "youtube_url",
+	WeaponShare:      "weapon_share",
+	MovementShare:    "movement_share",
+	UtilityShare:     "utility_share",
 }
 
 var BlueprintPowerCoreTableColumns = struct {
@@ -106,6 +115,9 @@ var BlueprintPowerCoreTableColumns = struct {
 	BackgroundColor  string
 	AnimationURL     string
 	YoutubeURL       string
+	WeaponShare      string
+	MovementShare    string
+	UtilityShare     string
 }{
 	ID:               "blueprint_power_cores.id",
 	Collection:       "blueprint_power_cores.collection",
@@ -125,6 +137,9 @@ var BlueprintPowerCoreTableColumns = struct {
 	BackgroundColor:  "blueprint_power_cores.background_color",
 	AnimationURL:     "blueprint_power_cores.animation_url",
 	YoutubeURL:       "blueprint_power_cores.youtube_url",
+	WeaponShare:      "blueprint_power_cores.weapon_share",
+	MovementShare:    "blueprint_power_cores.movement_share",
+	UtilityShare:     "blueprint_power_cores.utility_share",
 }
 
 // Generated where
@@ -148,6 +163,9 @@ var BlueprintPowerCoreWhere = struct {
 	BackgroundColor  whereHelpernull_String
 	AnimationURL     whereHelpernull_String
 	YoutubeURL       whereHelpernull_String
+	WeaponShare      whereHelperint
+	MovementShare    whereHelperint
+	UtilityShare     whereHelperint
 }{
 	ID:               whereHelperstring{field: "\"blueprint_power_cores\".\"id\""},
 	Collection:       whereHelperstring{field: "\"blueprint_power_cores\".\"collection\""},
@@ -167,6 +185,9 @@ var BlueprintPowerCoreWhere = struct {
 	BackgroundColor:  whereHelpernull_String{field: "\"blueprint_power_cores\".\"background_color\""},
 	AnimationURL:     whereHelpernull_String{field: "\"blueprint_power_cores\".\"animation_url\""},
 	YoutubeURL:       whereHelpernull_String{field: "\"blueprint_power_cores\".\"youtube_url\""},
+	WeaponShare:      whereHelperint{field: "\"blueprint_power_cores\".\"weapon_share\""},
+	MovementShare:    whereHelperint{field: "\"blueprint_power_cores\".\"movement_share\""},
+	UtilityShare:     whereHelperint{field: "\"blueprint_power_cores\".\"utility_share\""},
 }
 
 // BlueprintPowerCoreRels is where relationship names are stored.
@@ -193,9 +214,9 @@ func (*blueprintPowerCoreR) NewStruct() *blueprintPowerCoreR {
 type blueprintPowerCoreL struct{}
 
 var (
-	blueprintPowerCoreAllColumns            = []string{"id", "collection", "label", "size", "capacity", "max_draw_rate", "recharge_rate", "armour", "max_hitpoints", "tier", "created_at", "image_url", "card_animation_url", "avatar_url", "large_image_url", "background_color", "animation_url", "youtube_url"}
+	blueprintPowerCoreAllColumns            = []string{"id", "collection", "label", "size", "capacity", "max_draw_rate", "recharge_rate", "armour", "max_hitpoints", "tier", "created_at", "image_url", "card_animation_url", "avatar_url", "large_image_url", "background_color", "animation_url", "youtube_url", "weapon_share", "movement_share", "utility_share"}
 	blueprintPowerCoreColumnsWithoutDefault = []string{"label"}
-	blueprintPowerCoreColumnsWithDefault    = []string{"id", "collection", "size", "capacity", "max_draw_rate", "recharge_rate", "armour", "max_hitpoints", "tier", "created_at", "image_url", "card_animation_url", "avatar_url", "large_image_url", "background_color", "animation_url", "youtube_url"}
+	blueprintPowerCoreColumnsWithDefault    = []string{"id", "collection", "size", "capacity", "max_draw_rate", "recharge_rate", "armour", "max_hitpoints", "tier", "created_at", "image_url", "card_animation_url", "avatar_url", "large_image_url", "background_color", "animation_url", "youtube_url", "weapon_share", "movement_share", "utility_share"}
 	blueprintPowerCorePrimaryKeyColumns     = []string{"id"}
 	blueprintPowerCoreGeneratedColumns      = []string{}
 )

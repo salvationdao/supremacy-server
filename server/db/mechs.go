@@ -4,13 +4,15 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"github.com/shopspring/decimal"
 	"server"
 	"server/benchmark"
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
 	"strconv"
+	"time"
+
+	"github.com/shopspring/decimal"
 
 	"github.com/gofrs/uuid"
 	"github.com/ninja-software/terror/v2"
@@ -135,6 +137,7 @@ func getDefaultMechQueryMods() []qm.QueryMod {
 				qm.Rels("_bm", boiler.BlueprintMechColumns.ID),
 				qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.BlueprintID),
 			),
+			boiler.MechTableColumns.InheritAllWeaponSkins,
 		),
 		qm.From(boiler.TableNames.CollectionItems),
 		// inner join mechs
@@ -577,6 +580,7 @@ func Mech(conn boil.Executor, mechID string) (*server.Mech, error) {
 			&mc.Utility,
 			&mc.ItemSaleID,
 			&mc.BattleReady,
+			&mc.InheritAllWeaponSkins,
 		)
 		if err != nil {
 			gamelog.L.Error().Err(err).Msg("failed to get mech")
@@ -711,6 +715,7 @@ func Mechs(mechIDs ...string) ([]*server.Mech, error) {
 			&mc.Utility,
 			&mc.ItemSaleID,
 			&mc.BattleReady,
+			&mc.InheritAllWeaponSkins,
 		)
 		if err != nil {
 			return nil, err
@@ -920,9 +925,41 @@ type MechListQueueSortOpts struct {
 	SortDir   SortByDir
 }
 
-func MechList(opts *MechListOpts) (int64, []*server.Mech, error) {
-	var mechs []*server.Mech
+type PlayerAssetMech struct {
+	*server.Images
+	CollectionSlug      string `json:"collection_slug"`
+	Hash                string `json:"hash"`
+	TokenID             int64  `json:"token_id"`
+	ItemType            string `json:"item_type"`
+	Tier                string `json:"tier"`
+	OwnerID             string `json:"owner_id"`
+	MarketLocked        bool   `json:"market_locked"`
+	XsynLocked          bool   `json:"xsyn_locked"`
+	LockedToMarketplace bool   `json:"locked_to_marketplace"`
 
+	ID                    string      `json:"id"`
+	Name                  string      `json:"name"`
+	IsDefault             bool        `json:"is_default"`
+	IsInsured             bool        `json:"is_insured"`
+	GenesisTokenID        null.Int64  `json:"genesis_token_id,omitempty"`
+	LimitedReleaseTokenID null.Int64  `json:"limited_release_token_id,omitempty"`
+	BlueprintID           string      `json:"blueprint_id"`
+	ChassisSkinID         string      `json:"chassis_skin_id"`
+	IntroAnimationID      null.String `json:"intro_animation_id,omitempty"`
+	OutroAnimationID      null.String `json:"outro_animation_id,omitempty"`
+	PowerCoreID           null.String `json:"power_core_id,omitempty"`
+	UpdatedAt             time.Time   `json:"updated_at"`
+	CreatedAt             time.Time   `json:"created_at"`
+
+	Label            string `json:"label"`
+	WeaponHardpoints int    `json:"weapon_hardpoints"`
+	UtilitySlots     int    `json:"utility_slots"`
+	Speed            int    `json:"speed"`
+	MaxHitpoints     int    `json:"max_hitpoints"`
+	PowerCoreSize    string `json:"power_core_size"`
+}
+
+func MechList(opts *MechListOpts) (int64, []*PlayerAssetMech, error) {
 	var queryMods []qm.QueryMod
 
 	queryMods = append(queryMods,
@@ -957,6 +994,14 @@ func MechList(opts *MechListOpts) (int64, []*server.Mech, error) {
 			boiler.TableNames.BlueprintMechSkin,
 			qm.Rels(boiler.TableNames.BlueprintMechSkin, boiler.BlueprintMechSkinColumns.ID),
 			qm.Rels(boiler.TableNames.MechSkin, boiler.MechSkinColumns.BlueprintID),
+		)),
+		// inner join mech skin compatability table (to get images)
+		qm.InnerJoin(fmt.Sprintf("%s ON %s = %s AND %s = %s",
+			boiler.TableNames.MechModelSkinCompatibilities,
+			qm.Rels(boiler.TableNames.MechModelSkinCompatibilities, boiler.MechModelSkinCompatibilityColumns.BlueprintMechSkinID),
+			qm.Rels(boiler.TableNames.MechSkin, boiler.MechSkinColumns.BlueprintID),
+			qm.Rels(boiler.TableNames.MechModelSkinCompatibilities, boiler.MechModelSkinCompatibilityColumns.MechModelID),
+			qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.BlueprintID),
 		)),
 		// inner join mech blueprint
 		qm.InnerJoin(fmt.Sprintf("%s ON %s = %s",
@@ -1214,43 +1259,44 @@ func MechList(opts *MechListOpts) (int64, []*server.Mech, error) {
 	// Build query
 	queryMods = append(queryMods,
 		qm.Select(
-			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.CollectionSlug),
-			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.Hash),
-			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.TokenID),
-			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.OwnerID),
-			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.Tier),
-			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.ItemType),
-			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.MarketLocked),
-			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.XsynLocked),
-			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.LockedToMarketplace),
-			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.AssetHidden),
-			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.ID),
-			qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.ID),
-			qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.Name),
-			qm.Rels(boiler.TableNames.BlueprintMechs, boiler.BlueprintMechColumns.Label),
-			qm.Rels(boiler.TableNames.BlueprintMechs, boiler.BlueprintMechColumns.WeaponHardpoints),
-			qm.Rels(boiler.TableNames.BlueprintMechs, boiler.BlueprintMechColumns.UtilitySlots),
-			qm.Rels(boiler.TableNames.BlueprintMechs, boiler.BlueprintMechColumns.Speed),
-			qm.Rels(boiler.TableNames.BlueprintMechs, boiler.BlueprintMechColumns.MaxHitpoints),
-			qm.Rels(boiler.TableNames.BlueprintMechs, boiler.BlueprintMechColumns.ShieldMax),
-			qm.Rels(boiler.TableNames.BlueprintMechs, boiler.BlueprintMechColumns.ShieldRechargeRate),
-			qm.Rels(boiler.TableNames.BlueprintMechs, boiler.BlueprintMechColumns.ShieldRechargeDelay),
-			qm.Rels(boiler.TableNames.BlueprintMechs, boiler.BlueprintMechColumns.ShieldRechargePowerCost),
-			qm.Rels(boiler.TableNames.BlueprintMechs, boiler.BlueprintMechColumns.ShieldTypeID),
-			qm.Rels(boiler.TableNames.BlueprintShieldTypes, boiler.BlueprintShieldTypeColumns.Label),
-			qm.Rels(boiler.TableNames.BlueprintShieldTypes, boiler.BlueprintShieldTypeColumns.Description),
-			qm.Rels(boiler.TableNames.BlueprintMechs, boiler.BlueprintMechColumns.RepairBlocks),
-			qm.Rels(boiler.TableNames.BlueprintMechs, boiler.BlueprintMechColumns.BoostStat),
-			qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.IsDefault),
-			qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.IsInsured),
-			qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.GenesisTokenID),
-			qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.LimitedReleaseTokenID),
-			qm.Rels(boiler.TableNames.BlueprintMechs, boiler.BlueprintMechColumns.PowerCoreSize),
-			qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.PowerCoreID),
-			qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.BlueprintID),
-			qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.ChassisSkinID),
-			qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.IntroAnimationID),
-			qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.OutroAnimationID),
+			boiler.CollectionItemTableColumns.CollectionSlug,
+			boiler.CollectionItemTableColumns.Hash,
+			boiler.CollectionItemTableColumns.TokenID,
+			boiler.CollectionItemTableColumns.ItemType,
+			boiler.CollectionItemTableColumns.Tier,
+			boiler.CollectionItemTableColumns.OwnerID,
+			boiler.CollectionItemTableColumns.MarketLocked,
+			boiler.CollectionItemTableColumns.XsynLocked,
+			boiler.CollectionItemTableColumns.LockedToMarketplace,
+
+			boiler.MechTableColumns.ID,
+			boiler.MechTableColumns.Name,
+			boiler.MechTableColumns.IsDefault,
+			boiler.MechTableColumns.IsInsured,
+			boiler.MechTableColumns.GenesisTokenID,
+			boiler.MechTableColumns.LimitedReleaseTokenID,
+			boiler.MechTableColumns.BlueprintID,
+			boiler.MechTableColumns.ChassisSkinID,
+			boiler.MechTableColumns.IntroAnimationID,
+			boiler.MechTableColumns.OutroAnimationID,
+			boiler.MechTableColumns.PowerCoreID,
+			boiler.MechTableColumns.UpdatedAt,
+			boiler.MechTableColumns.CreatedAt,
+
+			boiler.BlueprintMechTableColumns.Label,
+			boiler.BlueprintMechTableColumns.WeaponHardpoints,
+			boiler.BlueprintMechTableColumns.UtilitySlots,
+			boiler.BlueprintMechTableColumns.Speed,
+			boiler.BlueprintMechTableColumns.MaxHitpoints,
+			boiler.BlueprintMechTableColumns.PowerCoreSize,
+
+			boiler.MechModelSkinCompatibilityTableColumns.ImageURL,
+			boiler.MechModelSkinCompatibilityTableColumns.CardAnimationURL,
+			boiler.MechModelSkinCompatibilityTableColumns.AvatarURL,
+			boiler.MechModelSkinCompatibilityTableColumns.LargeImageURL,
+			boiler.MechModelSkinCompatibilityTableColumns.BackgroundColor,
+			boiler.MechModelSkinCompatibilityTableColumns.AnimationURL,
+			boiler.MechModelSkinCompatibilityTableColumns.YoutubeURL,
 		),
 		qm.From(boiler.TableNames.CollectionItems),
 	)
@@ -1303,49 +1349,51 @@ func MechList(opts *MechListOpts) (int64, []*server.Mech, error) {
 	}
 	defer rows.Close()
 
+	var mechs []*PlayerAssetMech
 	for rows.Next() {
-		mc := &server.Mech{
-			CollectionItem: &server.CollectionItem{},
+		mc := &PlayerAssetMech{
+			Images: &server.Images{},
 		}
 
 		scanArgs := []interface{}{
-			&mc.CollectionItem.CollectionSlug,
-			&mc.CollectionItem.Hash,
-			&mc.CollectionItem.TokenID,
-			&mc.CollectionItem.OwnerID,
-			&mc.CollectionItem.Tier,
-			&mc.CollectionItem.ItemType,
-			&mc.CollectionItem.MarketLocked,
-			&mc.CollectionItem.XsynLocked,
-			&mc.CollectionItem.LockedToMarketplace,
-			&mc.CollectionItem.AssetHidden,
-			&mc.CollectionItemID,
+			&mc.CollectionSlug,
+			&mc.Hash,
+			&mc.TokenID,
+			&mc.ItemType,
+			&mc.Tier,
+			&mc.OwnerID,
+			&mc.MarketLocked,
+			&mc.XsynLocked,
+			&mc.LockedToMarketplace,
+
 			&mc.ID,
 			&mc.Name,
+			&mc.IsDefault,
+			&mc.IsInsured,
+			&mc.GenesisTokenID,
+			&mc.LimitedReleaseTokenID,
+			&mc.BlueprintID,
+			&mc.ChassisSkinID,
+			&mc.IntroAnimationID,
+			&mc.OutroAnimationID,
+			&mc.PowerCoreID,
+			&mc.UpdatedAt,
+			&mc.CreatedAt,
+
 			&mc.Label,
 			&mc.WeaponHardpoints,
 			&mc.UtilitySlots,
 			&mc.Speed,
 			&mc.MaxHitpoints,
-			&mc.Shield,
-			&mc.ShieldRechargeRate,
-			&mc.ShieldRechargeDelay,
-			&mc.ShieldRechargePowerCost,
-			&mc.ShieldTypeID,
-			&mc.ShieldTypeLabel,
-			&mc.ShieldTypeDescription,
-			&mc.RepairBlocks,
-			&mc.BoostedStat,
-			&mc.IsDefault,
-			&mc.IsInsured,
-			&mc.GenesisTokenID,
-			&mc.LimitedReleaseTokenID,
 			&mc.PowerCoreSize,
-			&mc.PowerCoreID,
-			&mc.BlueprintID,
-			&mc.ChassisSkinID,
-			&mc.IntroAnimationID,
-			&mc.OutroAnimationID,
+
+			&mc.Images.ImageURL,
+			&mc.Images.CardAnimationURL,
+			&mc.Images.AvatarURL,
+			&mc.Images.LargeImageURL,
+			&mc.Images.BackgroundColor,
+			&mc.Images.AnimationURL,
+			&mc.Images.YoutubeURL,
 		}
 		err = rows.Scan(scanArgs...)
 		if err != nil {

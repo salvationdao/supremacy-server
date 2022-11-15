@@ -41,7 +41,7 @@ $$
                                          WHEN powercoresize = 'SMALL' THEN (SELECT id
                                                                             FROM blueprint_mech_skin
                                                                             WHERE label = 'Daison Sleek')
-                                         WHEN powercoresize = 'MEDIUM' THEN (SELECT id
+                                         WHEN powercoresize = 'TURBO' THEN (SELECT id
                                                                              FROM blueprint_mech_skin
                                                                              WHERE label = 'Daison Sleek') END);
                     -- ZAI
@@ -62,7 +62,7 @@ $$
                                          WHEN powercoresize = 'SMALL' THEN (SELECT id
                                                                             FROM blueprint_mech_skin
                                                                             WHERE label = 'X3 Kuro')
-                                         WHEN powercoresize = 'MEDIUM' THEN (SELECT id
+                                         WHEN powercoresize = 'TURBO' THEN (SELECT id
                                                                              FROM blueprint_mech_skin
                                                                              WHERE label = 'X3 Kuro') END);
                     -- RM
@@ -83,7 +83,7 @@ $$
                                          WHEN powercoresize = 'SMALL' THEN (SELECT id
                                                                             FROM blueprint_mech_skin
                                                                             WHERE label = 'Martian Soil')
-                                         WHEN powercoresize = 'MEDIUM' THEN (SELECT id
+                                         WHEN powercoresize = 'TURBO' THEN (SELECT id
                                                                              FROM blueprint_mech_skin
                                                                              WHERE label = 'Martian Soil') END); END CASE;
             END LOOP;
