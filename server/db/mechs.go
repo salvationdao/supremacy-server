@@ -1641,6 +1641,8 @@ type MechBrief struct {
 	PowerCore   *server.PowerCore     `json:"power_core"`
 	WeaponSlots []*server.WeaponSlot  `json:"weapon_slots"`
 	Utilities   []*server.UtilitySlot `json:"utilities"`
+
+	HasRepairOffer bool `json:"has_repair_offer" db:"has_repair_offer"`
 }
 
 // LobbyMechsBrief return list for mech for quick deploy
@@ -1721,14 +1723,9 @@ func LobbyMechsBrief(playerID string, mechIDs ...string) ([]*MechBrief, error) {
 			fmt.Sprintf("_blm.%s", boiler.BattleLobbyColumns.Number),
 			fmt.Sprintf("TO_JSON( _pc )"),
 			fmt.Sprintf(
-				"COALESCE((SELECT _rc.%s - _rc.%s FROM %s _rc WHERE _rc.%s = _ci.%s AND _rc.%s ISNULL AND _rc.%s ISNULL LIMIT 1), 0) AS damaged_blocks",
+				"COALESCE((_rc.%s - _rc.%s), 0) AS damaged_blocks",
 				boiler.RepairCaseColumns.BlocksRequiredRepair,
 				boiler.RepairCaseColumns.BlocksRepaired,
-				boiler.TableNames.RepairCases,
-				boiler.RepairCaseColumns.MechID,
-				boiler.CollectionItemColumns.ItemID,
-				boiler.RepairCaseColumns.CompletedAt,
-				boiler.RepairCaseColumns.DeletedAt,
 			),
 			fmt.Sprintf(
 				"COALESCE((SELECT _a.%s <= now() FROM %s _a WHERE _a.%s = _bm.%s), TRUE) AS is_battle_ready",
@@ -1755,6 +1752,15 @@ func LobbyMechsBrief(playerID string, mechIDs ...string) ([]*MechBrief, error) {
 			),
 			fmt.Sprintf("%s NOTNULL AS is_staked", boiler.StakedMechTableColumns.MechID),
 			fmt.Sprintf("TO_JSON(%s) AS mech_stat", boiler.TableNames.MechStats),
+			fmt.Sprintf(
+				`COALESCE((SELECT TRUE FROM %s WHERE %s = _rc.%s AND %s ISNULL AND %s ISNULL AND %s NOTNULL), FALSE) AS has_repair_offer`,
+				boiler.TableNames.RepairOffers,
+				boiler.RepairOfferTableColumns.RepairCaseID,
+				boiler.RepairCaseColumns.ID,
+				boiler.RepairOfferTableColumns.ClosedAt,
+				boiler.RepairOfferTableColumns.DeletedAt,
+				boiler.RepairOfferTableColumns.OfferedByID,
+			),
 		),
 
 		qm.From(fmt.Sprintf(
@@ -1888,6 +1894,16 @@ func LobbyMechsBrief(playerID string, mechIDs ...string) ([]*MechBrief, error) {
 			boiler.MechStatTableColumns.MechID,
 			boiler.MechColumns.ID,
 		)),
+
+		// repair case
+		qm.LeftOuterJoin(fmt.Sprintf(
+			"%s _rc ON _rc.%s = _ci.%s AND _rc.%s ISNULL AND _rc.%s ISNULL",
+			boiler.TableNames.RepairCases,
+			boiler.RepairCaseColumns.MechID,
+			boiler.CollectionItemColumns.ItemID,
+			boiler.RepairCaseColumns.CompletedAt,
+			boiler.RepairCaseColumns.DeletedAt,
+		)),
 	}
 
 	rows, err := boiler.NewQuery(queries...).Query(gamedb.StdConn)
@@ -1953,6 +1969,8 @@ func LobbyMechsBrief(playerID string, mechIDs ...string) ([]*MechBrief, error) {
 			&mb.IsStaked,
 
 			&stats,
+
+			&mb.HasRepairOffer,
 		)
 		if err != nil {
 			gamelog.L.Error().Err(err).Msg("Failed to scan player battle spectated from db.")

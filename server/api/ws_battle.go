@@ -46,6 +46,7 @@ const HubKeyGameMapList = "GAME:MAP:LIST"
 func (api *API) GameMapListSubscribeHandler(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
 	gameMap, err := boiler.GameMaps(
 		boiler.GameMapWhere.DisabledAt.IsNull(),
+		boiler.GameMapWhere.BackgroundURL.NEQ(""),
 	).All(gamedb.StdConn)
 	if err != nil {
 		gamelog.L.Error().Str("func", "GameMapListSubscribeHandler").Msg("Failed to load game maps.")
