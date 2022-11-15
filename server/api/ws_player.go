@@ -83,6 +83,8 @@ func NewPlayerController(api *API) *PlayerController {
 
 	api.SecureUserFactionCommand(HubKeyPlayerSearch, pc.PlayerSearch)
 
+	api.SecureUserFactionCommand(HubKeyPlayerFriendSearch, pc.PlayerFriendSearch)
+
 	return pc
 }
 
@@ -483,7 +485,8 @@ func (pc *PlayerController) PlayerActiveCheckHandler(ctx context.Context, user *
 
 type PlayerSearchRequest struct {
 	Payload struct {
-		Search string `json:"search"`
+		Search            string   `json:"search"`
+		ExcludedPlayerIDs []string `json:"excluded_player_ids"`
 	} `json:"payload"`
 }
 
@@ -1559,6 +1562,54 @@ func (pc *PlayerController) PlayerQuestProgressions(ctx context.Context, user *b
 		return err
 	}
 	reply(result)
+
+	return nil
+}
+
+const HubKeyPlayerFriendSearch = "PLAYER:FRIEND:SEARCH"
+
+func (pc *PlayerController) PlayerFriendSearch(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
+	req := &PlayerSearchRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return terror.Error(err, "Invalid request received")
+	}
+
+	search := strings.TrimSpace(req.Payload.Search)
+	if search == "" {
+		return terror.Error(terror.ErrInvalidInput, "search key should not be empty")
+	}
+
+	excludedPlayerIDs := []string{user.ID}
+	if req.Payload.ExcludedPlayerIDs != nil && len(req.Payload.ExcludedPlayerIDs) > 0 {
+		excludedPlayerIDs = append(excludedPlayerIDs, req.Payload.ExcludedPlayerIDs...)
+	}
+
+	// TODO: integrate friend system to search players' friends only
+
+	ps, err := boiler.Players(
+		qm.Select(
+			boiler.PlayerColumns.ID,
+			boiler.PlayerColumns.Username,
+			boiler.PlayerColumns.Gid,
+		),
+		boiler.PlayerWhere.IsAi.EQ(false),
+		boiler.PlayerWhere.ID.NIN(excludedPlayerIDs),
+		boiler.PlayerWhere.FactionID.IsNotNull(),
+		qm.Where(
+			fmt.Sprintf("LOWER(%s||'#'||%s::TEXT) LIKE ?",
+				qm.Rels(boiler.TableNames.Players, boiler.PlayerColumns.Username),
+				qm.Rels(boiler.TableNames.Players, boiler.PlayerColumns.Gid),
+			),
+			"%"+strings.ToLower(search)+"%",
+		),
+		qm.Limit(5),
+	).All(gamedb.StdConn)
+	if err != nil {
+		return terror.Error(err, "Failed to search players from db")
+	}
+
+	reply(ps)
 
 	return nil
 }
