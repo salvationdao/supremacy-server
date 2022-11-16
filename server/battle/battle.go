@@ -1544,7 +1544,7 @@ func (btl *Battle) Tick(payload []byte) {
 				gamelog.L.Warn().Err(fmt.Errorf("aiSpawnedIndex == -1")).
 					Str("participantID", fmt.Sprintf("%d", participantID)).Msg("unable to find warmachine participant ID for Spawned AI")
 
-				tickSkipToWarmachineEnd(&offset, booleans)
+				tickSkipToWarmachineEnd(payload, &offset, booleans)
 				continue
 			}
 			warmachine = btl.SpawnedAI[warMachineIndex]
@@ -1560,7 +1560,7 @@ func (btl *Battle) Tick(payload []byte) {
 				gamelog.L.Warn().Err(fmt.Errorf("warMachineIndex == -1")).
 					Str("participantID", fmt.Sprintf("%d", participantID)).Msg("unable to find warmachine participant ID war machine - returning")
 
-				tickSkipToWarmachineEnd(&offset, booleans)
+				tickSkipToWarmachineEnd(payload, &offset, booleans)
 				continue
 			}
 			warmachine = btl.WarMachines[warMachineIndex]
@@ -1619,18 +1619,25 @@ func (btl *Battle) Tick(payload []byte) {
 			offset += 4
 		}
 
-		updatedWeapons := int(payload[offset])
-		offset += 1
-
-		i := 0
-		for i < updatedWeapons {
-			weaponIndex := int(payload[offset])
+		// Weapon Ammo
+		if booleans[4] {
+			updatedWeapons := int(payload[offset])
 			offset += 1
 
-			currentAmmo := binary.BigEndian.Uint32(payload[offset : offset+4])
-			offset += 4
+			for i := 0; i < updatedWeapons; i++ {
+				weaponIndex := int(payload[offset])
+				offset += 1
 
-			warmachine.Weapons[weaponIndex].CurrentAmmo = int(currentAmmo)
+				currentAmmo := binary.BigEndian.Uint32(payload[offset : offset+4])
+				offset += 4
+
+				for w := range warmachine.Weapons {
+					if warmachine.Weapons[w].SocketIndex == weaponIndex {
+						warmachine.Weapons[w].CurrentAmmo = int(currentAmmo)
+						break
+					}
+				}
+			}
 		}
 
 		warmachine.Unlock()
@@ -1803,7 +1810,7 @@ func PackWarMachineStatsInBytes(warMachineStats []*WarMachineStat) []byte {
 	return payload
 }
 
-func tickSkipToWarmachineEnd(offset *int, booleans []bool) {
+func tickSkipToWarmachineEnd(payload []byte, offset *int, booleans []bool) {
 	if booleans[0] {
 		*offset += 12
 	}
@@ -1815,6 +1822,14 @@ func tickSkipToWarmachineEnd(offset *int, booleans []bool) {
 	}
 	if booleans[3] {
 		*offset += 4
+	}
+	if booleans[4] {
+		*offset += 4
+		updatedWeapons := int(payload[*offset])
+		*offset += 1
+		for i := 0; i < updatedWeapons; i++ {
+			*offset += 5
+		}
 	}
 }
 
