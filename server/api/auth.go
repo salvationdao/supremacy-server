@@ -49,6 +49,10 @@ func (api *API) XSYNAuth(w http.ResponseWriter, r *http.Request) (int, error) {
 		return http.StatusInternalServerError, err
 	}
 
+	if req.IssueToken == "" {
+		return http.StatusBadRequest, terror.Error(fmt.Errorf("missing issue token"), "Missing issue token.")
+	}
+
 	player, err := api.TokenLogin(req.IssueToken)
 	if err != nil {
 		gamelog.L.Warn().Msg("No token found")
