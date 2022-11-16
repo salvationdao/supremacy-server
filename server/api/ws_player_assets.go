@@ -242,6 +242,7 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetMechBriefInfo(ctx context.Contex
 	ci, err := boiler.CollectionItems(
 		boiler.CollectionItemWhere.ItemID.EQ(mechID),
 		boiler.CollectionItemWhere.OwnerID.EQ(user.ID),
+		qm.Load(boiler.CollectionItemRels.Owner),
 	).One(gamedb.StdConn)
 	if err != nil {
 		return terror.Error(err, "Failed to find mech from the collection")
@@ -269,6 +270,8 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetMechBriefInfo(ctx context.Contex
 		ci.Tier = mech.R.ChassisSkin.R.Blueprint.Tier
 	}
 
+	owner := ci.R.Owner
+
 	m := server.Mech{
 		ID:             mech.ID,
 		Label:          mech.R.Blueprint.Label,
@@ -278,6 +281,12 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetMechBriefInfo(ctx context.Contex
 		Images: &server.Images{
 			AvatarURL: mechSkin.AvatarURL,
 			ImageURL:  mechSkin.ImageURL,
+		},
+		Owner: &server.User{
+			ID:        server.UserID(uuid.FromStringOrNil(owner.ID)),
+			FactionID: server.FactionID(uuid.FromStringOrNil(owner.FactionID.String)),
+			Gid:       owner.Gid,
+			Username:  owner.Username.String,
 		},
 		ChassisSkin: &server.MechSkin{
 			CollectionItem: server.CollectionItemFromBoiler(ci),
