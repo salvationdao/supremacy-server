@@ -41,7 +41,7 @@ func AuthRouter(api *API) chi.Router {
 
 func (api *API) XSYNAuth(w http.ResponseWriter, r *http.Request) (int, error) {
 	req := &struct {
-		IssueToken  *string      `json:"issue_token"`
+		IssueToken  string       `json:"issue_token"`
 		Fingerprint *Fingerprint `json:"fingerprint"`
 	}{}
 	err := json.NewDecoder(r.Body).Decode(req)
@@ -49,7 +49,7 @@ func (api *API) XSYNAuth(w http.ResponseWriter, r *http.Request) (int, error) {
 		return http.StatusInternalServerError, err
 	}
 
-	player, err := api.TokenLogin(*req.IssueToken)
+	player, err := api.TokenLogin(req.IssueToken)
 	if err != nil {
 		gamelog.L.Warn().Msg("No token found")
 		return http.StatusBadRequest, terror.Warn(fmt.Errorf("no token are provided"), "User are not signed in.")
@@ -60,7 +60,7 @@ func (api *API) XSYNAuth(w http.ResponseWriter, r *http.Request) (int, error) {
 		return http.StatusInternalServerError, terror.Error(err, "Failed to update player.")
 	}
 
-	err = api.WriteCookie(w, r, *req.IssueToken)
+	err = api.WriteCookie(w, r, req.IssueToken)
 	if err != nil {
 		return http.StatusInternalServerError, terror.Error(err, "Failed to write cookie")
 	}
