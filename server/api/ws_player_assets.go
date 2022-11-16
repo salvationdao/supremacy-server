@@ -2682,3 +2682,12 @@ func (api *API) PlayerMechs(ctx context.Context, user *boiler.Player, key string
 	reply(resp)
 	return nil
 }
+
+func (api *API) PlayerWeapons(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
+	resp, err := db.LobbyMechsBrief(user.ID)
+	if err != nil {
+		return err
+	}
+	reply(resp)
+	return nil
+}

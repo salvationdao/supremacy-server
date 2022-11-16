@@ -1148,7 +1148,7 @@ func (api *API) MechStake(ctx context.Context, user *boiler.Player, factionID st
 	}
 	// broadcast both mech list
 	ws.PublishMessage(fmt.Sprintf("/faction/%s/staked_mechs", factionID), server.HubKeyFactionStakedMechs, lms)
-	ws.PublishMessage(fmt.Sprintf("/secure/user/%s/owned_queueable_mechs", user.ID), server.HubKeyPlayerQueueableMechs, lms)
+	ws.PublishMessage(fmt.Sprintf("/secure/user/%s/owned_mechs", user.ID), server.HubKeyPlayerOwnedMechs, lms)
 
 	reply(true)
 	return nil
@@ -1310,7 +1310,7 @@ func (api *API) MechUnstake(ctx context.Context, user *boiler.Player, factionID 
 		}
 		// broadcast both mech list
 		ws.PublishMessage(fmt.Sprintf("/faction/%s/staked_mechs", factionID), server.HubKeyFactionStakedMechs, lms)
-		ws.PublishMessage(fmt.Sprintf("/secure/user/%s/owned_queueable_mechs", user.ID), server.HubKeyPlayerQueueableMechs, lms)
+		ws.PublishMessage(fmt.Sprintf("/secure/user/%s/owned_mechs", user.ID), server.HubKeyPlayerOwnedMechs, lms)
 
 		return nil
 	})

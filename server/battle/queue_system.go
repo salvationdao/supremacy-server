@@ -624,7 +624,7 @@ func BroadcastMechQueueStatus(mechIDs []string) {
 
 	// broadcast player owned mechs
 	for ownerID, pm := range playerMechs {
-		ws.PublishMessage(fmt.Sprintf("/secure/user/%s/owned_queueable_mechs", ownerID), server.HubKeyPlayerQueueableMechs, pm)
+		ws.PublishMessage(fmt.Sprintf("/secure/user/%s/owned_mechs", ownerID), server.HubKeyPlayerOwnedMechs, pm)
 	}
 
 	// broadcast faction staked mechs
