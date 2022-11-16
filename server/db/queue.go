@@ -147,8 +147,8 @@ func GetMechQueueStatus(mechID string) (*server.MechArenaInfo, error) {
 	}, nil
 }
 
-// FilterCanDeployMechIDs return the list of mech which are able to deploy
-func FilterCanDeployMechIDs(mechIDs []string) ([]string, error) {
+// OverDamagedMechFilter return the list of mech which are able to deploy
+func OverDamagedMechFilter(mechIDs []string) ([]string, error) {
 	// check mech is still in repair
 	rcs, err := boiler.RepairCases(
 		boiler.RepairCaseWhere.MechID.IN(mechIDs),
@@ -187,8 +187,8 @@ func FilterCanDeployMechIDs(mechIDs []string) ([]string, error) {
 	return canDeployedMechIDs, nil
 }
 
-// FilterOutMechAlreadyInQueue return error if mech is already in queue
-func FilterOutMechAlreadyInQueue(mechIDs []string) ([]string, error) {
+// NonQueuedMechFilter return error if mech is already in queue
+func NonQueuedMechFilter(mechIDs []string) ([]string, error) {
 	// check any mechs is already queued
 	blm, err := boiler.BattleLobbiesMechs(
 		boiler.BattleLobbiesMechWhere.MechID.IN(mechIDs),

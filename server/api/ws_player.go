@@ -1592,6 +1592,7 @@ func (pc *PlayerController) PlayerFriendSearch(ctx context.Context, user *boiler
 			boiler.PlayerColumns.ID,
 			boiler.PlayerColumns.Username,
 			boiler.PlayerColumns.Gid,
+			boiler.PlayerColumns.FactionID,
 		),
 		boiler.PlayerWhere.IsAi.EQ(false),
 		boiler.PlayerWhere.ID.NIN(excludedPlayerIDs),

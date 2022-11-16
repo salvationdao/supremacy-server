@@ -11,6 +11,7 @@ import (
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
+	"server/system_messages"
 	"server/xsyn_rpcclient"
 	"strings"
 	"time"
@@ -40,19 +41,29 @@ func BattleQueueController(api *API) {
 	//api.SecureUserFactionCommand(HubKeyBattleLobbySupporterLeave, api.BattleLobbySupporterLeave)
 }
 
+type LobbyAccessibility string
+
+const (
+	LobbyAccessibilityPublic  LobbyAccessibility = "PUBLIC"
+	LobbyAccessibilityPrivate LobbyAccessibility = "PRIVATE"
+)
+
 type BattleLobbyCreateRequest struct {
 	Payload struct {
-		Name              string          `json:"name"`
-		AccessCode        null.String     `json:"access_code"`
-		EntryFee          decimal.Decimal `json:"entry_fee"`
-		FirstFactionCut   decimal.Decimal `json:"first_faction_cut"`
-		SecondFactionCut  decimal.Decimal `json:"second_faction_cut"`
-		ThirdFactionCut   decimal.Decimal `json:"third_faction_cut"`
-		GameMapID         null.String     `json:"game_map_id,omitempty"`
-		MaxDeployNumber   int             `json:"max_deploy_number"`
-		ExtraReward       decimal.Decimal `json:"extra_reward"`
-		WillNotStartUntil null.Time       `json:"will_not_start_until,omitempty"`
-		MechIDs           []string        `json:"mech_ids"`
+		Name              string             `json:"name"`
+		Accessibility     LobbyAccessibility `json:"accessibility"`
+		AccessCode        null.String        `json:"access_code"`
+		EntryFee          decimal.Decimal    `json:"entry_fee"`
+		FirstFactionCut   decimal.Decimal    `json:"first_faction_cut"`
+		SecondFactionCut  decimal.Decimal    `json:"second_faction_cut"`
+		GameMapID         null.String        `json:"game_map_id,omitempty"`
+		SchedulingType    string             `json:"scheduling_type"`
+		WillNotStartUntil null.Time          `json:"will_not_start_until,omitempty"`
+		MaxDeployNumber   int                `json:"max_deploy_number"`
+		ExtraReward       decimal.Decimal    `json:"extra_reward"`
+
+		MechIDs        []string `json:"mech_ids"`
+		InvitedUserIDs []string `json:"invited_user_ids"`
 	} `json:"payload"`
 }
 
@@ -66,16 +77,16 @@ func (api *API) BattleLobbyCreate(ctx context.Context, user *boiler.Player, fact
 	}
 
 	// check if initial mechs count is over the limit
-	if len(req.Payload.MechIDs) > db.FACTION_MECH_LIMIT {
-		return terror.Error(fmt.Errorf("mech more than 3"), "Maximum 3 mech per faction.")
+	if len(req.Payload.MechIDs) > req.Payload.MaxDeployNumber {
+		return terror.Error(fmt.Errorf("mech more than 3"), "Amount of deployed war machine has exceeded the limit.")
 	}
 
-	availableMechIDs, err := CheckMechQueueAuthorisation(user.ID, factionID, req.Payload.MechIDs)
+	availableMechIDs, err := MechAuthorisationFilter(user.ID, factionID, req.Payload.MechIDs)
 	if err != nil {
 		return err
 	}
 
-	availableMechIDs, err = db.FilterCanDeployMechIDs(availableMechIDs)
+	availableMechIDs, err = db.OverDamagedMechFilter(availableMechIDs)
 	if err != nil {
 		return err
 	}
@@ -90,22 +101,37 @@ func (api *API) BattleLobbyCreate(ctx context.Context, user *boiler.Player, fact
 	}
 
 	// reward cut check
-	if req.Payload.FirstFactionCut.IsNegative() || req.Payload.SecondFactionCut.IsNegative() || req.Payload.ThirdFactionCut.IsNegative() {
+	if req.Payload.FirstFactionCut.IsNegative() || req.Payload.SecondFactionCut.IsNegative() {
 		return terror.Error(fmt.Errorf("negative reward cut"), "Reward cut must not be less than zero.")
 	}
 
-	if !req.Payload.FirstFactionCut.Add(req.Payload.SecondFactionCut).Add(req.Payload.ThirdFactionCut).Equal(decimal.NewFromInt(100)) {
-		return terror.Error(fmt.Errorf("total must be 100"), "The total of the reward cut must equal 100.")
+	if !req.Payload.FirstFactionCut.Add(req.Payload.SecondFactionCut).LessThanOrEqual(decimal.NewFromInt(100)) {
+		return terror.Error(fmt.Errorf("total must be 100"), "The total of the reward cut must be equal to 100.")
 	}
 
 	publicExhibitionLobbyExpireAfterSecond := db.GetIntWithDefault(db.KeyPublicExhibitionLobbyExpireAfterDurationSecond, 1800)
 	lobbyHostingLimit := db.GetIntWithDefault(db.KeyLobbyHostingMaximumAmount, 5)
 
+	// calculate total cost
+	totalCost := req.Payload.ExtraReward
+	if req.Payload.EntryFee.IsPositive() {
+		for _ = range availableMechIDs {
+			totalCost = totalCost.Add(req.Payload.EntryFee)
+		}
+	}
+
 	// start process
 	err = api.ArenaManager.SendBattleQueueFunc(func() error {
+		// check user balance
+		if totalCost.IsPositive() {
+			userBalance := api.Passport.UserBalanceGet(uuid.FromStringOrNil(user.ID))
+			if userBalance.LessThan(totalCost) {
+				return terror.Error(fmt.Errorf("insufficent user balance"), "Insufficient user balance.")
+			}
+		}
 
 		// check hosted lobbies limitation, if it is a public lobby
-		if !req.Payload.AccessCode.Valid {
+		if req.Payload.Accessibility == LobbyAccessibilityPublic {
 			hostBattleLobbies, err := boiler.BattleLobbies(
 				boiler.BattleLobbyWhere.HostByID.EQ(user.ID),
 				boiler.BattleLobbyWhere.AccessCode.IsNull(),
@@ -121,8 +147,8 @@ func (api *API) BattleLobbyCreate(ctx context.Context, user *boiler.Player, fact
 			}
 		}
 
-		// check mech in queue
-		availableMechIDs, err = db.FilterOutMechAlreadyInQueue(availableMechIDs)
+		// filter out mechs which are already in queue
+		availableMechIDs, err = db.NonQueuedMechFilter(availableMechIDs)
 		if err != nil {
 			return err
 		}
@@ -152,14 +178,14 @@ func (api *API) BattleLobbyCreate(ctx context.Context, user *boiler.Player, fact
 			EntryFee:              req.Payload.EntryFee.Mul(decimal.New(1, 18)),
 			FirstFactionCut:       req.Payload.FirstFactionCut.Div(decimal.NewFromInt(100)),
 			SecondFactionCut:      req.Payload.SecondFactionCut.Div(decimal.NewFromInt(100)),
-			ThirdFactionCut:       req.Payload.ThirdFactionCut.Div(decimal.NewFromInt(100)),
+			ThirdFactionCut:       decimal.NewFromInt(100).Sub(req.Payload.FirstFactionCut).Sub(req.Payload.SecondFactionCut).Div(decimal.NewFromInt(100)),
 			EachFactionMechAmount: db.FACTION_MECH_LIMIT,
 			MaxDeployPerPlayer:    req.Payload.MaxDeployNumber,
 			WillNotStartUntil:     req.Payload.WillNotStartUntil,
 			ExpiresAt:             null.TimeFrom(time.Now().Add(time.Duration(publicExhibitionLobbyExpireAfterSecond) * time.Second)),
 		}
 
-		if req.Payload.AccessCode.Valid && req.Payload.AccessCode.String != "" {
+		if req.Payload.Accessibility == LobbyAccessibilityPrivate && req.Payload.AccessCode.Valid && req.Payload.AccessCode.String != "" {
 			bl.AccessCode = req.Payload.AccessCode
 			bl.ExpiresAt = null.TimeFromPtr(nil)
 		}
@@ -299,7 +325,39 @@ func (api *API) BattleLobbyCreate(ctx context.Context, user *boiler.Player, fact
 		}
 
 		// broadcast lobby
+
 		api.ArenaManager.BattleLobbyDebounceBroadcastChan <- []string{bl.ID}
+
+		// send invitations
+		if len(req.Payload.InvitedUserIDs) > 0 {
+			go func(host *boiler.Player, battleLobby *boiler.BattleLobby, invitedPlayerIDs []string) {
+				b, err := json.Marshal(battleLobby)
+				if err != nil {
+					gamelog.L.Error().Err(err).Interface("battle lobby", battleLobby).Msg("failed to marshal battle lobby data.")
+					return
+				}
+
+				for _, playerID := range invitedPlayerIDs {
+					// build system message
+					msg := &boiler.SystemMessage{
+						PlayerID: playerID,
+						SenderID: server.SupremacyBattleUserID,
+						DataType: null.StringFrom(string(system_messages.SystemMessageDataTypeBattleLobbyInvitation)),
+						Title:    "Lobby Invitation",
+						Message:  fmt.Sprintf("%s #%d invited you to join lobby %s", host.Username.String, host.Gid, bl.Name),
+						Data:     null.JSONFrom(b),
+					}
+
+					err = msg.Insert(gamedb.StdConn, boil.Infer())
+					if err != nil {
+						gamelog.L.Error().Err(err).Interface("newSystemMessage", msg).Msg("failed to insert new system message into db")
+						return
+					}
+
+					ws.PublishMessage(fmt.Sprintf("/secure/user/%s/system_messages", playerID), server.HubKeySystemMessageListUpdatedSubscribe, true)
+				}
+			}(user, bl, req.Payload.InvitedUserIDs)
+		}
 
 		return nil
 	})
@@ -329,12 +387,12 @@ func (api *API) BattleLobbyJoin(ctx context.Context, user *boiler.Player, factio
 		return terror.Error(err, "Invalid request received.")
 	}
 
-	availableMechIDs, err := CheckMechQueueAuthorisation(user.ID, factionID, req.Payload.MechIDs)
+	availableMechIDs, err := MechAuthorisationFilter(user.ID, factionID, req.Payload.MechIDs)
 	if err != nil {
 		return err
 	}
 
-	availableMechIDs, err = db.FilterCanDeployMechIDs(availableMechIDs)
+	availableMechIDs, err = db.OverDamagedMechFilter(availableMechIDs)
 	if err != nil {
 		return err
 	}
@@ -381,7 +439,7 @@ func (api *API) BattleLobbyJoin(ctx context.Context, user *boiler.Player, factio
 	err = api.ArenaManager.SendBattleQueueFunc(func() error {
 		now := time.Now()
 		// filter out mechs which are already in queue
-		availableMechIDs, err = db.FilterOutMechAlreadyInQueue(availableMechIDs)
+		availableMechIDs, err = db.NonQueuedMechFilter(availableMechIDs)
 		if err != nil {
 			return err
 		}
@@ -1529,13 +1587,13 @@ func (api *API) BattleLobbyTopUpReward(ctx context.Context, user *boiler.Player,
 	return nil
 }
 
-// CheckMechQueueAuthorisation return error if any mechs is not available to queue
-func CheckMechQueueAuthorisation(playerID string, factionID string, mechIDs []string) ([]string, error) {
+// MechAuthorisationFilter return error if any mechs is not available to queue
+func MechAuthorisationFilter(playerID string, factionID string, mechIDs []string) ([]string, error) {
 	if len(mechIDs) == 0 {
 		return []string{}, nil
 	}
 
-	l := gamelog.L.With().Str("func", "CheckMechQueueAuthorisation").Logger()
+	l := gamelog.L.With().Str("func", "MechAuthorisationFilter").Logger()
 
 	mqas, err := db.MechsQueueAuthorisationDataGet(mechIDs)
 	if err != nil {
