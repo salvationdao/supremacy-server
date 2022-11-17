@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"golang.org/x/exp/slices"
 	"net/http"
 	"regexp"
 	"server"
@@ -2684,10 +2685,49 @@ func (api *API) PlayerMechs(ctx context.Context, user *boiler.Player, key string
 }
 
 func (api *API) PlayerWeapons(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
-	resp, err := db.LobbyMechsBrief(user.ID)
+	resp, err := db.PlayerWeapons(user.ID)
 	if err != nil {
 		return err
 	}
 	reply(resp)
 	return nil
+}
+
+func BroadcastPlayerWeapons(playerID string, weaponIDs ...string) {
+	weapons, err := db.PlayerWeapons(playerID, weaponIDs...)
+	if err != nil {
+		return
+	}
+
+	var playerWeapons []struct {
+		playerID string
+		weapons  []*server.Weapon
+	}
+	for _, weapon := range weapons {
+		ownerID := weapon.CollectionItem.OwnerID
+		index := slices.IndexFunc(playerWeapons, func(pw struct {
+			playerID string
+			weapons  []*server.Weapon
+		}) bool {
+			return pw.playerID == ownerID
+		})
+
+		if index == -1 {
+			playerWeapons = append(playerWeapons, struct {
+				playerID string
+				weapons  []*server.Weapon
+			}{playerID: ownerID, weapons: []*server.Weapon{}})
+
+			index = len(playerWeapons) - 1
+		}
+
+		playerWeapons[index].weapons = append(playerWeapons[index].weapons, weapon)
+	}
+
+	for _, pw := range playerWeapons {
+		ws.PublishMessage(fmt.Sprintf("/user/%s/owned_weapons", pw.playerID), server.HubKeyPlayerOwnedWeapons, pw.weapons)
+	}
+
+	// free up memeory
+	playerWeapons = nil
 }

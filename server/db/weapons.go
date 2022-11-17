@@ -1069,14 +1069,14 @@ func GetWeaponMaxStats(conn boil.Executor, userID string) (*WeaponMaxStats, erro
 	return output, nil
 }
 
-func WeaponList(ownerID string, weaponIDs ...string) ([]*server.Weapon, error) {
+func PlayerWeapons(playerID string, weaponIDs ...string) ([]*server.Weapon, error) {
 	ownerIDWhere := ""
-	if ownerID != "" {
-		_, err := uuid.FromString(ownerID)
+	if playerID != "" {
+		_, err := uuid.FromString(playerID)
 		if err != nil {
 			return nil, terror.Error(err, "Invalid uuid format.")
 		}
-		ownerIDWhere = fmt.Sprintf(" AND %s = '%s'", boiler.CollectionItemTableColumns.OwnerID, ownerID)
+		ownerIDWhere = fmt.Sprintf(" AND %s = '%s'", boiler.CollectionItemTableColumns.OwnerID, playerID)
 	}
 
 	weaponIDWhereIn := ""
@@ -1103,6 +1103,7 @@ func WeaponList(ownerID string, weaponIDs ...string) ([]*server.Weapon, error) {
 			boiler.CollectionItemTableColumns.Hash,
 			boiler.CollectionItemTableColumns.TokenID,
 			boiler.CollectionItemTableColumns.ItemType,
+			boiler.CollectionItemTableColumns.ItemID,
 			boiler.CollectionItemTableColumns.OwnerID,
 			boiler.CollectionItemTableColumns.MarketLocked,
 			boiler.CollectionItemTableColumns.XsynLocked,
@@ -1113,6 +1114,8 @@ func WeaponList(ownerID string, weaponIDs ...string) ([]*server.Weapon, error) {
 			boiler.WeaponModelSkinCompatibilityTableColumns.ImageURL,
 			boiler.WeaponModelSkinCompatibilityTableColumns.AvatarURL,
 			boiler.WeaponModelSkinCompatibilityTableColumns.LargeImageURL,
+
+			boiler.WeaponTableColumns.EquippedOn,
 
 			boiler.BlueprintWeaponTableColumns.Label,
 			boiler.BlueprintWeaponTableColumns.DefaultDamageType,
@@ -1125,7 +1128,8 @@ func WeaponList(ownerID string, weaponIDs ...string) ([]*server.Weapon, error) {
 			boiler.BlueprintWeaponTableColumns.PowerCost,
 
 			fmt.Sprintf(
-				"COALESCE((SELECT TRUE FROM %s WHERE %s = %s AND %s ISNULL AND %s ISNULL AND %s > NOW()), FALSE) AS is_on_sales",
+				"(SELECT %s FROM %s WHERE %s = %s AND %s ISNULL AND %s ISNULL AND %s > NOW()) AS is_on_sales",
+				boiler.ItemSaleTableColumns.ID,
 				boiler.TableNames.ItemSales,
 				boiler.ItemSaleTableColumns.CollectionItemID,
 				boiler.CollectionItemTableColumns.ID,
@@ -1153,7 +1157,7 @@ func WeaponList(ownerID string, weaponIDs ...string) ([]*server.Weapon, error) {
 		qm.InnerJoin(fmt.Sprintf(
 			"%s ON %s = %s",
 			boiler.TableNames.BlueprintWeapons,
-			boiler.BlueprintWeaponColumns.ID,
+			boiler.BlueprintWeaponTableColumns.ID,
 			boiler.WeaponTableColumns.BlueprintID,
 		)),
 		qm.InnerJoin(fmt.Sprintf(
@@ -1164,7 +1168,7 @@ func WeaponList(ownerID string, weaponIDs ...string) ([]*server.Weapon, error) {
 		)),
 		qm.InnerJoin(fmt.Sprintf(
 			"%s ON %s = %s",
-			boiler.TableNames.BlueprintMechSkin,
+			boiler.TableNames.BlueprintWeaponSkin,
 			boiler.BlueprintWeaponSkinTableColumns.ID,
 			boiler.WeaponSkinTableColumns.BlueprintID,
 		)),
@@ -1185,9 +1189,53 @@ func WeaponList(ownerID string, weaponIDs ...string) ([]*server.Weapon, error) {
 	}
 
 	result := []*server.Weapon{}
-
 	for rows.Next() {
+		weapon := &server.Weapon{
+			CollectionItem: &server.CollectionItem{},
+			Images:         &server.Images{},
+			WeaponSkin: &server.WeaponSkin{
+				CollectionItem: &server.CollectionItem{},
+				Images:         &server.Images{},
+				SkinSwatch:     &server.Images{},
+			},
+		}
+		err = rows.Scan(
+			&weapon.CollectionItem.CollectionSlug,
+			&weapon.CollectionItem.Hash,
+			&weapon.CollectionItem.TokenID,
+			&weapon.CollectionItem.ItemType,
+			&weapon.ID,
+			&weapon.CollectionItem.OwnerID,
+			&weapon.CollectionItem.MarketLocked,
+			&weapon.CollectionItem.XsynLocked,
+			&weapon.CollectionItem.LockedToMarketplace,
 
+			&weapon.CollectionItem.Tier,
+
+			&weapon.Images.ImageURL,
+			&weapon.Images.AvatarURL,
+			&weapon.Images.LargeImageURL,
+
+			&weapon.EquippedOn,
+
+			&weapon.Label,
+			&weapon.DefaultDamageType,
+			&weapon.MaxAmmo,
+			&weapon.Damage,
+			&weapon.Radius,
+			&weapon.Spread,
+			&weapon.RateOfFire,
+			&weapon.ProjectileSpeed,
+			&weapon.PowerCost,
+
+			&weapon.ItemSaleID,
+		)
+		if err != nil {
+			gamelog.L.Error().Err(err).Msg("Failed to scan weapon.")
+			return nil, terror.Error(err, "Failed to scan weapon.")
+		}
+
+		result = append(result, weapon)
 	}
 
 	return result, nil

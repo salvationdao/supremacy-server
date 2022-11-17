@@ -593,26 +593,66 @@ func BroadcastMechQueueStatus(mechIDs []string) {
 		return
 	}
 
-	factionStakedMechs := make(map[string][]*db.MechBrief)
-	playerMechs := make(map[string][]*db.MechBrief)
-	for _, m := range mechInfo {
+	factionStakedMechs := []struct {
+		factionID string
+		mechs     []*db.MechBrief
+	}{
+		{
+			factionID: server.RedMountainFactionID,
+			mechs:     []*db.MechBrief{},
+		},
+		{
+			factionID: server.BostonCyberneticsFactionID,
+			mechs:     []*db.MechBrief{},
+		},
+		{
+			factionID: server.ZaibatsuFactionID,
+			mechs:     []*db.MechBrief{},
+		},
+	}
 
+	var playerMechs []struct {
+		playerID string
+		mechs    []*db.MechBrief
+	}
+
+	for _, m := range mechInfo {
 		// prepare player mech list
-		pm, ok := playerMechs[m.OwnerID]
-		if !ok {
-			pm = []*db.MechBrief{}
+		index := slices.IndexFunc(playerMechs, func(pm struct {
+			playerID string
+			mechs    []*db.MechBrief
+		}) bool {
+			return pm.playerID == m.OwnerID
+		})
+
+		if index == -1 {
+			playerMechs = append(playerMechs, struct {
+				playerID string
+				mechs    []*db.MechBrief
+			}{playerID: m.OwnerID, mechs: []*db.MechBrief{}})
+			index = len(playerMechs) - 1
 		}
-		pm = append(pm, m)
-		playerMechs[m.OwnerID] = pm
+		playerMechs[index].mechs = append(playerMechs[index].mechs, m)
 
 		// prepare faction staked mech list
 		if m.IsStaked {
-			fsm, ok := factionStakedMechs[m.FactionID.String]
-			if !ok {
-				fsm = []*db.MechBrief{}
+			fIndex := slices.IndexFunc(factionStakedMechs, func(fsm struct {
+				factionID string
+				mechs     []*db.MechBrief
+			}) bool {
+				return fsm.factionID == m.FactionID.String
+			})
+
+			if fIndex == -1 {
+				factionStakedMechs = append(factionStakedMechs, struct {
+					factionID string
+					mechs     []*db.MechBrief
+				}{factionID: m.FactionID.String, mechs: []*db.MechBrief{}})
+
+				fIndex = len(factionStakedMechs) - 1
 			}
-			fsm = append(fsm, m)
-			factionStakedMechs[m.FactionID.String] = fsm
+
+			factionStakedMechs[fIndex].mechs = append(factionStakedMechs[fIndex].mechs, m)
 		}
 
 		ws.PublishMessage(fmt.Sprintf("/faction/%s/queue/%s", m.FactionID.String, m.ID), server.HubKeyPlayerAssetMechQueueSubscribe, server.MechArenaInfo{
@@ -623,14 +663,21 @@ func BroadcastMechQueueStatus(mechIDs []string) {
 	}
 
 	// broadcast player owned mechs
-	for ownerID, pm := range playerMechs {
-		ws.PublishMessage(fmt.Sprintf("/secure/user/%s/owned_mechs", ownerID), server.HubKeyPlayerOwnedMechs, pm)
+	for _, pm := range playerMechs {
+		ws.PublishMessage(fmt.Sprintf("/secure/user/%s/owned_mechs", pm.playerID), server.HubKeyPlayerOwnedMechs, pm.mechs)
 	}
 
 	// broadcast faction staked mechs
-	for factionID, fsm := range factionStakedMechs {
-		ws.PublishMessage(fmt.Sprintf("/faction/%s/staked_mechs", factionID), server.HubKeyFactionStakedMechs, fsm)
+	for _, fsm := range factionStakedMechs {
+		if len(fsm.mechs) == 0 {
+			continue
+		}
+		ws.PublishMessage(fmt.Sprintf("/faction/%s/staked_mechs", fsm.factionID), server.HubKeyFactionStakedMechs, fsm.mechs)
 	}
+
+	// free up memory
+	playerMechs = nil
+	factionStakedMechs = nil
 }
 
 func BroadcastPlayerQueueStatus(playerID string) {
