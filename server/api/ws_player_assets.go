@@ -2835,3 +2835,56 @@ func BroadcastPlayerWeaponSkins(playerID string, weaponSkinIDs ...string) {
 	// free up memory
 	playerWeaponSkins = nil
 }
+
+func (api *API) PlayerMysteryCrates(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
+	resp, err := db.PlayerMysteryCrates(user.ID)
+	if err != nil {
+		return err
+	}
+	fmt.Println(len(resp))
+	reply(resp)
+	return nil
+}
+
+func BroadcastPlayerMysteryCrates(playerID string, mysteryCrateIDs ...string) {
+	if playerID == "" && len(mysteryCrateIDs) == 0 {
+		return
+	}
+
+	mysteryCrates, err := db.PlayerMysteryCrates(playerID, mysteryCrateIDs...)
+	if err != nil {
+		return
+	}
+
+	var playerMysteryCrates []struct {
+		playerID      string
+		mysteryCrates []*server.MysteryCrate
+	}
+	for _, mysteryCrate := range mysteryCrates {
+		ownerID := mysteryCrate.CollectionItem.OwnerID
+		index := slices.IndexFunc(playerMysteryCrates, func(pw struct {
+			playerID      string
+			mysteryCrates []*server.MysteryCrate
+		}) bool {
+			return pw.playerID == ownerID
+		})
+
+		if index == -1 {
+			playerMysteryCrates = append(playerMysteryCrates, struct {
+				playerID      string
+				mysteryCrates []*server.MysteryCrate
+			}{playerID: ownerID, mysteryCrates: []*server.MysteryCrate{}})
+
+			index = len(playerMysteryCrates) - 1
+		}
+
+		playerMysteryCrates[index].mysteryCrates = append(playerMysteryCrates[index].mysteryCrates, mysteryCrate)
+	}
+
+	for _, pw := range playerMysteryCrates {
+		ws.PublishMessage(fmt.Sprintf("/user/%s/owned_mystery_crates", pw.playerID), server.HubKeyPlayerOwnedMysteryCrates, pw.mysteryCrates)
+	}
+
+	// free up memory
+	playerMysteryCrates = nil
+}

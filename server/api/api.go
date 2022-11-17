@@ -303,6 +303,7 @@ func NewAPI(
 				s.WS("/user/{user_id}/owned_weapons", server.HubKeyPlayerOwnedWeapons, server.MustSecure(api.PlayerWeapons), MustMatchUserID)
 				s.WS("/user/{user_id}/owned_mech_skins", server.HubKeyPlayerOwnedMechSkins, server.MustSecure(api.PlayerMechSkins), MustMatchUserID)
 				s.WS("/user/{user_id}/owned_weapon_skins", server.HubKeyPlayerOwnedWeaponSkins, server.MustSecure(api.PlayerWeaponSkins), MustMatchUserID)
+				s.WS("/user/{user_id}/owned_mystery_crates", server.HubKeyPlayerOwnedMysteryCrates, server.MustSecure(api.PlayerMysteryCrates), MustMatchUserID)
 				s.WS("/user/{user_id}/stat", server.HubKeyUserStatSubscribe, server.MustSecure(pc.PlayersStatSubscribeHandler), MustMatchUserID)
 				s.WS("/user/{user_id}/rank", server.HubKeyPlayerRankGet, server.MustSecure(pc.PlayerRankGet), MustMatchUserID)
 				s.WS("/user/{user_id}/player_abilities", server.HubKeyPlayerAbilitiesList, server.MustSecure(pac.PlayerAbilitiesListHandler), MustMatchUserID)
