@@ -36,9 +36,9 @@ func GiveUserAllAssets(user *boiler.Player, pp *xsyn_rpcclient.XsynXrpcClient) e
 	templates, err := boiler.TemplateBlueprints(
 		boiler.TemplateBlueprintWhere.BlueprintID.IN(
 			[]string{
-				server.MechSkinDune,       // static id for genesis mega skin
-				server.MechSkinBlackDigi,  // static id for genesis mega skin
-				server.MechSkinDesert, // static id for genesis mega skin
+				server.MechSkinDune,      // static id for genesis mega skin
+				server.MechSkinBlackDigi, // static id for genesis mega skin
+				server.MechSkinDesert,    // static id for genesis mega skin
 			},
 		),
 	).All(tx)
@@ -80,7 +80,7 @@ func GiveUserAllAssets(user *boiler.Player, pp *xsyn_rpcclient.XsynXrpcClient) e
 		return err
 	}
 	for _, mech := range mechs {
-		for i := 0; i < 3; i++ { // insert 3 of each mech
+		for i := 0; i < 20; i++ { // insert 3 of each mech
 			insertedMech, insertedMechSkin, err := db.InsertNewMechAndSkin(
 				tx,
 				uuid.FromStringOrNil(user.ID),
@@ -129,7 +129,7 @@ func GiveUserAllAssets(user *boiler.Player, pp *xsyn_rpcclient.XsynXrpcClient) e
 		return err
 	}
 	for _, weapon := range weapons {
-		for i := 0; i < 4; i++ { // four hops this time
+		for i := 0; i < 10; i++ { // four hops this time
 			insertedWeapon, insertedWeaponSkin, err := db.InsertNewWeapon(
 				tx,
 				uuid.FromStringOrNil(user.ID),

@@ -1906,7 +1906,9 @@ func LobbyMechsBrief(playerID string, mechIDs ...string) ([]*MechBrief, error) {
 		)),
 	}
 
+	boil.DebugMode = true
 	rows, err := boiler.NewQuery(queries...).Query(gamedb.StdConn)
+	boil.DebugMode = false
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		gamelog.L.Error().Err(err).Msg("Failed to load mechs")
 		return nil, terror.Error(err, "Failed to load mechs")
