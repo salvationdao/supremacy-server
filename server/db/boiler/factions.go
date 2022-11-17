@@ -23,132 +23,112 @@ import (
 
 // Faction is an object representing the database table.
 type Faction struct {
-	ID              string      `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
-	VotePrice       string      `boiler:"vote_price" boil:"vote_price" json:"vote_price" toml:"vote_price" yaml:"vote_price"`
-	ContractReward  string      `boiler:"contract_reward" boil:"contract_reward" json:"contract_reward" toml:"contract_reward" yaml:"contract_reward"`
-	Label           string      `boiler:"label" boil:"label" json:"label" toml:"label" yaml:"label"`
-	GuildID         null.String `boiler:"guild_id" boil:"guild_id" json:"guild_id,omitempty" toml:"guild_id" yaml:"guild_id,omitempty"`
-	DeletedAt       null.Time   `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
-	UpdatedAt       time.Time   `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
-	CreatedAt       time.Time   `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
-	PrimaryColor    string      `boiler:"primary_color" boil:"primary_color" json:"primary_color" toml:"primary_color" yaml:"primary_color"`
-	SecondaryColor  string      `boiler:"secondary_color" boil:"secondary_color" json:"secondary_color" toml:"secondary_color" yaml:"secondary_color"`
-	BackgroundColor string      `boiler:"background_color" boil:"background_color" json:"background_color" toml:"background_color" yaml:"background_color"`
-	LogoURL         string      `boiler:"logo_url" boil:"logo_url" json:"logo_url" toml:"logo_url" yaml:"logo_url"`
-	BackgroundURL   string      `boiler:"background_url" boil:"background_url" json:"background_url" toml:"background_url" yaml:"background_url"`
-	Description     string      `boiler:"description" boil:"description" json:"description" toml:"description" yaml:"description"`
-	WallpaperURL    null.String `boiler:"wallpaper_url" boil:"wallpaper_url" json:"wallpaper_url,omitempty" toml:"wallpaper_url" yaml:"wallpaper_url,omitempty"`
+	ID             string      `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
+	VotePrice      string      `boiler:"vote_price" boil:"vote_price" json:"vote_price" toml:"vote_price" yaml:"vote_price"`
+	ContractReward string      `boiler:"contract_reward" boil:"contract_reward" json:"contract_reward" toml:"contract_reward" yaml:"contract_reward"`
+	Label          string      `boiler:"label" boil:"label" json:"label" toml:"label" yaml:"label"`
+	GuildID        null.String `boiler:"guild_id" boil:"guild_id" json:"guild_id,omitempty" toml:"guild_id" yaml:"guild_id,omitempty"`
+	DeletedAt      null.Time   `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
+	UpdatedAt      time.Time   `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
+	CreatedAt      time.Time   `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
+	LogoURL        string      `boiler:"logo_url" boil:"logo_url" json:"logo_url" toml:"logo_url" yaml:"logo_url"`
+	BackgroundURL  string      `boiler:"background_url" boil:"background_url" json:"background_url" toml:"background_url" yaml:"background_url"`
+	Description    string      `boiler:"description" boil:"description" json:"description" toml:"description" yaml:"description"`
+	WallpaperURL   null.String `boiler:"wallpaper_url" boil:"wallpaper_url" json:"wallpaper_url,omitempty" toml:"wallpaper_url" yaml:"wallpaper_url,omitempty"`
 
 	R *factionR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L factionL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 }
 
 var FactionColumns = struct {
-	ID              string
-	VotePrice       string
-	ContractReward  string
-	Label           string
-	GuildID         string
-	DeletedAt       string
-	UpdatedAt       string
-	CreatedAt       string
-	PrimaryColor    string
-	SecondaryColor  string
-	BackgroundColor string
-	LogoURL         string
-	BackgroundURL   string
-	Description     string
-	WallpaperURL    string
+	ID             string
+	VotePrice      string
+	ContractReward string
+	Label          string
+	GuildID        string
+	DeletedAt      string
+	UpdatedAt      string
+	CreatedAt      string
+	LogoURL        string
+	BackgroundURL  string
+	Description    string
+	WallpaperURL   string
 }{
-	ID:              "id",
-	VotePrice:       "vote_price",
-	ContractReward:  "contract_reward",
-	Label:           "label",
-	GuildID:         "guild_id",
-	DeletedAt:       "deleted_at",
-	UpdatedAt:       "updated_at",
-	CreatedAt:       "created_at",
-	PrimaryColor:    "primary_color",
-	SecondaryColor:  "secondary_color",
-	BackgroundColor: "background_color",
-	LogoURL:         "logo_url",
-	BackgroundURL:   "background_url",
-	Description:     "description",
-	WallpaperURL:    "wallpaper_url",
+	ID:             "id",
+	VotePrice:      "vote_price",
+	ContractReward: "contract_reward",
+	Label:          "label",
+	GuildID:        "guild_id",
+	DeletedAt:      "deleted_at",
+	UpdatedAt:      "updated_at",
+	CreatedAt:      "created_at",
+	LogoURL:        "logo_url",
+	BackgroundURL:  "background_url",
+	Description:    "description",
+	WallpaperURL:   "wallpaper_url",
 }
 
 var FactionTableColumns = struct {
-	ID              string
-	VotePrice       string
-	ContractReward  string
-	Label           string
-	GuildID         string
-	DeletedAt       string
-	UpdatedAt       string
-	CreatedAt       string
-	PrimaryColor    string
-	SecondaryColor  string
-	BackgroundColor string
-	LogoURL         string
-	BackgroundURL   string
-	Description     string
-	WallpaperURL    string
+	ID             string
+	VotePrice      string
+	ContractReward string
+	Label          string
+	GuildID        string
+	DeletedAt      string
+	UpdatedAt      string
+	CreatedAt      string
+	LogoURL        string
+	BackgroundURL  string
+	Description    string
+	WallpaperURL   string
 }{
-	ID:              "factions.id",
-	VotePrice:       "factions.vote_price",
-	ContractReward:  "factions.contract_reward",
-	Label:           "factions.label",
-	GuildID:         "factions.guild_id",
-	DeletedAt:       "factions.deleted_at",
-	UpdatedAt:       "factions.updated_at",
-	CreatedAt:       "factions.created_at",
-	PrimaryColor:    "factions.primary_color",
-	SecondaryColor:  "factions.secondary_color",
-	BackgroundColor: "factions.background_color",
-	LogoURL:         "factions.logo_url",
-	BackgroundURL:   "factions.background_url",
-	Description:     "factions.description",
-	WallpaperURL:    "factions.wallpaper_url",
+	ID:             "factions.id",
+	VotePrice:      "factions.vote_price",
+	ContractReward: "factions.contract_reward",
+	Label:          "factions.label",
+	GuildID:        "factions.guild_id",
+	DeletedAt:      "factions.deleted_at",
+	UpdatedAt:      "factions.updated_at",
+	CreatedAt:      "factions.created_at",
+	LogoURL:        "factions.logo_url",
+	BackgroundURL:  "factions.background_url",
+	Description:    "factions.description",
+	WallpaperURL:   "factions.wallpaper_url",
 }
 
 // Generated where
 
 var FactionWhere = struct {
-	ID              whereHelperstring
-	VotePrice       whereHelperstring
-	ContractReward  whereHelperstring
-	Label           whereHelperstring
-	GuildID         whereHelpernull_String
-	DeletedAt       whereHelpernull_Time
-	UpdatedAt       whereHelpertime_Time
-	CreatedAt       whereHelpertime_Time
-	PrimaryColor    whereHelperstring
-	SecondaryColor  whereHelperstring
-	BackgroundColor whereHelperstring
-	LogoURL         whereHelperstring
-	BackgroundURL   whereHelperstring
-	Description     whereHelperstring
-	WallpaperURL    whereHelpernull_String
+	ID             whereHelperstring
+	VotePrice      whereHelperstring
+	ContractReward whereHelperstring
+	Label          whereHelperstring
+	GuildID        whereHelpernull_String
+	DeletedAt      whereHelpernull_Time
+	UpdatedAt      whereHelpertime_Time
+	CreatedAt      whereHelpertime_Time
+	LogoURL        whereHelperstring
+	BackgroundURL  whereHelperstring
+	Description    whereHelperstring
+	WallpaperURL   whereHelpernull_String
 }{
-	ID:              whereHelperstring{field: "\"factions\".\"id\""},
-	VotePrice:       whereHelperstring{field: "\"factions\".\"vote_price\""},
-	ContractReward:  whereHelperstring{field: "\"factions\".\"contract_reward\""},
-	Label:           whereHelperstring{field: "\"factions\".\"label\""},
-	GuildID:         whereHelpernull_String{field: "\"factions\".\"guild_id\""},
-	DeletedAt:       whereHelpernull_Time{field: "\"factions\".\"deleted_at\""},
-	UpdatedAt:       whereHelpertime_Time{field: "\"factions\".\"updated_at\""},
-	CreatedAt:       whereHelpertime_Time{field: "\"factions\".\"created_at\""},
-	PrimaryColor:    whereHelperstring{field: "\"factions\".\"primary_color\""},
-	SecondaryColor:  whereHelperstring{field: "\"factions\".\"secondary_color\""},
-	BackgroundColor: whereHelperstring{field: "\"factions\".\"background_color\""},
-	LogoURL:         whereHelperstring{field: "\"factions\".\"logo_url\""},
-	BackgroundURL:   whereHelperstring{field: "\"factions\".\"background_url\""},
-	Description:     whereHelperstring{field: "\"factions\".\"description\""},
-	WallpaperURL:    whereHelpernull_String{field: "\"factions\".\"wallpaper_url\""},
+	ID:             whereHelperstring{field: "\"factions\".\"id\""},
+	VotePrice:      whereHelperstring{field: "\"factions\".\"vote_price\""},
+	ContractReward: whereHelperstring{field: "\"factions\".\"contract_reward\""},
+	Label:          whereHelperstring{field: "\"factions\".\"label\""},
+	GuildID:        whereHelpernull_String{field: "\"factions\".\"guild_id\""},
+	DeletedAt:      whereHelpernull_Time{field: "\"factions\".\"deleted_at\""},
+	UpdatedAt:      whereHelpertime_Time{field: "\"factions\".\"updated_at\""},
+	CreatedAt:      whereHelpertime_Time{field: "\"factions\".\"created_at\""},
+	LogoURL:        whereHelperstring{field: "\"factions\".\"logo_url\""},
+	BackgroundURL:  whereHelperstring{field: "\"factions\".\"background_url\""},
+	Description:    whereHelperstring{field: "\"factions\".\"description\""},
+	WallpaperURL:   whereHelpernull_String{field: "\"factions\".\"wallpaper_url\""},
 }
 
 // FactionRels is where relationship names are stored.
 var FactionRels = struct {
+	FactionPalette             string
 	IDFactionStat              string
 	BattleAbilityOptInLogs     string
 	BattleAbilityTriggers      string
@@ -178,6 +158,7 @@ var FactionRels = struct {
 	TemplatesOlds              string
 	VoiceStreams               string
 }{
+	FactionPalette:             "FactionPalette",
 	IDFactionStat:              "IDFactionStat",
 	BattleAbilityOptInLogs:     "BattleAbilityOptInLogs",
 	BattleAbilityTriggers:      "BattleAbilityTriggers",
@@ -210,6 +191,7 @@ var FactionRels = struct {
 
 // factionR is where relationships are stored.
 type factionR struct {
+	FactionPalette             *FactionPalette                `boiler:"FactionPalette" boil:"FactionPalette" json:"FactionPalette" toml:"FactionPalette" yaml:"FactionPalette"`
 	IDFactionStat              *FactionStat                   `boiler:"IDFactionStat" boil:"IDFactionStat" json:"IDFactionStat" toml:"IDFactionStat" yaml:"IDFactionStat"`
 	BattleAbilityOptInLogs     BattleAbilityOptInLogSlice     `boiler:"BattleAbilityOptInLogs" boil:"BattleAbilityOptInLogs" json:"BattleAbilityOptInLogs" toml:"BattleAbilityOptInLogs" yaml:"BattleAbilityOptInLogs"`
 	BattleAbilityTriggers      BattleAbilityTriggerSlice      `boiler:"BattleAbilityTriggers" boil:"BattleAbilityTriggers" json:"BattleAbilityTriggers" toml:"BattleAbilityTriggers" yaml:"BattleAbilityTriggers"`
@@ -249,9 +231,9 @@ func (*factionR) NewStruct() *factionR {
 type factionL struct{}
 
 var (
-	factionAllColumns            = []string{"id", "vote_price", "contract_reward", "label", "guild_id", "deleted_at", "updated_at", "created_at", "primary_color", "secondary_color", "background_color", "logo_url", "background_url", "description", "wallpaper_url"}
+	factionAllColumns            = []string{"id", "vote_price", "contract_reward", "label", "guild_id", "deleted_at", "updated_at", "created_at", "logo_url", "background_url", "description", "wallpaper_url"}
 	factionColumnsWithoutDefault = []string{"label"}
-	factionColumnsWithDefault    = []string{"id", "vote_price", "contract_reward", "guild_id", "deleted_at", "updated_at", "created_at", "primary_color", "secondary_color", "background_color", "logo_url", "background_url", "description", "wallpaper_url"}
+	factionColumnsWithDefault    = []string{"id", "vote_price", "contract_reward", "guild_id", "deleted_at", "updated_at", "created_at", "logo_url", "background_url", "description", "wallpaper_url"}
 	factionPrimaryKeyColumns     = []string{"id"}
 	factionGeneratedColumns      = []string{}
 )
@@ -496,6 +478,20 @@ func (q factionQuery) Exists(exec boil.Executor) (bool, error) {
 	}
 
 	return count > 0, nil
+}
+
+// FactionPalette pointed to by the foreign key.
+func (o *Faction) FactionPalette(mods ...qm.QueryMod) factionPaletteQuery {
+	queryMods := []qm.QueryMod{
+		qm.Where("\"faction_id\" = ?", o.ID),
+	}
+
+	queryMods = append(queryMods, mods...)
+
+	query := FactionPalettes(queryMods...)
+	queries.SetFrom(query.Query, "\"faction_palettes\"")
+
+	return query
 }
 
 // IDFactionStat pointed to by the foreign key.
@@ -1093,6 +1089,107 @@ func (o *Faction) VoiceStreams(mods ...qm.QueryMod) voiceStreamQuery {
 	}
 
 	return query
+}
+
+// LoadFactionPalette allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for a 1-1 relationship.
+func (factionL) LoadFactionPalette(e boil.Executor, singular bool, maybeFaction interface{}, mods queries.Applicator) error {
+	var slice []*Faction
+	var object *Faction
+
+	if singular {
+		object = maybeFaction.(*Faction)
+	} else {
+		slice = *maybeFaction.(*[]*Faction)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &factionR{}
+		}
+		args = append(args, object.ID)
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &factionR{}
+			}
+
+			for _, a := range args {
+				if a == obj.ID {
+					continue Outer
+				}
+			}
+
+			args = append(args, obj.ID)
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`faction_palettes`),
+		qm.WhereIn(`faction_palettes.faction_id in ?`, args...),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load FactionPalette")
+	}
+
+	var resultSlice []*FactionPalette
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice FactionPalette")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results of eager load for faction_palettes")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for faction_palettes")
+	}
+
+	if len(factionAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+
+	if len(resultSlice) == 0 {
+		return nil
+	}
+
+	if singular {
+		foreign := resultSlice[0]
+		object.R.FactionPalette = foreign
+		if foreign.R == nil {
+			foreign.R = &factionPaletteR{}
+		}
+		foreign.R.Faction = object
+	}
+
+	for _, local := range slice {
+		for _, foreign := range resultSlice {
+			if local.ID == foreign.FactionID {
+				local.R.FactionPalette = foreign
+				if foreign.R == nil {
+					foreign.R = &factionPaletteR{}
+				}
+				foreign.R.Faction = local
+				break
+			}
+		}
+	}
+
+	return nil
 }
 
 // LoadIDFactionStat allows an eager lookup of values, cached into the
@@ -3855,6 +3952,56 @@ func (factionL) LoadVoiceStreams(e boil.Executor, singular bool, maybeFaction in
 		}
 	}
 
+	return nil
+}
+
+// SetFactionPalette of the faction to the related item.
+// Sets o.R.FactionPalette to related.
+// Adds o to related.R.Faction.
+func (o *Faction) SetFactionPalette(exec boil.Executor, insert bool, related *FactionPalette) error {
+	var err error
+
+	if insert {
+		related.FactionID = o.ID
+
+		if err = related.Insert(exec, boil.Infer()); err != nil {
+			return errors.Wrap(err, "failed to insert into foreign table")
+		}
+	} else {
+		updateQuery := fmt.Sprintf(
+			"UPDATE \"faction_palettes\" SET %s WHERE %s",
+			strmangle.SetParamNames("\"", "\"", 1, []string{"faction_id"}),
+			strmangle.WhereClause("\"", "\"", 2, factionPalettePrimaryKeyColumns),
+		)
+		values := []interface{}{o.ID, related.FactionID}
+
+		if boil.DebugMode {
+			fmt.Fprintln(boil.DebugWriter, updateQuery)
+			fmt.Fprintln(boil.DebugWriter, values)
+		}
+		if _, err = exec.Exec(updateQuery, values...); err != nil {
+			return errors.Wrap(err, "failed to update foreign table")
+		}
+
+		related.FactionID = o.ID
+
+	}
+
+	if o.R == nil {
+		o.R = &factionR{
+			FactionPalette: related,
+		}
+	} else {
+		o.R.FactionPalette = related
+	}
+
+	if related.R == nil {
+		related.R = &factionPaletteR{
+			Faction: o,
+		}
+	} else {
+		related.R.Faction = o
+	}
 	return nil
 }
 

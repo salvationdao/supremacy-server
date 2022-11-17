@@ -2,16 +2,17 @@ package api
 
 import (
 	"fmt"
-	"github.com/go-chi/chi/v5"
-	"github.com/ninja-software/terror/v2"
-	"github.com/volatiletech/null/v8"
-	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 	"net/http"
 	"server"
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
 	"server/helpers"
+
+	"github.com/go-chi/chi/v5"
+	"github.com/ninja-software/terror/v2"
+	"github.com/volatiletech/null/v8"
+	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 )
 
 type FactionController struct {
@@ -34,9 +35,6 @@ func (c *FactionController) FactionAll(w http.ResponseWriter, r *http.Request) (
 		qm.Select(
 			boiler.FactionColumns.ID,
 			boiler.FactionColumns.Label,
-			boiler.FactionColumns.BackgroundColor,
-			boiler.FactionColumns.PrimaryColor,
-			boiler.FactionColumns.SecondaryColor,
 			boiler.FactionColumns.LogoURL,
 			boiler.FactionColumns.BackgroundURL,
 			boiler.FactionColumns.Description,

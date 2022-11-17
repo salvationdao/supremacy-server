@@ -21,6 +21,7 @@ import (
 	"github.com/shopspring/decimal"
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
+	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 )
 
 type PassportWebhookController struct {
@@ -158,7 +159,7 @@ func (pc *PassportWebhookController) UserEnlistFaction(w http.ResponseWriter, r 
 		SyndicateID:   player.SyndicateID,
 	}
 
-	faction, err := boiler.FindFaction(gamedb.StdConn, req.FactionID.String())
+	faction, err := boiler.Factions(boiler.FactionWhere.ID.EQ(req.FactionID.String()), qm.Load(boiler.FactionRels.FactionPalette)).One(gamedb.StdConn)
 	if err != nil {
 		return http.StatusInternalServerError, terror.Error(err, "Unable to find faction from db, contact support or try again.")
 	}
