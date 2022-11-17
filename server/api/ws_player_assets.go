@@ -2742,6 +2742,10 @@ func (api *API) PlayerMechSkins(ctx context.Context, user *boiler.Player, key st
 }
 
 func BroadcastPlayerMechSkins(playerID string, modelID string, mechSkinIDs ...string) {
+	if playerID == "" && len(mechSkinIDs) == 0 {
+		return
+	}
+
 	mechSkins, err := db.PlayerMechSkins(playerID, modelID, mechSkinIDs...)
 	if err != nil {
 		return
@@ -2778,4 +2782,56 @@ func BroadcastPlayerMechSkins(playerID string, modelID string, mechSkinIDs ...st
 
 	// free up memory
 	playerMechSkins = nil
+}
+
+func (api *API) PlayerWeaponSkins(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
+	resp, err := db.PlayerWeaponSkins(user.ID)
+	if err != nil {
+		return err
+	}
+	reply(resp)
+	return nil
+}
+
+func BroadcastPlayerWeaponSkins(playerID string, weaponSkinIDs ...string) {
+	if playerID == "" && len(weaponSkinIDs) == 0 {
+		return
+	}
+
+	weaponSkins, err := db.PlayerWeaponSkins(playerID, weaponSkinIDs...)
+	if err != nil {
+		return
+	}
+
+	var playerWeaponSkins []struct {
+		playerID    string
+		weaponSkins []*server.WeaponSkin
+	}
+	for _, weaponSkin := range weaponSkins {
+		ownerID := weaponSkin.CollectionItem.OwnerID
+		index := slices.IndexFunc(playerWeaponSkins, func(pw struct {
+			playerID    string
+			weaponSkins []*server.WeaponSkin
+		}) bool {
+			return pw.playerID == ownerID
+		})
+
+		if index == -1 {
+			playerWeaponSkins = append(playerWeaponSkins, struct {
+				playerID    string
+				weaponSkins []*server.WeaponSkin
+			}{playerID: ownerID, weaponSkins: []*server.WeaponSkin{}})
+
+			index = len(playerWeaponSkins) - 1
+		}
+
+		playerWeaponSkins[index].weaponSkins = append(playerWeaponSkins[index].weaponSkins, weaponSkin)
+	}
+
+	for _, pw := range playerWeaponSkins {
+		ws.PublishMessage(fmt.Sprintf("/user/%s/owned_weapon_skins", pw.playerID), server.HubKeyPlayerOwnedWeaponSkins, pw.weaponSkins)
+	}
+
+	// free up memory
+	playerWeaponSkins = nil
 }

@@ -512,6 +512,12 @@ func PlayerMechSkins(playerID string, modelID string, mechSkinIDs ...string) ([]
 	if len(mechSkinIDs) > 0 {
 		mechSkinIDWhereIn = fmt.Sprintf(" AND %s IN (", boiler.CollectionItemTableColumns.ItemID)
 		for i, mechSkinID := range mechSkinIDs {
+
+			_, err := uuid.FromString(mechSkinID)
+			if err != nil {
+				return nil, terror.Error(err, "Invalid mech skin id.")
+			}
+
 			mechSkinIDWhereIn = "'" + mechSkinID + "'"
 
 			if i < len(mechSkinIDs)-1 {
@@ -547,6 +553,7 @@ func PlayerMechSkins(playerID string, modelID string, mechSkinIDs ...string) ([]
 			boiler.BlueprintMechSkinTableColumns.Tier,
 			boiler.BlueprintMechSkinTableColumns.BlueprintWeaponSkinID,
 			boiler.BlueprintMechSkinTableColumns.ImageURL,
+			boiler.BlueprintMechSkinTableColumns.AvatarURL,
 			boiler.BlueprintMechSkinTableColumns.CardAnimationURL,
 			boiler.BlueprintMechSkinTableColumns.LargeImageURL,
 			boiler.BlueprintMechSkinTableColumns.AnimationURL,
@@ -554,8 +561,8 @@ func PlayerMechSkins(playerID string, modelID string, mechSkinIDs ...string) ([]
 			boiler.BlueprintMechSkinTableColumns.BackgroundColor,
 
 			fmt.Sprintf(
-				"(SELECT %s FROM %s WHERE %s = %s %s LIMIT 1) AS avatar_url",
-				boiler.MechModelSkinCompatibilityTableColumns.AvatarURL,
+				"(SELECT TO_JSON(%s) FROM %s WHERE %s = %s %s LIMIT 1) AS images",
+				boiler.TableNames.MechModelSkinCompatibilities,
 				boiler.TableNames.MechModelSkinCompatibilities,
 				boiler.MechModelSkinCompatibilityTableColumns.BlueprintMechSkinID,
 				boiler.BlueprintMechSkinTableColumns.ID,
@@ -599,8 +606,10 @@ func PlayerMechSkins(playerID string, modelID string, mechSkinIDs ...string) ([]
 	for rows.Next() {
 		ms := &server.MechSkin{
 			CollectionItem: &server.CollectionItem{},
-			Images:         &server.Images{},
+			SkinSwatch:     &server.Images{},
 		}
+
+		images := &server.Images{}
 
 		err = rows.Scan(
 			&ms.CollectionItem.CollectionSlug,
@@ -625,18 +634,22 @@ func PlayerMechSkins(playerID string, modelID string, mechSkinIDs ...string) ([]
 			&ms.CollectionItem.Tier,
 			&ms.BlueprintWeaponSkinID,
 
-			&ms.Images.ImageURL,
-			&ms.Images.CardAnimationURL,
-			&ms.Images.LargeImageURL,
-			&ms.Images.AnimationURL,
-			&ms.Images.YoutubeURL,
-			&ms.Images.BackgroundColor,
-			&ms.Images.AvatarURL,
+			&ms.SkinSwatch.ImageURL,
+			&ms.SkinSwatch.AvatarURL,
+			&ms.SkinSwatch.CardAnimationURL,
+			&ms.SkinSwatch.LargeImageURL,
+			&ms.SkinSwatch.AnimationURL,
+			&ms.SkinSwatch.YoutubeURL,
+			&ms.SkinSwatch.BackgroundColor,
+
+			&images,
 		)
 		if err != nil {
 			gamelog.L.Error().Err(err).Msg("Failed to scan mech skin.")
 			return nil, terror.Error(err, "Failed to scan mech skin.")
 		}
+
+		ms.Images = images
 
 		result = append(result, ms)
 	}
