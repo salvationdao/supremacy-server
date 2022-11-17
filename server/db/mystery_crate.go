@@ -5,6 +5,7 @@ import (
 	"server"
 	"server/db/boiler"
 	"server/gamedb"
+	"server/gamelog"
 	"time"
 
 	"github.com/gofrs/uuid"
@@ -145,7 +146,7 @@ func PlayerMysteryCrateList(
 	mysteryCrates, err := boiler.MysteryCrates(
 		boiler.MysteryCrateWhere.ID.IN(mysteryCrateIDs),
 		qm.Load(boiler.MysteryCrateRels.Blueprint),
-		).All(gamedb.StdConn)
+	).All(gamedb.StdConn)
 	if err != nil {
 		return total, nil, terror.Error(err)
 	}
@@ -188,4 +189,164 @@ func PlayerMysteryCrateList(
 		output = append(output, item)
 	}
 	return total, output, nil
+}
+
+func PlayerMysteryCrates(playerID string, mysteryCrateIDs ...string) ([]*server.MysteryCrate, error) {
+	playerIDWhere := ""
+	if playerID != "" {
+		_, err := uuid.FromString(playerID)
+		if err != nil {
+			return nil, terror.Error(err, "Invalid player id")
+		}
+
+		playerIDWhere = fmt.Sprintf(" AND %s = '%s'", boiler.CollectionItemTableColumns.OwnerID, playerID)
+	}
+
+	mysteryCrateWhereIn := ""
+	if len(mysteryCrateIDs) > 0 {
+		mysteryCrateWhereIn = fmt.Sprintf("AND %s IN (", boiler.CollectionItemTableColumns.ItemID)
+
+		for i, mysteryCrateID := range mysteryCrateIDs {
+			_, err := uuid.FromString(mysteryCrateID)
+			if err != nil {
+				return nil, terror.Error(err, "Invalid mystery crate id")
+			}
+
+			mysteryCrateWhereIn = "'" + mysteryCrateID + "'"
+			if i < len(mysteryCrateIDs)-1 {
+				mysteryCrateWhereIn += ","
+				continue
+			}
+
+			mysteryCrateWhereIn += ")"
+		}
+	}
+
+	queries := []qm.QueryMod{
+		qm.Select(
+			boiler.CollectionItemTableColumns.CollectionSlug,
+			boiler.CollectionItemTableColumns.Hash,
+			boiler.CollectionItemTableColumns.TokenID,
+			boiler.CollectionItemTableColumns.OwnerID,
+			boiler.CollectionItemTableColumns.ItemType,
+			boiler.CollectionItemTableColumns.MarketLocked,
+			boiler.CollectionItemTableColumns.XsynLocked,
+			boiler.CollectionItemTableColumns.LockedToMarketplace,
+			boiler.CollectionItemTableColumns.AssetHidden,
+
+			boiler.StorefrontMysteryCrateTableColumns.ImageURL,
+			boiler.StorefrontMysteryCrateTableColumns.CardAnimationURL,
+			boiler.StorefrontMysteryCrateTableColumns.AvatarURL,
+			boiler.StorefrontMysteryCrateTableColumns.LargeImageURL,
+			boiler.StorefrontMysteryCrateTableColumns.BackgroundColor,
+			boiler.StorefrontMysteryCrateTableColumns.AnimationURL,
+			boiler.StorefrontMysteryCrateTableColumns.YoutubeURL,
+
+			boiler.MysteryCrateTableColumns.ID,
+			boiler.MysteryCrateTableColumns.Type,
+			boiler.MysteryCrateTableColumns.FactionID,
+			boiler.MysteryCrateTableColumns.Label,
+			boiler.MysteryCrateTableColumns.Opened,
+			boiler.MysteryCrateTableColumns.LockedUntil,
+			boiler.MysteryCrateTableColumns.Purchased,
+			boiler.MysteryCrateTableColumns.DeletedAt,
+			boiler.MysteryCrateTableColumns.UpdatedAt,
+			boiler.MysteryCrateTableColumns.CreatedAt,
+			boiler.MysteryCrateTableColumns.Description,
+
+			fmt.Sprintf(
+				"(SELECT %s FROM %s WHERE %s = %s AND %s ISNULL AND %s ISNULL AND %s > NOW()) AS is_on_sales",
+				boiler.ItemSaleTableColumns.ID,
+				boiler.TableNames.ItemSales,
+				boiler.ItemSaleTableColumns.CollectionItemID,
+				boiler.CollectionItemTableColumns.ID,
+				boiler.ItemSaleTableColumns.SoldAt,
+				boiler.ItemSaleTableColumns.DeletedAt,
+				boiler.ItemSaleTableColumns.EndAt,
+			),
+		),
+
+		qm.From(fmt.Sprintf(
+			"(SELECT * FROM %s WHERE %s = '%s' AND %s = FALSE %s %s) %s",
+			boiler.TableNames.CollectionItems,
+			boiler.CollectionItemTableColumns.ItemType,
+			boiler.ItemTypeMysteryCrate,
+			boiler.CollectionItemTableColumns.XsynLocked,
+			playerIDWhere,
+			mysteryCrateWhereIn,
+			boiler.TableNames.CollectionItems,
+		)),
+
+		qm.InnerJoin(fmt.Sprintf(
+			"%s ON %s = %s AND %s = FALSE AND %s ISNULL",
+			boiler.TableNames.MysteryCrate,
+			boiler.MysteryCrateTableColumns.ID,
+			boiler.CollectionItemTableColumns.ItemID,
+			boiler.MysteryCrateTableColumns.Opened,
+			boiler.MysteryCrateTableColumns.DeletedAt,
+		)),
+
+		qm.InnerJoin(fmt.Sprintf(
+			"%s ON %s = %s",
+			boiler.TableNames.StorefrontMysteryCrates,
+			boiler.StorefrontMysteryCrateTableColumns.ID,
+			boiler.MysteryCrateTableColumns.BlueprintID,
+		)),
+	}
+
+	rows, err := boiler.NewQuery(queries...).Query(gamedb.StdConn)
+	if err != nil {
+		gamelog.L.Error().Err(err).Msg("Failed to load mystery crates.")
+		return nil, terror.Error(err, "Failed to load mystery crates")
+	}
+
+	result := []*server.MysteryCrate{}
+	for rows.Next() {
+		mc := &server.MysteryCrate{
+			CollectionItem: &server.CollectionItem{},
+			Images:         &server.Images{},
+		}
+
+		err = rows.Scan(
+			&mc.CollectionItem.CollectionSlug,
+			&mc.CollectionItem.Hash,
+			&mc.CollectionItem.TokenID,
+			&mc.CollectionItem.OwnerID,
+			&mc.CollectionItem.ItemType,
+			&mc.CollectionItem.MarketLocked,
+			&mc.CollectionItem.XsynLocked,
+			&mc.CollectionItem.LockedToMarketplace,
+			&mc.CollectionItem.AssetHidden,
+
+			&mc.Images.ImageURL,
+			&mc.Images.CardAnimationURL,
+			&mc.Images.AvatarURL,
+			&mc.Images.LargeImageURL,
+			&mc.Images.BackgroundColor,
+			&mc.Images.AnimationURL,
+			&mc.Images.YoutubeURL,
+
+			&mc.ID,
+			&mc.Type,
+			&mc.FactionID,
+			&mc.Label,
+			&mc.Opened,
+			&mc.LockedUntil,
+			&mc.Purchased,
+			&mc.DeletedAt,
+			&mc.UpdatedAt,
+			&mc.CreatedAt,
+			&mc.Description,
+
+			&mc.ItemSaleID,
+		)
+		if err != nil {
+			gamelog.L.Error().Err(err).Msg("Failed to load mystery crate.")
+			return nil, terror.Error(err, "Failed to load mystery crate.")
+		}
+
+		result = append(result, mc)
+	}
+
+	return result, nil
 }
