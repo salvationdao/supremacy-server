@@ -486,3 +486,160 @@ func MechSkinListDetailed(opts *MechSkinListOpts) (int64, []*server.MechSkin, er
 
 	return total, mechSkins, nil
 }
+
+func PlayerMechSkins(playerID string, modelID string, mechSkinIDs ...string) ([]*server.MechSkin, error) {
+	playerIDWhere := ""
+	if playerID != "" {
+		_, err := uuid.FromString(playerID)
+		if err != nil {
+			return nil, terror.Error(err, "Invalid player id")
+		}
+
+		playerIDWhere = fmt.Sprintf(" AND %s = '%s'", boiler.CollectionItemTableColumns.OwnerID, playerID)
+	}
+
+	modelIDWhere := ""
+	if modelID != "" {
+		_, err := uuid.FromString(modelID)
+		if err != nil {
+			return nil, terror.Error(err, "Invalid model id.")
+		}
+
+		modelIDWhere = fmt.Sprintf(" AND %s = '%s'", boiler.MechModelSkinCompatibilityTableColumns.MechModelID, modelID)
+	}
+
+	mechSkinIDWhereIn := ""
+	if len(mechSkinIDs) > 0 {
+		mechSkinIDWhereIn = fmt.Sprintf(" AND %s IN (", boiler.CollectionItemTableColumns.ItemID)
+		for i, mechSkinID := range mechSkinIDs {
+			mechSkinIDWhereIn = "'" + mechSkinID + "'"
+
+			if i < len(mechSkinIDs)-1 {
+				mechSkinIDWhereIn += ","
+				continue
+			}
+
+			mechSkinIDWhereIn += ")"
+		}
+	}
+
+	queries := []qm.QueryMod{
+		qm.Select(
+			boiler.CollectionItemTableColumns.CollectionSlug,
+			boiler.CollectionItemTableColumns.Hash,
+			boiler.CollectionItemTableColumns.TokenID,
+			boiler.CollectionItemTableColumns.OwnerID,
+			boiler.CollectionItemTableColumns.ItemType,
+			boiler.CollectionItemTableColumns.MarketLocked,
+			boiler.CollectionItemTableColumns.XsynLocked,
+			boiler.CollectionItemTableColumns.LockedToMarketplace,
+			boiler.CollectionItemTableColumns.AssetHidden,
+
+			boiler.MechSkinTableColumns.ID,
+			boiler.MechSkinTableColumns.EquippedOn,
+			boiler.MechSkinTableColumns.LockedToMech,
+			boiler.MechSkinTableColumns.GenesisTokenID,
+			boiler.MechSkinTableColumns.LimitedReleaseTokenID,
+			boiler.MechSkinTableColumns.Level,
+
+			boiler.BlueprintMechSkinTableColumns.Label,
+			boiler.BlueprintMechSkinTableColumns.DefaultLevel,
+			boiler.BlueprintMechSkinTableColumns.Tier,
+			boiler.BlueprintMechSkinTableColumns.BlueprintWeaponSkinID,
+			boiler.BlueprintMechSkinTableColumns.ImageURL,
+			boiler.BlueprintMechSkinTableColumns.CardAnimationURL,
+			boiler.BlueprintMechSkinTableColumns.LargeImageURL,
+			boiler.BlueprintMechSkinTableColumns.AnimationURL,
+			boiler.BlueprintMechSkinTableColumns.YoutubeURL,
+			boiler.BlueprintMechSkinTableColumns.BackgroundColor,
+
+			fmt.Sprintf(
+				"(SELECT %s FROM %s WHERE %s = %s %s LIMIT 1) AS avatar_url",
+				boiler.MechModelSkinCompatibilityTableColumns.AvatarURL,
+				boiler.TableNames.MechModelSkinCompatibilities,
+				boiler.MechModelSkinCompatibilityTableColumns.BlueprintMechSkinID,
+				boiler.BlueprintMechSkinTableColumns.ID,
+				modelIDWhere,
+			),
+		),
+
+		qm.From(fmt.Sprintf(
+			"(SELECT * FROM %s WHERE %s ISNULL AND %s = '%s' %s %s) %s",
+			boiler.TableNames.CollectionItems,
+			boiler.CollectionItemTableColumns.AssetHidden,
+			boiler.CollectionItemTableColumns.ItemType,
+			boiler.ItemTypeMechSkin,
+			playerIDWhere,
+			mechSkinIDWhereIn,
+			boiler.TableNames.CollectionItems,
+		)),
+
+		qm.InnerJoin(fmt.Sprintf(
+			"%s ON %s = %s",
+			boiler.TableNames.MechSkin,
+			boiler.MechSkinTableColumns.ID,
+			boiler.CollectionItemTableColumns.ItemID,
+		)),
+
+		qm.InnerJoin(fmt.Sprintf(
+			"%s ON %s = %s",
+			boiler.TableNames.BlueprintMechSkin,
+			boiler.BlueprintMechSkinTableColumns.ID,
+			boiler.MechSkinTableColumns.BlueprintID,
+		)),
+	}
+
+	rows, err := boiler.NewQuery(queries...).Query(gamedb.StdConn)
+	if err != nil {
+		gamelog.L.Error().Err(err).Msg("Failed to load mech skins.")
+		return nil, terror.Error(err, "Failed to load mech skins")
+	}
+
+	result := []*server.MechSkin{}
+	for rows.Next() {
+		ms := &server.MechSkin{
+			CollectionItem: &server.CollectionItem{},
+			Images:         &server.Images{},
+		}
+
+		err = rows.Scan(
+			&ms.CollectionItem.CollectionSlug,
+			&ms.CollectionItem.Hash,
+			&ms.CollectionItem.TokenID,
+			&ms.CollectionItem.OwnerID,
+			&ms.CollectionItem.ItemType,
+			&ms.CollectionItem.MarketLocked,
+			&ms.CollectionItem.XsynLocked,
+			&ms.CollectionItem.LockedToMarketplace,
+			&ms.CollectionItem.AssetHidden,
+
+			&ms.ID,
+			&ms.EquippedOn,
+			&ms.LockedToMech,
+			&ms.GenesisTokenID,
+			&ms.LimitedReleaseTokenID,
+			&ms.Level,
+
+			&ms.Label,
+			&ms.DefaultLevel,
+			&ms.CollectionItem.Tier,
+			&ms.BlueprintWeaponSkinID,
+
+			&ms.Images.ImageURL,
+			&ms.Images.CardAnimationURL,
+			&ms.Images.LargeImageURL,
+			&ms.Images.AnimationURL,
+			&ms.Images.YoutubeURL,
+			&ms.Images.BackgroundColor,
+			&ms.Images.AvatarURL,
+		)
+		if err != nil {
+			gamelog.L.Error().Err(err).Msg("Failed to scan mech skin.")
+			return nil, terror.Error(err, "Failed to scan mech skin.")
+		}
+
+		result = append(result, ms)
+	}
+
+	return result, nil
+}

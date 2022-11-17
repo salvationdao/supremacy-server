@@ -114,6 +114,7 @@ const HubKeyVoiceStreamGetListeners = "VOICE:STREAM:GET:LISTENERS"
 
 const HubKeyPlayerOwnedMechs = "PLAYER:OWNED:MECHS"
 const HubKeyPlayerOwnedWeapons = "PLAYER:OWNED:WEAPONS"
+const HubKeyPlayerOwnedMechSkins = "PLAYER:OWNED:MECH:SKINS"
 const HubKeyFactionStakedMechs = "FACTION:STAKED:MECHS"
 
 const HubKeyBattleLobbyListUpdate = "BATTLE:LOBBY:LIST:UPDATE"

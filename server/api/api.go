@@ -301,6 +301,7 @@ func NewAPI(
 				s.WSTrack("/user/{user_id}", "user_id", server.HubKeyUserSubscribe, server.MustSecure(pc.PlayersSubscribeHandler), MustMatchUserID)
 				s.WS("/user/{user_id}/owned_mechs", server.HubKeyPlayerOwnedMechs, server.MustSecure(api.PlayerMechs), MustMatchUserID)
 				s.WS("/user/{user_id}/owned_weapons", server.HubKeyPlayerOwnedWeapons, server.MustSecure(api.PlayerWeapons), MustMatchUserID)
+				s.WS("/user/{user_id}/owned_mech_skins", server.HubKeyPlayerOwnedMechSkins, server.MustSecure(api.PlayerMechSkins), MustMatchUserID)
 				s.WS("/user/{user_id}/stat", server.HubKeyUserStatSubscribe, server.MustSecure(pc.PlayersStatSubscribeHandler), MustMatchUserID)
 				s.WS("/user/{user_id}/rank", server.HubKeyPlayerRankGet, server.MustSecure(pc.PlayerRankGet), MustMatchUserID)
 				s.WS("/user/{user_id}/player_abilities", server.HubKeyPlayerAbilitiesList, server.MustSecure(pac.PlayerAbilitiesListHandler), MustMatchUserID)
