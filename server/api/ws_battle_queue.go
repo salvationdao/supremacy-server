@@ -1168,8 +1168,8 @@ func (api *API) MechUnstake(ctx context.Context, user *boiler.Player, factionID 
 	err = api.ArenaManager.SendBattleQueueFunc(func() error {
 		now := time.Now()
 
-		var stakedMechs []*boiler.StakedMech
-		stakedMechs, err = boiler.StakedMechs(
+		var unstakedMechs []*boiler.StakedMech
+		unstakedMechs, err = boiler.StakedMechs(
 			boiler.StakedMechWhere.OwnerID.EQ(user.ID),
 			boiler.StakedMechWhere.MechID.IN(req.Payload.MechIDs),
 		).All(gamedb.StdConn)
@@ -1178,24 +1178,24 @@ func (api *API) MechUnstake(ctx context.Context, user *boiler.Player, factionID 
 			return terror.Error(err, "Failed to load staked mechs.")
 		}
 
-		if len(stakedMechs) == 0 {
+		if len(unstakedMechs) == 0 {
 			return nil
 		}
 
-		stakedMechIDs := []string{}
-		for _, stakedMech := range stakedMechs {
-			stakedMechIDs = append(stakedMechIDs, stakedMech.MechID)
+		unstakedMechIDs := []string{}
+		for _, unstakedMech := range unstakedMechs {
+			unstakedMechIDs = append(unstakedMechIDs, unstakedMech.MechID)
 		}
 
 		var blms boiler.BattleLobbiesMechSlice
 		blms, err = boiler.BattleLobbiesMechs(
-			boiler.BattleLobbiesMechWhere.MechID.IN(stakedMechIDs),
+			boiler.BattleLobbiesMechWhere.MechID.IN(unstakedMechIDs),
 			boiler.BattleLobbiesMechWhere.LockedAt.IsNull(),
 			boiler.BattleLobbiesMechWhere.RefundTXID.IsNull(),
 			qm.Load(boiler.BattleLobbiesMechRels.BattleLobby),
 		).All(gamedb.StdConn)
 		if err != nil {
-			gamelog.L.Error().Err(err).Strs("mech id list", stakedMechIDs).Msg("Failed to load battle lobbies mech.")
+			gamelog.L.Error().Err(err).Strs("mech id list", unstakedMechIDs).Msg("Failed to load battle lobbies mech.")
 			return terror.Error(err, "Failed to load battle lobby queuing records.")
 		}
 
@@ -1210,7 +1210,7 @@ func (api *API) MechUnstake(ctx context.Context, user *boiler.Player, factionID 
 		defer tx.Rollback()
 
 		// unstake mechs
-		_, err = boiler.StakedMechs(boiler.StakedMechWhere.MechID.IN(stakedMechIDs)).DeleteAll(tx)
+		_, err = boiler.StakedMechs(boiler.StakedMechWhere.MechID.IN(unstakedMechIDs)).DeleteAll(tx)
 		if err != nil {
 			l.Error().Err(err).Msg("Failed to unstake mechs.")
 			return terror.Error(err, "Failed to unstake mechs.")
@@ -1300,17 +1300,17 @@ func (api *API) MechUnstake(ctx context.Context, user *boiler.Player, factionID 
 		// load changed battle lobbies
 		api.ArenaManager.BattleLobbyDebounceBroadcastChan <- changedBattleLobbyIDs
 
-		for _, mechID := range stakedMechIDs {
+		for _, mechID := range unstakedMechIDs {
 			ws.PublishMessage(fmt.Sprintf("/public/mech/%s/is_staked", mechID), HubKeyMechIsStaked, false)
 		}
 
 		// broadcast staked mech list
-		lms, err := db.LobbyMechsBrief(user.ID, stakedMechIDs...)
+		lms, err := db.LobbyMechsBrief(user.ID, unstakedMechIDs...)
 		if err == nil {
+			// broadcast both mech list
+			ws.PublishMessage(fmt.Sprintf("/faction/%s/staked_mechs", factionID), server.HubKeyFactionStakedMechs, lms)
+			ws.PublishMessage(fmt.Sprintf("/secure/user/%s/owned_mechs", user.ID), server.HubKeyPlayerOwnedMechs, lms)
 		}
-		// broadcast both mech list
-		ws.PublishMessage(fmt.Sprintf("/faction/%s/staked_mechs", factionID), server.HubKeyFactionStakedMechs, lms)
-		ws.PublishMessage(fmt.Sprintf("/secure/user/%s/owned_mechs", user.ID), server.HubKeyPlayerOwnedMechs, lms)
 
 		return nil
 	})
