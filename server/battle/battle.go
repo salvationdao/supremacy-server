@@ -2537,7 +2537,7 @@ func BuildUserDetailWithFaction(userID uuid.UUID) (*UserBrief, error) {
 
 	userBrief.FactionID = user.FactionID.String
 
-	faction, err := boiler.Factions(boiler.FactionWhere.ID.EQ(user.FactionID.String)).One(gamedb.StdConn)
+	faction, err := boiler.Factions(boiler.FactionWhere.ID.EQ(user.FactionID.String), qm.Load(boiler.FactionRels.FactionPalette)).One(gamedb.StdConn)
 	if err != nil {
 		gamelog.L.Error().Str("log_name", "battle arena").Str("player_id", userID.String()).Str("faction_id", user.FactionID.String).Err(err).Msg("failed to get player faction from db")
 		return userBrief, nil
@@ -2547,9 +2547,9 @@ func BuildUserDetailWithFaction(userID uuid.UUID) (*UserBrief, error) {
 		ID:    faction.ID,
 		Label: faction.Label,
 		Theme: &Theme{
-			PrimaryColor:    faction.PrimaryColor,
-			SecondaryColor:  faction.SecondaryColor,
-			BackgroundColor: faction.BackgroundColor,
+			PrimaryColor:    faction.R.FactionPalette.Primary,
+			SecondaryColor:  faction.R.FactionPalette.Text,
+			BackgroundColor: faction.R.FactionPalette.Background,
 		},
 	}
 
