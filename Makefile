@@ -277,7 +277,7 @@ sync-data:
 dev-sync-data:
 	mkdir -p ./server/synctool/temp-sync
 	rm -rf ./server/synctool/temp-sync/supremacy-static-data
-	git clone git@github.com:ninja-syndicate/supremacy-static-data.git -b develop ./server/synctool/temp-sync/supremacy-static-data
+	git clone git@github.com:ninja-syndicate/supremacy-static-data.git -b felixtan/se-536-refactor-faction-theme-colours-add-new ./server/synctool/temp-sync/supremacy-static-data
 	make dev-sync
 
 .PHONY: mac-sync-data
