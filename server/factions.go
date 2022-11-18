@@ -44,43 +44,14 @@ var FactionUsers = map[string]string{
 	ZaibatsuFactionID:          ZaibatsuPlayerID,
 }
 
-func (f *Faction) ToBoilerFaction() *boiler.Faction {
-	newFaction := &boiler.Faction{
-		ID:             f.ID,
-		VotePrice:      f.VotePrice,
-		ContractReward: f.ContractReward,
-		Label:          f.Label,
-		//GuildID: , ?
-		//DeletedAt:,
-		//UpdatedAt:,
-		//CreatedAt:,
-		PrimaryColor:    f.PrimaryColor,
-		SecondaryColor:  f.SecondaryColor,
-		BackgroundColor: f.BackgroundColor,
-	}
-	return newFaction
-}
-
-func FactionFromBoiler(bf *boiler.Faction) *Faction {
-	return &Faction{
-		ID:              bf.ID,
-		Label:           bf.Label,
-		PrimaryColor:    bf.PrimaryColor,
-		SecondaryColor:  bf.SecondaryColor,
-		BackgroundColor: bf.BackgroundColor,
-		VotePrice:       bf.VotePrice,
-		ContractReward:  bf.ContractReward,
-	}
-}
-
 func (f *Faction) SetFromBoilerFaction(bf *boiler.Faction) error {
 	//f.LogoBlobID = bf. ?
 	//f.BackgroundBlobID = bf. ?
 	f.ID = bf.ID
 	f.Label = bf.Label
-	f.PrimaryColor = bf.PrimaryColor
-	f.SecondaryColor = bf.SecondaryColor
-	f.BackgroundColor = bf.BackgroundColor
+	f.PrimaryColor = bf.R.FactionPalette.Primary
+	f.SecondaryColor = bf.R.FactionPalette.Text
+	f.BackgroundColor = bf.R.FactionPalette.Background
 	f.VotePrice = bf.VotePrice
 	f.ContractReward = bf.ContractReward
 	return nil
