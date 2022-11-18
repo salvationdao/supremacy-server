@@ -30,6 +30,11 @@ func FactionRouter(api *API) chi.Router {
 	return r
 }
 
+type FactionWithPalette struct {
+	*boiler.Faction
+	Palette *boiler.FactionPalette `json:"palette"`
+}
+
 func (c *FactionController) FactionAll(w http.ResponseWriter, r *http.Request) (int, error) {
 	factions, err := boiler.Factions(
 		qm.Select(
@@ -39,12 +44,21 @@ func (c *FactionController) FactionAll(w http.ResponseWriter, r *http.Request) (
 			boiler.FactionColumns.BackgroundURL,
 			boiler.FactionColumns.Description,
 		),
+		qm.Load(boiler.FactionRels.FactionPalette),
 	).All(gamedb.StdConn)
 	if err != nil {
 		return http.StatusInternalServerError, terror.Error(err, "Failed to query faction data from db")
 	}
 
-	return helpers.EncodeJSON(w, factions)
+	result := make([]*FactionWithPalette, 0)
+	for _, f := range factions {
+		result = append(result, &FactionWithPalette{
+			Faction: f,
+			Palette: f.R.FactionPalette,
+		})
+	}
+
+	return helpers.EncodeJSON(w, result)
 }
 
 func (api *API) GetFactionData(w http.ResponseWriter, r *http.Request) (int, error) {
