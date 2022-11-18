@@ -748,7 +748,7 @@ func UpdateKeycard(api *api.API, pp *xsyn_rpcclient.XsynXrpcClient, filePath str
 				err := playerKeycard.Insert(gamedb.StdConn, boil.Infer())
 				if err != nil {
 					failed++
-					gamelog.L.Error().Interface("PlayerKeycard", playerKeycard).Err(err).Msg("failed to insert new player keycard")
+					gamelog.L.Error().Interface("PlayerKeycards", playerKeycard).Err(err).Msg("failed to insert new player keycard")
 					failedSync := &boiler.FailedPlayerKeycardsSync{
 						PublicAddress:      keycardAssets.PublicAddress,
 						BlueprintKeycardID: assetData.BlueprintID,

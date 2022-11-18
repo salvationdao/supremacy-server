@@ -551,7 +551,7 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetKeycardGetHandler(tx context.Con
 		return terror.Error(err, "Invalid request received.")
 	}
 
-	keycard, err := db.PlayerKeycard(req.Payload.ID)
+	keycards, err := db.PlayerKeycards("", req.Payload.ID.String())
 	if errors.Is(err, sql.ErrNoRows) {
 		return terror.Error(err, "Keycard not found.")
 	}
@@ -559,7 +559,11 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetKeycardGetHandler(tx context.Con
 		return terror.Error(err, "Failed to get keycard.")
 	}
 
-	reply(keycard)
+	if len(keycards) == 0 {
+		return terror.Error(fmt.Errorf("keycard not found"), "Keycard not found.")
+	}
+
+	reply(keycards[0])
 
 	return nil
 }
@@ -2841,7 +2845,6 @@ func (api *API) PlayerMysteryCrates(ctx context.Context, user *boiler.Player, ke
 	if err != nil {
 		return err
 	}
-	fmt.Println(len(resp))
 	reply(resp)
 	return nil
 }
@@ -2887,4 +2890,56 @@ func BroadcastPlayerMysteryCrates(playerID string, mysteryCrateIDs ...string) {
 
 	// free up memory
 	playerMysteryCrates = nil
+}
+
+func (api *API) PlayerKeycards(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
+	resp, err := db.PlayerKeycards(user.ID)
+	if err != nil {
+		return err
+	}
+	reply(resp)
+	return nil
+}
+
+func BroadcastPlayerKeycards(playerID string, keycardIDs ...string) {
+	if playerID == "" && len(keycardIDs) == 0 {
+		return
+	}
+
+	keycards, err := db.PlayerKeycards(playerID, keycardIDs...)
+	if err != nil {
+		return
+	}
+
+	var playerKeycars []struct {
+		playerID string
+		keycards []*server.AssetKeycard
+	}
+	for _, keycard := range keycards {
+		ownerID := keycard.PlayerID
+		index := slices.IndexFunc(playerKeycars, func(pw struct {
+			playerID string
+			keycards []*server.AssetKeycard
+		}) bool {
+			return pw.playerID == ownerID
+		})
+
+		if index == -1 {
+			playerKeycars = append(playerKeycars, struct {
+				playerID string
+				keycards []*server.AssetKeycard
+			}{playerID: ownerID, keycards: []*server.AssetKeycard{}})
+
+			index = len(playerKeycars) - 1
+		}
+
+		playerKeycars[index].keycards = append(playerKeycars[index].keycards, keycard)
+	}
+
+	for _, pw := range playerKeycars {
+		ws.PublishMessage(fmt.Sprintf("/user/%s/owned_keycards", pw.playerID), server.HubKeyPlayerOwnedKeycards, pw.keycards)
+	}
+
+	// free up memory
+	playerKeycars = nil
 }

@@ -117,6 +117,7 @@ const HubKeyPlayerOwnedWeapons = "PLAYER:OWNED:WEAPONS"
 const HubKeyPlayerOwnedMechSkins = "PLAYER:OWNED:MECH:SKINS"
 const HubKeyPlayerOwnedWeaponSkins = "PLAYER:OWNED:WEAPON:SKINS"
 const HubKeyPlayerOwnedMysteryCrates = "PLAYER:OWNED:MYSTERY:CRATES"
+const HubKeyPlayerOwnedKeycards = "PLAYER:OWNED:KEYCARDS"
 const HubKeyFactionStakedMechs = "FACTION:STAKED:MECHS"
 
 const HubKeyBattleLobbyListUpdate = "BATTLE:LOBBY:LIST:UPDATE"

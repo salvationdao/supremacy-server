@@ -760,7 +760,7 @@ func (mp *MarketplaceController) SalesKeycardCreateHandler(ctx context.Context, 
 	//}
 
 	// Check if can sell any keycards
-	keycard, err := db.PlayerKeycard(req.Payload.ItemID)
+	keycards, err := db.PlayerKeycards("", req.Payload.ItemID.String())
 	if errors.Is(err, sql.ErrNoRows) {
 		return terror.Error(err, "Player Keycard not found.")
 	}
@@ -773,6 +773,13 @@ func (mp *MarketplaceController) SalesKeycardCreateHandler(ctx context.Context, 
 			Msg("unable to get player's keycard")
 		return terror.Error(err, errMsg)
 	}
+
+	if len(keycards) == 0 {
+		return terror.Error(fmt.Errorf("keycard not found"), "Keycard not found.")
+	}
+
+	keycard := keycards[0]
+
 	if keycard.Count < 1 {
 		return terror.Error(fmt.Errorf("all keycards are on marketplace"), "Your keycard(s) are already for sale on Marketplace.")
 	}
