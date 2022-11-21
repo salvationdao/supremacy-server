@@ -1081,14 +1081,14 @@ func PlayerWeapons(playerID string, weaponIDs ...string) ([]*server.Weapon, erro
 
 	weaponIDWhereIn := ""
 	if len(weaponIDs) > 0 {
-		weaponIDWhereIn = fmt.Sprintf("AND %s IN (", boiler.CollectionItemTableColumns.ItemID)
+		weaponIDWhereIn = fmt.Sprintf(" AND %s IN (", boiler.CollectionItemTableColumns.ItemID)
 		for i, weaponID := range weaponIDs {
 			_, err := uuid.FromString(weaponID)
 			if err != nil {
 				return nil, terror.Error(err, "Invalid uuid format.")
 			}
 
-			weaponIDWhereIn = "'" + weaponID + "'"
+			weaponIDWhereIn += "'" + weaponID + "'"
 			if i < len(weaponIDs)-1 {
 				weaponIDWhereIn += ","
 				continue

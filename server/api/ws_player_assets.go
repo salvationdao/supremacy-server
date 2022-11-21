@@ -16,6 +16,7 @@ import (
 	"server/helpers"
 	"server/rpctypes"
 	"strings"
+	"time"
 	"unicode"
 
 	"github.com/go-chi/chi/v5"
@@ -1054,6 +1055,8 @@ func (pac *PlayerAssetsControllerWS) OpenCrateHandler(ctx context.Context, user 
 		return terror.Error(err, "Could not open mystery crate, please try again or contact support.")
 	}
 
+	ws.PublishMessage(fmt.Sprintf("/user/%s/owned_mystery_crates", user.ID), server.HubKeyPlayerOwnedMysteryCrates, []*server.MysteryCrate{{ID: collectionItem.ID, Opened: true, DeletedAt: null.TimeFrom(time.Now())}})
+
 	if req.Payload.IsHangar {
 		reply(hangarResp)
 		return nil
@@ -1539,6 +1542,8 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetMechEquipHandler(ctx context.Con
 		}
 	}
 	if len(req.Payload.EquipWeapons) != 0 {
+		changedWeaponIDs := []string{}
+
 		for _, ew := range req.Payload.EquipWeapons {
 			if ew.SlotNumber < 0 {
 				l.Error().Msg(fmt.Sprintf("invalid weapon slot number specified: %d", ew.SlotNumber))
@@ -1612,6 +1617,8 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetMechEquipHandler(ctx context.Con
 					l.Error().Err(err).Msg("failed to update weapon on xsyn")
 					return terror.Error(err, errorMsg)
 				}
+
+				changedWeaponIDs = append(changedWeaponIDs, removeMechWeapon.WeaponID.String)
 			} else if ew.WeaponID != "" {
 				// Check if weapon can be modified
 				canEquip, reason, err := db.CanAssetBeModifiedOrMoved(tx, ew.WeaponID, boiler.ItemTypeWeapon, user.ID)
@@ -1754,10 +1761,18 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetMechEquipHandler(ctx context.Con
 					l.Error().Err(err).Msg("failed to update weapon on xsyn")
 					return terror.Error(err, errorMsg)
 				}
+
+				changedWeaponIDs = append(changedWeaponIDs, weapon.ID)
 			}
+		}
+
+		if len(changedWeaponIDs) > 0 {
+			go BroadcastPlayerWeapons(user.ID, changedWeaponIDs...)
 		}
 	}
 	if req.Payload.EquipMechSkin.MechSkinID != "" {
+		changedMechSkinIDs := []string{}
+
 		// Check if mech skin can be equipped
 		canEquip, reason, err := db.CanAssetBeModifiedOrMoved(tx, req.Payload.EquipMechSkin.MechSkinID, boiler.ItemTypeMechSkin, user.ID)
 		if err != nil {
@@ -1851,6 +1866,8 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetMechEquipHandler(ctx context.Con
 			return terror.Error(fmt.Errorf("failed to update previous mech skin"), errorMsg)
 		}
 
+		changedMechSkinIDs = append(changedMechSkinIDs, previousSkin.ID)
+
 		// Equip mech skin to mech
 		equipMech, err := boiler.FindMech(tx, mech.ID)
 		if err != nil {
@@ -1897,6 +1914,8 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetMechEquipHandler(ctx context.Con
 			l.Error().Msg("failed to update mech skin with new mech 2")
 			return terror.Error(fmt.Errorf("failed to update mech skin with new mech"), errorMsg)
 		}
+		changedMechSkinIDs = append(changedMechSkinIDs, mechSkin.ID)
+
 		dbMechSkin, err := db.MechSkin(tx, mechSkin.ID, nil)
 		if err != nil {
 			l.Error().Err(err).Msg("failed to get mechSkin utility")
@@ -1908,6 +1927,8 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetMechEquipHandler(ctx context.Con
 			l.Error().Err(err).Msg("failed to update mechSkin on xsyn")
 			return terror.Error(err, errorMsg)
 		}
+
+		go BroadcastPlayerMechSkins("", "", changedMechSkinIDs...)
 	}
 
 	updatedMech, err := db.Mech(tx, req.Payload.MechID)
