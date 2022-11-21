@@ -518,7 +518,7 @@ func PlayerMechSkins(playerID string, modelID string, mechSkinIDs ...string) ([]
 				return nil, terror.Error(err, "Invalid mech skin id.")
 			}
 
-			mechSkinIDWhereIn = "'" + mechSkinID + "'"
+			mechSkinIDWhereIn += "'" + mechSkinID + "'"
 
 			if i < len(mechSkinIDs)-1 {
 				mechSkinIDWhereIn += ","

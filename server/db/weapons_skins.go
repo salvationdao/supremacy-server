@@ -413,7 +413,7 @@ func PlayerWeaponSkins(playerID string, weaponSkinIDs ...string) ([]*server.Weap
 				return nil, terror.Error(err, "Invalid weapon skin id.")
 			}
 
-			weaponSkinIDWhereIn = "'" + weaponSkinID + "'"
+			weaponSkinIDWhereIn += "'" + weaponSkinID + "'"
 
 			if i < len(weaponSkinIDs)-1 {
 				weaponSkinIDWhereIn += ","

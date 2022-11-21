@@ -212,7 +212,7 @@ func PlayerMysteryCrates(playerID string, mysteryCrateIDs ...string) ([]*server.
 				return nil, terror.Error(err, "Invalid mystery crate id")
 			}
 
-			mysteryCrateWhereIn = "'" + mysteryCrateID + "'"
+			mysteryCrateWhereIn += "'" + mysteryCrateID + "'"
 			if i < len(mysteryCrateIDs)-1 {
 				mysteryCrateWhereIn += ","
 				continue
