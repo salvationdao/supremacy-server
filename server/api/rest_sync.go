@@ -40,6 +40,26 @@ func (api *API) SyncStaticData(w http.ResponseWriter, r *http.Request) (int, err
 		return http.StatusInternalServerError, terror.Error(err, "Failed to sync faction with db")
 	}
 
+	url = fmt.Sprintf("%s/%s/sfaction_palettes.csv", api.SyncConfig.FilePath, branch)
+	f, err = synctool.DownloadFile(api.ctx, url, timeout)
+	if err != nil {
+		return http.StatusInternalServerError, terror.Error(err, "Failed to sync faction palette data")
+	}
+	err = synctool.SyncFactionPalettes(f, gamedb.StdConn)
+	if err != nil {
+		return http.StatusInternalServerError, terror.Error(err, "Failed to sync faction palettes with db")
+	}
+
+	url = fmt.Sprintf("%s/%s/sfaction_passes.csv", api.SyncConfig.FilePath, branch)
+	f, err = synctool.DownloadFile(api.ctx, url, timeout)
+	if err != nil {
+		return http.StatusInternalServerError, terror.Error(err, "Failed to sync faction pass data")
+	}
+	err = synctool.SyncFactionPasses(f, gamedb.StdConn)
+	if err != nil {
+		return http.StatusInternalServerError, terror.Error(err, "Failed to sync faction pass with db")
+	}
+
 	url = fmt.Sprintf("%s/%s/brands.csv", api.SyncConfig.FilePath, branch)
 	f, err = synctool.DownloadFile(api.ctx, url, timeout)
 	if err != nil {

@@ -1,6 +1,7 @@
 package types
 
 import (
+	"github.com/shopspring/decimal"
 	"github.com/volatiletech/null/v8"
 )
 
@@ -65,6 +66,14 @@ type FactionPalette struct {
 	S700       string `json:"s700"`
 	S800       string `json:"s800"`
 	S900       string `json:"s900"`
+}
+
+type FactionPass struct {
+	ID          string          `json:"id"`
+	Label       string          `json:"label"`
+	LastForDays int             `json:"last_for_days"`
+	SupsCost    decimal.Decimal `json:"sups_cost"`
+	DeletedAt   null.Time       `json:"deleted_at"`
 }
 
 type MechSkin struct {

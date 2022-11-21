@@ -6,6 +6,7 @@ import (
 	"database/sql"
 	"encoding/csv"
 	"fmt"
+	"github.com/shopspring/decimal"
 	"io"
 	"log"
 	"net/http"
@@ -53,6 +54,16 @@ func SyncTool(dt *StaticSyncTool) error {
 		return err
 	}
 	err = SyncFactionPalettes(f, dt.DB)
+	if err != nil {
+		return err
+	}
+	f.Close()
+
+	f, err = readFile(fmt.Sprintf("%sfaction_passes.csv", dt.FilePath))
+	if err != nil {
+		return err
+	}
+	err = SyncFactionPasses(f, dt.DB)
 	if err != nil {
 		return err
 	}
@@ -815,6 +826,57 @@ func SyncFactionPalettes(f io.Reader, db *sql.DB) error {
 	}
 
 	fmt.Println("Finish syncing Faction palettes")
+	return nil
+}
+
+func SyncFactionPasses(f io.Reader, db *sql.DB) error {
+	r := csv.NewReader(f)
+
+	if _, err := r.Read(); err != nil {
+		return err
+	}
+
+	records, err := r.ReadAll()
+	if err != nil {
+		return err
+	}
+
+	for _, record := range records {
+		factionPass := &types.FactionPass{
+			ID:        record[0],
+			Label:     record[1],
+			DeletedAt: null.Time{Valid: record[4] != "", Time: time.Now()},
+		}
+
+		factionPass.LastForDays, err = strconv.Atoi(record[2])
+		if err != nil {
+			return fmt.Errorf("invalid last for days for faction pass")
+		}
+
+		factionPass.SupsCost, err = decimal.NewFromString(record[3])
+		if err != nil {
+			return fmt.Errorf("invalid sups cost for faction pass")
+		}
+
+		_, err = db.Exec(`
+			INSERT INTO faction_passes (id, label, last_for_days, sups_cost, deleted_at) 
+			VALUES ($1, $2, $3, $4, $5)
+			ON CONFLICT (id)
+			DO UPDATE SET label=$2, last_for_days=$3, sups_cost=$4, deleted_at=$5;
+		`,
+			factionPass.ID,
+			factionPass.Label,
+			factionPass.LastForDays,
+			factionPass.SupsCost,
+			factionPass.DeletedAt,
+		)
+		if err != nil {
+			fmt.Println(err.Error()+factionPass.ID, factionPass.Label)
+			return err
+		}
+
+	}
+	fmt.Println("Finish syncing Faction Passes")
 	return nil
 }
 
