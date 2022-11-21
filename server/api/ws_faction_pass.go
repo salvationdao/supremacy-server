@@ -12,12 +12,15 @@ func NewFactionPassController(api *API) {
 
 type FactionPassPurchaseRequest struct {
 	Payload struct {
-		ID string `json:"id"`
 	} `json:"payload"`
 }
 
 const HubKeyFactionPassPurchase = "FACTION:PASS:PURCHASE"
 
-func (api *API) FactionPassPurchase(ctx context.Context, user *boiler.Player, fID string, key string, payload []byte, reply ws.ReplyFunc) error {
+func (api *API) FactionPassPurchase(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
+	return nil
+}
+
+func (api *API) FactionPassList(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
 	return nil
 }

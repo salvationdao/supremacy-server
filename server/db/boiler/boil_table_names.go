@@ -63,6 +63,7 @@ var TableNames = struct {
 	Coupons                                            string
 	Devices                                            string
 	FactionPalettes                                    string
+	FactionPasses                                      string
 	FactionStats                                       string
 	Factions                                           string
 	FailedPlayerKeycardsSync                           string
@@ -233,6 +234,7 @@ var TableNames = struct {
 	Coupons:                        "coupons",
 	Devices:                        "devices",
 	FactionPalettes:                "faction_palettes",
+	FactionPasses:                  "faction_passes",
 	FactionStats:                   "faction_stats",
 	Factions:                       "factions",
 	FailedPlayerKeycardsSync:       "failed_player_keycards_sync",
