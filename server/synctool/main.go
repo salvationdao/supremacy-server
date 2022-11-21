@@ -845,7 +845,7 @@ func SyncFactionPasses(f io.Reader, db *sql.DB) error {
 		factionPass := &types.FactionPass{
 			ID:        record[0],
 			Label:     record[1],
-			DeletedAt: null.Time{Valid: record[4] != "", Time: time.Now()},
+			DeletedAt: null.Time{Valid: record[5] != "", Time: time.Now()},
 		}
 
 		factionPass.LastForDays, err = strconv.Atoi(record[2])
@@ -858,16 +858,22 @@ func SyncFactionPasses(f io.Reader, db *sql.DB) error {
 			return fmt.Errorf("invalid sups cost for faction pass")
 		}
 
+		factionPass.SupsDiscountPercentage, err = decimal.NewFromString(record[4])
+		if err != nil {
+			return fmt.Errorf("invalid sups cost for faction pass")
+		}
+
 		_, err = db.Exec(`
-			INSERT INTO faction_passes (id, label, last_for_days, sups_cost, deleted_at) 
-			VALUES ($1, $2, $3, $4, $5)
+			INSERT INTO faction_passes (id, label, last_for_days, sups_cost, sups_discount_percentage, deleted_at) 
+			VALUES ($1, $2, $3, $4, $5, $6)
 			ON CONFLICT (id)
-			DO UPDATE SET label=$2, last_for_days=$3, sups_cost=$4, deleted_at=$5;
+			DO UPDATE SET label=$2, last_for_days=$3, sups_cost=$4, sups_discount_percentage=$5, deleted_at=$6;
 		`,
 			factionPass.ID,
 			factionPass.Label,
 			factionPass.LastForDays,
 			factionPass.SupsCost,
+			factionPass.SupsDiscountPercentage,
 			factionPass.DeletedAt,
 		)
 		if err != nil {

@@ -24,170 +24,177 @@ import (
 
 // Player is an object representing the database table.
 type Player struct {
-	ID               string          `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
-	FactionID        null.String     `boiler:"faction_id" boil:"faction_id" json:"faction_id,omitempty" toml:"faction_id" yaml:"faction_id,omitempty"`
-	Username         null.String     `boiler:"username" boil:"username" json:"username,omitempty" toml:"username" yaml:"username,omitempty"`
-	PublicAddress    null.String     `boiler:"public_address" boil:"public_address" json:"public_address,omitempty" toml:"public_address" yaml:"public_address,omitempty"`
-	IsAi             bool            `boiler:"is_ai" boil:"is_ai" json:"is_ai" toml:"is_ai" yaml:"is_ai"`
-	DeletedAt        null.Time       `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
-	UpdatedAt        time.Time       `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
-	CreatedAt        time.Time       `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
-	MobileNumber     null.String     `boiler:"mobile_number" boil:"mobile_number" json:"mobile_number,omitempty" toml:"mobile_number" yaml:"mobile_number,omitempty"`
-	IssuePunishFee   decimal.Decimal `boiler:"issue_punish_fee" boil:"issue_punish_fee" json:"issue_punish_fee" toml:"issue_punish_fee" yaml:"issue_punish_fee"`
-	ReportedCost     decimal.Decimal `boiler:"reported_cost" boil:"reported_cost" json:"reported_cost" toml:"reported_cost" yaml:"reported_cost"`
-	Gid              int             `boiler:"gid" boil:"gid" json:"gid" toml:"gid" yaml:"gid"`
-	Rank             string          `boiler:"rank" boil:"rank" json:"rank" toml:"rank" yaml:"rank"`
-	SentMessageCount int             `boiler:"sent_message_count" boil:"sent_message_count" json:"sent_message_count" toml:"sent_message_count" yaml:"sent_message_count"`
-	AboutMe          null.String     `boiler:"about_me" boil:"about_me" json:"about_me,omitempty" toml:"about_me" yaml:"about_me,omitempty"`
-	ProfileAvatarID  null.String     `boiler:"profile_avatar_id" boil:"profile_avatar_id" json:"profile_avatar_id,omitempty" toml:"profile_avatar_id" yaml:"profile_avatar_id,omitempty"`
-	SyndicateID      null.String     `boiler:"syndicate_id" boil:"syndicate_id" json:"syndicate_id,omitempty" toml:"syndicate_id" yaml:"syndicate_id,omitempty"`
-	CustomAvatarID   null.String     `boiler:"custom_avatar_id" boil:"custom_avatar_id" json:"custom_avatar_id,omitempty" toml:"custom_avatar_id" yaml:"custom_avatar_id,omitempty"`
-	RoleID           string          `boiler:"role_id" boil:"role_id" json:"role_id" toml:"role_id" yaml:"role_id"`
-	StripeCustomerID null.String     `boiler:"stripe_customer_id" boil:"stripe_customer_id" json:"stripe_customer_id,omitempty" toml:"stripe_customer_id" yaml:"stripe_customer_id,omitempty"`
-	AcceptsMarketing null.Bool       `boiler:"accepts_marketing" boil:"accepts_marketing" json:"accepts_marketing,omitempty" toml:"accepts_marketing" yaml:"accepts_marketing,omitempty"`
+	ID                   string          `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
+	FactionID            null.String     `boiler:"faction_id" boil:"faction_id" json:"faction_id,omitempty" toml:"faction_id" yaml:"faction_id,omitempty"`
+	Username             null.String     `boiler:"username" boil:"username" json:"username,omitempty" toml:"username" yaml:"username,omitempty"`
+	PublicAddress        null.String     `boiler:"public_address" boil:"public_address" json:"public_address,omitempty" toml:"public_address" yaml:"public_address,omitempty"`
+	IsAi                 bool            `boiler:"is_ai" boil:"is_ai" json:"is_ai" toml:"is_ai" yaml:"is_ai"`
+	DeletedAt            null.Time       `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
+	UpdatedAt            time.Time       `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
+	CreatedAt            time.Time       `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
+	MobileNumber         null.String     `boiler:"mobile_number" boil:"mobile_number" json:"mobile_number,omitempty" toml:"mobile_number" yaml:"mobile_number,omitempty"`
+	IssuePunishFee       decimal.Decimal `boiler:"issue_punish_fee" boil:"issue_punish_fee" json:"issue_punish_fee" toml:"issue_punish_fee" yaml:"issue_punish_fee"`
+	ReportedCost         decimal.Decimal `boiler:"reported_cost" boil:"reported_cost" json:"reported_cost" toml:"reported_cost" yaml:"reported_cost"`
+	Gid                  int             `boiler:"gid" boil:"gid" json:"gid" toml:"gid" yaml:"gid"`
+	Rank                 string          `boiler:"rank" boil:"rank" json:"rank" toml:"rank" yaml:"rank"`
+	SentMessageCount     int             `boiler:"sent_message_count" boil:"sent_message_count" json:"sent_message_count" toml:"sent_message_count" yaml:"sent_message_count"`
+	AboutMe              null.String     `boiler:"about_me" boil:"about_me" json:"about_me,omitempty" toml:"about_me" yaml:"about_me,omitempty"`
+	ProfileAvatarID      null.String     `boiler:"profile_avatar_id" boil:"profile_avatar_id" json:"profile_avatar_id,omitempty" toml:"profile_avatar_id" yaml:"profile_avatar_id,omitempty"`
+	SyndicateID          null.String     `boiler:"syndicate_id" boil:"syndicate_id" json:"syndicate_id,omitempty" toml:"syndicate_id" yaml:"syndicate_id,omitempty"`
+	CustomAvatarID       null.String     `boiler:"custom_avatar_id" boil:"custom_avatar_id" json:"custom_avatar_id,omitempty" toml:"custom_avatar_id" yaml:"custom_avatar_id,omitempty"`
+	RoleID               string          `boiler:"role_id" boil:"role_id" json:"role_id" toml:"role_id" yaml:"role_id"`
+	StripeCustomerID     null.String     `boiler:"stripe_customer_id" boil:"stripe_customer_id" json:"stripe_customer_id,omitempty" toml:"stripe_customer_id" yaml:"stripe_customer_id,omitempty"`
+	AcceptsMarketing     null.Bool       `boiler:"accepts_marketing" boil:"accepts_marketing" json:"accepts_marketing,omitempty" toml:"accepts_marketing" yaml:"accepts_marketing,omitempty"`
+	FactionPassExpiresAt null.Time       `boiler:"faction_pass_expires_at" boil:"faction_pass_expires_at" json:"faction_pass_expires_at,omitempty" toml:"faction_pass_expires_at" yaml:"faction_pass_expires_at,omitempty"`
 
 	R *playerR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L playerL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 }
 
 var PlayerColumns = struct {
-	ID               string
-	FactionID        string
-	Username         string
-	PublicAddress    string
-	IsAi             string
-	DeletedAt        string
-	UpdatedAt        string
-	CreatedAt        string
-	MobileNumber     string
-	IssuePunishFee   string
-	ReportedCost     string
-	Gid              string
-	Rank             string
-	SentMessageCount string
-	AboutMe          string
-	ProfileAvatarID  string
-	SyndicateID      string
-	CustomAvatarID   string
-	RoleID           string
-	StripeCustomerID string
-	AcceptsMarketing string
+	ID                   string
+	FactionID            string
+	Username             string
+	PublicAddress        string
+	IsAi                 string
+	DeletedAt            string
+	UpdatedAt            string
+	CreatedAt            string
+	MobileNumber         string
+	IssuePunishFee       string
+	ReportedCost         string
+	Gid                  string
+	Rank                 string
+	SentMessageCount     string
+	AboutMe              string
+	ProfileAvatarID      string
+	SyndicateID          string
+	CustomAvatarID       string
+	RoleID               string
+	StripeCustomerID     string
+	AcceptsMarketing     string
+	FactionPassExpiresAt string
 }{
-	ID:               "id",
-	FactionID:        "faction_id",
-	Username:         "username",
-	PublicAddress:    "public_address",
-	IsAi:             "is_ai",
-	DeletedAt:        "deleted_at",
-	UpdatedAt:        "updated_at",
-	CreatedAt:        "created_at",
-	MobileNumber:     "mobile_number",
-	IssuePunishFee:   "issue_punish_fee",
-	ReportedCost:     "reported_cost",
-	Gid:              "gid",
-	Rank:             "rank",
-	SentMessageCount: "sent_message_count",
-	AboutMe:          "about_me",
-	ProfileAvatarID:  "profile_avatar_id",
-	SyndicateID:      "syndicate_id",
-	CustomAvatarID:   "custom_avatar_id",
-	RoleID:           "role_id",
-	StripeCustomerID: "stripe_customer_id",
-	AcceptsMarketing: "accepts_marketing",
+	ID:                   "id",
+	FactionID:            "faction_id",
+	Username:             "username",
+	PublicAddress:        "public_address",
+	IsAi:                 "is_ai",
+	DeletedAt:            "deleted_at",
+	UpdatedAt:            "updated_at",
+	CreatedAt:            "created_at",
+	MobileNumber:         "mobile_number",
+	IssuePunishFee:       "issue_punish_fee",
+	ReportedCost:         "reported_cost",
+	Gid:                  "gid",
+	Rank:                 "rank",
+	SentMessageCount:     "sent_message_count",
+	AboutMe:              "about_me",
+	ProfileAvatarID:      "profile_avatar_id",
+	SyndicateID:          "syndicate_id",
+	CustomAvatarID:       "custom_avatar_id",
+	RoleID:               "role_id",
+	StripeCustomerID:     "stripe_customer_id",
+	AcceptsMarketing:     "accepts_marketing",
+	FactionPassExpiresAt: "faction_pass_expires_at",
 }
 
 var PlayerTableColumns = struct {
-	ID               string
-	FactionID        string
-	Username         string
-	PublicAddress    string
-	IsAi             string
-	DeletedAt        string
-	UpdatedAt        string
-	CreatedAt        string
-	MobileNumber     string
-	IssuePunishFee   string
-	ReportedCost     string
-	Gid              string
-	Rank             string
-	SentMessageCount string
-	AboutMe          string
-	ProfileAvatarID  string
-	SyndicateID      string
-	CustomAvatarID   string
-	RoleID           string
-	StripeCustomerID string
-	AcceptsMarketing string
+	ID                   string
+	FactionID            string
+	Username             string
+	PublicAddress        string
+	IsAi                 string
+	DeletedAt            string
+	UpdatedAt            string
+	CreatedAt            string
+	MobileNumber         string
+	IssuePunishFee       string
+	ReportedCost         string
+	Gid                  string
+	Rank                 string
+	SentMessageCount     string
+	AboutMe              string
+	ProfileAvatarID      string
+	SyndicateID          string
+	CustomAvatarID       string
+	RoleID               string
+	StripeCustomerID     string
+	AcceptsMarketing     string
+	FactionPassExpiresAt string
 }{
-	ID:               "players.id",
-	FactionID:        "players.faction_id",
-	Username:         "players.username",
-	PublicAddress:    "players.public_address",
-	IsAi:             "players.is_ai",
-	DeletedAt:        "players.deleted_at",
-	UpdatedAt:        "players.updated_at",
-	CreatedAt:        "players.created_at",
-	MobileNumber:     "players.mobile_number",
-	IssuePunishFee:   "players.issue_punish_fee",
-	ReportedCost:     "players.reported_cost",
-	Gid:              "players.gid",
-	Rank:             "players.rank",
-	SentMessageCount: "players.sent_message_count",
-	AboutMe:          "players.about_me",
-	ProfileAvatarID:  "players.profile_avatar_id",
-	SyndicateID:      "players.syndicate_id",
-	CustomAvatarID:   "players.custom_avatar_id",
-	RoleID:           "players.role_id",
-	StripeCustomerID: "players.stripe_customer_id",
-	AcceptsMarketing: "players.accepts_marketing",
+	ID:                   "players.id",
+	FactionID:            "players.faction_id",
+	Username:             "players.username",
+	PublicAddress:        "players.public_address",
+	IsAi:                 "players.is_ai",
+	DeletedAt:            "players.deleted_at",
+	UpdatedAt:            "players.updated_at",
+	CreatedAt:            "players.created_at",
+	MobileNumber:         "players.mobile_number",
+	IssuePunishFee:       "players.issue_punish_fee",
+	ReportedCost:         "players.reported_cost",
+	Gid:                  "players.gid",
+	Rank:                 "players.rank",
+	SentMessageCount:     "players.sent_message_count",
+	AboutMe:              "players.about_me",
+	ProfileAvatarID:      "players.profile_avatar_id",
+	SyndicateID:          "players.syndicate_id",
+	CustomAvatarID:       "players.custom_avatar_id",
+	RoleID:               "players.role_id",
+	StripeCustomerID:     "players.stripe_customer_id",
+	AcceptsMarketing:     "players.accepts_marketing",
+	FactionPassExpiresAt: "players.faction_pass_expires_at",
 }
 
 // Generated where
 
 var PlayerWhere = struct {
-	ID               whereHelperstring
-	FactionID        whereHelpernull_String
-	Username         whereHelpernull_String
-	PublicAddress    whereHelpernull_String
-	IsAi             whereHelperbool
-	DeletedAt        whereHelpernull_Time
-	UpdatedAt        whereHelpertime_Time
-	CreatedAt        whereHelpertime_Time
-	MobileNumber     whereHelpernull_String
-	IssuePunishFee   whereHelperdecimal_Decimal
-	ReportedCost     whereHelperdecimal_Decimal
-	Gid              whereHelperint
-	Rank             whereHelperstring
-	SentMessageCount whereHelperint
-	AboutMe          whereHelpernull_String
-	ProfileAvatarID  whereHelpernull_String
-	SyndicateID      whereHelpernull_String
-	CustomAvatarID   whereHelpernull_String
-	RoleID           whereHelperstring
-	StripeCustomerID whereHelpernull_String
-	AcceptsMarketing whereHelpernull_Bool
+	ID                   whereHelperstring
+	FactionID            whereHelpernull_String
+	Username             whereHelpernull_String
+	PublicAddress        whereHelpernull_String
+	IsAi                 whereHelperbool
+	DeletedAt            whereHelpernull_Time
+	UpdatedAt            whereHelpertime_Time
+	CreatedAt            whereHelpertime_Time
+	MobileNumber         whereHelpernull_String
+	IssuePunishFee       whereHelperdecimal_Decimal
+	ReportedCost         whereHelperdecimal_Decimal
+	Gid                  whereHelperint
+	Rank                 whereHelperstring
+	SentMessageCount     whereHelperint
+	AboutMe              whereHelpernull_String
+	ProfileAvatarID      whereHelpernull_String
+	SyndicateID          whereHelpernull_String
+	CustomAvatarID       whereHelpernull_String
+	RoleID               whereHelperstring
+	StripeCustomerID     whereHelpernull_String
+	AcceptsMarketing     whereHelpernull_Bool
+	FactionPassExpiresAt whereHelpernull_Time
 }{
-	ID:               whereHelperstring{field: "\"players\".\"id\""},
-	FactionID:        whereHelpernull_String{field: "\"players\".\"faction_id\""},
-	Username:         whereHelpernull_String{field: "\"players\".\"username\""},
-	PublicAddress:    whereHelpernull_String{field: "\"players\".\"public_address\""},
-	IsAi:             whereHelperbool{field: "\"players\".\"is_ai\""},
-	DeletedAt:        whereHelpernull_Time{field: "\"players\".\"deleted_at\""},
-	UpdatedAt:        whereHelpertime_Time{field: "\"players\".\"updated_at\""},
-	CreatedAt:        whereHelpertime_Time{field: "\"players\".\"created_at\""},
-	MobileNumber:     whereHelpernull_String{field: "\"players\".\"mobile_number\""},
-	IssuePunishFee:   whereHelperdecimal_Decimal{field: "\"players\".\"issue_punish_fee\""},
-	ReportedCost:     whereHelperdecimal_Decimal{field: "\"players\".\"reported_cost\""},
-	Gid:              whereHelperint{field: "\"players\".\"gid\""},
-	Rank:             whereHelperstring{field: "\"players\".\"rank\""},
-	SentMessageCount: whereHelperint{field: "\"players\".\"sent_message_count\""},
-	AboutMe:          whereHelpernull_String{field: "\"players\".\"about_me\""},
-	ProfileAvatarID:  whereHelpernull_String{field: "\"players\".\"profile_avatar_id\""},
-	SyndicateID:      whereHelpernull_String{field: "\"players\".\"syndicate_id\""},
-	CustomAvatarID:   whereHelpernull_String{field: "\"players\".\"custom_avatar_id\""},
-	RoleID:           whereHelperstring{field: "\"players\".\"role_id\""},
-	StripeCustomerID: whereHelpernull_String{field: "\"players\".\"stripe_customer_id\""},
-	AcceptsMarketing: whereHelpernull_Bool{field: "\"players\".\"accepts_marketing\""},
+	ID:                   whereHelperstring{field: "\"players\".\"id\""},
+	FactionID:            whereHelpernull_String{field: "\"players\".\"faction_id\""},
+	Username:             whereHelpernull_String{field: "\"players\".\"username\""},
+	PublicAddress:        whereHelpernull_String{field: "\"players\".\"public_address\""},
+	IsAi:                 whereHelperbool{field: "\"players\".\"is_ai\""},
+	DeletedAt:            whereHelpernull_Time{field: "\"players\".\"deleted_at\""},
+	UpdatedAt:            whereHelpertime_Time{field: "\"players\".\"updated_at\""},
+	CreatedAt:            whereHelpertime_Time{field: "\"players\".\"created_at\""},
+	MobileNumber:         whereHelpernull_String{field: "\"players\".\"mobile_number\""},
+	IssuePunishFee:       whereHelperdecimal_Decimal{field: "\"players\".\"issue_punish_fee\""},
+	ReportedCost:         whereHelperdecimal_Decimal{field: "\"players\".\"reported_cost\""},
+	Gid:                  whereHelperint{field: "\"players\".\"gid\""},
+	Rank:                 whereHelperstring{field: "\"players\".\"rank\""},
+	SentMessageCount:     whereHelperint{field: "\"players\".\"sent_message_count\""},
+	AboutMe:              whereHelpernull_String{field: "\"players\".\"about_me\""},
+	ProfileAvatarID:      whereHelpernull_String{field: "\"players\".\"profile_avatar_id\""},
+	SyndicateID:          whereHelpernull_String{field: "\"players\".\"syndicate_id\""},
+	CustomAvatarID:       whereHelpernull_String{field: "\"players\".\"custom_avatar_id\""},
+	RoleID:               whereHelperstring{field: "\"players\".\"role_id\""},
+	StripeCustomerID:     whereHelpernull_String{field: "\"players\".\"stripe_customer_id\""},
+	AcceptsMarketing:     whereHelpernull_Bool{field: "\"players\".\"accepts_marketing\""},
+	FactionPassExpiresAt: whereHelpernull_Time{field: "\"players\".\"faction_pass_expires_at\""},
 }
 
 // PlayerRels is where relationship names are stored.
@@ -221,6 +228,7 @@ var PlayerRels = struct {
 	ConsumedByConsumedAbilities              string
 	RedeemedByCoupons                        string
 	Devices                                  string
+	PurchasedByFactionPassPurchaseLogs       string
 	MVPPlayerFactionStats                    string
 	OwnerItemKeycardSales                    string
 	SoldToItemKeycardSales                   string
@@ -307,6 +315,7 @@ var PlayerRels = struct {
 	ConsumedByConsumedAbilities:              "ConsumedByConsumedAbilities",
 	RedeemedByCoupons:                        "RedeemedByCoupons",
 	Devices:                                  "Devices",
+	PurchasedByFactionPassPurchaseLogs:       "PurchasedByFactionPassPurchaseLogs",
 	MVPPlayerFactionStats:                    "MVPPlayerFactionStats",
 	OwnerItemKeycardSales:                    "OwnerItemKeycardSales",
 	SoldToItemKeycardSales:                   "SoldToItemKeycardSales",
@@ -396,6 +405,7 @@ type playerR struct {
 	ConsumedByConsumedAbilities              ConsumedAbilitySlice             `boiler:"ConsumedByConsumedAbilities" boil:"ConsumedByConsumedAbilities" json:"ConsumedByConsumedAbilities" toml:"ConsumedByConsumedAbilities" yaml:"ConsumedByConsumedAbilities"`
 	RedeemedByCoupons                        CouponSlice                      `boiler:"RedeemedByCoupons" boil:"RedeemedByCoupons" json:"RedeemedByCoupons" toml:"RedeemedByCoupons" yaml:"RedeemedByCoupons"`
 	Devices                                  DeviceSlice                      `boiler:"Devices" boil:"Devices" json:"Devices" toml:"Devices" yaml:"Devices"`
+	PurchasedByFactionPassPurchaseLogs       FactionPassPurchaseLogSlice      `boiler:"PurchasedByFactionPassPurchaseLogs" boil:"PurchasedByFactionPassPurchaseLogs" json:"PurchasedByFactionPassPurchaseLogs" toml:"PurchasedByFactionPassPurchaseLogs" yaml:"PurchasedByFactionPassPurchaseLogs"`
 	MVPPlayerFactionStats                    FactionStatSlice                 `boiler:"MVPPlayerFactionStats" boil:"MVPPlayerFactionStats" json:"MVPPlayerFactionStats" toml:"MVPPlayerFactionStats" yaml:"MVPPlayerFactionStats"`
 	OwnerItemKeycardSales                    ItemKeycardSaleSlice             `boiler:"OwnerItemKeycardSales" boil:"OwnerItemKeycardSales" json:"OwnerItemKeycardSales" toml:"OwnerItemKeycardSales" yaml:"OwnerItemKeycardSales"`
 	SoldToItemKeycardSales                   ItemKeycardSaleSlice             `boiler:"SoldToItemKeycardSales" boil:"SoldToItemKeycardSales" json:"SoldToItemKeycardSales" toml:"SoldToItemKeycardSales" yaml:"SoldToItemKeycardSales"`
@@ -463,9 +473,9 @@ func (*playerR) NewStruct() *playerR {
 type playerL struct{}
 
 var (
-	playerAllColumns            = []string{"id", "faction_id", "username", "public_address", "is_ai", "deleted_at", "updated_at", "created_at", "mobile_number", "issue_punish_fee", "reported_cost", "gid", "rank", "sent_message_count", "about_me", "profile_avatar_id", "syndicate_id", "custom_avatar_id", "role_id", "stripe_customer_id", "accepts_marketing"}
+	playerAllColumns            = []string{"id", "faction_id", "username", "public_address", "is_ai", "deleted_at", "updated_at", "created_at", "mobile_number", "issue_punish_fee", "reported_cost", "gid", "rank", "sent_message_count", "about_me", "profile_avatar_id", "syndicate_id", "custom_avatar_id", "role_id", "stripe_customer_id", "accepts_marketing", "faction_pass_expires_at"}
 	playerColumnsWithoutDefault = []string{"id"}
-	playerColumnsWithDefault    = []string{"faction_id", "username", "public_address", "is_ai", "deleted_at", "updated_at", "created_at", "mobile_number", "issue_punish_fee", "reported_cost", "gid", "rank", "sent_message_count", "about_me", "profile_avatar_id", "syndicate_id", "custom_avatar_id", "role_id", "stripe_customer_id", "accepts_marketing"}
+	playerColumnsWithDefault    = []string{"faction_id", "username", "public_address", "is_ai", "deleted_at", "updated_at", "created_at", "mobile_number", "issue_punish_fee", "reported_cost", "gid", "rank", "sent_message_count", "about_me", "profile_avatar_id", "syndicate_id", "custom_avatar_id", "role_id", "stripe_customer_id", "accepts_marketing", "faction_pass_expires_at"}
 	playerPrimaryKeyColumns     = []string{"id"}
 	playerGeneratedColumns      = []string{}
 )
@@ -1276,6 +1286,27 @@ func (o *Player) Devices(mods ...qm.QueryMod) deviceQuery {
 
 	if len(queries.GetSelect(query.Query)) == 0 {
 		queries.SetSelect(query.Query, []string{"\"devices\".*"})
+	}
+
+	return query
+}
+
+// PurchasedByFactionPassPurchaseLogs retrieves all the faction_pass_purchase_log's FactionPassPurchaseLogs with an executor via purchased_by_id column.
+func (o *Player) PurchasedByFactionPassPurchaseLogs(mods ...qm.QueryMod) factionPassPurchaseLogQuery {
+	var queryMods []qm.QueryMod
+	if len(mods) != 0 {
+		queryMods = append(queryMods, mods...)
+	}
+
+	queryMods = append(queryMods,
+		qm.Where("\"faction_pass_purchase_logs\".\"purchased_by_id\"=?", o.ID),
+	)
+
+	query := FactionPassPurchaseLogs(queryMods...)
+	queries.SetFrom(query.Query, "\"faction_pass_purchase_logs\"")
+
+	if len(queries.GetSelect(query.Query)) == 0 {
+		queries.SetSelect(query.Query, []string{"\"faction_pass_purchase_logs\".*"})
 	}
 
 	return query
@@ -5413,6 +5444,104 @@ func (playerL) LoadDevices(e boil.Executor, singular bool, maybePlayer interface
 					foreign.R = &deviceR{}
 				}
 				foreign.R.Player = local
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
+// LoadPurchasedByFactionPassPurchaseLogs allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for a 1-M or N-M relationship.
+func (playerL) LoadPurchasedByFactionPassPurchaseLogs(e boil.Executor, singular bool, maybePlayer interface{}, mods queries.Applicator) error {
+	var slice []*Player
+	var object *Player
+
+	if singular {
+		object = maybePlayer.(*Player)
+	} else {
+		slice = *maybePlayer.(*[]*Player)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &playerR{}
+		}
+		args = append(args, object.ID)
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &playerR{}
+			}
+
+			for _, a := range args {
+				if a == obj.ID {
+					continue Outer
+				}
+			}
+
+			args = append(args, obj.ID)
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`faction_pass_purchase_logs`),
+		qm.WhereIn(`faction_pass_purchase_logs.purchased_by_id in ?`, args...),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load faction_pass_purchase_logs")
+	}
+
+	var resultSlice []*FactionPassPurchaseLog
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice faction_pass_purchase_logs")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results in eager load on faction_pass_purchase_logs")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for faction_pass_purchase_logs")
+	}
+
+	if len(factionPassPurchaseLogAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+	if singular {
+		object.R.PurchasedByFactionPassPurchaseLogs = resultSlice
+		for _, foreign := range resultSlice {
+			if foreign.R == nil {
+				foreign.R = &factionPassPurchaseLogR{}
+			}
+			foreign.R.PurchasedBy = object
+		}
+		return nil
+	}
+
+	for _, foreign := range resultSlice {
+		for _, local := range slice {
+			if local.ID == foreign.PurchasedByID {
+				local.R.PurchasedByFactionPassPurchaseLogs = append(local.R.PurchasedByFactionPassPurchaseLogs, foreign)
+				if foreign.R == nil {
+					foreign.R = &factionPassPurchaseLogR{}
+				}
+				foreign.R.PurchasedBy = local
 				break
 			}
 		}
@@ -12778,6 +12907,58 @@ func (o *Player) AddDevices(exec boil.Executor, insert bool, related ...*Device)
 			}
 		} else {
 			rel.R.Player = o
+		}
+	}
+	return nil
+}
+
+// AddPurchasedByFactionPassPurchaseLogs adds the given related objects to the existing relationships
+// of the player, optionally inserting them as new records.
+// Appends related to o.R.PurchasedByFactionPassPurchaseLogs.
+// Sets related.R.PurchasedBy appropriately.
+func (o *Player) AddPurchasedByFactionPassPurchaseLogs(exec boil.Executor, insert bool, related ...*FactionPassPurchaseLog) error {
+	var err error
+	for _, rel := range related {
+		if insert {
+			rel.PurchasedByID = o.ID
+			if err = rel.Insert(exec, boil.Infer()); err != nil {
+				return errors.Wrap(err, "failed to insert into foreign table")
+			}
+		} else {
+			updateQuery := fmt.Sprintf(
+				"UPDATE \"faction_pass_purchase_logs\" SET %s WHERE %s",
+				strmangle.SetParamNames("\"", "\"", 1, []string{"purchased_by_id"}),
+				strmangle.WhereClause("\"", "\"", 2, factionPassPurchaseLogPrimaryKeyColumns),
+			)
+			values := []interface{}{o.ID, rel.ID}
+
+			if boil.DebugMode {
+				fmt.Fprintln(boil.DebugWriter, updateQuery)
+				fmt.Fprintln(boil.DebugWriter, values)
+			}
+			if _, err = exec.Exec(updateQuery, values...); err != nil {
+				return errors.Wrap(err, "failed to update foreign table")
+			}
+
+			rel.PurchasedByID = o.ID
+		}
+	}
+
+	if o.R == nil {
+		o.R = &playerR{
+			PurchasedByFactionPassPurchaseLogs: related,
+		}
+	} else {
+		o.R.PurchasedByFactionPassPurchaseLogs = append(o.R.PurchasedByFactionPassPurchaseLogs, related...)
+	}
+
+	for _, rel := range related {
+		if rel.R == nil {
+			rel.R = &factionPassPurchaseLogR{
+				PurchasedBy: o,
+			}
+		} else {
+			rel.R.PurchasedBy = o
 		}
 	}
 	return nil

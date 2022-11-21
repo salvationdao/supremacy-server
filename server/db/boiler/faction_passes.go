@@ -24,80 +24,91 @@ import (
 
 // FactionPass is an object representing the database table.
 type FactionPass struct {
-	ID          string          `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
-	Label       string          `boiler:"label" boil:"label" json:"label" toml:"label" yaml:"label"`
-	LastForDays int             `boiler:"last_for_days" boil:"last_for_days" json:"last_for_days" toml:"last_for_days" yaml:"last_for_days"`
-	SupsCost    decimal.Decimal `boiler:"sups_cost" boil:"sups_cost" json:"sups_cost" toml:"sups_cost" yaml:"sups_cost"`
-	CreatedAt   time.Time       `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
-	UpdatedAt   time.Time       `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
-	DeletedAt   null.Time       `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
+	ID                     string          `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
+	Label                  string          `boiler:"label" boil:"label" json:"label" toml:"label" yaml:"label"`
+	LastForDays            int             `boiler:"last_for_days" boil:"last_for_days" json:"last_for_days" toml:"last_for_days" yaml:"last_for_days"`
+	SupsCost               decimal.Decimal `boiler:"sups_cost" boil:"sups_cost" json:"sups_cost" toml:"sups_cost" yaml:"sups_cost"`
+	SupsDiscountPercentage decimal.Decimal `boiler:"sups_discount_percentage" boil:"sups_discount_percentage" json:"sups_discount_percentage" toml:"sups_discount_percentage" yaml:"sups_discount_percentage"`
+	CreatedAt              time.Time       `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
+	UpdatedAt              time.Time       `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
+	DeletedAt              null.Time       `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
 
 	R *factionPassR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L factionPassL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 }
 
 var FactionPassColumns = struct {
-	ID          string
-	Label       string
-	LastForDays string
-	SupsCost    string
-	CreatedAt   string
-	UpdatedAt   string
-	DeletedAt   string
+	ID                     string
+	Label                  string
+	LastForDays            string
+	SupsCost               string
+	SupsDiscountPercentage string
+	CreatedAt              string
+	UpdatedAt              string
+	DeletedAt              string
 }{
-	ID:          "id",
-	Label:       "label",
-	LastForDays: "last_for_days",
-	SupsCost:    "sups_cost",
-	CreatedAt:   "created_at",
-	UpdatedAt:   "updated_at",
-	DeletedAt:   "deleted_at",
+	ID:                     "id",
+	Label:                  "label",
+	LastForDays:            "last_for_days",
+	SupsCost:               "sups_cost",
+	SupsDiscountPercentage: "sups_discount_percentage",
+	CreatedAt:              "created_at",
+	UpdatedAt:              "updated_at",
+	DeletedAt:              "deleted_at",
 }
 
 var FactionPassTableColumns = struct {
-	ID          string
-	Label       string
-	LastForDays string
-	SupsCost    string
-	CreatedAt   string
-	UpdatedAt   string
-	DeletedAt   string
+	ID                     string
+	Label                  string
+	LastForDays            string
+	SupsCost               string
+	SupsDiscountPercentage string
+	CreatedAt              string
+	UpdatedAt              string
+	DeletedAt              string
 }{
-	ID:          "faction_passes.id",
-	Label:       "faction_passes.label",
-	LastForDays: "faction_passes.last_for_days",
-	SupsCost:    "faction_passes.sups_cost",
-	CreatedAt:   "faction_passes.created_at",
-	UpdatedAt:   "faction_passes.updated_at",
-	DeletedAt:   "faction_passes.deleted_at",
+	ID:                     "faction_passes.id",
+	Label:                  "faction_passes.label",
+	LastForDays:            "faction_passes.last_for_days",
+	SupsCost:               "faction_passes.sups_cost",
+	SupsDiscountPercentage: "faction_passes.sups_discount_percentage",
+	CreatedAt:              "faction_passes.created_at",
+	UpdatedAt:              "faction_passes.updated_at",
+	DeletedAt:              "faction_passes.deleted_at",
 }
 
 // Generated where
 
 var FactionPassWhere = struct {
-	ID          whereHelperstring
-	Label       whereHelperstring
-	LastForDays whereHelperint
-	SupsCost    whereHelperdecimal_Decimal
-	CreatedAt   whereHelpertime_Time
-	UpdatedAt   whereHelpertime_Time
-	DeletedAt   whereHelpernull_Time
+	ID                     whereHelperstring
+	Label                  whereHelperstring
+	LastForDays            whereHelperint
+	SupsCost               whereHelperdecimal_Decimal
+	SupsDiscountPercentage whereHelperdecimal_Decimal
+	CreatedAt              whereHelpertime_Time
+	UpdatedAt              whereHelpertime_Time
+	DeletedAt              whereHelpernull_Time
 }{
-	ID:          whereHelperstring{field: "\"faction_passes\".\"id\""},
-	Label:       whereHelperstring{field: "\"faction_passes\".\"label\""},
-	LastForDays: whereHelperint{field: "\"faction_passes\".\"last_for_days\""},
-	SupsCost:    whereHelperdecimal_Decimal{field: "\"faction_passes\".\"sups_cost\""},
-	CreatedAt:   whereHelpertime_Time{field: "\"faction_passes\".\"created_at\""},
-	UpdatedAt:   whereHelpertime_Time{field: "\"faction_passes\".\"updated_at\""},
-	DeletedAt:   whereHelpernull_Time{field: "\"faction_passes\".\"deleted_at\""},
+	ID:                     whereHelperstring{field: "\"faction_passes\".\"id\""},
+	Label:                  whereHelperstring{field: "\"faction_passes\".\"label\""},
+	LastForDays:            whereHelperint{field: "\"faction_passes\".\"last_for_days\""},
+	SupsCost:               whereHelperdecimal_Decimal{field: "\"faction_passes\".\"sups_cost\""},
+	SupsDiscountPercentage: whereHelperdecimal_Decimal{field: "\"faction_passes\".\"sups_discount_percentage\""},
+	CreatedAt:              whereHelpertime_Time{field: "\"faction_passes\".\"created_at\""},
+	UpdatedAt:              whereHelpertime_Time{field: "\"faction_passes\".\"updated_at\""},
+	DeletedAt:              whereHelpernull_Time{field: "\"faction_passes\".\"deleted_at\""},
 }
 
 // FactionPassRels is where relationship names are stored.
 var FactionPassRels = struct {
-}{}
+	FactionPassPurchaseLogs string
+}{
+	FactionPassPurchaseLogs: "FactionPassPurchaseLogs",
+}
 
 // factionPassR is where relationships are stored.
 type factionPassR struct {
+	FactionPassPurchaseLogs FactionPassPurchaseLogSlice `boiler:"FactionPassPurchaseLogs" boil:"FactionPassPurchaseLogs" json:"FactionPassPurchaseLogs" toml:"FactionPassPurchaseLogs" yaml:"FactionPassPurchaseLogs"`
 }
 
 // NewStruct creates a new relationship struct
@@ -109,9 +120,9 @@ func (*factionPassR) NewStruct() *factionPassR {
 type factionPassL struct{}
 
 var (
-	factionPassAllColumns            = []string{"id", "label", "last_for_days", "sups_cost", "created_at", "updated_at", "deleted_at"}
+	factionPassAllColumns            = []string{"id", "label", "last_for_days", "sups_cost", "sups_discount_percentage", "created_at", "updated_at", "deleted_at"}
 	factionPassColumnsWithoutDefault = []string{"label", "last_for_days"}
-	factionPassColumnsWithDefault    = []string{"id", "sups_cost", "created_at", "updated_at", "deleted_at"}
+	factionPassColumnsWithDefault    = []string{"id", "sups_cost", "sups_discount_percentage", "created_at", "updated_at", "deleted_at"}
 	factionPassPrimaryKeyColumns     = []string{"id"}
 	factionPassGeneratedColumns      = []string{}
 )
@@ -356,6 +367,177 @@ func (q factionPassQuery) Exists(exec boil.Executor) (bool, error) {
 	}
 
 	return count > 0, nil
+}
+
+// FactionPassPurchaseLogs retrieves all the faction_pass_purchase_log's FactionPassPurchaseLogs with an executor.
+func (o *FactionPass) FactionPassPurchaseLogs(mods ...qm.QueryMod) factionPassPurchaseLogQuery {
+	var queryMods []qm.QueryMod
+	if len(mods) != 0 {
+		queryMods = append(queryMods, mods...)
+	}
+
+	queryMods = append(queryMods,
+		qm.Where("\"faction_pass_purchase_logs\".\"faction_pass_id\"=?", o.ID),
+	)
+
+	query := FactionPassPurchaseLogs(queryMods...)
+	queries.SetFrom(query.Query, "\"faction_pass_purchase_logs\"")
+
+	if len(queries.GetSelect(query.Query)) == 0 {
+		queries.SetSelect(query.Query, []string{"\"faction_pass_purchase_logs\".*"})
+	}
+
+	return query
+}
+
+// LoadFactionPassPurchaseLogs allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for a 1-M or N-M relationship.
+func (factionPassL) LoadFactionPassPurchaseLogs(e boil.Executor, singular bool, maybeFactionPass interface{}, mods queries.Applicator) error {
+	var slice []*FactionPass
+	var object *FactionPass
+
+	if singular {
+		object = maybeFactionPass.(*FactionPass)
+	} else {
+		slice = *maybeFactionPass.(*[]*FactionPass)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &factionPassR{}
+		}
+		args = append(args, object.ID)
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &factionPassR{}
+			}
+
+			for _, a := range args {
+				if a == obj.ID {
+					continue Outer
+				}
+			}
+
+			args = append(args, obj.ID)
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`faction_pass_purchase_logs`),
+		qm.WhereIn(`faction_pass_purchase_logs.faction_pass_id in ?`, args...),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load faction_pass_purchase_logs")
+	}
+
+	var resultSlice []*FactionPassPurchaseLog
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice faction_pass_purchase_logs")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results in eager load on faction_pass_purchase_logs")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for faction_pass_purchase_logs")
+	}
+
+	if len(factionPassPurchaseLogAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+	if singular {
+		object.R.FactionPassPurchaseLogs = resultSlice
+		for _, foreign := range resultSlice {
+			if foreign.R == nil {
+				foreign.R = &factionPassPurchaseLogR{}
+			}
+			foreign.R.FactionPass = object
+		}
+		return nil
+	}
+
+	for _, foreign := range resultSlice {
+		for _, local := range slice {
+			if local.ID == foreign.FactionPassID {
+				local.R.FactionPassPurchaseLogs = append(local.R.FactionPassPurchaseLogs, foreign)
+				if foreign.R == nil {
+					foreign.R = &factionPassPurchaseLogR{}
+				}
+				foreign.R.FactionPass = local
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
+// AddFactionPassPurchaseLogs adds the given related objects to the existing relationships
+// of the faction_pass, optionally inserting them as new records.
+// Appends related to o.R.FactionPassPurchaseLogs.
+// Sets related.R.FactionPass appropriately.
+func (o *FactionPass) AddFactionPassPurchaseLogs(exec boil.Executor, insert bool, related ...*FactionPassPurchaseLog) error {
+	var err error
+	for _, rel := range related {
+		if insert {
+			rel.FactionPassID = o.ID
+			if err = rel.Insert(exec, boil.Infer()); err != nil {
+				return errors.Wrap(err, "failed to insert into foreign table")
+			}
+		} else {
+			updateQuery := fmt.Sprintf(
+				"UPDATE \"faction_pass_purchase_logs\" SET %s WHERE %s",
+				strmangle.SetParamNames("\"", "\"", 1, []string{"faction_pass_id"}),
+				strmangle.WhereClause("\"", "\"", 2, factionPassPurchaseLogPrimaryKeyColumns),
+			)
+			values := []interface{}{o.ID, rel.ID}
+
+			if boil.DebugMode {
+				fmt.Fprintln(boil.DebugWriter, updateQuery)
+				fmt.Fprintln(boil.DebugWriter, values)
+			}
+			if _, err = exec.Exec(updateQuery, values...); err != nil {
+				return errors.Wrap(err, "failed to update foreign table")
+			}
+
+			rel.FactionPassID = o.ID
+		}
+	}
+
+	if o.R == nil {
+		o.R = &factionPassR{
+			FactionPassPurchaseLogs: related,
+		}
+	} else {
+		o.R.FactionPassPurchaseLogs = append(o.R.FactionPassPurchaseLogs, related...)
+	}
+
+	for _, rel := range related {
+		if rel.R == nil {
+			rel.R = &factionPassPurchaseLogR{
+				FactionPass: o,
+			}
+		} else {
+			rel.R.FactionPass = o
+		}
+	}
+	return nil
 }
 
 // FactionPasses retrieves all the records using an executor.

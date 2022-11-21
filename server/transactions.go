@@ -38,4 +38,5 @@ const (
 	TransactionGroupRepair            TransactionGroup = "REPAIR"
 	TransactionGroupSyndicate         TransactionGroup = "SYNDICATE"
 	TransactionGroupAssetManagement   TransactionGroup = "ASSET MANAGEMENT"
+	TransactionGroupFactionPass       TransactionGroup = "FACTION PASS"
 )
