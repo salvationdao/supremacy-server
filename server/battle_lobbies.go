@@ -304,7 +304,6 @@ func BattleLobbiesFromBoiler(bls []*boiler.BattleLobby) ([]*BattleLobby, error) 
 							AND %s %s
 							AND %s ISNULL 
 							AND %s ISNULL 
-							AND %s ISNULL 
 			) _ci`,
 			// SELECT
 			boiler.CollectionItemTableColumns.ItemID,
@@ -321,7 +320,6 @@ func BattleLobbiesFromBoiler(bls []*boiler.BattleLobby) ([]*BattleLobby, error) 
 			boiler.BattleLobbiesMechTableColumns.MechID,
 			boiler.BattleLobbiesMechTableColumns.BattleLobbyID,
 			battleLobbyIDInClause,
-			boiler.BattleLobbiesMechTableColumns.EndedAt,
 			boiler.BattleLobbiesMechTableColumns.RefundTXID,
 			boiler.BattleLobbiesMechTableColumns.DeletedAt,
 		)),
@@ -622,6 +620,9 @@ func BattleLobbyInfoFilter(bl *BattleLobby, keepDataForFactionID string, keepAcc
 			battleLobbyMech.WeaponSlots = blm.WeaponSlots
 
 			battleLobbyMech.BlueprintMech = blm.BlueprintMech
+
+			// to fit frontend battle lobby mech struct
+			battleLobbyMech.BlueprintMech.ID = blm.MechID
 		}
 
 		if blm.QueuedBy != nil && blm.QueuedBy.FactionID.String == keepDataForFactionID {

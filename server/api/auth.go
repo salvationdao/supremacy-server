@@ -88,7 +88,7 @@ func (api *API) AuthCheckHandler(w http.ResponseWriter, r *http.Request) (int, e
 
 		token := r.URL.Query().Get("token")
 		if token == "" {
-			return http.StatusBadRequest, terror.Warn(fmt.Errorf("no cookie and token are provided"), "Player are not signed in.")
+			return http.StatusBadRequest, terror.Error(fmt.Errorf("no cookie and token are provided"), "Player are not signed in.")
 		}
 
 		// check user from token

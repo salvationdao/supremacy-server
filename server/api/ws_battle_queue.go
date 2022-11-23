@@ -11,6 +11,7 @@ import (
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
+	"server/helpers"
 	"server/system_messages"
 	"server/xsyn_rpcclient"
 	"strings"
@@ -607,6 +608,7 @@ func (api *API) BattleLobbyJoin(ctx context.Context, user *boiler.Player, factio
 			// generate another system lobby
 			if bl.GeneratedBySystem {
 				newBattleLobby := &boiler.BattleLobby{
+					Name:                  helpers.GenerateAdjectiveName(),
 					HostByID:              bl.HostByID,
 					EntryFee:              bl.EntryFee, // free to join
 					FirstFactionCut:       bl.FirstFactionCut,

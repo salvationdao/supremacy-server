@@ -12,7 +12,7 @@ import (
 )
 
 func GetBattleLobbyViaIDs(lobbyIDs []string) ([]*boiler.BattleLobby, error) {
-	bl, err := boiler.BattleLobbies(
+	bls, err := boiler.BattleLobbies(
 		boiler.BattleLobbyWhere.ID.IN(lobbyIDs),
 		qm.Load(boiler.BattleLobbyRels.GameMap),
 		qm.Load(boiler.BattleLobbyRels.HostBy),
@@ -41,7 +41,7 @@ func GetBattleLobbyViaIDs(lobbyIDs []string) ([]*boiler.BattleLobby, error) {
 		return nil, err
 	}
 
-	return bl, nil
+	return bls, nil
 }
 
 func GetBattleLobbyViaID(lobbyID string) (*boiler.BattleLobby, error) {
