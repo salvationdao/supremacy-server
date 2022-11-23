@@ -187,7 +187,6 @@ func (am *ArenaManager) broadcastBattleLobbyUpdate(battleLobbyIDs ...string) {
 
 	// broadcast the lobbies which players are involved in
 	for _, pil := range playersInvolvedLobbies {
-		fmt.Println(pil.playerID, pil.bls[0].ID, pil.bls[0].EndedAt)
 		ws.PublishMessage(fmt.Sprintf("/secure/user/%s/involved_battle_lobbies", pil.playerID), server.HubKeyInvolvedBattleLobbyListUpdate, server.BattleLobbiesFactionFilter(pil.bls, pil.factionID, pil.playerID))
 	}
 

@@ -125,3 +125,7 @@ const HubKeyInvolvedBattleLobbyListUpdate = "INVOLVED:BATTLE:LOBBY:LIST:UPDATE"
 const HubKeyPrivateBattleLobbyUpdate = "PRIVATE:BATTLE:LOBBY:UPDATE"
 const HubKeyPlayerAssetMechQueueSubscribe = "PLAYER:ASSET:MECH:QUEUE:SUBSCRIBE"
 const HubKeyBattleETAUpdate = "BATTLE:ETA:UPDATE"
+
+// faction pass
+
+const HubKeyFactionMVPStakedMech = "FACTION:MVP:STAKED:MECH"
