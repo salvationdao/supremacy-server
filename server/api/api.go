@@ -379,6 +379,12 @@ func NewAPI(
 
 				// faction pass
 				s.WS("/mvp_staked_mech", server.HubKeyFactionMVPStakedMech, server.MustSecureFaction(api.FactionMVPStakedMech))
+				s.WS("/staked_mech_count", server.HubKeyFactionStakedMechCount, server.MustSecureFaction(api.FactionStakeMechCount))
+				s.WS("/in_queue_staked_mech_count", server.HubKeyFactionStakedMechInQueueCount, server.MustSecureFaction(api.FactionQueuedStakedMechCount))
+				s.WS("/damaged_staked_mech_count", server.HubKeyFactionStakedMechDamagedCount, server.MustSecureFaction(api.FactionDamagedStakedMechCount))
+				s.WS("/battle_ready_staked_mech_count", server.HubKeyFactionStakedMechBattleReadyCount, server.MustSecureFaction(api.FactionBattleReadyStakedMechCount))
+				s.WS("/in_battle_staked_mech_count", server.HubKeyFactionStakedMechInBattleCount, server.MustSecureFaction(api.FactionInBattleStakedMechCount))
+				s.WS("/battled_staked_mech_count", server.HubKeyFactionStakedMechBattledCount, server.MustSecureFaction(api.FactionBattledStakedMechCount))
 			}))
 
 			// mini map related

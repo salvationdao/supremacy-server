@@ -159,6 +159,133 @@ func (api *API) FactionPassList(ctx context.Context, key string, payload []byte,
 // DASHBOARD
 
 func (api *API) FactionMVPStakedMech(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
+	l := gamelog.L.With().Str("func", "FactionMVPStakedMech").Logger()
 
+	queries := []qm.QueryMod{
+		qm.Select(boiler.StakedMechBattleLogTableColumns.StakedMechID),
+		qm.From(boiler.TableNames.StakedMechBattleLogs),
+		qm.GroupBy(boiler.StakedMechBattleLogTableColumns.StakedMechID),
+		qm.OrderBy(fmt.Sprintf("COUNT(%s) DESC", boiler.StakedMechBattleLogTableColumns.ID)),
+		qm.Limit(1),
+	}
+
+	mechID := ""
+	err := boiler.NewQuery(queries...).QueryRow(gamedb.StdConn).Scan(&mechID)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		l.Error().Err(err).Msg("Failed to load faction MVP staked mech")
+		return terror.Error(err, "Failed to load faction MVP staked mech.")
+	}
+
+	reply(mechID)
+	return nil
+}
+
+func (api *API) FactionStakeMechCount(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
+	total, err := boiler.StakedMechs(
+		boiler.StakedMechWhere.FactionID.EQ(factionID),
+	).Count(gamedb.StdConn)
+	if err != nil {
+		gamelog.L.Error().Err(err).Msg("Failed to load staked mech count.")
+		return terror.Error(err, "Failed to load staked mech count.")
+	}
+
+	reply(total)
+	return nil
+}
+
+func (api *API) FactionQueuedStakedMechCount(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
+	total, err := boiler.BattleLobbiesMechs(
+		qm.Where(fmt.Sprintf(
+			"EXISTS ( SELECT 1 FROM %s WHERE %s = %s )",
+			boiler.TableNames.StakedMechs,
+			boiler.StakedMechTableColumns.MechID,
+			boiler.BattleLobbiesMechTableColumns.MechID,
+		)),
+		boiler.BattleLobbiesMechWhere.FactionID.EQ(factionID),
+		boiler.BattleLobbiesMechWhere.LockedAt.IsNull(),
+		boiler.BattleLobbiesMechWhere.RefundTXID.IsNull(),
+	).Count(gamedb.StdConn)
+	if err != nil {
+		gamelog.L.Error().Err(err).Msg("Failed to load total staked mech in queue.")
+		return terror.Error(err, "Failed to load total staked mech in queue")
+	}
+
+	reply(total)
+	return nil
+}
+
+func (api *API) FactionDamagedStakedMechCount(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
+	total, err := boiler.RepairCases(
+		boiler.RepairCaseWhere.CompletedAt.IsNull(),
+		qm.Where(fmt.Sprintf(
+			"EXISTS ( SELECT 1 FROM %s WHERE %s = %s )",
+			boiler.TableNames.StakedMechs,
+			boiler.StakedMechTableColumns.MechID,
+			boiler.RepairCaseTableColumns.MechID,
+		)),
+	).Count(gamedb.StdConn)
+	if err != nil {
+		gamelog.L.Error().Err(err).Msg("Failed to load the count of damaged staked mech.")
+		return terror.Error(err, "Failed to load the count of damaged staked mech.")
+	}
+
+	reply(total)
+	return nil
+}
+
+func (api *API) FactionBattleReadyStakedMechCount(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
+	total, err := boiler.BattleLobbiesMechs(
+		qm.Where(fmt.Sprintf(
+			"EXISTS ( SELECT 1 FROM %s WHERE %s = %s )",
+			boiler.TableNames.StakedMechs,
+			boiler.StakedMechTableColumns.MechID,
+			boiler.BattleLobbiesMechTableColumns.MechID,
+		)),
+		boiler.BattleLobbiesMechWhere.FactionID.EQ(factionID),
+		boiler.BattleLobbiesMechWhere.LockedAt.IsNotNull(),
+		boiler.BattleLobbiesMechWhere.EndedAt.IsNull(),
+		boiler.BattleLobbiesMechWhere.RefundTXID.IsNull(),
+	).Count(gamedb.StdConn)
+	if err != nil {
+		gamelog.L.Error().Err(err).Msg("Failed to load total staked mech in queue.")
+		return terror.Error(err, "Failed to load total staked mech in queue")
+	}
+
+	reply(total)
+	return nil
+}
+
+func (api *API) FactionInBattleStakedMechCount(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
+	total, err := boiler.BattleLobbiesMechs(
+		qm.Where(fmt.Sprintf(
+			"EXISTS ( SELECT 1 FROM %s WHERE %s = %s )",
+			boiler.TableNames.StakedMechs,
+			boiler.StakedMechTableColumns.MechID,
+			boiler.BattleLobbiesMechTableColumns.MechID,
+		)),
+		boiler.BattleLobbiesMechWhere.FactionID.EQ(factionID),
+		boiler.BattleLobbiesMechWhere.LockedAt.IsNotNull(),
+		boiler.BattleLobbiesMechWhere.AssignedToBattleID.IsNotNull(),
+		boiler.BattleLobbiesMechWhere.RefundTXID.IsNull(),
+	).Count(gamedb.StdConn)
+	if err != nil {
+		gamelog.L.Error().Err(err).Msg("Failed to load total staked mech in queue.")
+		return terror.Error(err, "Failed to load total staked mech in queue")
+	}
+
+	reply(total)
+	return nil
+}
+
+func (api *API) FactionBattledStakedMechCount(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
+	total, err := boiler.StakedMechBattleLogs(
+		boiler.StakedMechBattleLogWhere.FactionID.EQ(factionID),
+	).Count(gamedb.StdConn)
+	if err != nil {
+		gamelog.L.Error().Err(err).Msg("Failed to load total battled staked mech count.")
+		return terror.Error(err, "Failed to load battled staked mech count.")
+	}
+
+	reply(total)
 	return nil
 }

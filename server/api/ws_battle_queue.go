@@ -30,6 +30,8 @@ import (
 )
 
 func BattleQueueController(api *API) {
+
+	api.SecureUserFactionCommand(HubKeyPrivateBattleLobbyGet, api.PrivateBattleLobbyGet)
 	api.SecureUserFactionCommand(HubKeyBattleLobbyCreate, api.BattleLobbyCreate)
 	api.SecureUserFactionCommand(HubKeyBattleLobbyJoin, api.BattleLobbyJoin)
 	api.SecureUserFactionCommand(HubKeyBattleLobbyLeave, api.BattleLobbyLeave)
@@ -40,6 +42,39 @@ func BattleQueueController(api *API) {
 
 	api.SecureUserFactionCommand(HubKeyBattleLobbySupporterJoin, api.BattleLobbySupporterJoin)
 	//api.SecureUserFactionCommand(HubKeyBattleLobbySupporterLeave, api.BattleLobbySupporterLeave)
+}
+
+type PrivateBattleLobbyGetRequest struct {
+	Payload struct {
+		AccessCode string `json:"access_code"`
+	} `json:"payload"`
+}
+
+const HubKeyPrivateBattleLobbyGet = "PRIVATE:BATTLE:LOBBY:GET"
+
+func (api *API) PrivateBattleLobbyGet(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
+	req := &PrivateBattleLobbyGetRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return terror.Error(err, "Invalid request received.")
+	}
+
+	bl, err := db.GetBattleLobbyViaAccessCode(req.Payload.AccessCode)
+	if err != nil {
+		return terror.Error(err, "Failed to load battle lobby")
+	}
+
+	filteredBattleLobbies, err := server.BattleLobbiesFromBoiler([]*boiler.BattleLobby{bl})
+	if err != nil {
+		return err
+	}
+
+	if len(filteredBattleLobbies) > 0 {
+		lobby := filteredBattleLobbies[0]
+		reply(server.BattleLobbyInfoFilter(lobby, factionID, lobby.HostByID == user.ID))
+	}
+
+	return nil
 }
 
 type LobbyAccessibility string

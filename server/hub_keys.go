@@ -129,3 +129,9 @@ const HubKeyBattleETAUpdate = "BATTLE:ETA:UPDATE"
 // faction pass
 
 const HubKeyFactionMVPStakedMech = "FACTION:MVP:STAKED:MECH"
+const HubKeyFactionStakedMechCount = "FACTION:STAKED:MECH:COUNT"
+const HubKeyFactionStakedMechInQueueCount = "FACTION:STAKED:MECH:IN:QUEUE:COUNT"
+const HubKeyFactionStakedMechDamagedCount = "FACTION:STAKED:MECH:DAMAGED:COUNT"
+const HubKeyFactionStakedMechBattleReadyCount = "FACTION:STAKED:MECH:BATTLE:READY:COUNT"
+const HubKeyFactionStakedMechInBattleCount = "FACTION:STAKED:MECH:IN:BATTLE:COUNT"
+const HubKeyFactionStakedMechBattledCount = "FACTION:STAKED:MECH:BATTLED:COUNT"
