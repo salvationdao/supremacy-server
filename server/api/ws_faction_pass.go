@@ -14,6 +14,7 @@ import (
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 	"server"
+	"server/db"
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
@@ -156,10 +157,10 @@ func (api *API) FactionPassList(ctx context.Context, key string, payload []byte,
 	return nil
 }
 
-// DASHBOARD
+// FACTION STAKED MECH DASHBOARD
 
-func (api *API) FactionMVPStakedMech(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
-	l := gamelog.L.With().Str("func", "FactionMVPStakedMech").Logger()
+func (api *API) FactionMostPopularStakedMech(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
+	l := gamelog.L.With().Str("func", "FactionMostPopularStakedMech").Logger()
 
 	queries := []qm.QueryMod{
 		qm.Select(boiler.StakedMechBattleLogTableColumns.StakedMechID),
@@ -176,7 +177,17 @@ func (api *API) FactionMVPStakedMech(ctx context.Context, user *boiler.Player, f
 		return terror.Error(err, "Failed to load faction MVP staked mech.")
 	}
 
-	reply(mechID)
+	if mechID == "" {
+		reply(nil)
+		return nil
+	}
+
+	mechs, err := db.LobbyMechsBrief("", mechID)
+	if err != nil || len(mechs) == 0 {
+		return terror.Error(err, "Failed to load most popular staked mech.")
+	}
+
+	reply(mechs[0])
 	return nil
 }
 
@@ -243,6 +254,7 @@ func (api *API) FactionBattleReadyStakedMechCount(ctx context.Context, user *boi
 		)),
 		boiler.BattleLobbiesMechWhere.FactionID.EQ(factionID),
 		boiler.BattleLobbiesMechWhere.LockedAt.IsNotNull(),
+		boiler.BattleLobbiesMechWhere.AssignedToBattleID.IsNull(),
 		boiler.BattleLobbiesMechWhere.EndedAt.IsNull(),
 		boiler.BattleLobbiesMechWhere.RefundTXID.IsNull(),
 	).Count(gamedb.StdConn)
@@ -266,6 +278,7 @@ func (api *API) FactionInBattleStakedMechCount(ctx context.Context, user *boiler
 		boiler.BattleLobbiesMechWhere.FactionID.EQ(factionID),
 		boiler.BattleLobbiesMechWhere.LockedAt.IsNotNull(),
 		boiler.BattleLobbiesMechWhere.AssignedToBattleID.IsNotNull(),
+		boiler.BattleLobbiesMechWhere.EndedAt.IsNull(),
 		boiler.BattleLobbiesMechWhere.RefundTXID.IsNull(),
 	).Count(gamedb.StdConn)
 	if err != nil {
