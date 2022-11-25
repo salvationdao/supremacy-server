@@ -15,4 +15,5 @@ CREATE TABLE faction_pass_purchase_logs (
 );
 
 ALTER TABLE players
+    ADD COLUMN IF NOT EXISTS xsyn_account_id uuid,
     ADD COLUMN IF NOT EXISTS faction_pass_expires_at TIMESTAMPTZ;

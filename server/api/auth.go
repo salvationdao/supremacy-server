@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"github.com/davecgh/go-spew/spew"
 	"net/http"
 	"server"
 	"server/db"
@@ -59,11 +60,6 @@ func (api *API) XSYNAuth(w http.ResponseWriter, r *http.Request) (int, error) {
 		return http.StatusBadRequest, terror.Warn(fmt.Errorf("no token are provided"), "User are not signed in.")
 	}
 
-	err = api.UpsertPlayer(player.ID, player.Username, player.PublicAddress, player.FactionID, req.Fingerprint, player.AcceptsMarketing)
-	if err != nil {
-		return http.StatusInternalServerError, terror.Error(err, "Failed to update player.")
-	}
-
 	err = api.WriteCookie(w, r, req.IssueToken)
 	if err != nil {
 		return http.StatusInternalServerError, terror.Error(err, "Failed to write cookie")
@@ -95,11 +91,6 @@ func (api *API) AuthCheckHandler(w http.ResponseWriter, r *http.Request) (int, e
 		player, err := api.TokenLogin(token)
 		if err != nil {
 			return http.StatusBadRequest, terror.Error(err, "Failed to authentication")
-		}
-
-		err = api.UpsertPlayer(player.ID, player.Username, player.PublicAddress, player.FactionID, req.Fingerprint, player.AcceptsMarketing)
-		if err != nil {
-			return http.StatusInternalServerError, terror.Error(err, "Failed to update player.")
 		}
 
 		// write cookie
@@ -139,11 +130,6 @@ func (api *API) AuthCheckHandler(w http.ResponseWriter, r *http.Request) (int, e
 		return http.StatusBadRequest, terror.Error(err, "Failed to authentication")
 	}
 
-	err = api.UpsertPlayer(player.ID, player.Username, player.PublicAddress, player.FactionID, req.Fingerprint, player.AcceptsMarketing)
-	if err != nil {
-		return http.StatusInternalServerError, terror.Error(err, "Failed to update player.")
-	}
-
 	user, err := boiler.Players(
 		boiler.PlayerWhere.ID.EQ(player.ID),
 		qm.Load(boiler.PlayerRels.Role),
@@ -173,11 +159,6 @@ func (api *API) AuthBotCheckHandler(w http.ResponseWriter, r *http.Request) (int
 			return http.StatusBadRequest, terror.Error(err, "Session is expired")
 		}
 		return http.StatusBadRequest, terror.Error(err, "Failed to authentication")
-	}
-
-	err = api.UpsertPlayer(player.ID, player.Username, player.PublicAddress, player.FactionID, nil, null.Bool{})
-	if err != nil {
-		return http.StatusInternalServerError, terror.Error(err, "Failed to update player.")
 	}
 
 	return helpers.EncodeJSON(w, player)
@@ -350,7 +331,7 @@ func FingerprintUpsert(fingerprint Fingerprint, playerID string) error {
 	return nil
 }
 
-func (api *API) UpsertPlayer(playerID string, username null.String, publicAddress null.String, factionID null.String, fingerprint *Fingerprint, acceptsMarketing null.Bool) error {
+func (api *API) UpsertPlayer(playerID string, username null.String, publicAddress null.String, factionID null.String, xsynAccountID string, fingerprint *Fingerprint, acceptsMarketing null.Bool) error {
 	player, err := boiler.FindPlayer(gamedb.StdConn, playerID)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return terror.Error(err, "Failed to retrieve player.")
@@ -372,17 +353,20 @@ func (api *API) UpsertPlayer(playerID string, username null.String, publicAddres
 
 	defer tx.Rollback()
 
+	accountID := null.String{}
+	if xsynAccountID != "" {
+		accountID = null.StringFrom(xsynAccountID)
+	}
+
 	// insert player if not exists
 	if player == nil {
 		player = &boiler.Player{
-			ID:            playerID,
-			Username:      username,
-			PublicAddress: publicAddress,
-			FactionID:     factionID,
-		}
-
-		if acceptsMarketing.Valid {
-			player.AcceptsMarketing = acceptsMarketing
+			ID:               playerID,
+			Username:         username,
+			PublicAddress:    publicAddress,
+			FactionID:        factionID,
+			AcceptsMarketing: acceptsMarketing,
+			XsynAccountID:    accountID,
 		}
 
 		err = player.Insert(tx, boil.Infer())
@@ -396,15 +380,14 @@ func (api *API) UpsertPlayer(playerID string, username null.String, publicAddres
 		player.PublicAddress = publicAddress
 		player.FactionID = factionID
 		player.AcceptsMarketing = acceptsMarketing
-
-		if acceptsMarketing.Valid {
-			player.AcceptsMarketing = acceptsMarketing
-		}
+		player.XsynAccountID = accountID
 
 		_, err = player.Update(tx, boil.Whitelist(
 			boiler.PlayerColumns.Username,
 			boiler.PlayerColumns.PublicAddress,
 			boiler.PlayerColumns.FactionID,
+			boiler.PlayerColumns.AcceptsMarketing,
+			boiler.PlayerColumns.XsynAccountID,
 		))
 		if err != nil {
 			gamelog.L.Error().Str("player id", playerID).Err(err).Msg("player update")
@@ -533,7 +516,9 @@ func (api *API) TokenLogin(tokenBase64 string, ignoreErr ...bool) (*server.Playe
 		return nil, err
 	}
 
-	err = api.UpsertPlayer(userResp.ID, null.StringFrom(userResp.Username), userResp.PublicAddress, userResp.FactionID, nil, userResp.AcceptsMarketing)
+	spew.Dump(userResp)
+
+	err = api.UpsertPlayer(userResp.ID, null.StringFrom(userResp.Username), userResp.PublicAddress, userResp.FactionID, userResp.AccountID, nil, userResp.AcceptsMarketing)
 	if err != nil {
 		if !ignoreError {
 			gamelog.L.Error().Err(err).Msg("Failed to update player detail")

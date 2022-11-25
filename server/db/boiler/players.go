@@ -45,6 +45,7 @@ type Player struct {
 	RoleID               string          `boiler:"role_id" boil:"role_id" json:"role_id" toml:"role_id" yaml:"role_id"`
 	StripeCustomerID     null.String     `boiler:"stripe_customer_id" boil:"stripe_customer_id" json:"stripe_customer_id,omitempty" toml:"stripe_customer_id" yaml:"stripe_customer_id,omitempty"`
 	AcceptsMarketing     null.Bool       `boiler:"accepts_marketing" boil:"accepts_marketing" json:"accepts_marketing,omitempty" toml:"accepts_marketing" yaml:"accepts_marketing,omitempty"`
+	XsynAccountID        null.String     `boiler:"xsyn_account_id" boil:"xsyn_account_id" json:"xsyn_account_id,omitempty" toml:"xsyn_account_id" yaml:"xsyn_account_id,omitempty"`
 	FactionPassExpiresAt null.Time       `boiler:"faction_pass_expires_at" boil:"faction_pass_expires_at" json:"faction_pass_expires_at,omitempty" toml:"faction_pass_expires_at" yaml:"faction_pass_expires_at,omitempty"`
 
 	R *playerR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -73,6 +74,7 @@ var PlayerColumns = struct {
 	RoleID               string
 	StripeCustomerID     string
 	AcceptsMarketing     string
+	XsynAccountID        string
 	FactionPassExpiresAt string
 }{
 	ID:                   "id",
@@ -96,6 +98,7 @@ var PlayerColumns = struct {
 	RoleID:               "role_id",
 	StripeCustomerID:     "stripe_customer_id",
 	AcceptsMarketing:     "accepts_marketing",
+	XsynAccountID:        "xsyn_account_id",
 	FactionPassExpiresAt: "faction_pass_expires_at",
 }
 
@@ -121,6 +124,7 @@ var PlayerTableColumns = struct {
 	RoleID               string
 	StripeCustomerID     string
 	AcceptsMarketing     string
+	XsynAccountID        string
 	FactionPassExpiresAt string
 }{
 	ID:                   "players.id",
@@ -144,6 +148,7 @@ var PlayerTableColumns = struct {
 	RoleID:               "players.role_id",
 	StripeCustomerID:     "players.stripe_customer_id",
 	AcceptsMarketing:     "players.accepts_marketing",
+	XsynAccountID:        "players.xsyn_account_id",
 	FactionPassExpiresAt: "players.faction_pass_expires_at",
 }
 
@@ -171,6 +176,7 @@ var PlayerWhere = struct {
 	RoleID               whereHelperstring
 	StripeCustomerID     whereHelpernull_String
 	AcceptsMarketing     whereHelpernull_Bool
+	XsynAccountID        whereHelpernull_String
 	FactionPassExpiresAt whereHelpernull_Time
 }{
 	ID:                   whereHelperstring{field: "\"players\".\"id\""},
@@ -194,6 +200,7 @@ var PlayerWhere = struct {
 	RoleID:               whereHelperstring{field: "\"players\".\"role_id\""},
 	StripeCustomerID:     whereHelpernull_String{field: "\"players\".\"stripe_customer_id\""},
 	AcceptsMarketing:     whereHelpernull_Bool{field: "\"players\".\"accepts_marketing\""},
+	XsynAccountID:        whereHelpernull_String{field: "\"players\".\"xsyn_account_id\""},
 	FactionPassExpiresAt: whereHelpernull_Time{field: "\"players\".\"faction_pass_expires_at\""},
 }
 
@@ -473,9 +480,9 @@ func (*playerR) NewStruct() *playerR {
 type playerL struct{}
 
 var (
-	playerAllColumns            = []string{"id", "faction_id", "username", "public_address", "is_ai", "deleted_at", "updated_at", "created_at", "mobile_number", "issue_punish_fee", "reported_cost", "gid", "rank", "sent_message_count", "about_me", "profile_avatar_id", "syndicate_id", "custom_avatar_id", "role_id", "stripe_customer_id", "accepts_marketing", "faction_pass_expires_at"}
+	playerAllColumns            = []string{"id", "faction_id", "username", "public_address", "is_ai", "deleted_at", "updated_at", "created_at", "mobile_number", "issue_punish_fee", "reported_cost", "gid", "rank", "sent_message_count", "about_me", "profile_avatar_id", "syndicate_id", "custom_avatar_id", "role_id", "stripe_customer_id", "accepts_marketing", "xsyn_account_id", "faction_pass_expires_at"}
 	playerColumnsWithoutDefault = []string{"id"}
-	playerColumnsWithDefault    = []string{"faction_id", "username", "public_address", "is_ai", "deleted_at", "updated_at", "created_at", "mobile_number", "issue_punish_fee", "reported_cost", "gid", "rank", "sent_message_count", "about_me", "profile_avatar_id", "syndicate_id", "custom_avatar_id", "role_id", "stripe_customer_id", "accepts_marketing", "faction_pass_expires_at"}
+	playerColumnsWithDefault    = []string{"faction_id", "username", "public_address", "is_ai", "deleted_at", "updated_at", "created_at", "mobile_number", "issue_punish_fee", "reported_cost", "gid", "rank", "sent_message_count", "about_me", "profile_avatar_id", "syndicate_id", "custom_avatar_id", "role_id", "stripe_customer_id", "accepts_marketing", "xsyn_account_id", "faction_pass_expires_at"}
 	playerPrimaryKeyColumns     = []string{"id"}
 	playerGeneratedColumns      = []string{}
 )
