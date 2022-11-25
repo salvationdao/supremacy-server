@@ -234,6 +234,16 @@ func (api *API) FactionDamagedStakedMechCount(ctx context.Context, user *boiler.
 			boiler.StakedMechTableColumns.MechID,
 			boiler.RepairCaseTableColumns.MechID,
 		)),
+
+		qm.Where(fmt.Sprintf(
+			"NOT EXISTS ( SELECT 1 FROM %s WHERE %s = %s AND %s ISNULL AND %s ISNULL AND %s ISNULL)",
+			boiler.TableNames.BattleLobbiesMechs,
+			boiler.BattleLobbiesMechTableColumns.MechID,
+			boiler.RepairCaseTableColumns.MechID,
+			boiler.BattleLobbiesMechTableColumns.EndedAt,
+			boiler.BattleLobbiesMechTableColumns.RefundTXID,
+			boiler.BattleLobbiesMechTableColumns.DeletedAt,
+		)),
 	).Count(gamedb.StdConn)
 	if err != nil {
 		gamelog.L.Error().Err(err).Msg("Failed to load the count of damaged staked mech.")

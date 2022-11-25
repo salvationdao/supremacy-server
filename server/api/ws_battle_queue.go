@@ -434,7 +434,7 @@ func (api *API) BattleLobbyJoin(ctx context.Context, user *boiler.Player, factio
 	}
 
 	if len(availableMechIDs) == 0 {
-		return terror.Error(fmt.Errorf("no available mech"), "The provided mechs are still under repair.")
+		return terror.Error(fmt.Errorf("no available mech"), "The provided mechs are not queueable.")
 	}
 
 	bl, err := boiler.FindBattleLobby(gamedb.StdConn, req.Payload.BattleLobbyID)
@@ -472,7 +472,27 @@ func (api *API) BattleLobbyJoin(ctx context.Context, user *boiler.Player, factio
 
 	affectedLobbyIDs := []string{bl.ID}
 
+	// queued limit
+	queueLimit := db.GetIntWithDefault(db.KeyPlayerQueueLimit, 10)
+
 	err = api.ArenaManager.SendBattleQueueFunc(func() error {
+		// queue limit check
+		blms, err := boiler.BattleLobbiesMechs(
+			boiler.BattleLobbiesMechWhere.QueuedByID.EQ(user.ID),
+			boiler.BattleLobbiesMechWhere.RefundTXID.IsNull(),
+			boiler.BattleLobbiesMechWhere.EndedAt.IsNull(),
+		).All(gamedb.StdConn)
+		if err != nil {
+			gamelog.L.Error().Str("player id", user.ID).Err(err).Msg("Failed to load player battle queue mechs")
+			return terror.Error(err, "Failed to load player battle queue mechs")
+		}
+
+		remainingQueueLimit := queueLimit - len(blms)
+
+		if remainingQueueLimit <= 0 {
+			return terror.Error(fmt.Errorf("reach queuing limit"), "You have reached the queuing limit.")
+		}
+
 		now := time.Now()
 		// filter out mechs which are already in queue
 		availableMechIDs, err = db.NonQueuedMechFilter(availableMechIDs)
@@ -525,6 +545,7 @@ func (api *API) BattleLobbyJoin(ctx context.Context, user *boiler.Player, factio
 
 				if battleLobbyMech.QueuedByID == user.ID {
 					availableMaxDeployCount -= 1
+					remainingQueueLimit -= 1
 				}
 
 				// record the mechs in the battle lobby
@@ -532,13 +553,18 @@ func (api *API) BattleLobbyJoin(ctx context.Context, user *boiler.Player, factio
 			}
 
 			// return error, if not enough slots
-			if availableSlotCount == 0 {
+			if availableSlotCount <= 0 {
 				return terror.Error(fmt.Errorf("battle lobby is already full"), "The battle lobby is already full.")
 			}
 
-			if availableMaxDeployCount == 0 {
-				return terror.Error(fmt.Errorf("reach max deploy count"), "You have reach the max deploy count.")
+			if availableMaxDeployCount <= 0 {
+				return terror.Error(fmt.Errorf("reach max deploy count"), "You have reached the max deploy count.")
 			}
+
+			if remainingQueueLimit <= 0 {
+				return terror.Error(fmt.Errorf("reach queuing limit"), "You have reached the queuing limit.")
+			}
+
 		}
 
 		// filled mech in remain slots
@@ -1169,23 +1195,23 @@ func (api *API) MechStake(ctx context.Context, user *boiler.Player, factionID st
 		stakedMechIDs = append(stakedMechIDs, sm.MechID)
 	}
 
+	if len(stakedMechIDs) == 0 {
+		return terror.Error(fmt.Errorf("no mech is staked"), "None of the provided mechs is stakedable, please check the status of the provided mechs.")
+	}
+
 	err = tx.Commit()
 	if err != nil {
 		l.Error().Err(err).Msg("Failed to commit db transaction.")
 		return terror.Error(err, "Failed to stake your mechs")
 	}
 
-	for _, mechID := range stakedMechIDs {
-		ws.PublishMessage(fmt.Sprintf("/public/mech/%s/is_staked", mechID), HubKeyMechIsStaked, true)
-	}
-
 	// broadcast staked mech list
 	lms, err := db.LobbyMechsBrief(user.ID, stakedMechIDs...)
 	if err == nil {
+		// broadcast both mech list
+		ws.PublishMessage(fmt.Sprintf("/faction/%s/staked_mechs", factionID), server.HubKeyFactionStakedMechs, lms)
+		ws.PublishMessage(fmt.Sprintf("/secure/user/%s/owned_mechs", user.ID), server.HubKeyPlayerOwnedMechs, lms)
 	}
-	// broadcast both mech list
-	ws.PublishMessage(fmt.Sprintf("/faction/%s/staked_mechs", factionID), server.HubKeyFactionStakedMechs, lms)
-	ws.PublishMessage(fmt.Sprintf("/secure/user/%s/owned_mechs", user.ID), server.HubKeyPlayerOwnedMechs, lms)
 
 	reply(true)
 	return nil
@@ -1337,10 +1363,6 @@ func (api *API) MechUnstake(ctx context.Context, user *boiler.Player, factionID 
 		// load changed battle lobbies
 		api.ArenaManager.BattleLobbyDebounceBroadcastChan <- changedBattleLobbyIDs
 
-		for _, mechID := range unstakedMechIDs {
-			ws.PublishMessage(fmt.Sprintf("/public/mech/%s/is_staked", mechID), HubKeyMechIsStaked, false)
-		}
-
 		// broadcast staked mech list
 		lms, err := db.LobbyMechsBrief(user.ID, unstakedMechIDs...)
 		if err == nil {
@@ -1356,23 +1378,6 @@ func (api *API) MechUnstake(ctx context.Context, user *boiler.Player, factionID 
 	}
 
 	reply(true)
-
-	return nil
-}
-
-const HubKeyMechIsStaked = "MECH:IS:STAKED"
-
-func (api *API) MechIsStaked(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
-	mechID := chi.RouteContext(ctx).URLParam("mech_id")
-
-	sm, err := boiler.StakedMechs(
-		boiler.StakedMechWhere.MechID.EQ(mechID),
-	).One(gamedb.StdConn)
-	if err != nil && !errors.Is(err, sql.ErrNoRows) {
-		return terror.Error(err, "Failed to load staked mech.")
-	}
-
-	reply(sm != nil)
 
 	return nil
 }

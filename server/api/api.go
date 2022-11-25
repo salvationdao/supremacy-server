@@ -275,7 +275,6 @@ func NewAPI(
 
 				// come from battle
 				s.WS("/mech/{mech_id}/details", HubKeyPlayerAssetMechDetailPublic, pasc.PlayerAssetMechDetailPublic)
-				s.WS("/mech/{mech_id}/is_staked", HubKeyMechIsStaked, api.MechIsStaked)
 				s.WS("/custom_avatar/{avatar_id}/details", HubKeyPlayerCustomAvatarDetails, pc.ProfileCustomAvatarDetailsHandler)
 
 				// battle related endpoint

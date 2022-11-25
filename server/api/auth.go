@@ -4,7 +4,6 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
-	"github.com/davecgh/go-spew/spew"
 	"net/http"
 	"server"
 	"server/db"
@@ -515,8 +514,6 @@ func (api *API) TokenLogin(tokenBase64 string, ignoreErr ...bool) (*server.Playe
 		}
 		return nil, err
 	}
-
-	spew.Dump(userResp)
 
 	err = api.UpsertPlayer(userResp.ID, null.StringFrom(userResp.Username), userResp.PublicAddress, userResp.FactionID, userResp.AccountID, nil, userResp.AcceptsMarketing)
 	if err != nil {
