@@ -355,7 +355,7 @@ func (api *API) BattleLobbyCreate(ctx context.Context, user *boiler.Player, fact
 			}
 
 			// broadcast update
-			go battle.BroadcastMechQueueStatus(deployedMechIDs)
+			api.ArenaManager.MechDebounceBroadcastChan <- deployedMechIDs
 			go battle.BroadcastPlayerQueueStatus(user.ID)
 
 		}
@@ -730,7 +730,7 @@ func (api *API) BattleLobbyJoin(ctx context.Context, user *boiler.Player, factio
 			}
 		}
 
-		go battle.BroadcastMechQueueStatus(deployedMechIDs)
+		api.ArenaManager.MechDebounceBroadcastChan <- deployedMechIDs
 
 		// broadcast battle lobby
 		api.ArenaManager.BattleLobbyDebounceBroadcastChan <- affectedLobbyIDs
@@ -1038,7 +1038,7 @@ func (api *API) BattleLobbyLeave(ctx context.Context, user *boiler.Player, facti
 		go battle.BroadcastPlayerQueueStatus(user.ID)
 
 		// broadcast new mech stat
-		go battle.BroadcastMechQueueStatus(leftMechIDs)
+		api.ArenaManager.MechDebounceBroadcastChan <- leftMechIDs
 
 		return nil
 	})
@@ -1205,13 +1205,8 @@ func (api *API) MechStake(ctx context.Context, user *boiler.Player, factionID st
 		return terror.Error(err, "Failed to stake your mechs")
 	}
 
-	// broadcast staked mech list
-	lms, err := db.LobbyMechsBrief(user.ID, stakedMechIDs...)
-	if err == nil {
-		// broadcast both mech list
-		ws.PublishMessage(fmt.Sprintf("/faction/%s/staked_mechs", factionID), server.HubKeyFactionStakedMechs, lms)
-		ws.PublishMessage(fmt.Sprintf("/secure/user/%s/owned_mechs", user.ID), server.HubKeyPlayerOwnedMechs, lms)
-	}
+	// send to debounce broadcast channel
+	api.ArenaManager.MechDebounceBroadcastChan <- stakedMechIDs
 
 	reply(true)
 	return nil
@@ -1246,8 +1241,13 @@ func (api *API) MechUnstake(ctx context.Context, user *boiler.Player, factionID 
 		}
 
 		unstakedMechIDs := []string{}
+		var unstakedMechList []*db.MechBrief
 		for _, unstakedMech := range unstakedMechs {
 			unstakedMechIDs = append(unstakedMechIDs, unstakedMech.MechID)
+			unstakedMechList = append(unstakedMechList, &db.MechBrief{
+				ID:       unstakedMech.MechID,
+				IsStaked: false,
+			})
 		}
 
 		var blms boiler.BattleLobbiesMechSlice
@@ -1357,19 +1357,17 @@ func (api *API) MechUnstake(ctx context.Context, user *boiler.Player, factionID 
 				gamelog.L.Error().Err(err).Strs("mech id list", leftMechIDs).Msg("Failed to restart repair cases")
 			}
 
-			battle.BroadcastMechQueueStatus(leftMechIDs)
+			api.ArenaManager.MechDebounceBroadcastChan <- leftMechIDs
 		}()
 
 		// load changed battle lobbies
 		api.ArenaManager.BattleLobbyDebounceBroadcastChan <- changedBattleLobbyIDs
 
-		// broadcast staked mech list
-		lms, err := db.LobbyMechsBrief(user.ID, unstakedMechIDs...)
-		if err == nil {
-			// broadcast both mech list
-			ws.PublishMessage(fmt.Sprintf("/faction/%s/staked_mechs", factionID), server.HubKeyFactionStakedMechs, lms)
-			ws.PublishMessage(fmt.Sprintf("/secure/user/%s/owned_mechs", user.ID), server.HubKeyPlayerOwnedMechs, lms)
-		}
+		// broadcast mech update
+		api.ArenaManager.MechDebounceBroadcastChan <- unstakedMechIDs
+
+		// tell frontend to clean up the unstaked mechs from the list
+		ws.PublishMessage(fmt.Sprintf("/faction/%s/staked_mechs", factionID), server.HubKeyFactionStakedMechs, unstakedMechList)
 
 		return nil
 	})

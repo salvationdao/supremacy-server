@@ -476,6 +476,9 @@ func (api *API) initialWSBroadcast() error {
 	// start debounce lobby update sender
 	go api.ArenaManager.DebounceSendBattleLobbiesUpdate()
 
+	// debounce broadcast player assets
+	go api.ArenaManager.PlayerAssetsDebounceBroadcaster()
+
 	return nil
 }
 

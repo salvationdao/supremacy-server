@@ -543,7 +543,7 @@ func (am *ArenaManager) ExpiredExhibitionLobbyCleanUp() error {
 			}
 
 			// broadcast the status changes of the lobby mechs
-			go BroadcastMechQueueStatus(lobbyMechIDs)
+			am.MechDebounceBroadcastChan <- lobbyMechIDs
 
 		}(bl)
 	}
@@ -612,105 +612,6 @@ func (am *ArenaManager) DefaultPublicLobbiesCheck() error {
 	}
 
 	return nil
-}
-
-// BroadcastMechQueueStatus broadcast mechs queue status
-// NOTE: player id maybe empty string
-func BroadcastMechQueueStatus(mechIDs []string) {
-	if len(mechIDs) == 0 {
-		return
-	}
-
-	mechInfo, err := db.LobbyMechsBrief("", mechIDs...)
-	if err != nil {
-		return
-	}
-
-	factionStakedMechs := []struct {
-		factionID string
-		mechs     []*db.MechBrief
-	}{
-		{
-			factionID: server.RedMountainFactionID,
-			mechs:     []*db.MechBrief{},
-		},
-		{
-			factionID: server.BostonCyberneticsFactionID,
-			mechs:     []*db.MechBrief{},
-		},
-		{
-			factionID: server.ZaibatsuFactionID,
-			mechs:     []*db.MechBrief{},
-		},
-	}
-
-	var playerMechs []struct {
-		playerID string
-		mechs    []*db.MechBrief
-	}
-
-	for _, m := range mechInfo {
-		// prepare player mech list
-		index := slices.IndexFunc(playerMechs, func(pm struct {
-			playerID string
-			mechs    []*db.MechBrief
-		}) bool {
-			return pm.playerID == m.OwnerID
-		})
-
-		if index == -1 {
-			playerMechs = append(playerMechs, struct {
-				playerID string
-				mechs    []*db.MechBrief
-			}{playerID: m.OwnerID, mechs: []*db.MechBrief{}})
-			index = len(playerMechs) - 1
-		}
-		playerMechs[index].mechs = append(playerMechs[index].mechs, m)
-
-		// prepare faction staked mech list
-		if m.IsStaked {
-			fIndex := slices.IndexFunc(factionStakedMechs, func(fsm struct {
-				factionID string
-				mechs     []*db.MechBrief
-			}) bool {
-				return fsm.factionID == m.FactionID.String
-			})
-
-			if fIndex == -1 {
-				factionStakedMechs = append(factionStakedMechs, struct {
-					factionID string
-					mechs     []*db.MechBrief
-				}{factionID: m.FactionID.String, mechs: []*db.MechBrief{}})
-
-				fIndex = len(factionStakedMechs) - 1
-			}
-
-			factionStakedMechs[fIndex].mechs = append(factionStakedMechs[fIndex].mechs, m)
-		}
-
-		ws.PublishMessage(fmt.Sprintf("/faction/%s/queue/%s", m.FactionID.String, m.ID), server.HubKeyPlayerAssetMechQueueSubscribe, server.MechArenaInfo{
-			Status:              m.Status,
-			CanDeploy:           m.CanDeploy,
-			BattleLobbyIsLocked: m.LobbyLockedAt.Valid,
-		})
-	}
-
-	// broadcast player owned mechs
-	for _, pm := range playerMechs {
-		ws.PublishMessage(fmt.Sprintf("/secure/user/%s/owned_mechs", pm.playerID), server.HubKeyPlayerOwnedMechs, pm.mechs)
-	}
-
-	// broadcast faction staked mechs
-	for _, fsm := range factionStakedMechs {
-		if len(fsm.mechs) == 0 {
-			continue
-		}
-		ws.PublishMessage(fmt.Sprintf("/faction/%s/staked_mechs", fsm.factionID), server.HubKeyFactionStakedMechs, fsm.mechs)
-	}
-
-	// free up memory
-	playerMechs = nil
-	factionStakedMechs = nil
 }
 
 func BroadcastPlayerQueueStatus(playerID string) {
@@ -1171,7 +1072,7 @@ func (am *ArenaManager) AddAIMechFillingProcess(battleLobbyID string) {
 			am.BattleLobbyDebounceBroadcastChan <- []string{newBattleLobby.ID, bl.ID}
 
 			// broadcast the status changes of the lobby mechs
-			go BroadcastMechQueueStatus(lobbyMechIDs)
+			am.MechDebounceBroadcastChan <- lobbyMechIDs
 
 			// Terminate filling process
 			am.TerminateAIMechFillingProcess(battleLobbyID)

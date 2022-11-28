@@ -700,7 +700,7 @@ func (btl *Battle) handleBattleEnd(payload *BattleEndPayload) {
 	btl.arena.LastBattleResult = endInfo
 
 	// broadcast player mech status change
-	go BroadcastMechQueueStatus(btl.warMachineIDs)
+	btl.arena.Manager.MechDebounceBroadcastChan <- btl.warMachineIDs
 
 	// broadcast battle eta
 	go func() {

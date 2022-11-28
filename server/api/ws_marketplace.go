@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"math"
 	"server"
-	"server/battle"
 	"server/db"
 	"server/db/boiler"
 	"server/gamedb"
@@ -703,7 +702,7 @@ func (mp *MarketplaceController) SalesCreateHandler(ctx context.Context, user *b
 	}
 
 	if ci.ItemType == boiler.ItemTypeMech {
-		go battle.BroadcastMechQueueStatus([]string{ci.ItemID})
+		mp.API.ArenaManager.MechDebounceBroadcastChan <- []string{ci.ItemID}
 	}
 
 	return nil
@@ -1084,7 +1083,7 @@ func (mp *MarketplaceController) SalesArchiveHandler(ctx context.Context, user *
 	}
 
 	if ci.ItemType == boiler.ItemTypeMech {
-		go battle.BroadcastMechQueueStatus([]string{ci.ItemID})
+		mp.API.ArenaManager.MechDebounceBroadcastChan <- []string{ci.ItemID}
 	}
 
 	return nil
@@ -1485,9 +1484,9 @@ func (mp *MarketplaceController) SalesBuyHandler(ctx context.Context, user *boil
 			l.Error().Str("collection item id", saleItem.CollectionItemID).Err(err).Msg("failed to get collection item from db")
 		}
 
-		go battle.BroadcastMechQueueStatus([]string{ci.ItemID})
-
 		if ci != nil {
+			mp.API.ArenaManager.MechDebounceBroadcastChan <- []string{ci.ItemID}
+
 			ws.PublishMessage(fmt.Sprintf("/faction/%s/queue/%s", saleItem.FactionID, ci.ItemID), server.HubKeyPlayerAssetMechQueueSubscribe, &server.MechArenaInfo{
 				Status: server.MechArenaStatusSold,
 			})

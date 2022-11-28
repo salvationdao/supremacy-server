@@ -495,20 +495,6 @@ func (api *API) broadcastRepairOffer(repairOfferID string) error {
 	return nil
 }
 
-// BroadcastMechQueueStat broadcast current mech queue stat
-func BroadcastMechQueueStat(mechID string) {
-	ci, err := boiler.CollectionItems(
-		boiler.CollectionItemWhere.ItemType.EQ(boiler.ItemTypeMech),
-		boiler.CollectionItemWhere.ItemID.EQ(mechID),
-		qm.Load(boiler.CollectionItemRels.Owner),
-	).One(gamedb.StdConn)
-	if err != nil && !errors.Is(err, sql.ErrNoRows) {
-		return
-	}
-
-	go battle.BroadcastMechQueueStatus([]string{ci.ItemID})
-}
-
 type RepairAgentAbandonRequest struct {
 	Payload struct {
 		RepairAgentID string `json:"repair_agent_id"`
@@ -1275,7 +1261,7 @@ func (api *API) completeRepairAgent(repairAgentID string, userID string) error {
 
 		// broadcast current mech stat if damage blocks is less than or equal to deploy ratio
 		if decimal.NewFromInt(int64(rc.BlocksRequiredRepair - rc.BlocksRepaired)).Div(decimal.NewFromInt(int64(totalBlocks))).LessThanOrEqual(canDeployRatio) {
-			go BroadcastMechQueueStat(rc.MechID)
+			api.ArenaManager.MechDebounceBroadcastChan <- []string{rc.MechID}
 		}
 		ws.PublishMessage(fmt.Sprintf("/secure/mech/%s/repair_case", rc.MechID), server.HubKeyMechRepairCase, rc)
 		return nil
@@ -1285,7 +1271,7 @@ func (api *API) completeRepairAgent(repairAgentID string, userID string) error {
 	ws.PublishMessage(fmt.Sprintf("/secure/mech/%s/repair_case", rc.MechID), server.HubKeyMechRepairCase, nil)
 
 	// broadcast current mech stat
-	go BroadcastMechQueueStat(rc.MechID)
+	api.ArenaManager.MechDebounceBroadcastChan <- []string{rc.MechID}
 
 	// close repair case
 	rc.CompletedAt = null.TimeFrom(time.Now())

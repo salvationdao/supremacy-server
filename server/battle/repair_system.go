@@ -415,7 +415,7 @@ func (am *ArenaManager) repairBayCompleteChecker() {
 				ws.PublishMessage(fmt.Sprintf("/secure/mech/%s/repair_case", rc.MechID), server.HubKeyMechRepairCase, rc)
 
 				// broadcast mech status
-				go BroadcastMechQueueStatus([]string{rc.MechID})
+				am.MechDebounceBroadcastChan <- []string{rc.MechID}
 
 				// broadcast current repair bay
 				go BroadcastRepairBay(playerMechRepairSlot.PlayerID)
@@ -457,7 +457,7 @@ func (am *ArenaManager) repairBayCompleteChecker() {
 				return
 			}
 			// broadcast mech status
-			go BroadcastMechQueueStatus([]string{rc.MechID})
+			am.MechDebounceBroadcastChan <- []string{rc.MechID}
 		}(pm)
 	}
 
