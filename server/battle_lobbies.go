@@ -570,12 +570,12 @@ func BattleLobbiesFromBoiler(bls []*boiler.BattleLobby) ([]*BattleLobby, error) 
 }
 
 // BattleLobbiesFactionFilter omit the mech owner and weapon slots of other faction mechs
-func BattleLobbiesFactionFilter(bls []*BattleLobby, keepDataForFactionID string, toUserID string) []*BattleLobby {
+func BattleLobbiesFactionFilter(bls []*BattleLobby, keepDataForFactionID string, keepAccessCode bool) []*BattleLobby {
 	// generate a new struct
 	battleLobbies := []*BattleLobby{}
 
 	for _, bl := range bls {
-		battleLobbies = append(battleLobbies, BattleLobbyInfoFilter(bl, keepDataForFactionID, bl.HostByID == toUserID))
+		battleLobbies = append(battleLobbies, BattleLobbyInfoFilter(bl, keepDataForFactionID, keepAccessCode))
 	}
 
 	return battleLobbies

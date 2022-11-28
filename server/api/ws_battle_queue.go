@@ -1114,7 +1114,7 @@ func (api *API) BattleLobbyListUpdate(ctx context.Context, user *boiler.Player, 
 		bl.FillAt = api.ArenaManager.GetAIMechFillingProcessTime(bl.ID)
 	}
 
-	reply(server.BattleLobbiesFactionFilter(resp, factionID, user.ID))
+	reply(server.BattleLobbiesFactionFilter(resp, factionID, false))
 
 	return nil
 }
@@ -1546,7 +1546,7 @@ func (api *API) PlayerInvolvedBattleLobbies(ctx context.Context, user *boiler.Pl
 		return err
 	}
 
-	reply(server.BattleLobbiesFactionFilter(resp, factionID, user.ID))
+	reply(server.BattleLobbiesFactionFilter(resp, factionID, true))
 
 	return nil
 }
