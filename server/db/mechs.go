@@ -1642,7 +1642,8 @@ type MechBrief struct {
 	WeaponSlots []*server.WeaponSlot  `json:"weapon_slots"`
 	Utilities   []*server.UtilitySlot `json:"utilities"`
 
-	HasRepairOffer bool `json:"has_repair_offer" db:"has_repair_offer"`
+	HasRepairOffer         bool        `json:"has_repair_offer" db:"has_repair_offer"`
+	PlayerMechRepairSlotID null.String `json:"player_mech_repair_slot_id" db:"player_mech_repair_slot_id"`
 }
 
 // LobbyMechsBrief return list for mech for quick deploy
@@ -1761,6 +1762,7 @@ func LobbyMechsBrief(playerID string, mechIDs ...string) ([]*MechBrief, error) {
 				boiler.RepairOfferTableColumns.DeletedAt,
 				boiler.RepairOfferTableColumns.OfferedByID,
 			),
+			fmt.Sprintf(boiler.PlayerMechRepairSlotTableColumns.ID),
 		),
 
 		qm.From(fmt.Sprintf(
@@ -1849,7 +1851,7 @@ func LobbyMechsBrief(playerID string, mechIDs ...string) ([]*MechBrief, error) {
 					(SELECT %s FROM %s WHERE %s = %s)
 				FROM %s
 				WHERE %s ISNULL AND %s ISNULL
-			) _blm ON _blm.%s = _ci.%s`,
+			) _blm ON _blm.%s = _m.%s`,
 			boiler.BattleLobbiesMechTableColumns.MechID,
 			boiler.BattleLobbiesMechTableColumns.LockedAt,
 			boiler.BattleLobbiesMechTableColumns.AssignedToBattleID,
@@ -1861,7 +1863,7 @@ func LobbyMechsBrief(playerID string, mechIDs ...string) ([]*MechBrief, error) {
 			boiler.BattleLobbiesMechTableColumns.EndedAt,
 			boiler.BattleLobbiesMechTableColumns.DeletedAt,
 			boiler.BattleLobbiesMechColumns.MechID,
-			boiler.CollectionItemColumns.ItemID,
+			boiler.MechColumns.ID,
 		)),
 
 		// outer join power cores
@@ -1897,12 +1899,22 @@ func LobbyMechsBrief(playerID string, mechIDs ...string) ([]*MechBrief, error) {
 
 		// repair case
 		qm.LeftOuterJoin(fmt.Sprintf(
-			"%s _rc ON _rc.%s = _ci.%s AND _rc.%s ISNULL AND _rc.%s ISNULL",
+			"%s _rc ON _rc.%s = _m.%s AND _rc.%s ISNULL AND _rc.%s ISNULL",
 			boiler.TableNames.RepairCases,
 			boiler.RepairCaseColumns.MechID,
-			boiler.CollectionItemColumns.ItemID,
+			boiler.MechColumns.ID,
 			boiler.RepairCaseColumns.CompletedAt,
 			boiler.RepairCaseColumns.DeletedAt,
+		)),
+
+		// player mech repair bay
+		qm.LeftOuterJoin(fmt.Sprintf(
+			"%s ON %s = _m.%s AND %s != '%s'",
+			boiler.TableNames.PlayerMechRepairSlots,
+			boiler.PlayerMechRepairSlotTableColumns.MechID,
+			boiler.MechColumns.ID,
+			boiler.PlayerMechRepairSlotTableColumns.Status,
+			boiler.RepairSlotStatusDONE,
 		)),
 	}
 
@@ -1971,6 +1983,7 @@ func LobbyMechsBrief(playerID string, mechIDs ...string) ([]*MechBrief, error) {
 			&stats,
 
 			&mb.HasRepairOffer,
+			&mb.PlayerMechRepairSlotID,
 		)
 		if err != nil {
 			gamelog.L.Error().Err(err).Msg("Failed to scan player battle spectated from db.")

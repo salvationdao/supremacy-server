@@ -211,13 +211,14 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetMechDetail(ctx context.Context, 
 		boiler.CollectionItemWhere.ItemID.EQ(mechID),
 		qm.InnerJoin(
 			fmt.Sprintf(
-				"%s on %s = %s",
+				"%s on %s = %s AND %s = '%s'",
 				boiler.TableNames.Players,
-				qm.Rels(boiler.TableNames.Players, boiler.PlayerColumns.ID),
-				qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.OwnerID),
+				boiler.PlayerTableColumns.ID,
+				boiler.CollectionItemTableColumns.OwnerID,
+				boiler.PlayerTableColumns.FactionID,
+				fID,
 			),
 		),
-		boiler.PlayerWhere.FactionID.EQ(null.StringFrom(fID)),
 	).One(gamedb.StdConn)
 	if err != nil {
 		return terror.Error(err, "Failed to find mech from the collection")
@@ -243,7 +244,6 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetMechBriefInfo(ctx context.Contex
 	// get collection and check ownership
 	ci, err := boiler.CollectionItems(
 		boiler.CollectionItemWhere.ItemID.EQ(mechID),
-		boiler.CollectionItemWhere.OwnerID.EQ(user.ID),
 		qm.Load(boiler.CollectionItemRels.Owner),
 	).One(gamedb.StdConn)
 	if err != nil {

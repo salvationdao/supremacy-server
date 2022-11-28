@@ -34,7 +34,7 @@ func NewMechRepairController(api *API) {
 	api.SecureUserCommand(server.HubKeyRepairAgentRecord, api.RepairAgentRecord)
 	api.SecureUserCommand(server.HubKeyRepairAgentAbandon, api.RepairAgentAbandon)
 
-	api.SecureUserCommand(server.HubKeyMechRepairSlotInsert, api.MechRepairSlotInsert)
+	api.SecureUserFactionCommand(server.HubKeyMechRepairSlotInsert, api.MechRepairSlotInsert)
 	api.SecureUserCommand(server.HubKeyMechRepairSlotRemove, api.MechRepairSlotRemove)
 	api.SecureUserCommand(server.HubKeyMechRepairSlotSwap, api.MechRepairSlotSwap)
 
@@ -566,7 +566,7 @@ type MechRepairSlotInsertRequest struct {
 	} `json:"payload"`
 }
 
-func (api *API) MechRepairSlotInsert(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
+func (api *API) MechRepairSlotInsert(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
 	L := gamelog.L.With().Str("func", "MechRepairSlotInsert").Interface("user", user).Logger()
 
 	req := &MechRepairSlotInsertRequest{}
@@ -575,23 +575,38 @@ func (api *API) MechRepairSlotInsert(ctx context.Context, user *boiler.Player, k
 		return terror.Error(err, "Invalid request received.")
 	}
 
-	// validate ownership
-	cis, err := boiler.CollectionItems(
-		boiler.CollectionItemWhere.ItemType.EQ(boiler.ItemTypeMech),
+	rows, err := boiler.NewQuery(
+		qm.Select(
+			boiler.CollectionItemTableColumns.ItemID,
+			boiler.CollectionItemTableColumns.OwnerID,
+			boiler.StakedMechTableColumns.FactionID,
+		),
+		qm.From(boiler.TableNames.CollectionItems),
+		qm.LeftOuterJoin(fmt.Sprintf(
+			"%s ON %s = %s",
+			boiler.TableNames.StakedMechs,
+			boiler.StakedMechTableColumns.MechID,
+			boiler.CollectionItemTableColumns.ItemID,
+		)),
 		boiler.CollectionItemWhere.ItemID.IN(req.Payload.MechIDs),
-	).All(gamedb.StdConn)
+	).Query(gamedb.StdConn)
 	if err != nil {
-		gamelog.L.Error().Err(err).Str("item type", boiler.ItemTypeMech).Strs("mech id list", req.Payload.MechIDs).Msg("Failed to query war machine collection item")
-		return terror.Error(err, "Failed to load war machine detail.")
+		gamelog.L.Error().Err(err).Msg("Failed to load mechs.")
+		return terror.Error(err, "Failed to load mechs")
 	}
 
-	if len(req.Payload.MechIDs) != len(cis) {
-		return terror.Error(fmt.Errorf("contain non-mech asset"), "Request contain non-mech asset.")
-	}
+	for rows.Next() {
+		mechID := ""
+		ownerID := ""
+		mechFactionID := null.String{}
+		err = rows.Scan(&mechID, &ownerID, &mechFactionID)
+		if err != nil {
+			gamelog.L.Error().Err(err).Msg("Failed to scan mech ownership.")
+			return terror.Error(err, "Failed to scan mech ownership.")
+		}
 
-	for _, ci := range cis {
-		if ci.OwnerID != user.ID {
-			return terror.Error(fmt.Errorf("do not own the mech"), "The mech is not owned by you.")
+		if ownerID != user.ID && (!mechFactionID.Valid || mechFactionID.String != factionID) {
+			return terror.Error(fmt.Errorf("invalid ownership"), "Player can only repair mechs which is owned by themselves or in their faction mech pool.")
 		}
 	}
 
@@ -698,14 +713,13 @@ func (api *API) MechRepairSlotInsert(ctx context.Context, user *boiler.Player, k
 
 		return nil
 	})
+	if err != nil {
+		return err
+	}
 
 	// broadcast changes, if slot changed
 	if shouldBroadcast {
 		go battle.BroadcastRepairBay(user.ID)
-	}
-
-	if err != nil {
-		return err
 	}
 
 	reply(true)
