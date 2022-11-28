@@ -384,6 +384,7 @@ func NewAPI(
 				s.WS("/battle_ready_staked_mech_count", server.HubKeyFactionStakedMechBattleReadyCount, server.MustSecureFaction(api.FactionBattleReadyStakedMechCount))
 				s.WS("/in_battle_staked_mech_count", server.HubKeyFactionStakedMechInBattleCount, server.MustSecureFaction(api.FactionInBattleStakedMechCount))
 				s.WS("/battled_staked_mech_count", server.HubKeyFactionStakedMechBattledCount, server.MustSecureFaction(api.FactionBattledStakedMechCount))
+				s.WS("/in_repair_bay_staked_mech", server.HubKeyFactionStakedMechInRepairBay, server.MustSecureFaction(api.FactionInRepairBayStakedMechCount))
 			}))
 
 			// mini map related

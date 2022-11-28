@@ -312,3 +312,71 @@ func (api *API) FactionBattledStakedMechCount(ctx context.Context, user *boiler.
 	reply(total)
 	return nil
 }
+
+type FactionRepairBayStakedMechResponse struct {
+	MechCount                   int `json:"mech_count"`
+	TotalRequiredRepairedBlocks int `json:"total_required_repaired_blocks"`
+	TotalRepairedBlocks         int `json:"total_repaired_blocks"`
+}
+
+func (api *API) FactionInRepairBayStakedMechCount(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
+	queries := []qm.QueryMod{
+		qm.Select(
+			boiler.StakedMechTableColumns.MechID,
+			boiler.RepairCaseTableColumns.BlocksRequiredRepair,
+			boiler.RepairCaseTableColumns.BlocksRepaired,
+		),
+
+		qm.From(fmt.Sprintf(
+			"(SELECT * FROM %s WHERE %s = '%s') %s",
+			boiler.TableNames.StakedMechs,
+			boiler.StakedMechTableColumns.FactionID,
+			factionID,
+			boiler.TableNames.StakedMechs,
+		)),
+
+		qm.InnerJoin(fmt.Sprintf(
+			"%s ON %s = %s AND %s != '%s'",
+			boiler.TableNames.PlayerMechRepairSlots,
+			boiler.PlayerMechRepairSlotTableColumns.MechID,
+			boiler.StakedMechTableColumns.MechID,
+			boiler.PlayerMechRepairSlotTableColumns.Status,
+			boiler.RepairSlotStatusDONE,
+		)),
+
+		qm.InnerJoin(fmt.Sprintf(
+			"%s ON %s = %s AND %s ISNULL AND %s ISNULL",
+			boiler.TableNames.RepairCases,
+			boiler.RepairCaseTableColumns.MechID,
+			boiler.StakedMechTableColumns.MechID,
+			boiler.RepairCaseTableColumns.CompletedAt,
+			boiler.RepairCaseTableColumns.DeletedAt,
+		)),
+	}
+
+	rows, err := boiler.NewQuery(queries...).Query(gamedb.StdConn)
+	if err != nil {
+		gamelog.L.Error().Err(err).Msg("Failed to repair bay mechs from db.")
+		return terror.Error(err, "Failed to load mech detail from db.")
+	}
+
+	resp := &FactionRepairBayStakedMechResponse{}
+	for rows.Next() {
+		mechID := ""
+		requiredRepairedBlocks := 0
+		repairedBlocks := 0
+
+		err = rows.Scan(&mechID, &requiredRepairedBlocks, &repairedBlocks)
+		if err != nil {
+			gamelog.L.Error().Err(err).Msg("Failed to scan mech repair detail.")
+			return terror.Error(err, "Failed to scan mech repair detail.")
+		}
+
+		resp.MechCount += 1
+		resp.TotalRequiredRepairedBlocks += requiredRepairedBlocks
+		resp.TotalRepairedBlocks += repairedBlocks
+	}
+
+	reply(resp)
+	return nil
+}
