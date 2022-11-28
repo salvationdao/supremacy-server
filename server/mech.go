@@ -47,6 +47,7 @@ type Mech struct {
 	BoostedMaxHitpoints int `json:"boosted_max_hitpoints"`
 	// shield
 	Shield                    int             `json:"shield"`
+	BoostedShield             int             `json:"boosted_shield"`
 	ShieldRechargeRate        int             `json:"shield_recharge_rate"`
 	BoostedShieldRechargeRate int             `json:"boosted_shield_recharge_rate"`
 	ShieldRechargeDelay       decimal.Decimal `json:"shield_recharge_delay"`
@@ -58,9 +59,13 @@ type Mech struct {
 	WeaponHardpoints int `json:"weapon_hardpoints"`
 	UtilitySlots     int `json:"utility_slots"`
 	// other
-	RepairBlocks  int    `json:"repair_blocks"`
-	PowerCoreSize string `json:"power_core_size"`
-	BoostedStat   string `json:"boosted_stat"`
+	RepairBlocks                int             `json:"repair_blocks"`
+	PowerCoreSize               string          `json:"power_core_size"`
+	BoostedStat                 string          `json:"boosted_stat"`
+	WalkSpeedModifier           decimal.Decimal `json:"walk_speed_modifier"`
+	BoostedWalkSpeedModifier    decimal.Decimal `json:"boosted_walk_speed_modifier"`
+	SprintSpreadModifier        decimal.Decimal `json:"sprint_spread_modifier"`
+	BoostedSprintSpreadModifier decimal.Decimal `json:"boosted_sprint_spread_modifier"`
 
 	// state
 	QueuePosition null.Int    `json:"queue_position"`
@@ -296,23 +301,69 @@ func (m *Mech) SetBoostedStats() error {
 	if m.ChassisSkin == nil {
 		return fmt.Errorf("missing mech skin object")
 	}
-	// get the % increase
-	boostPercent := (float32(m.ChassisSkin.Level) / 100) + 1
+	// get the % increase or decrease
+	positiveBoostPercent := (float32(m.ChassisSkin.Level) / 100) + 1
+	negativeBoostPercent := 1 - (float32(m.ChassisSkin.Level) / 100)
 
 	if m.BoostedStat == boiler.BoostStatMECH_SPEED {
-		m.BoostedSpeed = int(boostPercent * float32(m.Speed)) // set the boosted stat
+		m.BoostedSpeed = int(positiveBoostPercent * float32(m.Speed)) // set the boosted stat
 	} else {
 		m.BoostedSpeed = m.Speed // set boosted speed to the speed, means we can always just use boosted stat instead of figuring out which one is better down the line
 	}
 	if m.BoostedStat == boiler.BoostStatMECH_HEALTH {
-		m.BoostedMaxHitpoints = int(boostPercent * float32(m.MaxHitpoints))
+		m.BoostedMaxHitpoints = int(positiveBoostPercent * float32(m.MaxHitpoints))
 	} else {
 		m.BoostedMaxHitpoints = m.MaxHitpoints
 	}
 	if m.BoostedStat == boiler.BoostStatSHIELD_REGEN {
-		m.BoostedShieldRechargeRate = int(boostPercent * float32(m.ShieldRechargeRate))
+		m.BoostedShieldRechargeRate = int(positiveBoostPercent * float32(m.ShieldRechargeRate))
 	} else {
 		m.BoostedShieldRechargeRate = m.ShieldRechargeRate
+	}
+	if m.BoostedStat == boiler.BoostStatMECH_MAX_SHIELD {
+		m.BoostedShield = int(positiveBoostPercent * float32(m.Shield))
+	} else {
+		m.BoostedShield = m.Shield
+	}
+	if m.BoostedStat == boiler.BoostStatMECH_SPRINT_SPREAD_MODIFIER {
+		m.BoostedSprintSpreadModifier = m.SprintSpreadModifier.Mul(decimal.NewFromFloat32(negativeBoostPercent))
+	} else {
+		m.BoostedSprintSpreadModifier = m.SprintSpreadModifier
+	}
+	if m.BoostedStat == boiler.BoostStatMECH_WALK_SPEED_MODIFIER {
+		m.BoostedWalkSpeedModifier = m.WalkSpeedModifier.Mul(decimal.NewFromFloat32(negativeBoostPercent))
+	} else {
+		m.BoostedWalkSpeedModifier = m.WalkSpeedModifier
+	}
+	if m.BoostedStat == boiler.BoostStatWEAPON_DAMAGE_FALLOFF {
+		for _, w := range m.Weapons {
+			if !w.DamageFalloff.Valid {
+				continue
+			}
+			w.BoostedDamageFalloff = null.IntFrom(int(negativeBoostPercent * float32(w.DamageFalloff.Int)))
+		}
+	} else {
+		for _, w := range m.Weapons {
+			if !w.DamageFalloff.Valid {
+				continue
+			}
+			w.BoostedDamageFalloff = w.DamageFalloff
+		}
+	}
+	if m.BoostedStat == boiler.BoostStatWEAPON_SPREAD {
+		for _, w := range m.Weapons {
+			if !w.Spread.Valid {
+				continue
+			}
+			w.BoostedSpread = decimal.NewNullDecimal(decimal.NewFromFloat32(negativeBoostPercent).Mul(w.Spread.Decimal))
+		}
+	} else {
+		for _, w := range m.Weapons {
+			if !w.Spread.Valid {
+				continue
+			}
+			w.BoostedSpread = w.Spread
+		}
 	}
 
 	return nil
