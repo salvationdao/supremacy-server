@@ -389,6 +389,8 @@ func (am *ArenaManager) ExpiredExhibitionLobbyCleanUp() error {
 				return
 			}
 
+			am.FactionStakedMechDashboardKeyChan <- []string{FactionStakedMechDashboardKeyQueue}
+
 			// broadcast battle lobby
 			am.BattleLobbyDebounceBroadcastChan <- []string{battleLobby.ID}
 
@@ -1073,6 +1075,9 @@ func (am *ArenaManager) AddAIMechFillingProcess(battleLobbyID string) {
 
 			// broadcast the status changes of the lobby mechs
 			am.MechDebounceBroadcastChan <- lobbyMechIDs
+
+			// update faction staked mech queue status
+			am.FactionStakedMechDashboardKeyChan <- []string{FactionStakedMechDashboardKeyQueue}
 
 			// Terminate filling process
 			am.TerminateAIMechFillingProcess(battleLobbyID)

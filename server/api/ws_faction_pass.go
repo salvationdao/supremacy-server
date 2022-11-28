@@ -226,23 +226,16 @@ func (api *API) FactionQueuedStakedMechCount(ctx context.Context, user *boiler.P
 }
 
 func (api *API) FactionDamagedStakedMechCount(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
-	total, err := boiler.RepairCases(
-		boiler.RepairCaseWhere.CompletedAt.IsNull(),
-		qm.Where(fmt.Sprintf(
-			"EXISTS ( SELECT 1 FROM %s WHERE %s = %s )",
-			boiler.TableNames.StakedMechs,
+	total, err := boiler.StakedMechs(
+		boiler.StakedMechWhere.FactionID.EQ(factionID),
+		qm.InnerJoin(fmt.Sprintf(
+			"%s ON %s = %s AND %s ISNULL AND %s ISNULL AND %s ISNULL",
+			boiler.TableNames.RepairCases,
+			boiler.RepairCaseTableColumns.MechID,
 			boiler.StakedMechTableColumns.MechID,
-			boiler.RepairCaseTableColumns.MechID,
-		)),
-
-		qm.Where(fmt.Sprintf(
-			"NOT EXISTS ( SELECT 1 FROM %s WHERE %s = %s AND %s ISNULL AND %s ISNULL AND %s ISNULL)",
-			boiler.TableNames.BattleLobbiesMechs,
-			boiler.BattleLobbiesMechTableColumns.MechID,
-			boiler.RepairCaseTableColumns.MechID,
-			boiler.BattleLobbiesMechTableColumns.EndedAt,
-			boiler.BattleLobbiesMechTableColumns.RefundTXID,
-			boiler.BattleLobbiesMechTableColumns.DeletedAt,
+			boiler.RepairCaseTableColumns.CompletedAt,
+			boiler.RepairCaseTableColumns.PausedAt,
+			boiler.RepairCaseTableColumns.DeletedAt,
 		)),
 	).Count(gamedb.StdConn)
 	if err != nil {
@@ -313,12 +306,6 @@ func (api *API) FactionBattledStakedMechCount(ctx context.Context, user *boiler.
 	return nil
 }
 
-type FactionRepairBayStakedMechResponse struct {
-	MechCount                   int `json:"mech_count"`
-	TotalRequiredRepairedBlocks int `json:"total_required_repaired_blocks"`
-	TotalRepairedBlocks         int `json:"total_repaired_blocks"`
-}
-
 func (api *API) FactionInRepairBayStakedMechCount(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
 	queries := []qm.QueryMod{
 		qm.Select(
@@ -360,7 +347,7 @@ func (api *API) FactionInRepairBayStakedMechCount(ctx context.Context, user *boi
 		return terror.Error(err, "Failed to load mech detail from db.")
 	}
 
-	resp := &FactionRepairBayStakedMechResponse{}
+	resp := &server.FactionStakedMechRepairBayResponse{}
 	for rows.Next() {
 		mechID := ""
 		requiredRepairedBlocks := 0

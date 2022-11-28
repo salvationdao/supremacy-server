@@ -106,3 +106,10 @@ type MechQueuePosition struct {
 	MechID   uuid.UUID `json:"mechID"`
 	Position int       `json:"position"`
 }
+
+type FactionStakedMechRepairBayResponse struct {
+	FactionID                   string `json:"faction_id"`
+	MechCount                   int    `json:"mech_count"`
+	TotalRequiredRepairedBlocks int    `json:"total_required_repaired_blocks"`
+	TotalRepairedBlocks         int    `json:"total_repaired_blocks"`
+}

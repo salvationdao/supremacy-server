@@ -1298,6 +1298,9 @@ func (btl *Battle) processWarMachineRepair() {
 			if err != nil {
 				gamelog.L.Error().Err(err).Msg("Failed to register mech repair")
 			}
+
+			// update faction staked mech damaged status
+			btl.arena.Manager.FactionStakedMechDashboardKeyChan <- []string{FactionStakedMechDashboardKeyDamaged}
 		}()
 	}
 }
@@ -1326,6 +1329,8 @@ func (btl *Battle) end(payload *BattleEndPayload) {
 
 	// reactivate idle arenas
 	btl.arena.Manager.KickIdleArenas()
+
+	btl.arena.Manager.FactionStakedMechDashboardKeyChan <- []string{FactionStakedMechDashboardKeyQueue}
 }
 
 type GameSettingsResponse struct {

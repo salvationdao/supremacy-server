@@ -77,7 +77,8 @@ type ArenaManager struct {
 
 	SystemLobbyFillingProcess *SystemLobbyFillingProcess
 
-	MechDebounceBroadcastChan chan []string
+	MechDebounceBroadcastChan         chan []string
+	FactionStakedMechDashboardKeyChan chan []string
 }
 
 type Opts struct {
@@ -113,7 +114,8 @@ func NewArenaManager(opts *Opts) (*ArenaManager, error) {
 			Map: make(map[string]*AIMechFillingProcess),
 		},
 
-		MechDebounceBroadcastChan: make(chan []string, 30),
+		MechDebounceBroadcastChan:         make(chan []string, 30),
+		FactionStakedMechDashboardKeyChan: make(chan []string, 30),
 	}
 
 	am.server = &http.Server{
@@ -2359,6 +2361,9 @@ func (arena *Arena) BeginBattle() {
 	go btl.BattleStartSystemMessage()
 
 	go arena.NotifyUpcomingWarMachines()
+
+	arena.Manager.FactionStakedMechDashboardKeyChan <- []string{FactionStakedMechDashboardKeyQueue}
+
 }
 
 type SystemMessageBattleStart struct {

@@ -708,6 +708,9 @@ func (api *API) MechRepairSlotInsert(ctx context.Context, user *boiler.Player, f
 		go battle.BroadcastRepairBay(user.ID)
 	}
 
+	// update faction staked mech repair bay status
+	api.ArenaManager.FactionStakedMechDashboardKeyChan <- []string{battle.FactionStakedMechDashboardKeyRepairBay}
+
 	reply(true)
 
 	return nil
@@ -851,6 +854,9 @@ func (api *API) MechRepairSlotRemove(ctx context.Context, user *boiler.Player, k
 	if err != nil {
 		return err
 	}
+
+	// update faction staked mech repair bay status
+	api.ArenaManager.FactionStakedMechDashboardKeyChan <- []string{battle.FactionStakedMechDashboardKeyRepairBay}
 
 	reply(true)
 	return nil
@@ -1391,11 +1397,18 @@ func (api *API) completeRepairAgent(repairAgentID string, userID string) error {
 			gamelog.L.Error().Err(err).Interface("repair offers", ros).Msg("Failed to close repair offer.")
 			return terror.Error(err, "Failed to close repair offer.")
 		}
+
+		// update faction repair bay data
+		api.ArenaManager.FactionStakedMechDashboardKeyChan <- []string{battle.FactionStakedMechDashboardKeyRepairBay}
+
 		return nil
 	})
 	if err != nil {
 		return err
 	}
+
+	// update faction damage data
+	api.ArenaManager.FactionStakedMechDashboardKeyChan <- []string{battle.FactionStakedMechDashboardKeyDamaged}
 
 	return nil
 }

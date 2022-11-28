@@ -403,6 +403,9 @@ func (am *ArenaManager) repairBayCompleteChecker() {
 			// repair broadcast repair details
 			ws.PublishMessage(fmt.Sprintf("/secure/mech/%s/repair_case", rc.MechID), server.HubKeyMechRepairCase, rc)
 
+			// update faction staked mech repair bay status
+			am.FactionStakedMechDashboardKeyChan <- []string{FactionStakedMechDashboardKeyRepairBay, FactionStakedMechDashboardKeyDamaged}
+
 			// if not complete
 			if rc.BlocksRequiredRepair > rc.BlocksRepaired {
 				// set next repair time
@@ -590,6 +593,9 @@ func (am *ArenaManager) PauseRepairCases(mechIDs []string) error {
 		return err
 	}
 
+	// update faction staked mech repair bay status
+	am.FactionStakedMechDashboardKeyChan <- []string{FactionStakedMechDashboardKeyRepairBay, FactionStakedMechDashboardKeyDamaged}
+
 	return nil
 }
 
@@ -640,6 +646,8 @@ func (am *ArenaManager) RestartRepairCases(mechIDs []string) error {
 			boiler.RepairOfferColumns.FinishedReason: null.StringFromPtr(nil),
 		},
 	)
+
+	am.FactionStakedMechDashboardKeyChan <- []string{FactionStakedMechDashboardKeyRepairBay, FactionStakedMechDashboardKeyDamaged}
 
 	return nil
 }

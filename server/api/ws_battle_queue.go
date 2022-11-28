@@ -358,6 +358,8 @@ func (api *API) BattleLobbyCreate(ctx context.Context, user *boiler.Player, fact
 			api.ArenaManager.MechDebounceBroadcastChan <- deployedMechIDs
 			go battle.BroadcastPlayerQueueStatus(user.ID)
 
+			api.ArenaManager.FactionStakedMechDashboardKeyChan <- []string{battle.FactionStakedMechDashboardKeyQueue}
+
 		}
 
 		// broadcast lobby
@@ -711,10 +713,14 @@ func (api *API) BattleLobbyJoin(ctx context.Context, user *boiler.Player, factio
 			}
 		}
 
-		// pause mechs repair case
-		err = api.ArenaManager.PauseRepairCases(deployedMechIDs)
-		if err != nil {
-			return err
+		if len(deployedMechIDs) > 0 {
+			// pause mechs repair case
+			err = api.ArenaManager.PauseRepairCases(deployedMechIDs)
+			if err != nil {
+				return err
+			}
+
+			api.ArenaManager.FactionStakedMechDashboardKeyChan <- []string{battle.FactionStakedMechDashboardKeyQueue}
 		}
 
 		// kick
@@ -1032,6 +1038,8 @@ func (api *API) BattleLobbyLeave(ctx context.Context, user *boiler.Player, facti
 			if err != nil {
 				gamelog.L.Error().Err(err).Strs("mech id list", leftMechIDs).Msg("Failed to restart repair cases")
 			}
+
+			api.ArenaManager.FactionStakedMechDashboardKeyChan <- []string{battle.FactionStakedMechDashboardKeyQueue}
 		}()
 
 		// broadcast player queue status
@@ -1208,6 +1216,9 @@ func (api *API) MechStake(ctx context.Context, user *boiler.Player, factionID st
 	// send to debounce broadcast channel
 	api.ArenaManager.MechDebounceBroadcastChan <- stakedMechIDs
 
+	// update faction staked mech count
+	api.ArenaManager.FactionStakedMechDashboardKeyChan <- []string{battle.FactionStakedMechDashboardKeyStaked}
+
 	reply(true)
 	return nil
 }
@@ -1365,6 +1376,8 @@ func (api *API) MechUnstake(ctx context.Context, user *boiler.Player, factionID 
 
 		// broadcast mech update
 		api.ArenaManager.MechDebounceBroadcastChan <- unstakedMechIDs
+
+		api.ArenaManager.FactionStakedMechDashboardKeyChan <- []string{battle.FactionStakedMechDashboardKeyStaked}
 
 		// tell frontend to clean up the unstaked mechs from the list
 		ws.PublishMessage(fmt.Sprintf("/faction/%s/staked_mechs", factionID), server.HubKeyFactionStakedMechs, unstakedMechList)

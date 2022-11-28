@@ -480,6 +480,9 @@ func (api *API) initialWSBroadcast() error {
 	// debounce broadcast player assets
 	go api.ArenaManager.PlayerAssetsDebounceBroadcaster()
 
+	// debounce broadcast faction staked mech status
+	go api.ArenaManager.FactionStakedMechDebounceBroadcaster()
+
 	return nil
 }
 
