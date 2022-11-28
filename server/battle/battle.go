@@ -1640,6 +1640,17 @@ func (btl *Battle) Tick(payload []byte) {
 			}
 		}
 
+		if booleans[5] {
+			weaponSystemCurrentPower := helpers.BytesToFloat(payload[offset : offset+4])
+			shieldSystemCurrentPower := helpers.BytesToFloat(payload[offset+4 : offset+8])
+			movementSystemCurrentPower := helpers.BytesToFloat(payload[offset+8 : offset+12])
+			offset += 12
+
+			warmachine.PowerCore.WeaponSystemCurrentPower = weaponSystemCurrentPower
+			warmachine.PowerCore.ShieldSystemCurrentPower = shieldSystemCurrentPower
+			warmachine.PowerCore.MovementSystemCurrentPower = movementSystemCurrentPower
+		}
+
 		warmachine.Unlock()
 
 		// Hidden/Incognito
@@ -1830,6 +1841,9 @@ func tickSkipToWarmachineEnd(payload []byte, offset *int, booleans []bool) {
 		for i := 0; i < updatedWeapons; i++ {
 			*offset += 5
 		}
+	}
+	if booleans[5] {
+		*offset += 12
 	}
 }
 
