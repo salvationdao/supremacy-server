@@ -1,13 +1,16 @@
 package helpers
 
 import (
+	"encoding/binary"
 	"encoding/json"
 	"errors"
-	"github.com/gofrs/uuid"
+	"math"
 	"net/http"
 	"runtime"
 	"server/gamelog"
 	"time"
+
+	"github.com/gofrs/uuid"
 
 	"github.com/ninja-software/terror/v2"
 )
@@ -90,6 +93,12 @@ func PackBooleansIntoBytes(booleans []bool) []byte {
 		}
 	}
 	return packedBytes
+}
+
+func BytesToFloat(bytes []byte) float32 {
+	_ = bytes[3] // bounds check hint to compiler
+	bits := binary.BigEndian.Uint32(bytes)
+	return math.Float32frombits(bits)
 }
 
 // BytesToInt Converts byte array to int32

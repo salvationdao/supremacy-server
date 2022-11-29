@@ -132,6 +132,10 @@ type PowerCore struct {
 	MaxHitpoints decimal.Decimal `json:"max_hitpoints"`
 	EquippedOn   null.String     `json:"equipped_on,omitempty"`
 	CreatedAt    time.Time       `json:"created_at"`
+
+	MovementSystemCurrentPower float32
+	ShieldSystemCurrentPower   float32
+	WeaponSystemCurrentPower   float32
 }
 
 type PowerCoreGameClient struct {
