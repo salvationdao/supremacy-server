@@ -75,6 +75,7 @@ type WarMachineGameClient struct {
 	Hash         string   `json:"hash"`
 	Name         string   `json:"name"`
 	OwnerName    string   `json:"owner_name"`
+	OwnerID      string   `json:"owner_id"`
 	Faction      *Faction `json:"faction"` // will be deprecated soon
 	FactionID    string   `json:"faction_id"`
 	ModelName    string   `json:"model_name"` // will be deprecated soon
@@ -97,8 +98,6 @@ type WarMachineGameClient struct {
 	ShieldRechargePowerCost uint32  `json:"shield_recharge_power_cost"`
 	ShieldRechargeDelay     float64 `json:"shield_recharge_delay"`
 	ShieldTypeID            string  `json:"shield_type_id"`
-	ShieldTypeLabel         string  `json:"shield_type_label"`
-	ShieldTypeDescription   string  `json:"shield_type_description"`
 
 	Speed                int     `json:"speed"`
 	SprintSpreadModifier float32 `json:"sprint_spread_modifier"`
@@ -256,6 +255,7 @@ func WarMachineToClient(wm *WarMachine) *WarMachineGameClient {
 		Hash:      wm.Hash,
 		Name:      wm.Name,
 		OwnerName: wm.OwnerUsername,
+		OwnerID:   wm.OwnedByID,
 		Faction:   wm.Faction,
 		FactionID: wm.FactionID,
 		ModelName: wm.ModelName,
@@ -275,8 +275,6 @@ func WarMachineToClient(wm *WarMachine) *WarMachineGameClient {
 		ShieldRechargePowerCost: wm.ShieldRechargePowerCost,
 		ShieldRechargeDelay:     wm.ShieldRechargeDelay,
 		ShieldTypeID:            wm.ShieldTypeID,
-		ShieldTypeLabel:         wm.ShieldTypeLabel,
-		ShieldTypeDescription:   wm.ShieldTypeDescription,
 
 		Speed: wm.Speed,
 
