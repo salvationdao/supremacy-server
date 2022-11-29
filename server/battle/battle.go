@@ -1330,7 +1330,8 @@ func (btl *Battle) end(payload *BattleEndPayload) {
 	// reactivate idle arenas
 	btl.arena.Manager.KickIdleArenas()
 
-	btl.arena.Manager.FactionStakedMechDashboardKeyChan <- []string{FactionStakedMechDashboardKeyQueue}
+	btl.arena.Manager.FactionStakedMechDashboardKeyChan <- []string{FactionStakedMechDashboardKeyQueue, FactionStakedMechDashboardKeyMVP}
+
 }
 
 type GameSettingsResponse struct {

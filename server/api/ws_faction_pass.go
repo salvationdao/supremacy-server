@@ -165,6 +165,7 @@ func (api *API) FactionMostPopularStakedMech(ctx context.Context, user *boiler.P
 	queries := []qm.QueryMod{
 		qm.Select(boiler.StakedMechBattleLogTableColumns.StakedMechID),
 		qm.From(boiler.TableNames.StakedMechBattleLogs),
+		boiler.StakedMechBattleLogWhere.FactionID.EQ(factionID),
 		qm.GroupBy(boiler.StakedMechBattleLogTableColumns.StakedMechID),
 		qm.OrderBy(fmt.Sprintf("COUNT(%s) DESC", boiler.StakedMechBattleLogTableColumns.ID)),
 		qm.Limit(1),

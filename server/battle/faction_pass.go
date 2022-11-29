@@ -7,6 +7,7 @@ import (
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 	"golang.org/x/exp/slices"
 	"server"
+	"server/db"
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
@@ -54,14 +55,18 @@ const (
 	FactionStakedMechDashboardKeyQueue     = "QUEUE"
 	FactionStakedMechDashboardKeyDamaged   = "DAMAGED"
 	FactionStakedMechDashboardKeyRepairBay = "REPAIR_BAY"
+	FactionStakedMechDashboardKeyMVP       = "MVP"
 )
 
 func (am *ArenaManager) FactionStakedMechDebounceBroadcaster() {
-	interval := 200 * time.Millisecond
-	stakedMechTotalUpdateTimer := time.NewTimer(interval)
-	stakedMechQueueUpdateTimer := time.NewTimer(interval)
-	stakedMechDamagedUpdateTimer := time.NewTimer(interval)
-	stakedMechRepairBayUpdateTimer := time.NewTimer(interval)
+	shortDuration := 200 * time.Millisecond
+	stakedMechTotalUpdateTimer := time.NewTimer(shortDuration)
+	stakedMechQueueUpdateTimer := time.NewTimer(shortDuration)
+	stakedMechDamagedUpdateTimer := time.NewTimer(shortDuration)
+	stakedMechRepairBayUpdateTimer := time.NewTimer(shortDuration)
+
+	longDuration := 30 * time.Second
+	mvpStakedMechUpdateTimer := time.NewTimer(longDuration)
 
 	for {
 		select {
@@ -70,18 +75,21 @@ func (am *ArenaManager) FactionStakedMechDebounceBroadcaster() {
 			for _, key := range keys {
 				switch key {
 				case FactionStakedMechDashboardKeyStaked:
-					// update all the data
-					stakedMechTotalUpdateTimer.Reset(interval)
-					stakedMechQueueUpdateTimer.Reset(interval)
-					stakedMechDamagedUpdateTimer.Reset(interval)
-					stakedMechRepairBayUpdateTimer.Reset(interval)
+					// update all the data, when the base of staked mechs is changed
+					stakedMechTotalUpdateTimer.Reset(shortDuration)
+					stakedMechQueueUpdateTimer.Reset(shortDuration)
+					stakedMechDamagedUpdateTimer.Reset(shortDuration)
+					stakedMechRepairBayUpdateTimer.Reset(shortDuration)
+					mvpStakedMechUpdateTimer.Reset(longDuration)
 
 				case FactionStakedMechDashboardKeyQueue:
-					stakedMechQueueUpdateTimer.Reset(interval)
+					stakedMechQueueUpdateTimer.Reset(shortDuration)
 				case FactionStakedMechDashboardKeyDamaged:
-					stakedMechDamagedUpdateTimer.Reset(interval)
+					stakedMechDamagedUpdateTimer.Reset(shortDuration)
 				case FactionStakedMechDashboardKeyRepairBay:
-					stakedMechRepairBayUpdateTimer.Reset(interval)
+					stakedMechRepairBayUpdateTimer.Reset(shortDuration)
+				case FactionStakedMechDashboardKeyMVP:
+					mvpStakedMechUpdateTimer.Reset(longDuration)
 				}
 			}
 
@@ -96,6 +104,9 @@ func (am *ArenaManager) FactionStakedMechDebounceBroadcaster() {
 
 		case <-stakedMechRepairBayUpdateTimer.C:
 			go broadcastFactionStakedMechRepairBay()
+
+		case <-mvpStakedMechUpdateTimer.C:
+			go broadcastFactionStakedMechMVP()
 		}
 	}
 }
@@ -326,4 +337,76 @@ func broadcastFactionStakedMechRepairBay() {
 	}
 
 	frb = nil
+}
+
+func broadcastFactionStakedMechMVP() {
+	queries := []qm.QueryMod{
+		qm.Select(
+			boiler.StakedMechTableColumns.FactionID,
+			boiler.StakedMechTableColumns.MechID,
+		),
+
+		qm.From(boiler.TableNames.StakedMechs),
+
+		qm.InnerJoin(fmt.Sprintf(
+			"%s ON %s = %s AND %s = %s AND %s > ?",
+			boiler.TableNames.StakedMechBattleLogs,
+			boiler.StakedMechBattleLogTableColumns.StakedMechID,
+			boiler.StakedMechTableColumns.MechID,
+			boiler.StakedMechBattleLogTableColumns.FactionID,
+			boiler.StakedMechTableColumns.FactionID,
+			boiler.StakedMechBattleLogTableColumns.CreatedAt,
+		),
+			time.Now().AddDate(0, -3, 0),
+		),
+
+		qm.GroupBy(fmt.Sprintf("%s, %s", boiler.StakedMechTableColumns.MechID, boiler.StakedMechTableColumns.FactionID)),
+		qm.OrderBy(fmt.Sprintf("COUNT(%s) DESC", boiler.StakedMechBattleLogTableColumns.ID)),
+	}
+
+	rows, err := boiler.NewQuery(queries...).Query(gamedb.StdConn)
+	if err != nil {
+		gamelog.L.Error().Err(err).Msg("Failed to load staked mech battle log")
+		return
+	}
+
+	limit := 3 // three faction
+	var recordedFactionID []string
+	var recordedMechID []string
+	for rows.Next() {
+		factionID := ""
+		mechID := ""
+		err = rows.Scan(&factionID, &mechID)
+		if err != nil {
+			gamelog.L.Error().Err(err).Msg("Failed to scan faction mech detail.")
+			return
+		}
+
+		if slices.Index(recordedFactionID, factionID) != -1 {
+			continue
+		}
+
+		recordedFactionID = append(recordedFactionID, factionID)
+		recordedMechID = append(recordedMechID, mechID)
+
+		// skip, if already got mvp mech from each faction
+		if len(recordedFactionID) >= limit {
+			break
+		}
+	}
+
+	if len(recordedMechID) == 0 {
+		return
+	}
+
+	// load mechs
+	lms, err := db.LobbyMechsBrief("", recordedMechID...)
+	if err != nil {
+		gamelog.L.Error().Err(err).Msg("Failed to load mvp mech")
+		return
+	}
+
+	for _, lm := range lms {
+		ws.PublishMessage(fmt.Sprintf("/faction/%s/mvp_staked_mech", lm.FactionID.String), server.HubKeyFactionMostPopularStakedMech, lm)
+	}
 }
