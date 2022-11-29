@@ -105,14 +105,14 @@ const (
 	WeaponTypeFlak            = "Flak"
 	WeaponTypeMachineGun      = "Machine Gun"
 	WeaponTypeFlamethrower    = "Flamethrower"
-	WeaponTypeMissileLauncher = "Missile Launcher"
+	WeaponTypeRocketPods      = "Rocket Pods"
 	WeaponTypeLaserBeam       = "Laser Beam"
 	WeaponTypeLightningGun    = "Lightning Gun"
 	WeaponTypeBFG             = "BFG"
 	WeaponTypeRifle           = "Rifle"
 	WeaponTypeSniperRifle     = "Sniper Rifle"
 	WeaponTypeSword           = "Sword"
-	WeaponTypeRocketPods      = "Rocket Pods"
+	WeaponTypeMissileLauncher = "Missile Launcher"
 )
 
 // Enum values for  are not proper Go identifiers, cannot emit constants
@@ -129,9 +129,14 @@ const (
 
 // Enum values for BoostStat
 const (
-	BoostStatMECH_HEALTH  = "MECH_HEALTH"
-	BoostStatMECH_SPEED   = "MECH_SPEED"
-	BoostStatSHIELD_REGEN = "SHIELD_REGEN"
+	BoostStatMECH_HEALTH                 = "MECH_HEALTH"
+	BoostStatMECH_SPEED                  = "MECH_SPEED"
+	BoostStatSHIELD_REGEN                = "SHIELD_REGEN"
+	BoostStatMECH_MAX_SHIELD             = "MECH_MAX_SHIELD"
+	BoostStatMECH_SPRINT_SPREAD_MODIFIER = "MECH_SPRINT_SPREAD_MODIFIER"
+	BoostStatMECH_WALK_SPEED_MODIFIER    = "MECH_WALK_SPEED_MODIFIER"
+	BoostStatWEAPON_DAMAGE_FALLOFF       = "WEAPON_DAMAGE_FALLOFF"
+	BoostStatWEAPON_SPREAD               = "WEAPON_SPREAD"
 )
 
 // Enum values for PowercoreSize

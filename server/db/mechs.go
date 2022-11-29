@@ -1611,13 +1611,22 @@ type MechBrief struct {
 	MaxHitpoints        int64 `json:"max_hitpoints" db:"max_hitpoints"`
 	BoostedMaxHitpoints int64 `json:"boosted_max_hitpoints"`
 
-	Collection                string `json:"collection" db:"collection"`
-	ShieldMax                 int    `json:"shield" db:"shield_max"`
-	ShieldRechargeRate        int64  `json:"shield_recharge_rate" db:"shield_recharge_rate"`
-	BoostedShieldRechargeRate int64  `json:"boosted_shield_recharge_rate"`
+	Collection string `json:"collection" db:"collection"`
+
+	ShieldMax        int `json:"shield" db:"shield_max"`
+	BoostedShieldMax int `json:"boosted_shield"`
+
+	ShieldRechargeRate        int64 `json:"shield_recharge_rate" db:"shield_recharge_rate"`
+	BoostedShieldRechargeRate int64 `json:"boosted_shield_recharge_rate"`
 
 	ShieldRechargePowerCost int   `json:"shield_recharge_power_cost" db:"shield_recharge_power_cost"`
 	MechSkinLevel           int64 `json:"mech_skin_level" db:"level"`
+
+	WalkSpeedModifier        decimal.Decimal `json:"walk_speed_modifier" db:"walk_speed_modifier"`
+	BoostedWalkSpeedModifier decimal.Decimal `json:"boosted_walk_speed_modifier"`
+
+	SprintSpreadModifier        decimal.Decimal `json:"sprint_spread_modifier" db:"sprint_spread_modifier"`
+	BoostedSprintSpreadModifier decimal.Decimal `json:"boosted_sprint_spread_modifier"`
 
 	LobbyLockedAt         null.Time           `json:"lobby_locked_at,omitempty" db:"lobby_locked_at"`
 	AssignedToBattleID    null.String         `json:"assigned_to_battle_id,omitempty" db:"assigned_to_battle_id"`
@@ -1713,6 +1722,8 @@ func LobbyMechsBrief(playerID string, mechIDs ...string) ([]*MechBrief, error) {
 			fmt.Sprintf("_bm.%s", boiler.BlueprintMechColumns.ShieldMax),
 			fmt.Sprintf("_bm.%s", boiler.BlueprintMechColumns.ShieldRechargeRate),
 			fmt.Sprintf("_bm.%s", boiler.BlueprintMechColumns.ShieldRechargePowerCost),
+			fmt.Sprintf("_bm.%s", boiler.BlueprintMechColumns.SprintSpreadModifier),
+			fmt.Sprintf("_bm.%s", boiler.BlueprintMechColumns.WalkSpeedModifier),
 			fmt.Sprintf("_ms.%s", boiler.MechSkinColumns.Level),
 			fmt.Sprintf("_bms.%s", boiler.BlueprintMechSkinColumns.Tier),
 			fmt.Sprintf("_bms.%s", boiler.BlueprintMechSkinColumns.Label),
@@ -1961,6 +1972,8 @@ func LobbyMechsBrief(playerID string, mechIDs ...string) ([]*MechBrief, error) {
 			&mb.ShieldMax,
 			&mb.ShieldRechargeRate,
 			&mb.ShieldRechargePowerCost,
+			&mb.SprintSpreadModifier,
+			&mb.WalkSpeedModifier,
 			&mb.MechSkinLevel,
 			&mb.Tier,
 			&mb.SkinLabel,
@@ -2028,17 +2041,31 @@ func LobbyMechsBrief(playerID string, mechIDs ...string) ([]*MechBrief, error) {
 		mb.BoostedSpeed = mb.Speed
 		mb.BoostedMaxHitpoints = mb.MaxHitpoints
 		mb.BoostedShieldRechargeRate = mb.ShieldRechargeRate
+		mb.BoostedShieldMax = mb.ShieldMax
+		mb.BoostedSprintSpreadModifier = mb.SprintSpreadModifier
+		mb.BoostedWalkSpeedModifier = mb.WalkSpeedModifier
 
 		if mb.BoostStat.Valid {
-			boostPercent := decimal.NewFromInt(mb.MechSkinLevel).Div(decimal.NewFromInt(100)).Add(decimal.NewFromInt(1))
+			positiveBoostPercent := decimal.NewFromInt(mb.MechSkinLevel).Div(decimal.NewFromInt(100)).Add(decimal.NewFromInt(1))
+			negativeBoostPercent := decimal.NewFromInt(1).Sub(decimal.NewFromInt(mb.MechSkinLevel).Div(decimal.NewFromInt(100)))
 			// mech boosted stat
 			switch mb.BoostStat.String {
 			case boiler.BoostStatMECH_SPEED:
-				mb.BoostedSpeed = decimal.NewFromInt(mb.Speed).Mul(boostPercent).IntPart()
+				mb.BoostedSpeed = decimal.NewFromInt(mb.Speed).Mul(positiveBoostPercent).IntPart()
 			case boiler.BoostStatMECH_HEALTH:
-				mb.BoostedMaxHitpoints = decimal.NewFromInt(mb.MaxHitpoints).Mul(boostPercent).IntPart()
+				mb.BoostedMaxHitpoints = decimal.NewFromInt(mb.MaxHitpoints).Mul(positiveBoostPercent).IntPart()
 			case boiler.BoostStatSHIELD_REGEN:
-				mb.BoostedShieldRechargeRate = decimal.NewFromInt(mb.ShieldRechargeRate).Mul(boostPercent).IntPart()
+				mb.BoostedShieldRechargeRate = decimal.NewFromInt(mb.ShieldRechargeRate).Mul(positiveBoostPercent).IntPart()
+			case boiler.BoostStatMECH_MAX_SHIELD:
+				mb.BoostedShieldMax = int(decimal.NewFromInt(int64(mb.ShieldMax)).Mul(positiveBoostPercent).IntPart())
+			case boiler.BoostStatMECH_SPRINT_SPREAD_MODIFIER:
+				mb.BoostedSprintSpreadModifier = mb.SprintSpreadModifier.Mul(negativeBoostPercent)
+			case boiler.BoostStatMECH_WALK_SPEED_MODIFIER:
+				mb.BoostedWalkSpeedModifier = mb.WalkSpeedModifier.Mul(negativeBoostPercent)
+			case boiler.BoostStatWEAPON_DAMAGE_FALLOFF:
+				// todo
+			case boiler.BoostStatWEAPON_SPREAD:
+				// todo
 			}
 		}
 

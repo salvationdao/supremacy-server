@@ -303,8 +303,8 @@ func CollectionItemFromBoiler(ci *boiler.CollectionItem) *server.CollectionItem 
 	}
 }
 
-func GenerateTierSort(col string, sortDir SortByDir) qm.QueryMod {
-	return qm.OrderBy(fmt.Sprintf(`(
+func GenerateRawTierSort(col string, sortDir SortByDir) string {
+	return fmt.Sprintf(`(
 		CASE %s
 			WHEN 'MEGA' THEN 1
 			WHEN 'COLOSSAL' THEN 2
@@ -318,5 +318,9 @@ func GenerateTierSort(col string, sortDir SortByDir) qm.QueryMod {
 			WHEN 'DEUS_EX' THEN 10
 			WHEN 'TITAN' THEN 11
 		END
-	) %s NULLS LAST`, col, sortDir))
+	) %s NULLS LAST`, col, sortDir)
+}
+
+func GenerateTierSort(col string, sortDir SortByDir) qm.QueryMod {
+	return qm.OrderBy(GenerateRawTierSort(col, sortDir))
 }
