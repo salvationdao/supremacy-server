@@ -24,79 +24,93 @@ import (
 
 // FactionPass is an object representing the database table.
 type FactionPass struct {
-	ID                     string          `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
-	Label                  string          `boiler:"label" boil:"label" json:"label" toml:"label" yaml:"label"`
-	LastForDays            int             `boiler:"last_for_days" boil:"last_for_days" json:"last_for_days" toml:"last_for_days" yaml:"last_for_days"`
-	SupsCost               decimal.Decimal `boiler:"sups_cost" boil:"sups_cost" json:"sups_cost" toml:"sups_cost" yaml:"sups_cost"`
-	SupsDiscountPercentage decimal.Decimal `boiler:"sups_discount_percentage" boil:"sups_discount_percentage" json:"sups_discount_percentage" toml:"sups_discount_percentage" yaml:"sups_discount_percentage"`
-	CreatedAt              time.Time       `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
-	UpdatedAt              time.Time       `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
-	DeletedAt              null.Time       `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
+	ID                 string          `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
+	Label              string          `boiler:"label" boil:"label" json:"label" toml:"label" yaml:"label"`
+	LastForDays        int             `boiler:"last_for_days" boil:"last_for_days" json:"last_for_days" toml:"last_for_days" yaml:"last_for_days"`
+	EthPriceWei        decimal.Decimal `boiler:"eth_price_wei" boil:"eth_price_wei" json:"eth_price_wei" toml:"eth_price_wei" yaml:"eth_price_wei"`
+	DiscountPercentage decimal.Decimal `boiler:"discount_percentage" boil:"discount_percentage" json:"discount_percentage" toml:"discount_percentage" yaml:"discount_percentage"`
+	SupsPrice          decimal.Decimal `boiler:"sups_price" boil:"sups_price" json:"sups_price" toml:"sups_price" yaml:"sups_price"`
+	UsdPrice           decimal.Decimal `boiler:"usd_price" boil:"usd_price" json:"usd_price" toml:"usd_price" yaml:"usd_price"`
+	CreatedAt          time.Time       `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
+	UpdatedAt          time.Time       `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
+	DeletedAt          null.Time       `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
 
 	R *factionPassR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L factionPassL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 }
 
 var FactionPassColumns = struct {
-	ID                     string
-	Label                  string
-	LastForDays            string
-	SupsCost               string
-	SupsDiscountPercentage string
-	CreatedAt              string
-	UpdatedAt              string
-	DeletedAt              string
+	ID                 string
+	Label              string
+	LastForDays        string
+	EthPriceWei        string
+	DiscountPercentage string
+	SupsPrice          string
+	UsdPrice           string
+	CreatedAt          string
+	UpdatedAt          string
+	DeletedAt          string
 }{
-	ID:                     "id",
-	Label:                  "label",
-	LastForDays:            "last_for_days",
-	SupsCost:               "sups_cost",
-	SupsDiscountPercentage: "sups_discount_percentage",
-	CreatedAt:              "created_at",
-	UpdatedAt:              "updated_at",
-	DeletedAt:              "deleted_at",
+	ID:                 "id",
+	Label:              "label",
+	LastForDays:        "last_for_days",
+	EthPriceWei:        "eth_price_wei",
+	DiscountPercentage: "discount_percentage",
+	SupsPrice:          "sups_price",
+	UsdPrice:           "usd_price",
+	CreatedAt:          "created_at",
+	UpdatedAt:          "updated_at",
+	DeletedAt:          "deleted_at",
 }
 
 var FactionPassTableColumns = struct {
-	ID                     string
-	Label                  string
-	LastForDays            string
-	SupsCost               string
-	SupsDiscountPercentage string
-	CreatedAt              string
-	UpdatedAt              string
-	DeletedAt              string
+	ID                 string
+	Label              string
+	LastForDays        string
+	EthPriceWei        string
+	DiscountPercentage string
+	SupsPrice          string
+	UsdPrice           string
+	CreatedAt          string
+	UpdatedAt          string
+	DeletedAt          string
 }{
-	ID:                     "faction_passes.id",
-	Label:                  "faction_passes.label",
-	LastForDays:            "faction_passes.last_for_days",
-	SupsCost:               "faction_passes.sups_cost",
-	SupsDiscountPercentage: "faction_passes.sups_discount_percentage",
-	CreatedAt:              "faction_passes.created_at",
-	UpdatedAt:              "faction_passes.updated_at",
-	DeletedAt:              "faction_passes.deleted_at",
+	ID:                 "faction_passes.id",
+	Label:              "faction_passes.label",
+	LastForDays:        "faction_passes.last_for_days",
+	EthPriceWei:        "faction_passes.eth_price_wei",
+	DiscountPercentage: "faction_passes.discount_percentage",
+	SupsPrice:          "faction_passes.sups_price",
+	UsdPrice:           "faction_passes.usd_price",
+	CreatedAt:          "faction_passes.created_at",
+	UpdatedAt:          "faction_passes.updated_at",
+	DeletedAt:          "faction_passes.deleted_at",
 }
 
 // Generated where
 
 var FactionPassWhere = struct {
-	ID                     whereHelperstring
-	Label                  whereHelperstring
-	LastForDays            whereHelperint
-	SupsCost               whereHelperdecimal_Decimal
-	SupsDiscountPercentage whereHelperdecimal_Decimal
-	CreatedAt              whereHelpertime_Time
-	UpdatedAt              whereHelpertime_Time
-	DeletedAt              whereHelpernull_Time
+	ID                 whereHelperstring
+	Label              whereHelperstring
+	LastForDays        whereHelperint
+	EthPriceWei        whereHelperdecimal_Decimal
+	DiscountPercentage whereHelperdecimal_Decimal
+	SupsPrice          whereHelperdecimal_Decimal
+	UsdPrice           whereHelperdecimal_Decimal
+	CreatedAt          whereHelpertime_Time
+	UpdatedAt          whereHelpertime_Time
+	DeletedAt          whereHelpernull_Time
 }{
-	ID:                     whereHelperstring{field: "\"faction_passes\".\"id\""},
-	Label:                  whereHelperstring{field: "\"faction_passes\".\"label\""},
-	LastForDays:            whereHelperint{field: "\"faction_passes\".\"last_for_days\""},
-	SupsCost:               whereHelperdecimal_Decimal{field: "\"faction_passes\".\"sups_cost\""},
-	SupsDiscountPercentage: whereHelperdecimal_Decimal{field: "\"faction_passes\".\"sups_discount_percentage\""},
-	CreatedAt:              whereHelpertime_Time{field: "\"faction_passes\".\"created_at\""},
-	UpdatedAt:              whereHelpertime_Time{field: "\"faction_passes\".\"updated_at\""},
-	DeletedAt:              whereHelpernull_Time{field: "\"faction_passes\".\"deleted_at\""},
+	ID:                 whereHelperstring{field: "\"faction_passes\".\"id\""},
+	Label:              whereHelperstring{field: "\"faction_passes\".\"label\""},
+	LastForDays:        whereHelperint{field: "\"faction_passes\".\"last_for_days\""},
+	EthPriceWei:        whereHelperdecimal_Decimal{field: "\"faction_passes\".\"eth_price_wei\""},
+	DiscountPercentage: whereHelperdecimal_Decimal{field: "\"faction_passes\".\"discount_percentage\""},
+	SupsPrice:          whereHelperdecimal_Decimal{field: "\"faction_passes\".\"sups_price\""},
+	UsdPrice:           whereHelperdecimal_Decimal{field: "\"faction_passes\".\"usd_price\""},
+	CreatedAt:          whereHelpertime_Time{field: "\"faction_passes\".\"created_at\""},
+	UpdatedAt:          whereHelpertime_Time{field: "\"faction_passes\".\"updated_at\""},
+	DeletedAt:          whereHelpernull_Time{field: "\"faction_passes\".\"deleted_at\""},
 }
 
 // FactionPassRels is where relationship names are stored.
@@ -120,9 +134,9 @@ func (*factionPassR) NewStruct() *factionPassR {
 type factionPassL struct{}
 
 var (
-	factionPassAllColumns            = []string{"id", "label", "last_for_days", "sups_cost", "sups_discount_percentage", "created_at", "updated_at", "deleted_at"}
+	factionPassAllColumns            = []string{"id", "label", "last_for_days", "eth_price_wei", "discount_percentage", "sups_price", "usd_price", "created_at", "updated_at", "deleted_at"}
 	factionPassColumnsWithoutDefault = []string{"label", "last_for_days"}
-	factionPassColumnsWithDefault    = []string{"id", "sups_cost", "sups_discount_percentage", "created_at", "updated_at", "deleted_at"}
+	factionPassColumnsWithDefault    = []string{"id", "eth_price_wei", "discount_percentage", "sups_price", "usd_price", "created_at", "updated_at", "deleted_at"}
 	factionPassPrimaryKeyColumns     = []string{"id"}
 	factionPassGeneratedColumns      = []string{}
 )

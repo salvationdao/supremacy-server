@@ -22,6 +22,83 @@ import (
 	"time"
 )
 
+func (api *API) exchangeRatesUpdater() {
+	// update the exchange rate before setting up the loop
+	api.exchangeRateUpdate()
+
+	interval := 1 * time.Minute
+	timer := time.NewTimer(interval)
+
+	for {
+		<-timer.C
+
+		// update the exchange rate before setting up the loop
+		api.exchangeRateUpdate()
+
+		// NOTE: reset timer everytime the process is finish to avoid overlap
+		timer.Reset(interval)
+	}
+}
+
+func (api *API) exchangeRateUpdate() {
+	// fetch exchange rates
+	exchangeRates, err := api.Passport.GetCurrentRates()
+	if err != nil {
+		gamelog.L.Error().Err(err).Msg("Failed to load exchange rate.")
+		return
+	}
+
+	// NOTE: put any exchange related functions below...
+
+	// update faction passes
+	go factionPassPriceUpdate(exchangeRates)
+
+}
+
+// factionPassPriceUpdate update the price of the faction pass
+func factionPassPriceUpdate(exchangeRates *xsyn_rpcclient.GetExchangeRatesResp) {
+	l := gamelog.L.With().
+		Str("func", "updateFactionPassPrice").
+		Str("sup_to_usd_rate", exchangeRates.SUPtoUSD.String()).
+		Str("eth_to_usd_rate", exchangeRates.ETHtoUSD.String()).
+		Str("bnb_to_usd_rate", exchangeRates.BNBtoUSD.String()).
+		Logger()
+
+	factionPasses, err := boiler.FactionPasses().All(gamedb.StdConn)
+	if err != nil {
+		l.Error().Err(err).Msg("Failed to load faction pass list.")
+		return
+	}
+
+	tx, err := gamedb.StdConn.Begin()
+	if err != nil {
+		l.Error().Err(err).Msg("Failed to start db transaction.")
+		return
+	}
+
+	defer tx.Rollback()
+
+	for _, factionPass := range factionPasses {
+		factionPass.UsdPrice = factionPass.EthPriceWei.Div(decimal.New(1, 18)).Mul(exchangeRates.ETHtoUSD).Round(2)
+		factionPass.SupsPrice = factionPass.UsdPrice.Div(exchangeRates.SUPtoUSD).Mul(decimal.New(1, 18)).Round(0)
+
+		_, err = factionPass.Update(tx, boil.Whitelist(boiler.FactionPassColumns.UsdPrice, boiler.FactionPassColumns.SupsPrice))
+		if err != nil {
+			l.Error().Err(err).Interface("faction pass", factionPass).Msg("Failed to update faction pass")
+			return
+		}
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		l.Error().Err(err).Msg("Failed to commit db transaction.")
+		return
+	}
+
+	ws.PublishMessage("/secure/faction_pass_list", HubKeyFactionPassList, factionPasses)
+
+}
+
 func NewFactionPassController(api *API) {
 	api.SecureUserFactionCommand(HubKeyFactionPassSupsPurchase, api.FactionPassSupsPurchase)
 }
@@ -89,13 +166,14 @@ func (api *API) FactionPassSupsPurchase(ctx context.Context, user *boiler.Player
 
 	switch req.Payload.PaymentType {
 	case boiler.PaymentMethodsSups:
-		amount := fp.SupsCost.Mul(decimal.NewFromInt(100).Sub(fp.SupsDiscountPercentage).Div(decimal.NewFromInt(100)))
+		supsCost := fp.SupsPrice
+		actualPrice := supsCost.Mul(decimal.NewFromInt(100).Sub(fp.DiscountPercentage).Div(decimal.NewFromInt(100)))
 
 		// refund reward
 		paidTXID, err := api.Passport.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
 			FromUserID:           uuid.FromStringOrNil(user.ID),
 			ToUserID:             uuid.UUID(server.XsynTreasuryUserID),
-			Amount:               amount.String(),
+			Amount:               actualPrice.String(),
 			TransactionReference: server.TransactionReference(fmt.Sprintf("purchase_faction_pass|%s|%d", fp.ID, time.Now().UnixNano())),
 			Group:                string(server.TransactionGroupSupremacy),
 			SubGroup:             string(server.TransactionGroupFactionPass),
@@ -114,8 +192,8 @@ func (api *API) FactionPassSupsPurchase(ctx context.Context, user *boiler.Player
 			FactionPassID:  fp.ID,
 			PurchasedByID:  user.ID,
 			PurchaseMethod: boiler.PaymentMethodsSups,
-			Price:          fp.SupsCost,
-			Discount:       fp.SupsDiscountPercentage,
+			Price:          supsCost,
+			Discount:       fp.DiscountPercentage,
 			PurchaseTXID:   null.StringFrom(paidTXID),
 		}
 

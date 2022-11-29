@@ -483,6 +483,9 @@ func (api *API) initialWSBroadcast() error {
 	// debounce broadcast faction staked mech status
 	go api.ArenaManager.FactionStakedMechDebounceBroadcaster()
 
+	// spin up exchange rate related price updater
+	go api.exchangeRatesUpdater()
+
 	return nil
 }
 

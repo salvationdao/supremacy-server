@@ -69,12 +69,12 @@ type FactionPalette struct {
 }
 
 type FactionPass struct {
-	ID                     string          `json:"id"`
-	Label                  string          `json:"label"`
-	LastForDays            int             `json:"last_for_days"`
-	SupsCost               decimal.Decimal `json:"sups_cost"`
-	SupsDiscountPercentage decimal.Decimal `json:"sups_discount_percentage"`
-	DeletedAt              null.Time       `json:"deleted_at"`
+	ID                 string          `json:"id"`
+	Label              string          `json:"label"`
+	LastForDays        int             `json:"last_for_days"`
+	EthPriceWei        decimal.Decimal `json:"eth_price_wei"`
+	DiscountPercentage decimal.Decimal `json:"discount_percentage"`
+	DeletedAt          null.Time       `json:"deleted_at"`
 }
 
 type MechSkin struct {

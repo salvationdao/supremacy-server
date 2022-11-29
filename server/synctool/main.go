@@ -853,27 +853,27 @@ func SyncFactionPasses(f io.Reader, db *sql.DB) error {
 			return fmt.Errorf("invalid last for days for faction pass")
 		}
 
-		factionPass.SupsCost, err = decimal.NewFromString(record[3])
+		factionPass.EthPriceWei, err = decimal.NewFromString(record[3])
 		if err != nil {
 			return fmt.Errorf("invalid sups cost for faction pass")
 		}
 
-		factionPass.SupsDiscountPercentage, err = decimal.NewFromString(record[4])
+		factionPass.DiscountPercentage, err = decimal.NewFromString(record[4])
 		if err != nil {
 			return fmt.Errorf("invalid sups cost for faction pass")
 		}
 
 		_, err = db.Exec(`
-			INSERT INTO faction_passes (id, label, last_for_days, sups_cost, sups_discount_percentage, deleted_at) 
+			INSERT INTO faction_passes (id, label, last_for_days, eth_price_wei, discount_percentage, deleted_at) 
 			VALUES ($1, $2, $3, $4, $5, $6)
 			ON CONFLICT (id)
-			DO UPDATE SET label=$2, last_for_days=$3, sups_cost=$4, sups_discount_percentage=$5, deleted_at=$6;
+			DO UPDATE SET label=$2, last_for_days=$3, eth_price_wei=$4, discount_percentage=$5, deleted_at=$6;
 		`,
 			factionPass.ID,
 			factionPass.Label,
 			factionPass.LastForDays,
-			factionPass.SupsCost,
-			factionPass.SupsDiscountPercentage,
+			factionPass.EthPriceWei,
+			factionPass.DiscountPercentage,
 			factionPass.DeletedAt,
 		)
 		if err != nil {

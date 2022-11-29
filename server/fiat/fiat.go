@@ -56,7 +56,7 @@ func (f *FiatController) Run() {
 
 func (f *FiatController) processStorefrontSupPrices() {
 	l := gamelog.L.With().Str("task", "processStorefrontSupPrices").Logger()
-	supToUSDRate, err := f.Passport.GetCurrentSupPrice()
+	currentRates, err := f.Passport.GetCurrentRates()
 	if err != nil {
 		l.Error().Err(err).Msg("failed to get current sup price")
 		return
@@ -64,7 +64,9 @@ func (f *FiatController) processStorefrontSupPrices() {
 
 	fiatToSupConversionCut := db.GetDecimalWithDefault(db.KeyFiatToSUPCut, decimal.NewFromInt(1).Div(decimal.NewFromInt(5))) // 20% by default
 	l = l.With().
-		Str("sup_to_usd_rate", supToUSDRate.String()).
+		Str("sup_to_usd_rate", currentRates.SUPtoUSD.String()).
+		Str("eth_to_usd_rate", currentRates.ETHtoUSD.String()).
+		Str("bnb_to_usd_rate", currentRates.BNBtoUSD.String()).
 		Str("fiat_to_sup_conversion_cut", fiatToSupConversionCut.String()).
 		Logger()
 
@@ -116,7 +118,7 @@ func (f *FiatController) processStorefrontSupPrices() {
 		convertedPrice := priceUSD.Decimal.Div(decimal.NewFromInt(100))
 		pl = pl.With().Str("fiat_price", convertedPrice.String()).Logger()
 
-		convertedPrice = convertedPrice.Div(supToUSDRate).
+		convertedPrice = convertedPrice.Div(currentRates.SUPtoUSD).
 			Mul(decimal.New(1, 0).Sub(fiatToSupConversionCut)).
 			Mul(decimal.New(1, 18))
 		pl = pl.With().Str("converted_sup_price", convertedPrice.String()).Logger()

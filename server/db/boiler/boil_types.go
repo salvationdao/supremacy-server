@@ -105,14 +105,14 @@ const (
 	WeaponTypeFlak            = "Flak"
 	WeaponTypeMachineGun      = "Machine Gun"
 	WeaponTypeFlamethrower    = "Flamethrower"
-	WeaponTypeRocketPods      = "Rocket Pods"
+	WeaponTypeMissileLauncher = "Missile Launcher"
 	WeaponTypeLaserBeam       = "Laser Beam"
 	WeaponTypeLightningGun    = "Lightning Gun"
 	WeaponTypeBFG             = "BFG"
 	WeaponTypeRifle           = "Rifle"
 	WeaponTypeSniperRifle     = "Sniper Rifle"
 	WeaponTypeSword           = "Sword"
-	WeaponTypeMissileLauncher = "Missile Launcher"
+	WeaponTypeRocketPods      = "Rocket Pods"
 )
 
 // Enum values for  are not proper Go identifiers, cannot emit constants
