@@ -377,6 +377,8 @@ func NewAPI(
 				s.WS("/syndicate/{syndicate_id}/ongoing_election", server.HubKeySyndicateOngoingElectionSubscribe, server.MustSecureFaction(api.SyndicateOngoingElectionSubscribeHandler), MustMatchSyndicate)
 
 				// faction pass
+				s.WS("/faction_pass/{faction_pass_id}/stripe_payment_intent", HubKeyFactionPassStripePaymentIntent, server.MustSecureFaction(api.FactionPassStripePaymentIntent))
+
 				s.WS("/mvp_staked_mech", server.HubKeyFactionMostPopularStakedMech, server.MustSecureFaction(api.FactionMostPopularStakedMech))
 				s.WS("/staked_mech_count", server.HubKeyFactionStakedMechCount, server.MustSecureFaction(api.FactionStakeMechCount))
 				s.WS("/in_queue_staked_mech_count", server.HubKeyFactionStakedMechInQueueCount, server.MustSecureFaction(api.FactionQueuedStakedMechCount))

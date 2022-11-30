@@ -24,79 +24,107 @@ import (
 
 // FactionPassPurchaseLog is an object representing the database table.
 type FactionPassPurchaseLog struct {
-	ID             string          `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
-	FactionPassID  string          `boiler:"faction_pass_id" boil:"faction_pass_id" json:"faction_pass_id" toml:"faction_pass_id" yaml:"faction_pass_id"`
-	PurchasedByID  string          `boiler:"purchased_by_id" boil:"purchased_by_id" json:"purchased_by_id" toml:"purchased_by_id" yaml:"purchased_by_id"`
-	PurchaseMethod string          `boiler:"purchase_method" boil:"purchase_method" json:"purchase_method" toml:"purchase_method" yaml:"purchase_method"`
-	Price          decimal.Decimal `boiler:"price" boil:"price" json:"price" toml:"price" yaml:"price"`
-	Discount       decimal.Decimal `boiler:"discount" boil:"discount" json:"discount" toml:"discount" yaml:"discount"`
-	PurchaseTXID   null.String     `boiler:"purchase_tx_id" boil:"purchase_tx_id" json:"purchase_tx_id,omitempty" toml:"purchase_tx_id" yaml:"purchase_tx_id,omitempty"`
-	CreatedAt      time.Time       `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
+	ID                    string          `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
+	FactionPassID         string          `boiler:"faction_pass_id" boil:"faction_pass_id" json:"faction_pass_id" toml:"faction_pass_id" yaml:"faction_pass_id"`
+	PurchasedByID         string          `boiler:"purchased_by_id" boil:"purchased_by_id" json:"purchased_by_id" toml:"purchased_by_id" yaml:"purchased_by_id"`
+	PurchaseMethod        string          `boiler:"purchase_method" boil:"purchase_method" json:"purchase_method" toml:"purchase_method" yaml:"purchase_method"`
+	SupsPaid              decimal.Decimal `boiler:"sups_paid" boil:"sups_paid" json:"sups_paid" toml:"sups_paid" yaml:"sups_paid"`
+	SupsPurchaseTXID      null.String     `boiler:"sups_purchase_tx_id" boil:"sups_purchase_tx_id" json:"sups_purchase_tx_id,omitempty" toml:"sups_purchase_tx_id" yaml:"sups_purchase_tx_id,omitempty"`
+	EthPaid               decimal.Decimal `boiler:"eth_paid" boil:"eth_paid" json:"eth_paid" toml:"eth_paid" yaml:"eth_paid"`
+	UsdPaid               decimal.Decimal `boiler:"usd_paid" boil:"usd_paid" json:"usd_paid" toml:"usd_paid" yaml:"usd_paid"`
+	StripePaymentIntentID null.String     `boiler:"stripe_payment_intent_id" boil:"stripe_payment_intent_id" json:"stripe_payment_intent_id,omitempty" toml:"stripe_payment_intent_id" yaml:"stripe_payment_intent_id,omitempty"`
+	ExpendFactionPassDays int             `boiler:"expend_faction_pass_days" boil:"expend_faction_pass_days" json:"expend_faction_pass_days" toml:"expend_faction_pass_days" yaml:"expend_faction_pass_days"`
+	PaymentStatus         string          `boiler:"payment_status" boil:"payment_status" json:"payment_status" toml:"payment_status" yaml:"payment_status"`
+	CreatedAt             time.Time       `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
 
 	R *factionPassPurchaseLogR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L factionPassPurchaseLogL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 }
 
 var FactionPassPurchaseLogColumns = struct {
-	ID             string
-	FactionPassID  string
-	PurchasedByID  string
-	PurchaseMethod string
-	Price          string
-	Discount       string
-	PurchaseTXID   string
-	CreatedAt      string
+	ID                    string
+	FactionPassID         string
+	PurchasedByID         string
+	PurchaseMethod        string
+	SupsPaid              string
+	SupsPurchaseTXID      string
+	EthPaid               string
+	UsdPaid               string
+	StripePaymentIntentID string
+	ExpendFactionPassDays string
+	PaymentStatus         string
+	CreatedAt             string
 }{
-	ID:             "id",
-	FactionPassID:  "faction_pass_id",
-	PurchasedByID:  "purchased_by_id",
-	PurchaseMethod: "purchase_method",
-	Price:          "price",
-	Discount:       "discount",
-	PurchaseTXID:   "purchase_tx_id",
-	CreatedAt:      "created_at",
+	ID:                    "id",
+	FactionPassID:         "faction_pass_id",
+	PurchasedByID:         "purchased_by_id",
+	PurchaseMethod:        "purchase_method",
+	SupsPaid:              "sups_paid",
+	SupsPurchaseTXID:      "sups_purchase_tx_id",
+	EthPaid:               "eth_paid",
+	UsdPaid:               "usd_paid",
+	StripePaymentIntentID: "stripe_payment_intent_id",
+	ExpendFactionPassDays: "expend_faction_pass_days",
+	PaymentStatus:         "payment_status",
+	CreatedAt:             "created_at",
 }
 
 var FactionPassPurchaseLogTableColumns = struct {
-	ID             string
-	FactionPassID  string
-	PurchasedByID  string
-	PurchaseMethod string
-	Price          string
-	Discount       string
-	PurchaseTXID   string
-	CreatedAt      string
+	ID                    string
+	FactionPassID         string
+	PurchasedByID         string
+	PurchaseMethod        string
+	SupsPaid              string
+	SupsPurchaseTXID      string
+	EthPaid               string
+	UsdPaid               string
+	StripePaymentIntentID string
+	ExpendFactionPassDays string
+	PaymentStatus         string
+	CreatedAt             string
 }{
-	ID:             "faction_pass_purchase_logs.id",
-	FactionPassID:  "faction_pass_purchase_logs.faction_pass_id",
-	PurchasedByID:  "faction_pass_purchase_logs.purchased_by_id",
-	PurchaseMethod: "faction_pass_purchase_logs.purchase_method",
-	Price:          "faction_pass_purchase_logs.price",
-	Discount:       "faction_pass_purchase_logs.discount",
-	PurchaseTXID:   "faction_pass_purchase_logs.purchase_tx_id",
-	CreatedAt:      "faction_pass_purchase_logs.created_at",
+	ID:                    "faction_pass_purchase_logs.id",
+	FactionPassID:         "faction_pass_purchase_logs.faction_pass_id",
+	PurchasedByID:         "faction_pass_purchase_logs.purchased_by_id",
+	PurchaseMethod:        "faction_pass_purchase_logs.purchase_method",
+	SupsPaid:              "faction_pass_purchase_logs.sups_paid",
+	SupsPurchaseTXID:      "faction_pass_purchase_logs.sups_purchase_tx_id",
+	EthPaid:               "faction_pass_purchase_logs.eth_paid",
+	UsdPaid:               "faction_pass_purchase_logs.usd_paid",
+	StripePaymentIntentID: "faction_pass_purchase_logs.stripe_payment_intent_id",
+	ExpendFactionPassDays: "faction_pass_purchase_logs.expend_faction_pass_days",
+	PaymentStatus:         "faction_pass_purchase_logs.payment_status",
+	CreatedAt:             "faction_pass_purchase_logs.created_at",
 }
 
 // Generated where
 
 var FactionPassPurchaseLogWhere = struct {
-	ID             whereHelperstring
-	FactionPassID  whereHelperstring
-	PurchasedByID  whereHelperstring
-	PurchaseMethod whereHelperstring
-	Price          whereHelperdecimal_Decimal
-	Discount       whereHelperdecimal_Decimal
-	PurchaseTXID   whereHelpernull_String
-	CreatedAt      whereHelpertime_Time
+	ID                    whereHelperstring
+	FactionPassID         whereHelperstring
+	PurchasedByID         whereHelperstring
+	PurchaseMethod        whereHelperstring
+	SupsPaid              whereHelperdecimal_Decimal
+	SupsPurchaseTXID      whereHelpernull_String
+	EthPaid               whereHelperdecimal_Decimal
+	UsdPaid               whereHelperdecimal_Decimal
+	StripePaymentIntentID whereHelpernull_String
+	ExpendFactionPassDays whereHelperint
+	PaymentStatus         whereHelperstring
+	CreatedAt             whereHelpertime_Time
 }{
-	ID:             whereHelperstring{field: "\"faction_pass_purchase_logs\".\"id\""},
-	FactionPassID:  whereHelperstring{field: "\"faction_pass_purchase_logs\".\"faction_pass_id\""},
-	PurchasedByID:  whereHelperstring{field: "\"faction_pass_purchase_logs\".\"purchased_by_id\""},
-	PurchaseMethod: whereHelperstring{field: "\"faction_pass_purchase_logs\".\"purchase_method\""},
-	Price:          whereHelperdecimal_Decimal{field: "\"faction_pass_purchase_logs\".\"price\""},
-	Discount:       whereHelperdecimal_Decimal{field: "\"faction_pass_purchase_logs\".\"discount\""},
-	PurchaseTXID:   whereHelpernull_String{field: "\"faction_pass_purchase_logs\".\"purchase_tx_id\""},
-	CreatedAt:      whereHelpertime_Time{field: "\"faction_pass_purchase_logs\".\"created_at\""},
+	ID:                    whereHelperstring{field: "\"faction_pass_purchase_logs\".\"id\""},
+	FactionPassID:         whereHelperstring{field: "\"faction_pass_purchase_logs\".\"faction_pass_id\""},
+	PurchasedByID:         whereHelperstring{field: "\"faction_pass_purchase_logs\".\"purchased_by_id\""},
+	PurchaseMethod:        whereHelperstring{field: "\"faction_pass_purchase_logs\".\"purchase_method\""},
+	SupsPaid:              whereHelperdecimal_Decimal{field: "\"faction_pass_purchase_logs\".\"sups_paid\""},
+	SupsPurchaseTXID:      whereHelpernull_String{field: "\"faction_pass_purchase_logs\".\"sups_purchase_tx_id\""},
+	EthPaid:               whereHelperdecimal_Decimal{field: "\"faction_pass_purchase_logs\".\"eth_paid\""},
+	UsdPaid:               whereHelperdecimal_Decimal{field: "\"faction_pass_purchase_logs\".\"usd_paid\""},
+	StripePaymentIntentID: whereHelpernull_String{field: "\"faction_pass_purchase_logs\".\"stripe_payment_intent_id\""},
+	ExpendFactionPassDays: whereHelperint{field: "\"faction_pass_purchase_logs\".\"expend_faction_pass_days\""},
+	PaymentStatus:         whereHelperstring{field: "\"faction_pass_purchase_logs\".\"payment_status\""},
+	CreatedAt:             whereHelpertime_Time{field: "\"faction_pass_purchase_logs\".\"created_at\""},
 }
 
 // FactionPassPurchaseLogRels is where relationship names are stored.
@@ -123,9 +151,9 @@ func (*factionPassPurchaseLogR) NewStruct() *factionPassPurchaseLogR {
 type factionPassPurchaseLogL struct{}
 
 var (
-	factionPassPurchaseLogAllColumns            = []string{"id", "faction_pass_id", "purchased_by_id", "purchase_method", "price", "discount", "purchase_tx_id", "created_at"}
-	factionPassPurchaseLogColumnsWithoutDefault = []string{"faction_pass_id", "purchased_by_id", "purchase_method", "price"}
-	factionPassPurchaseLogColumnsWithDefault    = []string{"id", "discount", "purchase_tx_id", "created_at"}
+	factionPassPurchaseLogAllColumns            = []string{"id", "faction_pass_id", "purchased_by_id", "purchase_method", "sups_paid", "sups_purchase_tx_id", "eth_paid", "usd_paid", "stripe_payment_intent_id", "expend_faction_pass_days", "payment_status", "created_at"}
+	factionPassPurchaseLogColumnsWithoutDefault = []string{"faction_pass_id", "purchased_by_id", "purchase_method", "expend_faction_pass_days", "payment_status"}
+	factionPassPurchaseLogColumnsWithDefault    = []string{"id", "sups_paid", "sups_purchase_tx_id", "eth_paid", "usd_paid", "stripe_payment_intent_id", "created_at"}
 	factionPassPurchaseLogPrimaryKeyColumns     = []string{"id"}
 	factionPassPurchaseLogGeneratedColumns      = []string{}
 )

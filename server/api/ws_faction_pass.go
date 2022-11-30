@@ -6,10 +6,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/friendsofgo/errors"
+	"github.com/go-chi/chi/v5"
 	"github.com/gofrs/uuid"
 	"github.com/ninja-software/terror/v2"
 	"github.com/ninja-syndicate/ws"
 	"github.com/shopspring/decimal"
+	"github.com/stripe/stripe-go/v72"
+	"github.com/stripe/stripe-go/v72/paymentintent"
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
@@ -101,6 +104,8 @@ func factionPassPriceUpdate(exchangeRates *xsyn_rpcclient.GetExchangeRatesResp) 
 
 func NewFactionPassController(api *API) {
 	api.SecureUserFactionCommand(HubKeyFactionPassSupsPurchase, api.FactionPassSupsPurchase)
+	api.SecureUserFactionCommand(HubKeyFactionPassStripePaymentIntent, api.FactionPassStripePaymentIntent)
+	api.SecureUserFactionCommand(HubKeyFactionPassStripePaymentClaim, api.FactionPassPaymentClaim)
 }
 
 type FactionPassPurchaseSupsRequest struct {
@@ -189,12 +194,13 @@ func (api *API) FactionPassSupsPurchase(ctx context.Context, user *boiler.Player
 
 		// record faction pass log
 		fpl := boiler.FactionPassPurchaseLog{
-			FactionPassID:  fp.ID,
-			PurchasedByID:  user.ID,
-			PurchaseMethod: boiler.PaymentMethodsSups,
-			Price:          supsCost,
-			Discount:       fp.DiscountPercentage,
-			PurchaseTXID:   null.StringFrom(paidTXID),
+			FactionPassID:         fp.ID,
+			PurchasedByID:         user.ID,
+			PurchaseMethod:        boiler.PaymentMethodsSups,
+			ExpendFactionPassDays: fp.LastForDays,
+			SupsPaid:              actualPrice,
+			SupsPurchaseTXID:      null.StringFrom(paidTXID),
+			PaymentStatus:         PaymentStatusSuccess,
 		}
 
 		err = fpl.Insert(tx, boil.Infer())
@@ -221,6 +227,115 @@ func (api *API) FactionPassSupsPurchase(ctx context.Context, user *boiler.Player
 	reply(true)
 	return nil
 }
+
+const PaymentStatusSuccess = "SUCCESS"
+const PaymentStatusFail = "FAIL"
+const PaymentStatusPending = "PENDING"
+
+type FactionPassPaymentClaimRequest struct {
+	Payload struct {
+		PaymentIntentID string `json:"payment_intent_id"`
+	} `json:"payload"`
+}
+
+const HubKeyFactionPassStripePaymentClaim = "FACTION:PASS:STRIPE:PAYMENT:CLAIM"
+
+func (api *API) FactionPassPaymentClaim(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
+	req := &FactionPassPaymentClaimRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return terror.Error(err, "Invalid request received.")
+	}
+
+	l := gamelog.L.With().Str("func", "FactionPassPaymentClaim").Str("faction pass payment intent id", req.Payload.PaymentIntentID).Logger()
+
+	// generate payment intent
+	pi, err := paymentintent.Get(req.Payload.PaymentIntentID, nil)
+	if err != nil {
+		l.Error().Err(err).Msg("could not get payment intent from payment intent ID")
+		return terror.Error(err, "Failed to generate claim id.")
+	}
+
+	factionPassID := pi.Metadata["faction_pass_id"]
+	playerID := pi.Metadata["player_id"]
+
+	if playerID != user.ID {
+		return terror.Error(fmt.Errorf("user id not the same"), "The player id does not match.")
+	}
+
+	// load faction pass
+	fp, err := boiler.FindFactionPass(gamedb.StdConn, factionPassID)
+	if err != nil {
+		return terror.Error(err, "Failed to load faction pass.")
+	}
+
+	fpp := boiler.FactionPassPurchaseLog{
+		FactionPassID:         fp.ID,
+		PurchasedByID:         user.ID,
+		PurchaseMethod:        boiler.PaymentMethodsStripe,
+		UsdPaid:               decimal.NewFromInt(pi.Amount).Div(decimal.NewFromInt(100)),
+		StripePaymentIntentID: null.StringFrom(req.Payload.PaymentIntentID),
+		PaymentStatus:         PaymentStatusPending,
+		ExpendFactionPassDays: fp.LastForDays,
+	}
+
+	err = fpp.Insert(gamedb.StdConn, boil.Infer())
+	if err != nil {
+		return terror.Error(err, "Failed to insert faction pass purchase log.")
+	}
+
+	reply(fpp)
+	return nil
+}
+
+const HubKeyFactionPassStripePaymentIntent = "FACTION:PASS:STRIPE:PAYMENT:INTENT"
+
+func (api *API) FactionPassStripePaymentIntent(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
+	factionPassID := chi.RouteContext(ctx).URLParam("faction_pass_id")
+	if factionPassID == "" {
+		return fmt.Errorf("faction pass id is required")
+	}
+
+	l := gamelog.L.With().Str("func", "FactionPassStripePaymentIntent").Str("faction pass id", factionPassID).Logger()
+
+	// load faction pass
+	fp, err := boiler.FindFactionPass(gamedb.StdConn, factionPassID)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		l.Error().Err(err).Msg("Failed to load faction pass from db")
+		return terror.Error(err, "Failed to load faction pass")
+	}
+
+	params := &stripe.PaymentIntentParams{
+		Amount:   stripe.Int64(fp.UsdPrice.Mul(decimal.NewFromInt(100)).IntPart()),
+		Currency: stripe.String(string(stripe.CurrencyUSD)),
+		AutomaticPaymentMethods: &stripe.PaymentIntentAutomaticPaymentMethodsParams{
+			Enabled: stripe.Bool(true),
+		},
+		Description: stripe.String(fmt.Sprintf("Purchase of %s faction pass", fp.Label)),
+	}
+
+	params.AddMetadata("sale_type", "faction pass")
+	params.AddMetadata("faction_pass_id", fp.ID)
+	params.AddMetadata("player_id", user.ID)
+
+	pi, err := paymentintent.New(params)
+	if err != nil {
+		l.Error().Err(err).Msg("unable to generate stripe payment intent")
+		return terror.Error(err, "Unable to generate payment.")
+	}
+
+	reply(struct {
+		ClientSecret    string `json:"client_secret"`
+		PaymentIntentID string `json:"payment_intent_id"`
+	}{
+		ClientSecret:    pi.ClientSecret,
+		PaymentIntentID: pi.ID,
+	})
+
+	return nil
+}
+
+// SUBSCRIPTION
 
 const HubKeyFactionPassList = "FACTION:PASS:LIST"
 

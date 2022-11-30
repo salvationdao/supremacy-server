@@ -7,10 +7,18 @@ CREATE TABLE faction_pass_purchase_logs (
     purchased_by_id UUID NOT NULL REFERENCES players (id),
 
     purchase_method payment_methods NOT NULL,
-    price DECIMAL NOT NULL, -- maybe sups, eth or usd
-    discount DECIMAL NOT NULL DEFAULT 0,
 
-    purchase_tx_id TEXT,
+    sups_paid DECIMAL NOT NULL DEFAULT 0,
+    sups_purchase_tx_id TEXT,
+
+    eth_paid DECIMAL NOT NULL DEFAULT 0,
+
+    usd_paid DECIMAL NOT NULL DEFAULT 0,
+    stripe_payment_intent_id TEXT,
+
+    expend_faction_pass_days int NOT NULL,
+
+    payment_status TEXT NOT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 

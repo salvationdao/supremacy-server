@@ -3,6 +3,7 @@ package api
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/volatiletech/null/v8"
 	"io/ioutil"
 	"net/http"
 	"server"
@@ -43,6 +44,76 @@ func (f *FiatController) StripeWebhook(w http.ResponseWriter, r *http.Request) (
 
 	// Unmarshal the event data into an appropriate struct depending on its Type
 	switch event.Type {
+	case "charge.succeeded":
+		var charge stripe.Charge
+		err := json.Unmarshal(event.Data.Raw, &charge)
+		if err != nil {
+			l.Error().Err(err).Msg("error parsing webhook JSON")
+			return http.StatusBadRequest, terror.Error(err)
+		}
+
+		saleType, ok := charge.Metadata["sale_type"]
+		if !ok {
+			l.Warn().Interface("charge", charge).Msg("Missing sales type!")
+			return http.StatusOK, nil
+		}
+
+		switch saleType {
+		case "faction pass":
+			factionPassID, ok := charge.Metadata["faction_pass_id"]
+			if !ok {
+				l.Warn().Interface("charge", charge).Msg("Missing faction pass id!")
+				return http.StatusOK, nil
+			}
+			playerID, ok := charge.Metadata["player_id"]
+			if !ok {
+				l.Warn().Interface("charge", charge).Msg("Missing player id!")
+				return http.StatusOK, nil
+			}
+
+			paymentIntent, ok := event.Data.Object["payment_intent"].(string)
+			if !ok {
+				l.Warn().Interface("charge", charge).Msg("Missing payment intent id!")
+				return http.StatusOK, nil
+			}
+
+			l = l.With().Str("faction pass id", factionPassID).Str("player id", playerID).Str("payment intent", paymentIntent).Logger()
+
+			fpp, err := boiler.FactionPassPurchaseLogs(
+				boiler.FactionPassPurchaseLogWhere.FactionPassID.EQ(factionPassID),
+				boiler.FactionPassPurchaseLogWhere.PurchasedByID.EQ(playerID),
+				boiler.FactionPassPurchaseLogWhere.StripePaymentIntentID.EQ(null.StringFrom(paymentIntent)),
+			).One(gamedb.StdConn)
+			if err != nil {
+				l.Warn().Err(err).Msg("Failed to load faction pass purchase log")
+				return http.StatusInternalServerError, terror.Error(err, "Failed to get faction pass purchase log.")
+			}
+
+			fpp.PaymentStatus = PaymentStatusSuccess
+			_, err = fpp.Update(gamedb.StdConn, boil.Whitelist(boiler.FactionPassPurchaseLogColumns.PaymentStatus))
+			if err != nil {
+				l.Warn().Err(err).Msg("Failed to update payment status")
+				return http.StatusInternalServerError, terror.Error(err, "Failed to update payment status")
+			}
+
+			player, err := boiler.FindPlayer(gamedb.StdConn, playerID)
+			if err != nil {
+				l.Warn().Err(err).Msg("Failed to load player")
+				return http.StatusInternalServerError, terror.Error(err, "Failed to load player")
+			}
+			startFrom := time.Now()
+			if player.FactionPassExpiresAt.Valid && player.FactionPassExpiresAt.Time.After(startFrom) {
+				startFrom = player.FactionPassExpiresAt.Time
+			}
+
+			player.FactionPassExpiresAt = null.TimeFrom(startFrom.Add(time.Duration(fpp.ExpendFactionPassDays) * 24 * time.Hour))
+			_, err = player.Update(gamedb.StdConn, boil.Whitelist(boiler.PlayerColumns.FactionPassExpiresAt))
+			if err != nil {
+				return http.StatusInternalServerError, terror.Error(err, "Failed to update player faction pass expiry date.")
+			}
+
+		}
+
 	case "invoice.paid":
 		// Parse invoice
 		var invoice stripe.Invoice

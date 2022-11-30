@@ -5,6 +5,7 @@ import (
 	"encoding/csv"
 	"errors"
 	"fmt"
+	"github.com/stripe/stripe-go/v72"
 	"log"
 	"net/url"
 	"os/signal"
@@ -73,7 +74,7 @@ func main() {
 	runtime.GOMAXPROCS(2)
 	app := &cli.App{
 		Compiled: time.Now(),
-		Usage:    "Run the server server",
+		Usage:    "Run the game server",
 		Authors: []*cli.Author{
 			{
 				Name:  "Ninja Software",
@@ -375,6 +376,7 @@ func main() {
 					// initialise stripe
 					stripeClient := &client.API{}
 					stripeClient.Init(stripeSecretKey, nil)
+					stripe.Key = stripeSecretKey
 					// initialise lingua language detector
 					languages := []lingua.Language{
 						lingua.English,
