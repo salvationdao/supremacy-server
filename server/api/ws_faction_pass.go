@@ -103,9 +103,11 @@ func factionPassPriceUpdate(exchangeRates *xsyn_rpcclient.GetExchangeRatesResp) 
 }
 
 func NewFactionPassController(api *API) {
-	api.SecureUserFactionCommand(HubKeyFactionPassSupsPurchase, api.FactionPassSupsPurchase)
-	api.SecureUserFactionCommand(HubKeyFactionPassStripePaymentIntent, api.FactionPassStripePaymentIntent)
-	api.SecureUserFactionCommand(HubKeyFactionPassStripePaymentClaim, api.FactionPassPaymentClaim)
+	if server.IsDevelopmentEnv() {
+		api.SecureUserFactionCommand(HubKeyFactionPassSupsPurchase, api.FactionPassSupsPurchase)
+		api.SecureUserFactionCommand(HubKeyFactionPassStripePaymentIntent, api.FactionPassStripePaymentIntent)
+		api.SecureUserFactionCommand(HubKeyFactionPassStripePaymentClaim, api.FactionPassPaymentClaim)
+	}
 }
 
 type FactionPassPurchaseSupsRequest struct {
