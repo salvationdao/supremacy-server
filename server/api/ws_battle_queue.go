@@ -14,7 +14,6 @@ import (
 	"server/helpers"
 	"server/system_messages"
 	"server/xsyn_rpcclient"
-	"strings"
 	"time"
 
 	"github.com/friendsofgo/errors"
@@ -1103,6 +1102,20 @@ func (api *API) BattleLobbyListUpdate(ctx context.Context, user *boiler.Player, 
 		qm.Load(boiler.BattleLobbyRels.HostBy),
 		qm.Load(boiler.BattleLobbyRels.GameMap),
 		qm.Load(
+			qm.Rels(
+				boiler.BattleLobbyRels.BattleLobbySupporters,
+				boiler.BattleLobbySupporterRels.Supporter,
+				boiler.PlayerRels.ProfileAvatar,
+			),
+		),
+		qm.Load(
+			qm.Rels(
+				boiler.BattleLobbyRels.BattleLobbySupporterOptIns,
+				boiler.BattleLobbySupporterOptInRels.Supporter,
+				boiler.PlayerRels.ProfileAvatar,
+			),
+		),
+		qm.Load(
 			boiler.BattleLobbyRels.BattleLobbyExtraSupsRewards,
 			boiler.BattleLobbyExtraSupsRewardWhere.RefundedTXID.IsNull(),
 			boiler.BattleLobbyExtraSupsRewardWhere.DeletedAt.IsNull(),
@@ -1414,14 +1427,14 @@ type BattleLobbySupporterJoinRequest struct {
 const HubKeyBattleLobbySupporterJoin = "BATTLE:LOBBY:SUPPORTER:JOIN"
 
 func (api *API) BattleLobbySupporterJoin(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
-	L := gamelog.L.With().Str("func", "").Str("user id", user.ID).Logger()
+	l := gamelog.L.With().Str("func", "").Str("user id", user.ID).Logger()
 	req := &BattleLobbySupporterJoinRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
 		return terror.Error(err, "Invalid request received.")
 	}
 
-	L = L.With().Interface("payload", req.Payload).Logger()
+	l = l.With().Interface("payload", req.Payload).Logger()
 
 	// add support to battle lobby
 	err = api.ArenaManager.SendBattleQueueFunc(func() error {
@@ -1431,41 +1444,22 @@ func (api *API) BattleLobbySupporterJoin(ctx context.Context, user *boiler.Playe
 			return err
 		}
 
-		if bl == nil {
-			return fmt.Errorf("lobby id: %s does not exist", req.Payload.BattleLobbyID)
-		}
-		if bl.AccessCode.Valid && bl.AccessCode.String != req.Payload.AccessCode {
-			fmt.Printf("expected: %s, got: %s\n", bl.AccessCode.String, req.Payload.AccessCode)
-			return fmt.Errorf("invalid access code for lobby %s", req.Payload.BattleLobbyID)
-		}
-		if !bl.AccessCode.Valid && (!bl.AssignedToArenaID.Valid || bl.AssignedToArenaID.String == "") {
-			return fmt.Errorf("lobby id: %s does not have a arena id assigned", req.Payload.BattleLobbyID)
+		if !bl.ReadyAt.Valid {
+			return terror.Error(fmt.Errorf("players caon only opt-in when lobby is ready"), "Player cannot opt in before the lobby is ready.")
 		}
 
 		// check if they have a mech in the battle
 		if bl.R != nil && bl.R.BattleLobbiesMechs != nil {
-			for _, mech := range bl.R.BattleLobbiesMechs {
-				if mech.QueuedByID == user.ID {
-					return fmt.Errorf("cannot opt in to support your own war machine")
-				}
+			if slices.IndexFunc(bl.R.BattleLobbiesMechs, func(blm *boiler.BattleLobbiesMech) bool { return blm.QueuedByID == user.ID }) != -1 {
+				return terror.Error(fmt.Errorf("mech owner cannot become a suppporter"), "Cannot opt in to support your own war machine.")
 			}
-		}
 
-		// check if already selected
-		if bl.R != nil && bl.R.BattleLobbySupporters != nil {
-			for _, supper := range bl.R.BattleLobbySupporters {
-				if supper.SupporterID == user.ID {
-					return fmt.Errorf("already a supporter")
-				}
+			if slices.IndexFunc(bl.R.BattleLobbySupporters, func(bls *boiler.BattleLobbySupporter) bool { return bls.SupporterID == user.ID }) != -1 {
+				return terror.Error(fmt.Errorf("already is a supporter"), "You have already joined as a supporter.")
 			}
-		}
 
-		// check if already registered
-		if bl.R != nil && bl.R.BattleLobbySupporterOptIns != nil {
-			for _, supper := range bl.R.BattleLobbySupporterOptIns {
-				if supper.SupporterID == user.ID {
-					return fmt.Errorf("already registered as a supporter")
-				}
+			if slices.IndexFunc(bl.R.BattleLobbySupporterOptIns, func(bls *boiler.BattleLobbySupporterOptIn) bool { return bls.SupporterID == user.ID }) != -1 {
+				return terror.Error(fmt.Errorf("already is a supporter"), "You have already joined as a supporter")
 			}
 		}
 
@@ -1484,6 +1478,8 @@ func (api *API) BattleLobbySupporterJoin(ctx context.Context, user *boiler.Playe
 
 			api.ArenaManager.BattleLobbyDebounceBroadcastChan <- []string{bl.ID}
 
+			api.ArenaManager.BroadcastLobbyUpdate(bl.AssignedToArenaID.String)
+
 			return nil
 		}
 
@@ -1498,14 +1494,13 @@ func (api *API) BattleLobbySupporterJoin(ctx context.Context, user *boiler.Playe
 			return err
 		}
 
+		api.ArenaManager.BattleLobbyDebounceBroadcastChan <- []string{bl.ID}
+
 		api.ArenaManager.BroadcastLobbyUpdate(bl.AssignedToArenaID.String)
 
 		return nil
 	})
 	if err != nil {
-		if !strings.Contains(err.Error(), "already") {
-			L.Error().Err(err).Msg("failed to insert new battle lobby supporter")
-		}
 		return err
 	}
 
@@ -1542,6 +1537,20 @@ func (api *API) PlayerInvolvedBattleLobbies(ctx context.Context, user *boiler.Pl
 		)),
 		qm.Load(boiler.BattleLobbyRels.HostBy),
 		qm.Load(boiler.BattleLobbyRels.GameMap),
+		qm.Load(
+			qm.Rels(
+				boiler.BattleLobbyRels.BattleLobbySupporters,
+				boiler.BattleLobbySupporterRels.Supporter,
+				boiler.PlayerRels.ProfileAvatar,
+			),
+		),
+		qm.Load(
+			qm.Rels(
+				boiler.BattleLobbyRels.BattleLobbySupporterOptIns,
+				boiler.BattleLobbySupporterOptInRels.Supporter,
+				boiler.PlayerRels.ProfileAvatar,
+			),
+		),
 		qm.Load(
 			boiler.BattleLobbyRels.BattleLobbyExtraSupsRewards,
 			boiler.BattleLobbyExtraSupsRewardWhere.RefundedTXID.IsNull(),

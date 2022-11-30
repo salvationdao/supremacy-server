@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"github.com/ninja-software/terror/v2"
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 	"server/db/boiler"
@@ -71,8 +72,13 @@ func GetBattleLobbyViaID(lobbyID string) (*boiler.BattleLobby, error) {
 			boiler.BattleLobbyExtraSupsRewardWhere.DeletedAt.IsNull(),
 		),
 	).One(gamedb.StdConn)
-	if err != nil {
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		gamelog.L.Error().Err(err).Msg("Failed to load battle lobby from db")
 		return nil, err
+	}
+
+	if bl == nil {
+		return nil, terror.Error(fmt.Errorf("battle lobby not found"), "Battle lobby does not exist.")
 	}
 
 	return bl, nil
@@ -98,6 +104,11 @@ func GetBattleLobbyViaAccessCode(accessCode string) (*boiler.BattleLobby, error)
 				boiler.BattleLobbySupporterOptInRels.Supporter,
 				boiler.PlayerRels.ProfileAvatar,
 			),
+		),
+		qm.Load(
+			boiler.BattleLobbyRels.BattleLobbyExtraSupsRewards,
+			boiler.BattleLobbyExtraSupsRewardWhere.RefundedTXID.IsNull(),
+			boiler.BattleLobbyExtraSupsRewardWhere.DeletedAt.IsNull(),
 		),
 	).One(gamedb.StdConn)
 	if err != nil {
