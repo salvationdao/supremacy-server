@@ -1321,7 +1321,10 @@ func (btl *Battle) end(payload *BattleEndPayload) {
 	btl.arena.beginBattleMux.Lock()
 	defer btl.arena.beginBattleMux.Unlock()
 
-	btl.processWarMachineRepair()
+	// skip assigning repair case, if the battle is AI driven
+	if !btl.lobby.IsAiDrivenMatch {
+		btl.processWarMachineRepair()
+	}
 
 	// clean up current battle
 	btl.handleBattleEnd(payload)
