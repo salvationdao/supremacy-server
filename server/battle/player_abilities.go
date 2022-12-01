@@ -657,10 +657,6 @@ func (am *ArenaManager) PlayerAbilityUse(ctx context.Context, user *boiler.Playe
 		return terror.Error(terror.ErrForbidden, "You cannot execute an ability when the battle has not started yet.")
 	}
 
-	if arena.IsRunningAIDrivenMatch() {
-		return terror.Error(fmt.Errorf("no ability is allowed for AI driven match"), "Player abilities are not allowed during AI driven match.")
-	}
-
 	// mech command handler
 	if req.Payload.LocationSelectType == "MECH_COMMAND" {
 		err = arena.MechMoveCommandCreateHandler(ctx, user, factionID, key, payload, reply)
