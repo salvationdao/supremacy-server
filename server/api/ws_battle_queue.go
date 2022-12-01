@@ -222,6 +222,10 @@ func (api *API) BattleLobbyCreate(ctx context.Context, user *boiler.Player, fact
 			ExpiresAt:             null.TimeFrom(time.Now().Add(time.Duration(publicExhibitionLobbyExpireAfterSecond) * time.Second)),
 		}
 
+		if bl.WillNotStartUntil.Valid {
+			bl.ExpiresAt = bl.WillNotStartUntil
+		}
+
 		if req.Payload.Accessibility == LobbyAccessibilityPrivate && req.Payload.AccessCode.Valid && req.Payload.AccessCode.String != "" {
 			bl.AccessCode = req.Payload.AccessCode
 			bl.ExpiresAt = null.TimeFromPtr(nil)
