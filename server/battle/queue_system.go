@@ -730,28 +730,32 @@ func GenerateAIDrivenBattle() (*boiler.BattleLobby, error) {
 
 	var blms []*boiler.BattleLobbiesMech
 	for _, sm := range sms {
+		queuedByID := ""
 		switch sm.FactionID {
 		case server.RedMountainFactionID:
 			if rmCount == bl.EachFactionMechAmount {
 				continue
 			}
+			queuedByID = server.RedMountainPlayerID
 			rmCount++
 		case server.BostonCyberneticsFactionID:
 			if bcCount == bl.EachFactionMechAmount {
 				continue
 			}
+			queuedByID = server.BostonCyberneticsPlayerID
 			bcCount++
 		case server.ZaibatsuFactionID:
 			if zaiCount == bl.EachFactionMechAmount {
 				continue
 			}
+			queuedByID = server.ZaibatsuPlayerID
 			zaiCount++
 		}
 
 		blms = append(blms, &boiler.BattleLobbiesMech{
 			BattleLobbyID: bl.ID,
 			MechID:        sm.MechID,
-			QueuedByID:    sm.OwnerID,
+			QueuedByID:    queuedByID,
 			FactionID:     sm.FactionID,
 			LockedAt:      bl.ReadyAt,
 		})
