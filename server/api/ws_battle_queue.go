@@ -32,6 +32,8 @@ func BattleQueueController(api *API) {
 
 	api.SecureUserFactionCommand(HubKeyPrivateBattleLobbyGet, api.PrivateBattleLobbyGet)
 	api.SecureUserFactionCommand(HubKeyBattleLobbyCreate, api.BattleLobbyCreate)
+	api.SecureUserFactionCommand(HubKeyBattleLobbyClose, api.BattleLobbyClose)
+
 	api.SecureUserFactionCommand(HubKeyBattleLobbyJoin, api.BattleLobbyJoin)
 	api.SecureUserFactionCommand(HubKeyBattleLobbyLeave, api.BattleLobbyLeave)
 	api.SecureUserCommand(HubKeyBattleLobbyTopUpReward, api.BattleLobbyTopUpReward)
@@ -220,6 +222,10 @@ func (api *API) BattleLobbyCreate(ctx context.Context, user *boiler.Player, fact
 			ExpiresAt:             null.TimeFrom(time.Now().Add(time.Duration(publicExhibitionLobbyExpireAfterSecond) * time.Second)),
 		}
 
+		if bl.WillNotStartUntil.Valid {
+			bl.ExpiresAt = bl.WillNotStartUntil
+		}
+
 		if req.Payload.Accessibility == LobbyAccessibilityPrivate && req.Payload.AccessCode.Valid && req.Payload.AccessCode.String != "" {
 			bl.AccessCode = req.Payload.AccessCode
 			bl.ExpiresAt = null.TimeFromPtr(nil)
@@ -403,6 +409,24 @@ func (api *API) BattleLobbyCreate(ctx context.Context, user *boiler.Player, fact
 	}
 
 	reply(true)
+
+	return nil
+}
+
+type BattleLobbyCloseRequest struct {
+	Payload struct {
+		BattleLobbyID string `json:"battle_lobby_id"`
+	} `json:"payload"`
+}
+
+const HubKeyBattleLobbyClose = "BATTLE:LOBBY:CLOSE"
+
+func (api *API) BattleLobbyClose(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
+	req := &BattleLobbyJoinRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return terror.Error(err, "Invalid request received.")
+	}
 
 	return nil
 }
@@ -1136,6 +1160,40 @@ func (api *API) BattleLobbyListUpdate(ctx context.Context, user *boiler.Player, 
 	}
 
 	reply(server.BattleLobbiesFactionFilter(resp, factionID, false))
+
+	return nil
+}
+
+func (api *API) BattleLobbyUpdate(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
+	battleLobbyID := chi.RouteContext(ctx).URLParam("battle_lobby_id")
+	if battleLobbyID == "" {
+		return nil
+	}
+
+	bl, err := db.GetBattleLobbyViaID(battleLobbyID)
+	if err != nil {
+		return err
+	}
+
+	filteredBattleLobbies, err := server.BattleLobbiesFromBoiler([]*boiler.BattleLobby{bl})
+	if err != nil {
+		return err
+	}
+
+	if len(filteredBattleLobbies) > 0 {
+		lobby := filteredBattleLobbies[0]
+
+		isInvolved := lobby.HostByID == user.ID
+		if !isInvolved && bl.R != nil {
+			for _, mech := range bl.R.BattleLobbiesMechs {
+				if mech.QueuedByID == user.ID {
+					isInvolved = true
+					break
+				}
+			}
+		}
+		reply(server.BattleLobbyInfoFilter(lobby, factionID, isInvolved))
+	}
 
 	return nil
 }

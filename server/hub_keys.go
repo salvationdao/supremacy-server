@@ -121,6 +121,7 @@ const HubKeyPlayerOwnedKeycards = "PLAYER:OWNED:KEYCARDS"
 const HubKeyFactionStakedMechs = "FACTION:STAKED:MECHS"
 
 const HubKeyBattleLobbyListUpdate = "BATTLE:LOBBY:LIST:UPDATE"
+const HubKeyBattleLobbyUpdate = "BATTLE:LOBBY:UPDATE"
 const HubKeyInvolvedBattleLobbyListUpdate = "INVOLVED:BATTLE:LOBBY:LIST:UPDATE"
 const HubKeyPrivateBattleLobbyUpdate = "PRIVATE:BATTLE:LOBBY:UPDATE"
 const HubKeyPlayerAssetMechQueueSubscribe = "PLAYER:ASSET:MECH:QUEUE:SUBSCRIBE"
