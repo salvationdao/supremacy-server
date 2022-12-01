@@ -352,6 +352,7 @@ func NewAPI(
 				s.WS("/faction_chat", HubKeyFactionChatSubscribe, server.MustSecureFaction(cc.FactionChatUpdatedSubscribeHandler))
 				s.WS("/marketplace/{id}", HubKeyMarketplaceSalesItemUpdate, server.MustSecureFaction(mc.SalesItemUpdateSubscriber))
 				s.WS("/battle_lobbies", server.HubKeyBattleLobbyListUpdate, server.MustSecureFaction(api.BattleLobbyListUpdate))
+				s.WS("/battle_lobby/{battle_lobby_id}", server.HubKeyBattleLobbyUpdate, server.MustSecureFaction(api.BattleLobbyUpdate))
 				s.WS("/private_battle_lobby/{access_code}", server.HubKeyPrivateBattleLobbyUpdate, server.MustSecureFaction(api.PrivateBattleLobbyUpdate), MustHaveUrlParam("access_code"))
 
 				s.WS("/mech/{mech_id}/details", HubKeyPlayerAssetMechDetail, server.MustSecureFaction(pasc.PlayerAssetMechDetail))

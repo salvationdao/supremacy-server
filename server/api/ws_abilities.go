@@ -70,13 +70,13 @@ func (pac *AbilitiesControllerWS) PlayerSupportAbilitiesHandler(ctx context.Cont
 
 	for _, ability := range supporterAbilities {
 		resp.SupporterAbilities = append(resp.SupporterAbilities, &battle.PlayerSupporterAbility{
-			ID:                 ability.ID,
-			Label:              ability.R.GameAbility.Label,
-			Colour:             ability.R.GameAbility.Colour,
-			ImageURL:           ability.R.GameAbility.ImageURL,
-			Description:        ability.R.GameAbility.Description,
-			TextColour:         ability.R.GameAbility.TextColour,
-			LocationSelectType: ability.R.GameAbility.LocationSelectType,
+			ID:                  ability.ID,
+			Label:               ability.R.GameAbility.Label,
+			Colour:              ability.R.GameAbility.Colour,
+			ImageURL:            ability.R.GameAbility.ImageURL,
+			Description:         ability.R.GameAbility.Description,
+			TextColour:          ability.R.GameAbility.TextColour,
+			LocationSelectType:  ability.R.GameAbility.LocationSelectType,
 			GameClientAbilityID: ability.R.GameAbility.GameClientAbilityID,
 		})
 	}
@@ -158,7 +158,7 @@ func (pac *AbilitiesControllerWS) SaleAbilityPurchaseHandler(ctx context.Context
 		return terror.Error(fmt.Errorf("user id is nil"), "Issue retrieving user, please try again or contact support.")
 	}
 
-	spa, err := boiler.SalePlayerAbilities(boiler.SalePlayerAbilityWhere.ID.EQ(req.Payload.AbilityID), qm.Load(boiler.SalePlayerAbilityRels.Blueprint)).One(gamedb.StdConn)
+	spa, err := boiler.SalePlayerAbilities(boiler.SalePlayerAbilityWhere.BlueprintID.EQ(req.Payload.AbilityID), qm.Load(boiler.SalePlayerAbilityRels.Blueprint)).One(gamedb.StdConn)
 	if err != nil {
 		l.Error().Err(err).Msg("unable to get sale ability")
 		return terror.Error(err, "Unable to process sale ability purchase,  check your balance and try again.")
