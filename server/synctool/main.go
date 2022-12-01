@@ -1052,10 +1052,15 @@ func SyncWeaponModel(f io.Reader, db *sql.DB) error {
 			ChargeTimeSeconds:   record[23],
 			BurstRateOfFire:     record[24],
 			PowerInstantDrain:   record[25],
-			DotTickDuration:     record[26],
 			ProjectileLifeSpan:  record[27],
 			RecoilForce:         record[28],
 			IdlePowerCost:       record[29],
+		}
+
+		weaponModel.DotTickDuration, err = strconv.Atoi(record[26])
+		if err != nil {
+			fmt.Println(err.Error()+weaponModel.ID, weaponModel.Label, weaponModel.WeaponType)
+
 		}
 
 		WeaponModels = append(WeaponModels, *weaponModel)
