@@ -1182,7 +1182,17 @@ func (api *API) BattleLobbyUpdate(ctx context.Context, user *boiler.Player, fact
 
 	if len(filteredBattleLobbies) > 0 {
 		lobby := filteredBattleLobbies[0]
-		reply(server.BattleLobbyInfoFilter(lobby, factionID, lobby.HostByID == user.ID))
+
+		isInvolved := lobby.HostByID == user.ID
+		if !isInvolved && bl.R != nil {
+			for _, mech := range bl.R.BattleLobbiesMechs {
+				if mech.QueuedByID == user.ID {
+					isInvolved = true
+					break
+				}
+			}
+		}
+		reply(server.BattleLobbyInfoFilter(lobby, factionID, isInvolved))
 	}
 
 	return nil
