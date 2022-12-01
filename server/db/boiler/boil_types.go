@@ -243,6 +243,14 @@ const (
 	CouponItemTypeGENESIS_MECH = "GENESIS_MECH"
 )
 
+// Enum values for PaymentMethods
+const (
+	PaymentMethodsSups   = "sups"
+	PaymentMethodsStripe = "stripe"
+	PaymentMethodsEth    = "eth"
+	PaymentMethodsUsd    = "usd"
+)
+
 // Enum values for FeatureName
 const (
 	FeatureNameMECH_MOVE       = "MECH_MOVE"
@@ -345,12 +353,6 @@ const (
 	OrderStatusesPending   = "pending"
 	OrderStatusesCompleted = "completed"
 	OrderStatusesRefunded  = "refunded"
-)
-
-// Enum values for PaymentMethods
-const (
-	PaymentMethodsSups   = "sups"
-	PaymentMethodsStripe = "stripe"
 )
 
 // Enum values for BanFromType

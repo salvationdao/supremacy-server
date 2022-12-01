@@ -5,6 +5,7 @@ import (
 	"encoding/csv"
 	"errors"
 	"fmt"
+	"github.com/stripe/stripe-go/v72"
 	"log"
 	"net/url"
 	"os/signal"
@@ -73,7 +74,7 @@ func main() {
 	runtime.GOMAXPROCS(2)
 	app := &cli.App{
 		Compiled: time.Now(),
-		Usage:    "Run the server server",
+		Usage:    "Run the game server",
 		Authors: []*cli.Author{
 			{
 				Name:  "Ninja Software",
@@ -366,7 +367,7 @@ func main() {
 					gamelog.L.Info().Msgf("Telegram took %s", time.Since(start))
 
 					// initialise discord bot
-					discordBot, err := discord.NewDiscordBot(discordAuthToken, discordAppID, true)
+					discordBot, err := discord.NewDiscordBot(discordAuthToken, discordAppID, !server.IsDevelopmentEnv())
 					if err != nil {
 						return terror.Error(err, "Discord init failed")
 					}
@@ -375,6 +376,7 @@ func main() {
 					// initialise stripe
 					stripeClient := &client.API{}
 					stripeClient.Init(stripeSecretKey, nil)
+					stripe.Key = stripeSecretKey
 					// initialise lingua language detector
 					languages := []lingua.Language{
 						lingua.English,
@@ -733,7 +735,7 @@ func UpdateKeycard(api *api.API, pp *xsyn_rpcclient.XsynXrpcClient, filePath str
 				factionID = uuid.Must(uuid.FromString(resp.FactionID.String))
 			}
 
-			err = api.UpsertPlayer(resp.UserID, null.StringFrom(resp.Username), resp.PublicAddress, null.StringFrom(factionID.String()), nil, null.Bool{})
+			err = api.UpsertPlayer(resp.UserID, null.StringFrom(resp.Username), resp.PublicAddress, null.StringFrom(factionID.String()), "", nil, null.Bool{})
 			if err != nil {
 				gamelog.L.Error().Err(err).Str("public_address", keycardAssets.PublicAddress).Str("factionID", factionID.String()).Str("resp.Username", resp.Username).Str("resp.UserID", resp.UserID).Msg("failed to register player")
 			}
@@ -748,7 +750,7 @@ func UpdateKeycard(api *api.API, pp *xsyn_rpcclient.XsynXrpcClient, filePath str
 				err := playerKeycard.Insert(gamedb.StdConn, boil.Infer())
 				if err != nil {
 					failed++
-					gamelog.L.Error().Interface("PlayerKeycard", playerKeycard).Err(err).Msg("failed to insert new player keycard")
+					gamelog.L.Error().Interface("PlayerKeycards", playerKeycard).Err(err).Msg("failed to insert new player keycard")
 					failedSync := &boiler.FailedPlayerKeycardsSync{
 						PublicAddress:      keycardAssets.PublicAddress,
 						BlueprintKeycardID: assetData.BlueprintID,

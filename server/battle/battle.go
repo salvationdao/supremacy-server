@@ -700,7 +700,7 @@ func (btl *Battle) handleBattleEnd(payload *BattleEndPayload) {
 	btl.arena.LastBattleResult = endInfo
 
 	// broadcast player mech status change
-	go BroadcastMechQueueStatus(btl.warMachineIDs)
+	btl.arena.Manager.MechDebounceBroadcastChan <- btl.warMachineIDs
 
 	// broadcast battle eta
 	go func() {
@@ -1298,6 +1298,9 @@ func (btl *Battle) processWarMachineRepair() {
 			if err != nil {
 				gamelog.L.Error().Err(err).Msg("Failed to register mech repair")
 			}
+
+			// update faction staked mech damaged status
+			btl.arena.Manager.FactionStakedMechDashboardKeyChan <- []string{FactionStakedMechDashboardKeyDamaged}
 		}()
 	}
 }
@@ -1326,6 +1329,9 @@ func (btl *Battle) end(payload *BattleEndPayload) {
 
 	// reactivate idle arenas
 	btl.arena.Manager.KickIdleArenas()
+
+	btl.arena.Manager.FactionStakedMechDashboardKeyChan <- []string{FactionStakedMechDashboardKeyQueue, FactionStakedMechDashboardKeyMVP}
+
 }
 
 type GameSettingsResponse struct {
@@ -2582,7 +2588,7 @@ func BuildUserDetailWithFaction(userID uuid.UUID) (*UserBrief, error) {
 
 	userBrief.FactionID = user.FactionID.String
 
-	faction, err := boiler.Factions(boiler.FactionWhere.ID.EQ(user.FactionID.String)).One(gamedb.StdConn)
+	faction, err := boiler.Factions(boiler.FactionWhere.ID.EQ(user.FactionID.String), qm.Load(boiler.FactionRels.FactionPalette)).One(gamedb.StdConn)
 	if err != nil {
 		gamelog.L.Error().Str("log_name", "battle arena").Str("player_id", userID.String()).Str("faction_id", user.FactionID.String).Err(err).Msg("failed to get player faction from db")
 		return userBrief, nil
@@ -2592,9 +2598,9 @@ func BuildUserDetailWithFaction(userID uuid.UUID) (*UserBrief, error) {
 		ID:    faction.ID,
 		Label: faction.Label,
 		Theme: &Theme{
-			PrimaryColor:    faction.PrimaryColor,
-			SecondaryColor:  faction.SecondaryColor,
-			BackgroundColor: faction.BackgroundColor,
+			PrimaryColor:    faction.R.FactionPalette.Primary,
+			SecondaryColor:  faction.R.FactionPalette.Text,
+			BackgroundColor: faction.R.FactionPalette.Background,
 		},
 	}
 

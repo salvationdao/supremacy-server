@@ -92,13 +92,14 @@ func (am *ArenaManager) broadcastBattleLobbyUpdate(battleLobbyIDs ...string) {
 	}
 
 	type playerInvolveLobby struct {
+		playerID  string
 		factionID string
 		bls       []*server.BattleLobby
 	}
 
 	var publicLobbies []*server.BattleLobby
 	var privateLobbies []*server.BattleLobby
-	playerInvolvedLobbiesMap := make(map[string]*playerInvolveLobby)
+	var playersInvolvedLobbies []*playerInvolveLobby
 
 	// broadcast to individual
 	for _, bl := range battleLobbies {
@@ -120,14 +121,23 @@ func (am *ArenaManager) broadcastBattleLobbyUpdate(battleLobbyIDs ...string) {
 		if bl.HostBy != nil && bl.HostBy.FactionID.Valid {
 			host := bl.HostBy
 			// check host player
-			_, ok := playerInvolvedLobbiesMap[host.ID]
-			if !ok {
-				playerInvolvedLobbiesMap[host.ID] = &playerInvolveLobby{
+			index := slices.IndexFunc(playersInvolvedLobbies, func(pil *playerInvolveLobby) bool { return pil.playerID == host.ID })
+			if index == -1 {
+				playersInvolvedLobbies = append(playersInvolvedLobbies, &playerInvolveLobby{
+					playerID:  host.ID,
 					factionID: host.FactionID.String,
 					bls:       []*server.BattleLobby{},
-				}
+				})
+
+				index = len(playersInvolvedLobbies) - 1
 			}
-			playerInvolvedLobbiesMap[host.ID].bls = append(playerInvolvedLobbiesMap[host.ID].bls, bl)
+
+			// skip, if the player already have the lobby on their list
+			if slices.IndexFunc(playersInvolvedLobbies[index].bls, func(battleLobby *server.BattleLobby) bool { return battleLobby.ID == bl.ID }) != -1 {
+				continue
+			}
+
+			playersInvolvedLobbies[index].bls = append(playersInvolvedLobbies[index].bls, bl)
 		}
 
 		// check joined players
@@ -139,42 +149,51 @@ func (am *ArenaManager) broadcastBattleLobbyUpdate(battleLobbyIDs ...string) {
 			queuedByID := blm.QueuedBy.ID
 			factionID := blm.QueuedBy.FactionID.String
 
-			_, ok := playerInvolvedLobbiesMap[queuedByID]
-			if !ok {
-				playerInvolvedLobbiesMap[queuedByID] = &playerInvolveLobby{
+			// check host player
+			index := slices.IndexFunc(playersInvolvedLobbies, func(pil *playerInvolveLobby) bool { return pil.playerID == queuedByID })
+			if index == -1 {
+				playersInvolvedLobbies = append(playersInvolvedLobbies, &playerInvolveLobby{
+					playerID:  queuedByID,
 					factionID: factionID,
 					bls:       []*server.BattleLobby{},
-				}
+				})
+
+				index = len(playersInvolvedLobbies) - 1
 			}
 
 			// skip, if the player already have the lobby on their list
-			if slices.IndexFunc(playerInvolvedLobbiesMap[queuedByID].bls, func(battleLobby *server.BattleLobby) bool { return battleLobby.ID == bl.ID }) != -1 {
+			if slices.IndexFunc(playersInvolvedLobbies[index].bls, func(battleLobby *server.BattleLobby) bool { return battleLobby.ID == bl.ID }) != -1 {
 				continue
 			}
 
 			// otherwise, append to lobby to the player's list
-			playerInvolvedLobbiesMap[queuedByID].bls = append(playerInvolvedLobbiesMap[queuedByID].bls, bl)
+			playersInvolvedLobbies[index].bls = append(playersInvolvedLobbies[index].bls, bl)
 		}
 	}
 
 	// broadcast private lobbies individually
 	for _, battleLobby := range privateLobbies {
-		go ws.PublishMessage(fmt.Sprintf("/faction/%s/private_battle_lobby/%s", server.RedMountainFactionID, battleLobby.AccessCode.String), server.HubKeyPrivateBattleLobbyUpdate, server.BattleLobbyInfoFilter(battleLobby, server.RedMountainFactionID, false))
-		go ws.PublishMessage(fmt.Sprintf("/faction/%s/private_battle_lobby/%s", server.BostonCyberneticsFactionID, battleLobby.AccessCode.String), server.HubKeyPrivateBattleLobbyUpdate, server.BattleLobbyInfoFilter(battleLobby, server.BostonCyberneticsFactionID, false))
-		go ws.PublishMessage(fmt.Sprintf("/faction/%s/private_battle_lobby/%s", server.ZaibatsuFactionID, battleLobby.AccessCode.String), server.HubKeyPrivateBattleLobbyUpdate, server.BattleLobbyInfoFilter(battleLobby, server.ZaibatsuFactionID, false))
+		go ws.PublishMessage(fmt.Sprintf("/faction/%s/private_battle_lobby/%s", server.RedMountainFactionID, battleLobby.AccessCode.String), server.HubKeyPrivateBattleLobbyUpdate, server.BattleLobbyInfoFilter(battleLobby, server.RedMountainFactionID, true))
+		go ws.PublishMessage(fmt.Sprintf("/faction/%s/private_battle_lobby/%s", server.BostonCyberneticsFactionID, battleLobby.AccessCode.String), server.HubKeyPrivateBattleLobbyUpdate, server.BattleLobbyInfoFilter(battleLobby, server.BostonCyberneticsFactionID, true))
+		go ws.PublishMessage(fmt.Sprintf("/faction/%s/private_battle_lobby/%s", server.ZaibatsuFactionID, battleLobby.AccessCode.String), server.HubKeyPrivateBattleLobbyUpdate, server.BattleLobbyInfoFilter(battleLobby, server.ZaibatsuFactionID, true))
 	}
 
 	// broadcast public lobbies
 	if len(publicLobbies) > 0 || len(deletedLobbies) > 0 {
-		go ws.PublishMessage(fmt.Sprintf("/faction/%s/battle_lobbies", server.RedMountainFactionID), server.HubKeyBattleLobbyListUpdate, append(server.BattleLobbiesFactionFilter(publicLobbies, server.RedMountainFactionID, ""), deletedLobbies...))
-		go ws.PublishMessage(fmt.Sprintf("/faction/%s/battle_lobbies", server.BostonCyberneticsFactionID), server.HubKeyBattleLobbyListUpdate, append(server.BattleLobbiesFactionFilter(publicLobbies, server.BostonCyberneticsFactionID, ""), deletedLobbies...))
-		go ws.PublishMessage(fmt.Sprintf("/faction/%s/battle_lobbies", server.ZaibatsuFactionID), server.HubKeyBattleLobbyListUpdate, append(server.BattleLobbiesFactionFilter(publicLobbies, server.ZaibatsuFactionID, ""), deletedLobbies...))
+		go ws.PublishMessage(fmt.Sprintf("/faction/%s/battle_lobbies", server.RedMountainFactionID), server.HubKeyBattleLobbyListUpdate, append(server.BattleLobbiesFactionFilter(publicLobbies, server.RedMountainFactionID, false), deletedLobbies...))
+		go ws.PublishMessage(fmt.Sprintf("/faction/%s/battle_lobbies", server.BostonCyberneticsFactionID), server.HubKeyBattleLobbyListUpdate, append(server.BattleLobbiesFactionFilter(publicLobbies, server.BostonCyberneticsFactionID, false), deletedLobbies...))
+		go ws.PublishMessage(fmt.Sprintf("/faction/%s/battle_lobbies", server.ZaibatsuFactionID), server.HubKeyBattleLobbyListUpdate, append(server.BattleLobbiesFactionFilter(publicLobbies, server.ZaibatsuFactionID, false), deletedLobbies...))
 	}
 
 	// broadcast the lobbies which players are involved in
-	for playerID, pil := range playerInvolvedLobbiesMap {
-		ws.PublishMessage(fmt.Sprintf("/secure/user/%s/involved_battle_lobbies", playerID), server.HubKeyInvolvedBattleLobbyListUpdate, server.BattleLobbiesFactionFilter(pil.bls, pil.factionID, playerID))
+	for _, pil := range playersInvolvedLobbies {
+		ws.PublishMessage(fmt.Sprintf("/secure/user/%s/involved_battle_lobbies", pil.playerID), server.HubKeyInvolvedBattleLobbyListUpdate, server.BattleLobbiesFactionFilter(pil.bls, pil.factionID, true))
 	}
+
+	privateLobbies = nil
+	publicLobbies = nil
+	playersInvolvedLobbies = nil
+	deletedLobbies = nil
 }
 
 // SetDefaultPublicBattleLobbies ensure there are enough battle lobbies when server start
@@ -264,8 +283,8 @@ func (am *ArenaManager) ExpiredExhibitionLobbyCleanUp() error {
 				wg.Done()
 			}()
 
-			battleLobby.DeletedAt = null.TimeFrom(time.Now())
-			_, err = battleLobby.Update(tx, boil.Whitelist(boiler.BattleLobbyColumns.DeletedAt))
+			battleLobby.EndedAt = null.TimeFrom(time.Now())
+			_, err = battleLobby.Update(tx, boil.Whitelist(boiler.BattleLobbyColumns.EndedAt))
 			if err != nil {
 				l.Error().Err(err).Msg("Failed to soft delete battle lobby")
 				return
@@ -369,6 +388,8 @@ func (am *ArenaManager) ExpiredExhibitionLobbyCleanUp() error {
 				l.Error().Err(err).Msg("Failed to commit db transaction.")
 				return
 			}
+
+			am.FactionStakedMechDashboardKeyChan <- []string{FactionStakedMechDashboardKeyQueue}
 
 			// broadcast battle lobby
 			am.BattleLobbyDebounceBroadcastChan <- []string{battleLobby.ID}
@@ -524,7 +545,7 @@ func (am *ArenaManager) ExpiredExhibitionLobbyCleanUp() error {
 			}
 
 			// broadcast the status changes of the lobby mechs
-			go BroadcastMechQueueStatus(lobbyMechIDs)
+			am.MechDebounceBroadcastChan <- lobbyMechIDs
 
 		}(bl)
 	}
@@ -546,10 +567,24 @@ func (am *ArenaManager) DefaultPublicLobbiesCheck() error {
 	bls, err := boiler.BattleLobbies(
 		boiler.BattleLobbyWhere.ReadyAt.IsNull(),
 		boiler.BattleLobbyWhere.GeneratedBySystem.EQ(true),
+		qm.Load(
+			boiler.BattleLobbyRels.BattleLobbiesMechs,
+			boiler.BattleLobbiesMechWhere.RefundTXID.IsNull(),
+			boiler.BattleLobbiesMechWhere.DeletedAt.IsNull(),
+		),
 	).All(gamedb.StdConn)
 	if err != nil {
 		gamelog.L.Error().Err(err).Msg("Failed to load active public battle lobbies.")
 		return terror.Error(err, "Failed to load active public battle lobbies.")
+	}
+
+	for _, bl := range bls {
+		if bl.R == nil || bl.R.BattleLobbiesMechs == nil || len(bl.R.BattleLobbiesMechs) == 0 {
+			continue
+		}
+
+		// restart the filling process
+		am.AddAIMechFillingProcess(bl.ID)
 	}
 
 	count := len(bls)
@@ -579,58 +614,6 @@ func (am *ArenaManager) DefaultPublicLobbiesCheck() error {
 	}
 
 	return nil
-}
-
-// BroadcastMechQueueStatus broadcast mechs queue status
-// NOTE: player id maybe empty string
-func BroadcastMechQueueStatus(mechIDs []string) {
-	if len(mechIDs) == 0 {
-		return
-	}
-
-	mechInfo, err := db.LobbyMechsBrief("", mechIDs...)
-	if err != nil {
-		return
-	}
-
-	factionStakedMechs := make(map[string][]*db.MechBrief)
-	playerMechs := make(map[string][]*db.MechBrief)
-	for _, m := range mechInfo {
-
-		// prepare player mech list
-		pm, ok := playerMechs[m.OwnerID]
-		if !ok {
-			pm = []*db.MechBrief{}
-		}
-		pm = append(pm, m)
-		playerMechs[m.OwnerID] = pm
-
-		// prepare faction staked mech list
-		if m.IsStaked {
-			fsm, ok := factionStakedMechs[m.FactionID.String]
-			if !ok {
-				fsm = []*db.MechBrief{}
-			}
-			fsm = append(fsm, m)
-			factionStakedMechs[m.FactionID.String] = fsm
-		}
-
-		ws.PublishMessage(fmt.Sprintf("/faction/%s/queue/%s", m.FactionID.String, m.ID), server.HubKeyPlayerAssetMechQueueSubscribe, server.MechArenaInfo{
-			Status:              m.Status,
-			CanDeploy:           m.CanDeploy,
-			BattleLobbyIsLocked: m.LobbyLockedAt.Valid,
-		})
-	}
-
-	// broadcast player owned mechs
-	for ownerID, pm := range playerMechs {
-		ws.PublishMessage(fmt.Sprintf("/secure/user/%s/owned_queueable_mechs", ownerID), server.HubKeyPlayerQueueableMechs, pm)
-	}
-
-	// broadcast faction staked mechs
-	for factionID, fsm := range factionStakedMechs {
-		ws.PublishMessage(fmt.Sprintf("/faction/%s/staked_mechs", factionID), server.HubKeyFactionStakedMechs, fsm)
-	}
 }
 
 func BroadcastPlayerQueueStatus(playerID string) {
@@ -672,6 +655,7 @@ func GenerateAIDrivenBattle() (*boiler.BattleLobby, error) {
 
 	bl := &boiler.BattleLobby{
 		HostByID:              server.SupremacyBattleUserID,
+		Name:                  helpers.GenerateAdjectiveName(),
 		EntryFee:              decimal.Zero, // free to join
 		FirstFactionCut:       decimal.NewFromFloat(0.75),
 		SecondFactionCut:      decimal.NewFromFloat(0.25),
@@ -1064,6 +1048,7 @@ func (am *ArenaManager) AddAIMechFillingProcess(battleLobbyID string) {
 
 			// generate another system lobby
 			newBattleLobby := &boiler.BattleLobby{
+				Name:                  helpers.GenerateAdjectiveName(),
 				HostByID:              bl.HostByID,
 				EntryFee:              bl.EntryFee, // free to join
 				FirstFactionCut:       bl.FirstFactionCut,
@@ -1089,7 +1074,10 @@ func (am *ArenaManager) AddAIMechFillingProcess(battleLobbyID string) {
 			am.BattleLobbyDebounceBroadcastChan <- []string{newBattleLobby.ID, bl.ID}
 
 			// broadcast the status changes of the lobby mechs
-			go BroadcastMechQueueStatus(lobbyMechIDs)
+			am.MechDebounceBroadcastChan <- lobbyMechIDs
+
+			// update faction staked mech queue status
+			am.FactionStakedMechDashboardKeyChan <- []string{FactionStakedMechDashboardKeyQueue}
 
 			// Terminate filling process
 			am.TerminateAIMechFillingProcess(battleLobbyID)

@@ -209,6 +209,7 @@ func NewAPI(
 	NewModToolsController(api)
 	NewAdminController(api)
 	NewModToolsController(api)
+	NewFactionPassController(api)
 
 	api.Routes.Use(middleware.RequestID)
 	api.Routes.Use(middleware.RealIP)
@@ -274,7 +275,6 @@ func NewAPI(
 
 				// come from battle
 				s.WS("/mech/{mech_id}/details", HubKeyPlayerAssetMechDetailPublic, pasc.PlayerAssetMechDetailPublic)
-				s.WS("/mech/{mech_id}/is_staked", HubKeyMechIsStaked, api.MechIsStaked)
 				s.WS("/custom_avatar/{avatar_id}/details", HubKeyPlayerCustomAvatarDetails, pc.ProfileCustomAvatarDetailsHandler)
 
 				// battle related endpoint
@@ -297,9 +297,17 @@ func NewAPI(
 				s.WS("/battle_eta", server.HubKeyBattleETAUpdate, api.BattleETASubscribeHandler)
 				s.WS("/game_map_list", HubKeyGameMapList, api.GameMapListSubscribeHandler)
 
+				// faction passes
+				s.WS("/faction_pass_list", HubKeyFactionPassList, api.FactionPassList)
+
 				// user related
 				s.WSTrack("/user/{user_id}", "user_id", server.HubKeyUserSubscribe, server.MustSecure(pc.PlayersSubscribeHandler), MustMatchUserID)
-				s.WS("/user/{user_id}/owned_queueable_mechs", server.HubKeyPlayerQueueableMechs, server.MustSecure(api.PlayerMechs), MustMatchUserID)
+				s.WS("/user/{user_id}/owned_mechs", server.HubKeyPlayerOwnedMechs, server.MustSecure(api.PlayerMechs), MustMatchUserID)
+				s.WS("/user/{user_id}/owned_weapons", server.HubKeyPlayerOwnedWeapons, server.MustSecure(api.PlayerWeapons), MustMatchUserID)
+				s.WS("/user/{user_id}/owned_mech_skins", server.HubKeyPlayerOwnedMechSkins, server.MustSecure(api.PlayerMechSkins), MustMatchUserID)
+				s.WS("/user/{user_id}/owned_weapon_skins", server.HubKeyPlayerOwnedWeaponSkins, server.MustSecure(api.PlayerWeaponSkins), MustMatchUserID)
+				s.WS("/user/{user_id}/owned_mystery_crates", server.HubKeyPlayerOwnedMysteryCrates, server.MustSecure(api.PlayerMysteryCrates), MustMatchUserID)
+				s.WS("/user/{user_id}/owned_keycards", server.HubKeyPlayerOwnedKeycards, server.MustSecure(api.PlayerKeycards), MustMatchUserID)
 				s.WS("/user/{user_id}/stat", server.HubKeyUserStatSubscribe, server.MustSecure(pc.PlayersStatSubscribeHandler), MustMatchUserID)
 				s.WS("/user/{user_id}/rank", server.HubKeyPlayerRankGet, server.MustSecure(pc.PlayerRankGet), MustMatchUserID)
 				s.WS("/user/{user_id}/player_abilities", server.HubKeyPlayerAbilitiesList, server.MustSecure(pac.PlayerAbilitiesListHandler), MustMatchUserID)
@@ -313,8 +321,9 @@ func NewAPI(
 
 				s.WS("/user/{user_id}/queue_status", server.HubKeyPlayerQueueStatus, server.MustSecure(pc.PlayerQueueStatusHandler), MustMatchUserID)
 
-				s.WS("/user/{user_id}/involved_battle_lobbies", server.HubKeyInvolvedBattleLobbyListUpdate, server.MustSecureFaction(api.PlayerInvolvedBattleLobbies))
+				s.WS("/user/{user_id}/involved_battle_lobbies", server.HubKeyInvolvedBattleLobbyListUpdate, server.MustSecureFaction(api.PlayerInvolvedBattleLobbies), MustMatchUserID)
 
+				s.WS("/user/{user_id}/faction_pass_expiry_date", HubKeyPlayerFactionPassExpiryDate, server.MustSecure(api.PlayerFactionPassExpiryDate), MustMatchUserID)
 				// fiat related
 				s.WS("/user/{user_id}/shopping_cart_updated", server.HubKeyShoppingCartUpdated, server.MustSecure(fc.ShoppingCartUpdatedSubscriber), MustMatchUserID)
 				s.WS("/user/{user_id}/shopping_cart_expired", server.HubKeyShoppingCartExpired, nil, MustMatchUserID)
@@ -366,6 +375,18 @@ func NewAPI(
 				s.WS("/syndicate/{syndicate_id}/committees", server.HubKeySyndicateCommitteesSubscribe, server.MustSecureFaction(api.SyndicateCommitteesSubscribeHandler), MustMatchSyndicate)
 				s.WS("/syndicate/{syndicate_id}/ongoing_motions", server.HubKeySyndicateOngoingMotionSubscribe, server.MustSecureFaction(api.SyndicateOngoingMotionSubscribeHandler), MustMatchSyndicate)
 				s.WS("/syndicate/{syndicate_id}/ongoing_election", server.HubKeySyndicateOngoingElectionSubscribe, server.MustSecureFaction(api.SyndicateOngoingElectionSubscribeHandler), MustMatchSyndicate)
+
+				// faction pass
+				s.WS("/faction_pass/{faction_pass_id}/stripe_payment_intent", HubKeyFactionPassStripePaymentIntent, server.MustSecureFaction(api.FactionPassStripePaymentIntent))
+
+				s.WS("/mvp_staked_mech", server.HubKeyFactionMostPopularStakedMech, server.MustSecureFaction(api.FactionMostPopularStakedMech))
+				s.WS("/staked_mech_count", server.HubKeyFactionStakedMechCount, server.MustSecureFaction(api.FactionStakeMechCount))
+				s.WS("/in_queue_staked_mech_count", server.HubKeyFactionStakedMechInQueueCount, server.MustSecureFaction(api.FactionQueuedStakedMechCount))
+				s.WS("/damaged_staked_mech_count", server.HubKeyFactionStakedMechDamagedCount, server.MustSecureFaction(api.FactionDamagedStakedMechCount))
+				s.WS("/battle_ready_staked_mech_count", server.HubKeyFactionStakedMechBattleReadyCount, server.MustSecureFaction(api.FactionBattleReadyStakedMechCount))
+				s.WS("/in_battle_staked_mech_count", server.HubKeyFactionStakedMechInBattleCount, server.MustSecureFaction(api.FactionInBattleStakedMechCount))
+				s.WS("/battled_staked_mech_count", server.HubKeyFactionStakedMechBattledCount, server.MustSecureFaction(api.FactionBattledStakedMechCount))
+				s.WS("/in_repair_bay_staked_mech", server.HubKeyFactionStakedMechInRepairBay, server.MustSecureFaction(api.FactionInRepairBayStakedMechCount))
 			}))
 
 			// mini map related
@@ -457,6 +478,15 @@ func (api *API) initialWSBroadcast() error {
 
 	// start debounce lobby update sender
 	go api.ArenaManager.DebounceSendBattleLobbiesUpdate()
+
+	// debounce broadcast player assets
+	go api.ArenaManager.PlayerAssetsDebounceBroadcaster()
+
+	// debounce broadcast faction staked mech status
+	go api.ArenaManager.FactionStakedMechDebounceBroadcaster()
+
+	// spin up exchange rate related price updater
+	go api.exchangeRatesUpdater()
 
 	return nil
 }

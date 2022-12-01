@@ -2,16 +2,17 @@ package api
 
 import (
 	"fmt"
-	"github.com/go-chi/chi/v5"
-	"github.com/ninja-software/terror/v2"
-	"github.com/volatiletech/null/v8"
-	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 	"net/http"
 	"server"
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
 	"server/helpers"
+
+	"github.com/go-chi/chi/v5"
+	"github.com/ninja-software/terror/v2"
+	"github.com/volatiletech/null/v8"
+	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 )
 
 type FactionController struct {
@@ -29,24 +30,35 @@ func FactionRouter(api *API) chi.Router {
 	return r
 }
 
+type FactionWithPalette struct {
+	*boiler.Faction
+	Palette *boiler.FactionPalette `json:"palette"`
+}
+
 func (c *FactionController) FactionAll(w http.ResponseWriter, r *http.Request) (int, error) {
 	factions, err := boiler.Factions(
 		qm.Select(
 			boiler.FactionColumns.ID,
 			boiler.FactionColumns.Label,
-			boiler.FactionColumns.BackgroundColor,
-			boiler.FactionColumns.PrimaryColor,
-			boiler.FactionColumns.SecondaryColor,
 			boiler.FactionColumns.LogoURL,
 			boiler.FactionColumns.BackgroundURL,
 			boiler.FactionColumns.Description,
 		),
+		qm.Load(boiler.FactionRels.FactionPalette),
 	).All(gamedb.StdConn)
 	if err != nil {
 		return http.StatusInternalServerError, terror.Error(err, "Failed to query faction data from db")
 	}
 
-	return helpers.EncodeJSON(w, factions)
+	result := make([]*FactionWithPalette, 0)
+	for _, f := range factions {
+		result = append(result, &FactionWithPalette{
+			Faction: f,
+			Palette: f.R.FactionPalette,
+		})
+	}
+
+	return helpers.EncodeJSON(w, result)
 }
 
 func (api *API) GetFactionData(w http.ResponseWriter, r *http.Request) (int, error) {

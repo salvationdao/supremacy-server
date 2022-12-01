@@ -36,9 +36,9 @@ func GiveUserAllAssets(user *boiler.Player, pp *xsyn_rpcclient.XsynXrpcClient) e
 	templates, err := boiler.TemplateBlueprints(
 		boiler.TemplateBlueprintWhere.BlueprintID.IN(
 			[]string{
-				server.MechSkinDune,       // static id for genesis mega skin
-				server.MechSkinBlackDigi,  // static id for genesis mega skin
-				server.MechSkinDesert, // static id for genesis mega skin
+				server.MechSkinDune,      // static id for genesis mega skin
+				server.MechSkinBlackDigi, // static id for genesis mega skin
+				server.MechSkinDesert,    // static id for genesis mega skin
 			},
 		),
 	).All(tx)

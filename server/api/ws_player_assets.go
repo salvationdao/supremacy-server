@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"golang.org/x/exp/slices"
 	"net/http"
 	"regexp"
 	"server"
@@ -15,6 +16,7 @@ import (
 	"server/helpers"
 	"server/rpctypes"
 	"strings"
+	"time"
 	"unicode"
 
 	"github.com/go-chi/chi/v5"
@@ -209,13 +211,14 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetMechDetail(ctx context.Context, 
 		boiler.CollectionItemWhere.ItemID.EQ(mechID),
 		qm.InnerJoin(
 			fmt.Sprintf(
-				"%s on %s = %s",
+				"%s on %s = %s AND %s = '%s'",
 				boiler.TableNames.Players,
-				qm.Rels(boiler.TableNames.Players, boiler.PlayerColumns.ID),
-				qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.OwnerID),
+				boiler.PlayerTableColumns.ID,
+				boiler.CollectionItemTableColumns.OwnerID,
+				boiler.PlayerTableColumns.FactionID,
+				fID,
 			),
 		),
-		boiler.PlayerWhere.FactionID.EQ(null.StringFrom(fID)),
 	).One(gamedb.StdConn)
 	if err != nil {
 		return terror.Error(err, "Failed to find mech from the collection")
@@ -241,7 +244,7 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetMechBriefInfo(ctx context.Contex
 	// get collection and check ownership
 	ci, err := boiler.CollectionItems(
 		boiler.CollectionItemWhere.ItemID.EQ(mechID),
-		boiler.CollectionItemWhere.OwnerID.EQ(user.ID),
+		qm.Load(boiler.CollectionItemRels.Owner),
 	).One(gamedb.StdConn)
 	if err != nil {
 		return terror.Error(err, "Failed to find mech from the collection")
@@ -269,6 +272,8 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetMechBriefInfo(ctx context.Contex
 		ci.Tier = mech.R.ChassisSkin.R.Blueprint.Tier
 	}
 
+	owner := ci.R.Owner
+
 	m := server.Mech{
 		ID:             mech.ID,
 		Label:          mech.R.Blueprint.Label,
@@ -278,6 +283,12 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetMechBriefInfo(ctx context.Contex
 		Images: &server.Images{
 			AvatarURL: mechSkin.AvatarURL,
 			ImageURL:  mechSkin.ImageURL,
+		},
+		Owner: &server.User{
+			ID:        server.UserID(uuid.FromStringOrNil(owner.ID)),
+			FactionID: server.FactionID(uuid.FromStringOrNil(owner.FactionID.String)),
+			Gid:       owner.Gid,
+			Username:  owner.Username.String,
 		},
 		ChassisSkin: &server.MechSkin{
 			CollectionItem: server.CollectionItemFromBoiler(ci),
@@ -541,7 +552,7 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetKeycardGetHandler(tx context.Con
 		return terror.Error(err, "Invalid request received.")
 	}
 
-	keycard, err := db.PlayerKeycard(req.Payload.ID)
+	keycards, err := db.PlayerKeycards("", req.Payload.ID.String())
 	if errors.Is(err, sql.ErrNoRows) {
 		return terror.Error(err, "Keycard not found.")
 	}
@@ -549,7 +560,11 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetKeycardGetHandler(tx context.Con
 		return terror.Error(err, "Failed to get keycard.")
 	}
 
-	reply(keycard)
+	if len(keycards) == 0 {
+		return terror.Error(fmt.Errorf("keycard not found"), "Keycard not found.")
+	}
+
+	reply(keycards[0])
 
 	return nil
 }
@@ -1040,6 +1055,8 @@ func (pac *PlayerAssetsControllerWS) OpenCrateHandler(ctx context.Context, user 
 		return terror.Error(err, "Could not open mystery crate, please try again or contact support.")
 	}
 
+	ws.PublishMessage(fmt.Sprintf("/user/%s/owned_mystery_crates", user.ID), server.HubKeyPlayerOwnedMysteryCrates, []*server.MysteryCrate{{ID: collectionItem.ID, Opened: true, DeletedAt: null.TimeFrom(time.Now())}})
+
 	if req.Payload.IsHangar {
 		reply(hangarResp)
 		return nil
@@ -1525,6 +1542,8 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetMechEquipHandler(ctx context.Con
 		}
 	}
 	if len(req.Payload.EquipWeapons) != 0 {
+		changedWeaponIDs := []string{}
+
 		for _, ew := range req.Payload.EquipWeapons {
 			if ew.SlotNumber < 0 {
 				l.Error().Msg(fmt.Sprintf("invalid weapon slot number specified: %d", ew.SlotNumber))
@@ -1598,6 +1617,8 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetMechEquipHandler(ctx context.Con
 					l.Error().Err(err).Msg("failed to update weapon on xsyn")
 					return terror.Error(err, errorMsg)
 				}
+
+				changedWeaponIDs = append(changedWeaponIDs, removeMechWeapon.WeaponID.String)
 			} else if ew.WeaponID != "" {
 				// Check if weapon can be modified
 				canEquip, reason, err := db.CanAssetBeModifiedOrMoved(tx, ew.WeaponID, boiler.ItemTypeWeapon, user.ID)
@@ -1740,10 +1761,18 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetMechEquipHandler(ctx context.Con
 					l.Error().Err(err).Msg("failed to update weapon on xsyn")
 					return terror.Error(err, errorMsg)
 				}
+
+				changedWeaponIDs = append(changedWeaponIDs, weapon.ID)
 			}
+		}
+
+		if len(changedWeaponIDs) > 0 {
+			go BroadcastPlayerWeapons(user.ID, changedWeaponIDs...)
 		}
 	}
 	if req.Payload.EquipMechSkin.MechSkinID != "" {
+		changedMechSkinIDs := []string{}
+
 		// Check if mech skin can be equipped
 		canEquip, reason, err := db.CanAssetBeModifiedOrMoved(tx, req.Payload.EquipMechSkin.MechSkinID, boiler.ItemTypeMechSkin, user.ID)
 		if err != nil {
@@ -1837,6 +1866,8 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetMechEquipHandler(ctx context.Con
 			return terror.Error(fmt.Errorf("failed to update previous mech skin"), errorMsg)
 		}
 
+		changedMechSkinIDs = append(changedMechSkinIDs, previousSkin.ID)
+
 		// Equip mech skin to mech
 		equipMech, err := boiler.FindMech(tx, mech.ID)
 		if err != nil {
@@ -1883,6 +1914,8 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetMechEquipHandler(ctx context.Con
 			l.Error().Msg("failed to update mech skin with new mech 2")
 			return terror.Error(fmt.Errorf("failed to update mech skin with new mech"), errorMsg)
 		}
+		changedMechSkinIDs = append(changedMechSkinIDs, mechSkin.ID)
+
 		dbMechSkin, err := db.MechSkin(tx, mechSkin.ID, nil)
 		if err != nil {
 			l.Error().Err(err).Msg("failed to get mechSkin utility")
@@ -1894,6 +1927,8 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetMechEquipHandler(ctx context.Con
 			l.Error().Err(err).Msg("failed to update mechSkin on xsyn")
 			return terror.Error(err, errorMsg)
 		}
+
+		go BroadcastPlayerMechSkins("", "", changedMechSkinIDs...)
 	}
 
 	updatedMech, err := db.Mech(tx, req.Payload.MechID)
@@ -2670,4 +2705,260 @@ func (api *API) PlayerMechs(ctx context.Context, user *boiler.Player, key string
 	}
 	reply(resp)
 	return nil
+}
+
+func (api *API) PlayerWeapons(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
+	resp, err := db.PlayerWeapons(user.ID)
+	if err != nil {
+		return err
+	}
+	reply(resp)
+	return nil
+}
+
+func BroadcastPlayerWeapons(playerID string, weaponIDs ...string) {
+	weapons, err := db.PlayerWeapons(playerID, weaponIDs...)
+	if err != nil {
+		return
+	}
+
+	var playerWeapons []struct {
+		playerID string
+		weapons  []*server.Weapon
+	}
+	for _, weapon := range weapons {
+		ownerID := weapon.CollectionItem.OwnerID
+		index := slices.IndexFunc(playerWeapons, func(pw struct {
+			playerID string
+			weapons  []*server.Weapon
+		}) bool {
+			return pw.playerID == ownerID
+		})
+
+		if index == -1 {
+			playerWeapons = append(playerWeapons, struct {
+				playerID string
+				weapons  []*server.Weapon
+			}{playerID: ownerID, weapons: []*server.Weapon{}})
+
+			index = len(playerWeapons) - 1
+		}
+
+		playerWeapons[index].weapons = append(playerWeapons[index].weapons, weapon)
+	}
+
+	for _, pw := range playerWeapons {
+		ws.PublishMessage(fmt.Sprintf("/user/%s/owned_weapons", pw.playerID), server.HubKeyPlayerOwnedWeapons, pw.weapons)
+	}
+
+	// free up memory
+	playerWeapons = nil
+}
+
+func (api *API) PlayerMechSkins(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
+	resp, err := db.PlayerMechSkins(user.ID, "")
+	if err != nil {
+		return err
+	}
+	reply(resp)
+	return nil
+}
+
+func BroadcastPlayerMechSkins(playerID string, modelID string, mechSkinIDs ...string) {
+	if playerID == "" && len(mechSkinIDs) == 0 {
+		return
+	}
+
+	mechSkins, err := db.PlayerMechSkins(playerID, modelID, mechSkinIDs...)
+	if err != nil {
+		return
+	}
+
+	var playerMechSkins []struct {
+		playerID  string
+		mechSkins []*server.MechSkin
+	}
+	for _, mechSkin := range mechSkins {
+		ownerID := mechSkin.CollectionItem.OwnerID
+		index := slices.IndexFunc(playerMechSkins, func(pw struct {
+			playerID  string
+			mechSkins []*server.MechSkin
+		}) bool {
+			return pw.playerID == ownerID
+		})
+
+		if index == -1 {
+			playerMechSkins = append(playerMechSkins, struct {
+				playerID  string
+				mechSkins []*server.MechSkin
+			}{playerID: ownerID, mechSkins: []*server.MechSkin{}})
+
+			index = len(playerMechSkins) - 1
+		}
+
+		playerMechSkins[index].mechSkins = append(playerMechSkins[index].mechSkins, mechSkin)
+	}
+
+	for _, pw := range playerMechSkins {
+		ws.PublishMessage(fmt.Sprintf("/user/%s/owned_mech_skins", pw.playerID), server.HubKeyPlayerOwnedMechSkins, pw.mechSkins)
+	}
+
+	// free up memory
+	playerMechSkins = nil
+}
+
+func (api *API) PlayerWeaponSkins(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
+	resp, err := db.PlayerWeaponSkins(user.ID)
+	if err != nil {
+		return err
+	}
+	reply(resp)
+	return nil
+}
+
+func BroadcastPlayerWeaponSkins(playerID string, weaponSkinIDs ...string) {
+	if playerID == "" && len(weaponSkinIDs) == 0 {
+		return
+	}
+
+	weaponSkins, err := db.PlayerWeaponSkins(playerID, weaponSkinIDs...)
+	if err != nil {
+		return
+	}
+
+	var playerWeaponSkins []struct {
+		playerID    string
+		weaponSkins []*server.WeaponSkin
+	}
+	for _, weaponSkin := range weaponSkins {
+		ownerID := weaponSkin.CollectionItem.OwnerID
+		index := slices.IndexFunc(playerWeaponSkins, func(pw struct {
+			playerID    string
+			weaponSkins []*server.WeaponSkin
+		}) bool {
+			return pw.playerID == ownerID
+		})
+
+		if index == -1 {
+			playerWeaponSkins = append(playerWeaponSkins, struct {
+				playerID    string
+				weaponSkins []*server.WeaponSkin
+			}{playerID: ownerID, weaponSkins: []*server.WeaponSkin{}})
+
+			index = len(playerWeaponSkins) - 1
+		}
+
+		playerWeaponSkins[index].weaponSkins = append(playerWeaponSkins[index].weaponSkins, weaponSkin)
+	}
+
+	for _, pw := range playerWeaponSkins {
+		ws.PublishMessage(fmt.Sprintf("/user/%s/owned_weapon_skins", pw.playerID), server.HubKeyPlayerOwnedWeaponSkins, pw.weaponSkins)
+	}
+
+	// free up memory
+	playerWeaponSkins = nil
+}
+
+func (api *API) PlayerMysteryCrates(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
+	resp, err := db.PlayerMysteryCrates(user.ID)
+	if err != nil {
+		return err
+	}
+	reply(resp)
+	return nil
+}
+
+func BroadcastPlayerMysteryCrates(playerID string, mysteryCrateIDs ...string) {
+	if playerID == "" && len(mysteryCrateIDs) == 0 {
+		return
+	}
+
+	mysteryCrates, err := db.PlayerMysteryCrates(playerID, mysteryCrateIDs...)
+	if err != nil {
+		return
+	}
+
+	var playerMysteryCrates []struct {
+		playerID      string
+		mysteryCrates []*server.MysteryCrate
+	}
+	for _, mysteryCrate := range mysteryCrates {
+		ownerID := mysteryCrate.CollectionItem.OwnerID
+		index := slices.IndexFunc(playerMysteryCrates, func(pw struct {
+			playerID      string
+			mysteryCrates []*server.MysteryCrate
+		}) bool {
+			return pw.playerID == ownerID
+		})
+
+		if index == -1 {
+			playerMysteryCrates = append(playerMysteryCrates, struct {
+				playerID      string
+				mysteryCrates []*server.MysteryCrate
+			}{playerID: ownerID, mysteryCrates: []*server.MysteryCrate{}})
+
+			index = len(playerMysteryCrates) - 1
+		}
+
+		playerMysteryCrates[index].mysteryCrates = append(playerMysteryCrates[index].mysteryCrates, mysteryCrate)
+	}
+
+	for _, pw := range playerMysteryCrates {
+		ws.PublishMessage(fmt.Sprintf("/user/%s/owned_mystery_crates", pw.playerID), server.HubKeyPlayerOwnedMysteryCrates, pw.mysteryCrates)
+	}
+
+	// free up memory
+	playerMysteryCrates = nil
+}
+
+func (api *API) PlayerKeycards(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
+	resp, err := db.PlayerKeycards(user.ID)
+	if err != nil {
+		return err
+	}
+	reply(resp)
+	return nil
+}
+
+func BroadcastPlayerKeycards(playerID string, keycardIDs ...string) {
+	if playerID == "" && len(keycardIDs) == 0 {
+		return
+	}
+
+	keycards, err := db.PlayerKeycards(playerID, keycardIDs...)
+	if err != nil {
+		return
+	}
+
+	var playerKeycars []struct {
+		playerID string
+		keycards []*server.AssetKeycard
+	}
+	for _, keycard := range keycards {
+		ownerID := keycard.PlayerID
+		index := slices.IndexFunc(playerKeycars, func(pw struct {
+			playerID string
+			keycards []*server.AssetKeycard
+		}) bool {
+			return pw.playerID == ownerID
+		})
+
+		if index == -1 {
+			playerKeycars = append(playerKeycars, struct {
+				playerID string
+				keycards []*server.AssetKeycard
+			}{playerID: ownerID, keycards: []*server.AssetKeycard{}})
+
+			index = len(playerKeycars) - 1
+		}
+
+		playerKeycars[index].keycards = append(playerKeycars[index].keycards, keycard)
+	}
+
+	for _, pw := range playerKeycars {
+		ws.PublishMessage(fmt.Sprintf("/user/%s/owned_keycards", pw.playerID), server.HubKeyPlayerOwnedKeycards, pw.keycards)
+	}
+
+	// free up memory
+	playerKeycars = nil
 }

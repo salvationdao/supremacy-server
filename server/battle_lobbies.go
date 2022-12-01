@@ -61,6 +61,13 @@ type BattleLobbiesMech struct {
 	PowerCore   *PowerCore    `json:"power_core,omitempty"`
 }
 
+type UtilitySlot struct {
+	MechID     string      `json:"mech_id"`
+	UtilityID  null.String `json:"utility_id"`
+	SlotNumber int         `json:"slot_number"`
+	Utility    *Utility    `json:"utility"`
+}
+
 type WeaponSlot struct {
 	MechID          string      `json:"mech_id"`
 	WeaponID        null.String `json:"weapon_id"`
@@ -297,7 +304,6 @@ func BattleLobbiesFromBoiler(bls []*boiler.BattleLobby) ([]*BattleLobby, error) 
 							AND %s %s
 							AND %s ISNULL 
 							AND %s ISNULL 
-							AND %s ISNULL 
 			) _ci`,
 			// SELECT
 			boiler.CollectionItemTableColumns.ItemID,
@@ -314,7 +320,6 @@ func BattleLobbiesFromBoiler(bls []*boiler.BattleLobby) ([]*BattleLobby, error) 
 			boiler.BattleLobbiesMechTableColumns.MechID,
 			boiler.BattleLobbiesMechTableColumns.BattleLobbyID,
 			battleLobbyIDInClause,
-			boiler.BattleLobbiesMechTableColumns.EndedAt,
 			boiler.BattleLobbiesMechTableColumns.RefundTXID,
 			boiler.BattleLobbiesMechTableColumns.DeletedAt,
 		)),
@@ -565,12 +570,12 @@ func BattleLobbiesFromBoiler(bls []*boiler.BattleLobby) ([]*BattleLobby, error) 
 }
 
 // BattleLobbiesFactionFilter omit the mech owner and weapon slots of other faction mechs
-func BattleLobbiesFactionFilter(bls []*BattleLobby, keepDataForFactionID string, toUserID string) []*BattleLobby {
+func BattleLobbiesFactionFilter(bls []*BattleLobby, keepDataForFactionID string, keepAccessCode bool) []*BattleLobby {
 	// generate a new struct
 	battleLobbies := []*BattleLobby{}
 
 	for _, bl := range bls {
-		battleLobbies = append(battleLobbies, BattleLobbyInfoFilter(bl, keepDataForFactionID, bl.HostByID == toUserID))
+		battleLobbies = append(battleLobbies, BattleLobbyInfoFilter(bl, keepDataForFactionID, keepAccessCode))
 	}
 
 	return battleLobbies
@@ -615,6 +620,9 @@ func BattleLobbyInfoFilter(bl *BattleLobby, keepDataForFactionID string, keepAcc
 			battleLobbyMech.WeaponSlots = blm.WeaponSlots
 
 			battleLobbyMech.BlueprintMech = blm.BlueprintMech
+
+			// to fit frontend battle lobby mech struct
+			battleLobbyMech.BlueprintMech.ID = blm.MechID
 		}
 
 		if blm.QueuedBy != nil && blm.QueuedBy.FactionID.String == keepDataForFactionID {

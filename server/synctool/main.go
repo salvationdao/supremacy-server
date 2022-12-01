@@ -6,6 +6,7 @@ import (
 	"database/sql"
 	"encoding/csv"
 	"fmt"
+	"github.com/shopspring/decimal"
 	"io"
 	"log"
 	"net/http"
@@ -43,6 +44,26 @@ func SyncTool(dt *StaticSyncTool) error {
 		return err
 	}
 	err = SyncFactions(f, dt.DB)
+	if err != nil {
+		return err
+	}
+	f.Close()
+
+	f, err = readFile(fmt.Sprintf("%sfaction_palettes.csv", dt.FilePath))
+	if err != nil {
+		return err
+	}
+	err = SyncFactionPalettes(f, dt.DB)
+	if err != nil {
+		return err
+	}
+	f.Close()
+
+	f, err = readFile(fmt.Sprintf("%sfaction_passes.csv", dt.FilePath))
+	if err != nil {
+		return err
+	}
+	err = SyncFactionPasses(f, dt.DB)
 	if err != nil {
 		return err
 	}
@@ -689,20 +710,17 @@ func SyncFactions(f io.Reader, db *sql.DB) error {
 	var Factions []types.Faction
 	for _, record := range records {
 		faction := &types.Faction{
-			ID:              record[0],
-			ContractReward:  record[1],
-			VotePrice:       record[2],
-			Label:           record[3],
-			GuildID:         record[4],
-			DeletedAt:       record[5],
-			UpdatedAt:       record[6],
-			CreatedAt:       record[7],
-			PrimaryColor:    record[8],
-			SecondaryColor:  record[9],
-			BackgroundColor: record[10],
-			LogoURL:         record[11],
-			BackgroundURL:   record[12],
-			Description:     record[13],
+			ID:             record[0],
+			ContractReward: record[1],
+			VotePrice:      record[2],
+			Label:          record[3],
+			GuildID:        record[4],
+			DeletedAt:      record[5],
+			UpdatedAt:      record[6],
+			CreatedAt:      record[7],
+			LogoURL:        record[8],
+			BackgroundURL:  record[9],
+			Description:    record[10],
 		}
 
 		Factions = append(Factions, *faction)
@@ -714,12 +732,12 @@ func SyncFactions(f io.Reader, db *sql.DB) error {
 			guildID = nil
 		}
 		_, err = db.Exec(`
-			INSERT INTO factions (id, label, guild_id, primary_color, secondary_color, background_color, logo_url, background_url, description)
-			VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+			INSERT INTO factions (id, label, guild_id, logo_url, background_url, description)
+			VALUES ($1,$2,$3,$4,$5,$6)
 			ON CONFLICT (id)
 			DO
-				UPDATE SET id=$1, label=$2, guild_id=$3, primary_color=$4, secondary_color=$5, background_color=$6, logo_url=$7, background_url=$8, description=$9;
-		`, faction.ID, faction.Label, guildID, faction.PrimaryColor, faction.SecondaryColor, faction.BackgroundColor, faction.LogoURL, faction.BackgroundURL, faction.Description)
+				UPDATE SET id=$1, label=$2, guild_id=$3, logo_url=$4, background_url=$5, description=$6;
+		`, faction.ID, faction.Label, guildID, faction.LogoURL, faction.BackgroundURL, faction.Description)
 		if err != nil {
 			fmt.Println(err.Error()+faction.ID, faction.Label)
 			return err
@@ -730,7 +748,142 @@ func SyncFactions(f io.Reader, db *sql.DB) error {
 
 	fmt.Println("Finish syncing Factions")
 	return nil
+}
 
+func SyncFactionPalettes(f io.Reader, db *sql.DB) error {
+	r := csv.NewReader(f)
+
+	if _, err := r.Read(); err != nil {
+		return err
+	}
+
+	records, err := r.ReadAll()
+	if err != nil {
+		return err
+	}
+
+	var factionPalettes []types.FactionPalette
+	for _, record := range records {
+		fp := &types.FactionPalette{
+			FactionID:  record[0],
+			Primary:    record[1],
+			Text:       record[2],
+			Background: record[3],
+			S100:       record[4],
+			S200:       record[5],
+			S300:       record[6],
+			S400:       record[7],
+			S500:       record[8],
+			S600:       record[9],
+			S700:       record[10],
+			S800:       record[11],
+			S900:       record[12],
+		}
+
+		factionPalettes = append(factionPalettes, *fp)
+	}
+
+	for _, fp := range factionPalettes {
+		_, err = db.Exec(`
+		INSERT INTO faction_palettes (faction_id, "primary", "text", background, s100, s200, s300, s400, s500, s600, s700, s800, s900)
+			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+		ON CONFLICT (faction_id)
+			DO UPDATE SET
+				faction_id = $1,
+				"primary" = $2,
+				"text" = $3,
+				background = $4,
+				s100 = $5,
+				s200 = $6,
+				s300 = $7,
+				s400 = $8,
+				s500 = $9,
+				s600 = $10,
+				s700 = $11,
+				s800 = $12,
+				s900 = $13;	
+		`,
+			fp.FactionID,  // $1
+			fp.Primary,    // $2
+			fp.Text,       // $3
+			fp.Background, // $4
+			fp.S100,       // $5
+			fp.S200,       // $6
+			fp.S300,       // $7
+			fp.S400,       // $8
+			fp.S500,       // $9
+			fp.S600,       // $10
+			fp.S700,       // $11
+			fp.S800,       // $12
+			fp.S900,       // $13
+		)
+		if err != nil {
+			fmt.Println(err.Error()+fp.FactionID, "color palette")
+			return err
+		}
+
+		fmt.Println("UPDATED: "+fp.FactionID, "color palette")
+	}
+
+	fmt.Println("Finish syncing Faction palettes")
+	return nil
+}
+
+func SyncFactionPasses(f io.Reader, db *sql.DB) error {
+	r := csv.NewReader(f)
+
+	if _, err := r.Read(); err != nil {
+		return err
+	}
+
+	records, err := r.ReadAll()
+	if err != nil {
+		return err
+	}
+
+	for _, record := range records {
+		factionPass := &types.FactionPass{
+			ID:        record[0],
+			Label:     record[1],
+			DeletedAt: null.Time{Valid: record[5] != "", Time: time.Now()},
+		}
+
+		factionPass.LastForDays, err = strconv.Atoi(record[2])
+		if err != nil {
+			return fmt.Errorf("invalid last for days for faction pass")
+		}
+
+		factionPass.EthPriceWei, err = decimal.NewFromString(record[3])
+		if err != nil {
+			return fmt.Errorf("invalid sups cost for faction pass")
+		}
+
+		factionPass.DiscountPercentage, err = decimal.NewFromString(record[4])
+		if err != nil {
+			return fmt.Errorf("invalid sups cost for faction pass")
+		}
+
+		_, err = db.Exec(`
+			INSERT INTO faction_passes (id, label, last_for_days, eth_price_wei, discount_percentage, deleted_at) 
+			VALUES ($1, $2, $3, $4, $5, $6)
+			ON CONFLICT (id)
+			DO UPDATE SET label=$2, last_for_days=$3, eth_price_wei=$4, discount_percentage=$5, deleted_at=$6;
+		`,
+			factionPass.ID,
+			factionPass.Label,
+			factionPass.LastForDays,
+			factionPass.EthPriceWei,
+			factionPass.DiscountPercentage,
+			factionPass.DeletedAt,
+		)
+		if err != nil {
+			fmt.Println(err.Error()+factionPass.ID, factionPass.Label)
+			return err
+		}
+
+	}
+	fmt.Println("Finish syncing Faction Passes")
+	return nil
 }
 
 func SyncBrands(f io.Reader, db *sql.DB) error {

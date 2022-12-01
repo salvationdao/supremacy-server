@@ -1068,3 +1068,175 @@ func GetWeaponMaxStats(conn boil.Executor, userID string) (*WeaponMaxStats, erro
 	}
 	return output, nil
 }
+
+func PlayerWeapons(playerID string, weaponIDs ...string) ([]*server.Weapon, error) {
+	ownerIDWhere := ""
+	if playerID != "" {
+		_, err := uuid.FromString(playerID)
+		if err != nil {
+			return nil, terror.Error(err, "Invalid uuid format.")
+		}
+		ownerIDWhere = fmt.Sprintf(" AND %s = '%s'", boiler.CollectionItemTableColumns.OwnerID, playerID)
+	}
+
+	weaponIDWhereIn := ""
+	if len(weaponIDs) > 0 {
+		weaponIDWhereIn = fmt.Sprintf(" AND %s IN (", boiler.CollectionItemTableColumns.ItemID)
+		for i, weaponID := range weaponIDs {
+			_, err := uuid.FromString(weaponID)
+			if err != nil {
+				return nil, terror.Error(err, "Invalid uuid format.")
+			}
+
+			weaponIDWhereIn += "'" + weaponID + "'"
+			if i < len(weaponIDs)-1 {
+				weaponIDWhereIn += ","
+				continue
+			}
+			weaponIDWhereIn += ")"
+		}
+	}
+
+	queries := []qm.QueryMod{
+		qm.Select(
+			boiler.CollectionItemTableColumns.CollectionSlug,
+			boiler.CollectionItemTableColumns.Hash,
+			boiler.CollectionItemTableColumns.TokenID,
+			boiler.CollectionItemTableColumns.ItemType,
+			boiler.CollectionItemTableColumns.ItemID,
+			boiler.CollectionItemTableColumns.OwnerID,
+			boiler.CollectionItemTableColumns.MarketLocked,
+			boiler.CollectionItemTableColumns.XsynLocked,
+			boiler.CollectionItemTableColumns.LockedToMarketplace,
+
+			boiler.BlueprintWeaponSkinTableColumns.Tier,
+
+			boiler.WeaponModelSkinCompatibilityTableColumns.ImageURL,
+			boiler.WeaponModelSkinCompatibilityTableColumns.AvatarURL,
+			boiler.WeaponModelSkinCompatibilityTableColumns.LargeImageURL,
+
+			boiler.WeaponTableColumns.EquippedOn,
+
+			boiler.BlueprintWeaponTableColumns.Label,
+			boiler.BlueprintWeaponTableColumns.DefaultDamageType,
+			boiler.BlueprintWeaponTableColumns.MaxAmmo,
+			boiler.BlueprintWeaponTableColumns.Damage,
+			boiler.BlueprintWeaponTableColumns.Radius,
+			boiler.BlueprintWeaponTableColumns.Spread,
+			boiler.BlueprintWeaponTableColumns.RateOfFire,
+			boiler.BlueprintWeaponTableColumns.ProjectileSpeed,
+			boiler.BlueprintWeaponTableColumns.PowerCost,
+
+			fmt.Sprintf(
+				"(SELECT %s FROM %s WHERE %s = %s AND %s ISNULL AND %s ISNULL AND %s > NOW()) AS is_on_sales",
+				boiler.ItemSaleTableColumns.ID,
+				boiler.TableNames.ItemSales,
+				boiler.ItemSaleTableColumns.CollectionItemID,
+				boiler.CollectionItemTableColumns.ID,
+				boiler.ItemSaleTableColumns.SoldAt,
+				boiler.ItemSaleTableColumns.DeletedAt,
+				boiler.ItemSaleTableColumns.EndAt,
+			),
+		),
+
+		qm.From(fmt.Sprintf(
+			"(SELECT * FROM %s WHERE %s = '%s' %s %s) %s",
+			boiler.TableNames.CollectionItems,
+			boiler.CollectionItemTableColumns.ItemType,
+			boiler.ItemTypeWeapon,
+			ownerIDWhere,
+			weaponIDWhereIn,
+			boiler.TableNames.CollectionItems,
+		)),
+		qm.InnerJoin(fmt.Sprintf(
+			"%s ON %s = %s",
+			boiler.TableNames.Weapons,
+			boiler.WeaponTableColumns.ID,
+			boiler.CollectionItemTableColumns.ItemID,
+		)),
+		qm.InnerJoin(fmt.Sprintf(
+			"%s ON %s = %s",
+			boiler.TableNames.BlueprintWeapons,
+			boiler.BlueprintWeaponTableColumns.ID,
+			boiler.WeaponTableColumns.BlueprintID,
+		)),
+		qm.InnerJoin(fmt.Sprintf(
+			"%s ON %s = %s",
+			boiler.TableNames.WeaponSkin,
+			boiler.WeaponSkinTableColumns.ID,
+			boiler.WeaponTableColumns.EquippedWeaponSkinID,
+		)),
+		qm.InnerJoin(fmt.Sprintf(
+			"%s ON %s = %s",
+			boiler.TableNames.BlueprintWeaponSkin,
+			boiler.BlueprintWeaponSkinTableColumns.ID,
+			boiler.WeaponSkinTableColumns.BlueprintID,
+		)),
+		qm.InnerJoin(fmt.Sprintf(
+			"%s ON %s = %s AND %s = %s",
+			boiler.TableNames.WeaponModelSkinCompatibilities,
+			boiler.WeaponModelSkinCompatibilityTableColumns.BlueprintWeaponSkinID,
+			boiler.BlueprintWeaponSkinTableColumns.ID,
+			boiler.WeaponModelSkinCompatibilityTableColumns.WeaponModelID,
+			boiler.BlueprintWeaponTableColumns.ID,
+		)),
+	}
+
+	rows, err := boiler.NewQuery(queries...).Query(gamedb.StdConn)
+	if err != nil {
+		gamelog.L.Error().Err(err).Msg("Failed to load weapons.")
+		return nil, terror.Error(err, "Failed to load weapons.")
+	}
+
+	result := []*server.Weapon{}
+	for rows.Next() {
+		weapon := &server.Weapon{
+			CollectionItem: &server.CollectionItem{},
+			Images:         &server.Images{},
+			WeaponSkin: &server.WeaponSkin{
+				CollectionItem: &server.CollectionItem{},
+				Images:         &server.Images{},
+				SkinSwatch:     &server.Images{},
+			},
+		}
+		err = rows.Scan(
+			&weapon.CollectionItem.CollectionSlug,
+			&weapon.CollectionItem.Hash,
+			&weapon.CollectionItem.TokenID,
+			&weapon.CollectionItem.ItemType,
+			&weapon.ID,
+			&weapon.CollectionItem.OwnerID,
+			&weapon.CollectionItem.MarketLocked,
+			&weapon.CollectionItem.XsynLocked,
+			&weapon.CollectionItem.LockedToMarketplace,
+
+			&weapon.CollectionItem.Tier,
+
+			&weapon.Images.ImageURL,
+			&weapon.Images.AvatarURL,
+			&weapon.Images.LargeImageURL,
+
+			&weapon.EquippedOn,
+
+			&weapon.Label,
+			&weapon.DefaultDamageType,
+			&weapon.MaxAmmo,
+			&weapon.Damage,
+			&weapon.Radius,
+			&weapon.Spread,
+			&weapon.RateOfFire,
+			&weapon.ProjectileSpeed,
+			&weapon.PowerCost,
+
+			&weapon.ItemSaleID,
+		)
+		if err != nil {
+			gamelog.L.Error().Err(err).Msg("Failed to scan weapon.")
+			return nil, terror.Error(err, "Failed to scan weapon.")
+		}
+
+		result = append(result, weapon)
+	}
+
+	return result, nil
+}

@@ -1,6 +1,7 @@
 package types
 
 import (
+	"github.com/shopspring/decimal"
 	"github.com/volatiletech/null/v8"
 )
 
@@ -38,20 +39,42 @@ type Brands struct {
 }
 
 type Faction struct {
-	ID              string `json:"id"`
-	ContractReward  string `json:"contract_reward"`
-	VotePrice       string `json:"vote_Price"`
-	Label           string `json:"label"`
-	GuildID         string `json:"guild_id"`
-	DeletedAt       string `json:"deleted_at"`
-	UpdatedAt       string `json:"updated_at"`
-	CreatedAt       string `json:"created_at"`
-	PrimaryColor    string `json:"primary_color"`
-	SecondaryColor  string `json:"secondary_color"`
-	BackgroundColor string `json:"background_color"`
-	LogoURL         string `json:"logo_url"`
-	BackgroundURL   string `json:"background_url"`
-	Description     string `json:"description"`
+	ID             string `json:"id"`
+	ContractReward string `json:"contract_reward"`
+	VotePrice      string `json:"vote_Price"`
+	Label          string `json:"label"`
+	GuildID        string `json:"guild_id"`
+	DeletedAt      string `json:"deleted_at"`
+	UpdatedAt      string `json:"updated_at"`
+	CreatedAt      string `json:"created_at"`
+	LogoURL        string `json:"logo_url"`
+	BackgroundURL  string `json:"background_url"`
+	Description    string `json:"description"`
+}
+
+type FactionPalette struct {
+	FactionID  string `json:"faction_id"`
+	Primary    string `json:"primary"`
+	Text       string `json:"text"`
+	Background string `json:"background"`
+	S100       string `json:"s100"`
+	S200       string `json:"s200"`
+	S300       string `json:"s300"`
+	S400       string `json:"s400"`
+	S500       string `json:"s500"`
+	S600       string `json:"s600"`
+	S700       string `json:"s700"`
+	S800       string `json:"s800"`
+	S900       string `json:"s900"`
+}
+
+type FactionPass struct {
+	ID                 string          `json:"id"`
+	Label              string          `json:"label"`
+	LastForDays        int             `json:"last_for_days"`
+	EthPriceWei        decimal.Decimal `json:"eth_price_wei"`
+	DiscountPercentage decimal.Decimal `json:"discount_percentage"`
+	DeletedAt          null.Time       `json:"deleted_at"`
 }
 
 type MechSkin struct {

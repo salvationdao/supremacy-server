@@ -1,6 +1,10 @@
 package server
 
-import "github.com/volatiletech/null/v8"
+import (
+	"encoding/json"
+	"fmt"
+	"github.com/volatiletech/null/v8"
+)
 
 type Images struct {
 	ImageURL         null.String `json:"image_url,omitempty"`
@@ -10,4 +14,12 @@ type Images struct {
 	BackgroundColor  null.String `json:"background_color,omitempty"`
 	AnimationURL     null.String `json:"animation_url,omitempty"`
 	YoutubeURL       null.String `json:"youtube_url,omitempty"`
+}
+
+func (b *Images) Scan(value interface{}) error {
+	v, ok := value.([]byte)
+	if !ok {
+		return fmt.Errorf("unable to scan value into byte array")
+	}
+	return json.Unmarshal(v, b)
 }

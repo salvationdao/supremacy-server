@@ -7,8 +7,8 @@ import (
 	"server"
 	"server/db/boiler"
 	"server/gamedb"
+	"server/gamelog"
 
-	"github.com/gofrs/uuid"
 	"github.com/ninja-software/terror/v2"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
@@ -132,36 +132,50 @@ func UpdateKeycardReductionAmount(ownerID string, tokenID, amount int) error {
 	return nil
 }
 
-func PlayerKeycard(id uuid.UUID) (*server.AssetKeycard, error) {
-	item := &server.AssetKeycard{}
-	err := boiler.NewQuery(
-		append(
-			keycardQueryMods,
-			boiler.PlayerKeycardWhere.ID.EQ(id.String()),
-		)...,
-	).QueryRow(gamedb.StdConn).Scan(
-		&item.ID,
-		&item.PlayerID,
-		&item.BlueprintKeycardID,
-		&item.Count,
-		&item.CreatedAt,
-		&item.Blueprints.ID,
-		&item.Blueprints.Label,
-		&item.Blueprints.Description,
-		&item.Blueprints.Collection,
-		&item.Blueprints.KeycardTokenID,
-		&item.Blueprints.ImageURL,
-		&item.Blueprints.AnimationURL,
-		&item.Blueprints.KeycardGroup,
-		&item.Blueprints.Syndicate,
-		&item.Blueprints.CreatedAt,
-		&item.ItemSaleIDs,
-		&item.MarketListedCount,
-	)
-	if err != nil {
-		return nil, terror.Error(err)
+func PlayerKeycards(playerID string, ids ...string) ([]*server.AssetKeycard, error) {
+	queries := keycardQueryMods
+	if playerID != "" {
+		queries = append(queries, boiler.PlayerKeycardWhere.PlayerID.EQ(playerID))
 	}
-	return item, nil
+	if len(ids) > 0 {
+		queries = append(queries, boiler.PlayerKeycardWhere.ID.IN(ids))
+	}
+	rows, err := boiler.NewQuery(queries...).Query(gamedb.StdConn)
+	if err != nil {
+		return nil, terror.Error(err, "Failed to load player keycard.")
+	}
+
+	items := []*server.AssetKeycard{}
+	for rows.Next() {
+		item := &server.AssetKeycard{}
+		err = rows.Scan(
+			&item.ID,
+			&item.PlayerID,
+			&item.BlueprintKeycardID,
+			&item.Count,
+			&item.CreatedAt,
+			&item.Blueprints.ID,
+			&item.Blueprints.Label,
+			&item.Blueprints.Description,
+			&item.Blueprints.Collection,
+			&item.Blueprints.KeycardTokenID,
+			&item.Blueprints.ImageURL,
+			&item.Blueprints.AnimationURL,
+			&item.Blueprints.KeycardGroup,
+			&item.Blueprints.Syndicate,
+			&item.Blueprints.CreatedAt,
+			&item.ItemSaleIDs,
+			&item.MarketListedCount,
+		)
+		if err != nil {
+			gamelog.L.Error().Err(err).Msg("Failed to load asset keycard.")
+			return nil, terror.Error(err, "Failed to load asset keycard.")
+		}
+
+		items = append(items, item)
+	}
+
+	return items, nil
 }
 
 func PlayerKeycardList(

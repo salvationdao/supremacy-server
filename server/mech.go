@@ -14,6 +14,13 @@ import (
 /*
 	THIS FILE SHOULD CONTAIN ZERO BOILER STRUCTS
 */
+func (b *Stats) Scan(value interface{}) error {
+	v, ok := value.([]byte)
+	if !ok {
+		return fmt.Errorf("unable to scan value into byte array")
+	}
+	return json.Unmarshal(v, b)
+}
 
 type Stats struct {
 	TotalWins       int `json:"total_wins"`

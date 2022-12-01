@@ -76,6 +76,9 @@ type ArenaManager struct {
 	RepairGameBlockMx deadlock.RWMutex
 
 	SystemLobbyFillingProcess *SystemLobbyFillingProcess
+
+	MechDebounceBroadcastChan         chan []string
+	FactionStakedMechDashboardKeyChan chan []string
 }
 
 type Opts struct {
@@ -110,6 +113,9 @@ func NewArenaManager(opts *Opts) (*ArenaManager, error) {
 		SystemLobbyFillingProcess: &SystemLobbyFillingProcess{
 			Map: make(map[string]*AIMechFillingProcess),
 		},
+
+		MechDebounceBroadcastChan:         make(chan []string, 30),
+		FactionStakedMechDashboardKeyChan: make(chan []string, 30),
 	}
 
 	am.server = &http.Server{
@@ -2276,7 +2282,7 @@ func (arena *Arena) BeginBattle() {
 		gamelog.L.Error().Msg("Failed to update voice chat channels")
 	}
 
-	go BroadcastMechQueueStatus(btl.warMachineIDs)
+	arena.Manager.MechDebounceBroadcastChan <- btl.warMachineIDs
 
 	al, err := db.AbilityLabelList()
 	if err != nil {
@@ -2355,6 +2361,9 @@ func (arena *Arena) BeginBattle() {
 	go btl.BattleStartSystemMessage()
 
 	go arena.NotifyUpcomingWarMachines()
+
+	arena.Manager.FactionStakedMechDashboardKeyChan <- []string{FactionStakedMechDashboardKeyQueue}
+
 }
 
 type SystemMessageBattleStart struct {

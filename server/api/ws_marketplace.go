@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"math"
 	"server"
-	"server/battle"
 	"server/db"
 	"server/db/boiler"
 	"server/gamedb"
@@ -703,7 +702,7 @@ func (mp *MarketplaceController) SalesCreateHandler(ctx context.Context, user *b
 	}
 
 	if ci.ItemType == boiler.ItemTypeMech {
-		go battle.BroadcastMechQueueStatus([]string{ci.ItemID})
+		mp.API.ArenaManager.MechDebounceBroadcastChan <- []string{ci.ItemID}
 	}
 
 	return nil
@@ -760,7 +759,7 @@ func (mp *MarketplaceController) SalesKeycardCreateHandler(ctx context.Context, 
 	//}
 
 	// Check if can sell any keycards
-	keycard, err := db.PlayerKeycard(req.Payload.ItemID)
+	keycards, err := db.PlayerKeycards("", req.Payload.ItemID.String())
 	if errors.Is(err, sql.ErrNoRows) {
 		return terror.Error(err, "Player Keycard not found.")
 	}
@@ -773,6 +772,13 @@ func (mp *MarketplaceController) SalesKeycardCreateHandler(ctx context.Context, 
 			Msg("unable to get player's keycard")
 		return terror.Error(err, errMsg)
 	}
+
+	if len(keycards) == 0 {
+		return terror.Error(fmt.Errorf("keycard not found"), "Keycard not found.")
+	}
+
+	keycard := keycards[0]
+
 	if keycard.Count < 1 {
 		return terror.Error(fmt.Errorf("all keycards are on marketplace"), "Your keycard(s) are already for sale on Marketplace.")
 	}
@@ -1077,7 +1083,7 @@ func (mp *MarketplaceController) SalesArchiveHandler(ctx context.Context, user *
 	}
 
 	if ci.ItemType == boiler.ItemTypeMech {
-		go battle.BroadcastMechQueueStatus([]string{ci.ItemID})
+		mp.API.ArenaManager.MechDebounceBroadcastChan <- []string{ci.ItemID}
 	}
 
 	return nil
@@ -1478,9 +1484,9 @@ func (mp *MarketplaceController) SalesBuyHandler(ctx context.Context, user *boil
 			l.Error().Str("collection item id", saleItem.CollectionItemID).Err(err).Msg("failed to get collection item from db")
 		}
 
-		go battle.BroadcastMechQueueStatus([]string{ci.ItemID})
-
 		if ci != nil {
+			mp.API.ArenaManager.MechDebounceBroadcastChan <- []string{ci.ItemID}
+
 			ws.PublishMessage(fmt.Sprintf("/faction/%s/queue/%s", saleItem.FactionID, ci.ItemID), server.HubKeyPlayerAssetMechQueueSubscribe, &server.MechArenaInfo{
 				Status: server.MechArenaStatusSold,
 			})

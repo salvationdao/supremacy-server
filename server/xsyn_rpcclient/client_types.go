@@ -116,3 +116,11 @@ type GetCurrentSupPriceReq struct{}
 type GetCurrentSupPriceResp struct {
 	PriceUSD decimal.Decimal `json:"price_usd"`
 }
+
+type GetExchangeRatesReq struct{}
+
+type GetExchangeRatesResp struct {
+	SUPtoUSD decimal.Decimal `json:"sup_to_usd"`
+	ETHtoUSD decimal.Decimal `json:"eth_to_usd"`
+	BNBtoUSD decimal.Decimal `json:"bnb_to_usd"`
+}

@@ -323,6 +323,18 @@ func (pc *PlayerController) PlayerProfileCustomAvatarDelete(ctx context.Context,
 	return nil
 }
 
+const HubKeyPlayerFactionPassExpiryDate = "PLAYER:FACTION:PASS:EXPIRY:DATE"
+
+func (api *API) PlayerFactionPassExpiryDate(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
+	if !user.FactionPassExpiresAt.Valid || !user.FactionPassExpiresAt.Time.After(time.Now()) {
+		reply(nil)
+		return nil
+	}
+
+	reply(user.FactionPassExpiresAt)
+	return nil
+}
+
 type PlayerAvatarListRequest struct {
 	Payload struct {
 		Search   string                `json:"search"`

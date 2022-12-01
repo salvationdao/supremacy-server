@@ -28,6 +28,7 @@ const (
 	SystemMessageDataTypeGlobal                SystemMessageDataType = "GLOBAL"
 	SystemMessageDataTypeFaction               SystemMessageDataType = "FACTION"
 	SystemMessageDataTypeExpiredBattleLobby    SystemMessageDataType = "EXPIRED_BATTLE_LOBBY"
+	SystemMessageDataTypeBattleLobbyInvitation SystemMessageDataType = "BATTLE_LOBBY_INVITATION"
 )
 
 var bm = bluemonday.StrictPolicy()

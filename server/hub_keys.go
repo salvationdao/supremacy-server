@@ -112,7 +112,12 @@ const HubKeyVoiceStreamGetListeners = "VOICE:STREAM:GET:LISTENERS"
 
 // battle queue
 
-const HubKeyPlayerQueueableMechs = "PLAYER:QUEUEABLE:MECHS"
+const HubKeyPlayerOwnedMechs = "PLAYER:OWNED:MECHS"
+const HubKeyPlayerOwnedWeapons = "PLAYER:OWNED:WEAPONS"
+const HubKeyPlayerOwnedMechSkins = "PLAYER:OWNED:MECH:SKINS"
+const HubKeyPlayerOwnedWeaponSkins = "PLAYER:OWNED:WEAPON:SKINS"
+const HubKeyPlayerOwnedMysteryCrates = "PLAYER:OWNED:MYSTERY:CRATES"
+const HubKeyPlayerOwnedKeycards = "PLAYER:OWNED:KEYCARDS"
 const HubKeyFactionStakedMechs = "FACTION:STAKED:MECHS"
 
 const HubKeyBattleLobbyListUpdate = "BATTLE:LOBBY:LIST:UPDATE"
@@ -120,3 +125,14 @@ const HubKeyInvolvedBattleLobbyListUpdate = "INVOLVED:BATTLE:LOBBY:LIST:UPDATE"
 const HubKeyPrivateBattleLobbyUpdate = "PRIVATE:BATTLE:LOBBY:UPDATE"
 const HubKeyPlayerAssetMechQueueSubscribe = "PLAYER:ASSET:MECH:QUEUE:SUBSCRIBE"
 const HubKeyBattleETAUpdate = "BATTLE:ETA:UPDATE"
+
+// faction pass
+
+const HubKeyFactionMostPopularStakedMech = "FACTION:MOST:POPULAR:STAKED:MECH"
+const HubKeyFactionStakedMechCount = "FACTION:STAKED:MECH:COUNT"
+const HubKeyFactionStakedMechInQueueCount = "FACTION:STAKED:MECH:IN:QUEUE:COUNT"
+const HubKeyFactionStakedMechDamagedCount = "FACTION:STAKED:MECH:DAMAGED:COUNT"
+const HubKeyFactionStakedMechBattleReadyCount = "FACTION:STAKED:MECH:BATTLE:READY:COUNT"
+const HubKeyFactionStakedMechInBattleCount = "FACTION:STAKED:MECH:IN:BATTLE:COUNT"
+const HubKeyFactionStakedMechBattledCount = "FACTION:STAKED:MECH:BATTLED:COUNT"
+const HubKeyFactionStakedMechInRepairBay = "FACTION:STAKED:MECH:IN:REPAIR:BAY"

@@ -296,3 +296,29 @@ dev-sync-data-windows:
 .PHONE: fill-incomplete-lobbies
 fill-incomplete-lobbies:
 	curl -i -H "X-Authorization: NinjaDojo_!" -k https://api.supremacygame.io/api/battle/fill_up_incomplete_lobbies
+
+.PHONY: stripe-listen
+stripe-listen:
+	$(BIN)/stripe listen --forward-to localhost:8084/stripe-webhook
+
+.PHONY: stripe-login
+stripe-login:
+	$(BIN)/stripe login
+
+.PHONY: stripe-init
+stripe-init:
+	cd $(BIN) && curl -L  https://github.com/stripe/stripe-cli/releases/download/v1.12.4/stripe_1.12.4_linux_x86_64.tar.gz | tar xvz
+	$(BIN)/stripe login
+
+stripe-init-mac:
+	cd $(BIN) && curl -L  https://github.com/stripe/stripe-cli/releases/download/v1.12.4/stripe_1.12.4_mac-os_x86_64.tar.gz | tar xvz
+	$(BIN)/stripe login
+
+stripe-init-windows:
+	cd $(BIN) && powershell Invoke-WebRequest -Uri "https://github.com/stripe/stripe-cli/releases/download/v1.12.4/stripe_1.12.4_windows_x86_64.zip" -OutFile "./stripe_1.12.4_windows_x86_64.zip" -UseBasicParsing
+	cd $(BIN) && powershell Expand-Archive './stripe_1.12.4_windows_x86_64.zip' -DestinationPath './' && powershell rm './stripe_1.12.4_windows_x86_64.zip'
+	$(BIN)/stripe login
+
+.PHONY: stripe-trigger
+stripe-trigger:
+	$(BIN)/stripe trigger charge.succeeded

@@ -46,6 +46,7 @@ const HubKeyGameMapList = "GAME:MAP:LIST"
 func (api *API) GameMapListSubscribeHandler(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
 	gameMap, err := boiler.GameMaps(
 		boiler.GameMapWhere.DisabledAt.IsNull(),
+		boiler.GameMapWhere.BackgroundURL.NEQ(""),
 	).All(gamedb.StdConn)
 	if err != nil {
 		gamelog.L.Error().Str("func", "GameMapListSubscribeHandler").Msg("Failed to load game maps.")
@@ -382,15 +383,6 @@ func (api *API) FactionStakedMechs(ctx context.Context, user *boiler.Player, fac
 	l := gamelog.L.With().Str("func", "FactionStakedMechs").Logger()
 	sms, err := boiler.StakedMechs(
 		boiler.StakedMechWhere.FactionID.EQ(factionID),
-		qm.Where(fmt.Sprintf(
-			"NOT EXISTS (SELECT 1 FROM %s WHERE %s = %s AND %s ISNULL AND %s ISNULL AND %s ISNULL)",
-			boiler.TableNames.BattleLobbiesMechs,
-			boiler.BattleLobbiesMechTableColumns.MechID,
-			boiler.StakedMechTableColumns.MechID,
-			boiler.BattleLobbiesMechTableColumns.EndedAt,
-			boiler.BattleLobbiesMechTableColumns.RefundTXID,
-			boiler.BattleLobbiesMechTableColumns.DeletedAt,
-		)),
 	).All(gamedb.StdConn)
 	if err != nil {
 		l.Error().Err(err).Msg("Failed to load staked mechs.")

@@ -34,7 +34,7 @@ func NewMechRepairController(api *API) {
 	api.SecureUserCommand(server.HubKeyRepairAgentRecord, api.RepairAgentRecord)
 	api.SecureUserCommand(server.HubKeyRepairAgentAbandon, api.RepairAgentAbandon)
 
-	api.SecureUserCommand(server.HubKeyMechRepairSlotInsert, api.MechRepairSlotInsert)
+	api.SecureUserFactionCommand(server.HubKeyMechRepairSlotInsert, api.MechRepairSlotInsert)
 	api.SecureUserCommand(server.HubKeyMechRepairSlotRemove, api.MechRepairSlotRemove)
 	api.SecureUserCommand(server.HubKeyMechRepairSlotSwap, api.MechRepairSlotSwap)
 
@@ -495,20 +495,6 @@ func (api *API) broadcastRepairOffer(repairOfferID string) error {
 	return nil
 }
 
-// BroadcastMechQueueStat broadcast current mech queue stat
-func BroadcastMechQueueStat(mechID string) {
-	ci, err := boiler.CollectionItems(
-		boiler.CollectionItemWhere.ItemType.EQ(boiler.ItemTypeMech),
-		boiler.CollectionItemWhere.ItemID.EQ(mechID),
-		qm.Load(boiler.CollectionItemRels.Owner),
-	).One(gamedb.StdConn)
-	if err != nil && !errors.Is(err, sql.ErrNoRows) {
-		return
-	}
-
-	go battle.BroadcastMechQueueStatus([]string{ci.ItemID})
-}
-
 type RepairAgentAbandonRequest struct {
 	Payload struct {
 		RepairAgentID string `json:"repair_agent_id"`
@@ -566,7 +552,7 @@ type MechRepairSlotInsertRequest struct {
 	} `json:"payload"`
 }
 
-func (api *API) MechRepairSlotInsert(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
+func (api *API) MechRepairSlotInsert(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
 	L := gamelog.L.With().Str("func", "MechRepairSlotInsert").Interface("user", user).Logger()
 
 	req := &MechRepairSlotInsertRequest{}
@@ -575,23 +561,38 @@ func (api *API) MechRepairSlotInsert(ctx context.Context, user *boiler.Player, k
 		return terror.Error(err, "Invalid request received.")
 	}
 
-	// validate ownership
-	cis, err := boiler.CollectionItems(
-		boiler.CollectionItemWhere.ItemType.EQ(boiler.ItemTypeMech),
+	rows, err := boiler.NewQuery(
+		qm.Select(
+			boiler.CollectionItemTableColumns.ItemID,
+			boiler.CollectionItemTableColumns.OwnerID,
+			boiler.StakedMechTableColumns.FactionID,
+		),
+		qm.From(boiler.TableNames.CollectionItems),
+		qm.LeftOuterJoin(fmt.Sprintf(
+			"%s ON %s = %s",
+			boiler.TableNames.StakedMechs,
+			boiler.StakedMechTableColumns.MechID,
+			boiler.CollectionItemTableColumns.ItemID,
+		)),
 		boiler.CollectionItemWhere.ItemID.IN(req.Payload.MechIDs),
-	).All(gamedb.StdConn)
+	).Query(gamedb.StdConn)
 	if err != nil {
-		gamelog.L.Error().Err(err).Str("item type", boiler.ItemTypeMech).Strs("mech id list", req.Payload.MechIDs).Msg("Failed to query war machine collection item")
-		return terror.Error(err, "Failed to load war machine detail.")
+		gamelog.L.Error().Err(err).Msg("Failed to load mechs.")
+		return terror.Error(err, "Failed to load mechs")
 	}
 
-	if len(req.Payload.MechIDs) != len(cis) {
-		return terror.Error(fmt.Errorf("contain non-mech asset"), "Request contain non-mech asset.")
-	}
+	for rows.Next() {
+		mechID := ""
+		ownerID := ""
+		mechFactionID := null.String{}
+		err = rows.Scan(&mechID, &ownerID, &mechFactionID)
+		if err != nil {
+			gamelog.L.Error().Err(err).Msg("Failed to scan mech ownership.")
+			return terror.Error(err, "Failed to scan mech ownership.")
+		}
 
-	for _, ci := range cis {
-		if ci.OwnerID != user.ID {
-			return terror.Error(fmt.Errorf("do not own the mech"), "The mech is not owned by you.")
+		if ownerID != user.ID && (!mechFactionID.Valid || mechFactionID.String != factionID) {
+			return terror.Error(fmt.Errorf("invalid ownership"), "Player can only repair mechs which is owned by themselves or in their faction mech pool.")
 		}
 	}
 
@@ -698,15 +699,17 @@ func (api *API) MechRepairSlotInsert(ctx context.Context, user *boiler.Player, k
 
 		return nil
 	})
+	if err != nil {
+		return err
+	}
 
 	// broadcast changes, if slot changed
 	if shouldBroadcast {
 		go battle.BroadcastRepairBay(user.ID)
 	}
 
-	if err != nil {
-		return err
-	}
+	// update faction staked mech repair bay status
+	api.ArenaManager.FactionStakedMechDashboardKeyChan <- []string{battle.FactionStakedMechDashboardKeyRepairBay}
 
 	reply(true)
 
@@ -851,6 +854,9 @@ func (api *API) MechRepairSlotRemove(ctx context.Context, user *boiler.Player, k
 	if err != nil {
 		return err
 	}
+
+	// update faction staked mech repair bay status
+	api.ArenaManager.FactionStakedMechDashboardKeyChan <- []string{battle.FactionStakedMechDashboardKeyRepairBay}
 
 	reply(true)
 	return nil
@@ -1261,7 +1267,7 @@ func (api *API) completeRepairAgent(repairAgentID string, userID string) error {
 
 		// broadcast current mech stat if damage blocks is less than or equal to deploy ratio
 		if decimal.NewFromInt(int64(rc.BlocksRequiredRepair - rc.BlocksRepaired)).Div(decimal.NewFromInt(int64(totalBlocks))).LessThanOrEqual(canDeployRatio) {
-			go BroadcastMechQueueStat(rc.MechID)
+			api.ArenaManager.MechDebounceBroadcastChan <- []string{rc.MechID}
 		}
 		ws.PublishMessage(fmt.Sprintf("/secure/mech/%s/repair_case", rc.MechID), server.HubKeyMechRepairCase, rc)
 		return nil
@@ -1271,7 +1277,7 @@ func (api *API) completeRepairAgent(repairAgentID string, userID string) error {
 	ws.PublishMessage(fmt.Sprintf("/secure/mech/%s/repair_case", rc.MechID), server.HubKeyMechRepairCase, nil)
 
 	// broadcast current mech stat
-	go BroadcastMechQueueStat(rc.MechID)
+	api.ArenaManager.MechDebounceBroadcastChan <- []string{rc.MechID}
 
 	// close repair case
 	rc.CompletedAt = null.TimeFrom(time.Now())
@@ -1391,11 +1397,18 @@ func (api *API) completeRepairAgent(repairAgentID string, userID string) error {
 			gamelog.L.Error().Err(err).Interface("repair offers", ros).Msg("Failed to close repair offer.")
 			return terror.Error(err, "Failed to close repair offer.")
 		}
+
+		// update faction repair bay data
+		api.ArenaManager.FactionStakedMechDashboardKeyChan <- []string{battle.FactionStakedMechDashboardKeyRepairBay}
+
 		return nil
 	})
 	if err != nil {
 		return err
 	}
+
+	// update faction damage data
+	api.ArenaManager.FactionStakedMechDashboardKeyChan <- []string{battle.FactionStakedMechDashboardKeyDamaged}
 
 	return nil
 }
