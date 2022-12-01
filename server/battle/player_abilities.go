@@ -1383,7 +1383,7 @@ type MechMoveCommandCreateRequest struct {
 	} `json:"payload"`
 }
 
-// MechMoveCommandCreateHandler send mech move command to game client
+// MechMoveCommandCreateHandler send mech move command to game clie nt
 func (arena *Arena) MechMoveCommandCreateHandler(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
 	// check battle state
 	if arena.CurrentBattleState() == EndState {

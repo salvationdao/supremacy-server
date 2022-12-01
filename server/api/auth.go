@@ -515,6 +515,10 @@ func (api *API) TokenLogin(tokenBase64 string, ignoreErr ...bool) (*server.Playe
 		return nil, err
 	}
 
+	if userResp.ID == "" {
+		return nil, terror.Error(fmt.Errorf("missing user id"), "Missing user id.")
+	}
+
 	err = api.UpsertPlayer(userResp.ID, null.StringFrom(userResp.Username), userResp.PublicAddress, userResp.FactionID, userResp.AccountID, nil, userResp.AcceptsMarketing)
 	if err != nil {
 		if !ignoreError {

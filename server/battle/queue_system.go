@@ -117,6 +117,11 @@ func (am *ArenaManager) broadcastBattleLobbyUpdate(battleLobbyIDs ...string) {
 
 		}
 
+		// broadcast individual lobby
+		go ws.PublishMessage(fmt.Sprintf("/faction/%s/battle_lobby/%s", server.RedMountainFactionID, bl.ID), server.HubKeyPrivateBattleLobbyUpdate, server.BattleLobbyInfoFilter(bl, server.RedMountainFactionID, true))
+		go ws.PublishMessage(fmt.Sprintf("/faction/%s/battle_lobby/%s", server.BostonCyberneticsFactionID, bl.ID), server.HubKeyPrivateBattleLobbyUpdate, server.BattleLobbyInfoFilter(bl, server.BostonCyberneticsFactionID, true))
+		go ws.PublishMessage(fmt.Sprintf("/faction/%s/battle_lobby/%s", server.ZaibatsuFactionID, bl.ID), server.HubKeyPrivateBattleLobbyUpdate, server.BattleLobbyInfoFilter(bl, server.ZaibatsuFactionID, true))
+
 		// build player involved lobby map
 		if bl.HostBy != nil && bl.HostBy.FactionID.Valid {
 			host := bl.HostBy
