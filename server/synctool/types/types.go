@@ -147,7 +147,7 @@ type Weapon struct {
 	ChargeTimeSeconds   string      `json:"charge_time_seconds"`
 	BurstRateOfFire     string      `json:"burst_rate_of_fire"`
 	PowerInstantDrain   string      `json:"power_instant_drain"`
-	DotTickDuration     string      `boiler:"dot_tick_duration"`
+	DotTickDuration     int         `boiler:"dot_tick_duration"`
 	ProjectileLifeSpan  string      `boiler:"projectile_life_span"`
 	RecoilForce         string      `boiler:"recoil_force"`
 	IdlePowerCost       string      `boiler:"idle_power_cost"`
