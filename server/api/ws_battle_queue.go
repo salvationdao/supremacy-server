@@ -1754,7 +1754,7 @@ func MechAuthorisationFilter(player *boiler.Player, factionID string, mechIDs []
 
 		if mqa.StakedOnFactionID.Valid {
 			if !player.FactionPassExpiresAt.Valid || player.FactionPassExpiresAt.Time.Before(time.Now()) {
-				return nil, terror.Error(fmt.Errorf("faction pass is expired"), "Faction pass is expired")
+				return nil, terror.Error(fmt.Errorf("faction pass is expired"), "Required faction pass to queue staked mechs.")
 			}
 			// check faction id if the mech is staked in faction list
 			if mqa.StakedOnFactionID.String != factionID || mqa.OwnerID == player.ID {
