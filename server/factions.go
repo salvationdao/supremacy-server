@@ -13,9 +13,9 @@ type Faction struct {
 	Label           string `json:"label" db:"label"`
 	VotePrice       string `json:"vote_price" db:"vote_price"`
 	ContractReward  string `json:"contract_reward" db:"contract_reward"`
-	PrimaryColor    string `json:"primary_color"`
-	SecondaryColor  string `json:"secondary_color"`
-	BackgroundColor string `json:"background_color"`
+	PrimaryColor    string `json:"primary_color" db:"primary_color"`
+	SecondaryColor  string `json:"secondary_color" db:"secondary_color"`
+	BackgroundColor string `json:"background_color" db:"background_color"`
 }
 
 func (b *Faction) Scan(value interface{}) error {

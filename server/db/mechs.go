@@ -159,10 +159,28 @@ func getDefaultMechQueryMods() []qm.QueryMod {
 			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.ItemID),
 		)),
 		// outer join player faction
-		qm.LeftOuterJoin(fmt.Sprintf("%s ON %s = %s",
+		qm.LeftOuterJoin(fmt.Sprintf(
+			`(
+				SELECT 
+					%s.*,
+					%s AS primary_color,
+					%s AS secondary_color,
+					%s AS background_color
+				FROM %s 
+				INNER JOIN %s ON %s = %s ) %s ON %s = %s`,
+
 			boiler.TableNames.Factions,
-			qm.Rels(boiler.TableNames.Factions, boiler.FactionColumns.ID),
-			qm.Rels(boiler.TableNames.Players, boiler.PlayerColumns.FactionID),
+			boiler.FactionPaletteTableColumns.Primary,
+			boiler.FactionPaletteTableColumns.Text,
+			boiler.FactionPaletteTableColumns.Background,
+
+			boiler.TableNames.Factions,
+			boiler.TableNames.FactionPalettes,
+			boiler.FactionTableColumns.ID,
+			boiler.FactionPaletteTableColumns.FactionID,
+			boiler.TableNames.Factions,
+			boiler.FactionTableColumns.ID,
+			boiler.PlayerTableColumns.FactionID,
 		)),
 		// outer join power cores
 		qm.LeftOuterJoin(fmt.Sprintf(`(
