@@ -1708,7 +1708,7 @@ func (api *API) BattleLobbyTopUpReward(ctx context.Context, user *boiler.Player,
 }
 
 // MechAuthorisationFilter return error if any mechs is not available to queue
-func MechAuthorisationFilter(playerID string, factionID string, mechIDs []string) ([]string, error) {
+func MechAuthorisationFilter(player *boiler.Player, factionID string, mechIDs []string) ([]string, error) {
 	if len(mechIDs) == 0 {
 		return []string{}, nil
 	}
@@ -1753,13 +1753,16 @@ func MechAuthorisationFilter(playerID string, factionID string, mechIDs []string
 		}
 
 		if mqa.StakedOnFactionID.Valid {
+			if !player.FactionPassExpiresAt.Valid || player.FactionPassExpiresAt.Time.Before(time.Now()) {
+				return nil, terror.Error(fmt.Errorf("faction pass is expired"), "Faction pass is expired")
+			}
 			// check faction id if the mech is staked in faction list
-			if mqa.StakedOnFactionID.String != factionID || mqa.OwnerID == playerID {
+			if mqa.StakedOnFactionID.String != factionID || mqa.OwnerID == player.ID {
 				continue
 			}
 		} else {
 			// otherwise, check owner id
-			if mqa.OwnerID != playerID {
+			if mqa.OwnerID != player.ID {
 				continue
 			}
 		}
