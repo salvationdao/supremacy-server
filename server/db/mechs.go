@@ -200,9 +200,9 @@ func getDefaultMechQueryMods() []qm.QueryMod {
 				_bppc.image_url AS image_url,
 				_bppc.avatar_url AS avatar_url,
 				_bppc.card_animation_url AS card_animation_url,
-				_bppc.animation_url AS animation_url
-				_bppc.movement_share AS movement_share
-				_bppc.weapon_share AS weapon_share
+				_bppc.animation_url AS animation_url,
+				_bppc.movement_share AS movement_share,
+				_bppc.weapon_share AS weapon_share,
 				_bppc.utility_share AS utility_share
 			FROM
 				power_cores _pc

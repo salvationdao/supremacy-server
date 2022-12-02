@@ -178,7 +178,7 @@ func (ev EventType) String() string {
 	return [...]string{"killed", "kill", "spawned_ai", "ability_triggered"}[ev]
 }
 
-//DefaultFactionPlayers return default mech players
+// DefaultFactionPlayers return default mech players
 func DefaultFactionPlayers() (map[string]PlayerWithFaction, error) {
 	players, err := boiler.Players(qm.Where("is_ai = true"), boiler.PlayerWhere.FactionID.IsNotNull()).All(gamedb.StdConn)
 	if err != nil {
