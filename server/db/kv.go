@@ -92,6 +92,7 @@ const KeyMinimumMechActionCount KVKey = "minimum_mech_action_count"
 const KeyFiatToSUPCut KVKey = "fiat_to_sup_cut" // TODO: find better name to describe: "20% cheaper than fiat pricing"
 
 const KeyDefaultPublicLobbyCount KVKey = "default_public_lobby_count"
+const KeySystemLobbyDefaultExtraReward KVKey = "system_lobby_extra_reward"
 const KeyScheduledLobbyPrepareDurationSeconds KVKey = "scheduled_lobby_prepare_duration_seconds"
 const KeyOpenNewArenaEveryXAmountOfBattleLobbies KVKey = "open_new_arena_after_x_amount_of_battle_lobbies"
 
