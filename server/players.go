@@ -87,6 +87,7 @@ func PlayerFromBoiler(player *boiler.Player, features ...boiler.FeatureSlice) *P
 		SyndicateID:      player.SyndicateID,
 		Features:         serverFeatures,
 		AcceptsMarketing: player.AcceptsMarketing,
+		AccountID:        player.XsynAccountID.String,
 	}
 
 	if player.R != nil {

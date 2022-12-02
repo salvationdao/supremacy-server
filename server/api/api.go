@@ -224,12 +224,12 @@ func NewAPI(
 	)
 
 	api.Routes.Handle("/metrics", promhttp.Handler())
-	api.Routes.Post("/stripe-webhook", WithError(fc.StripeWebhook))
 	api.Routes.Route("/api", func(r chi.Router) {
 		r.Group(func(r chi.Router) {
 			sentryHandler := sentryhttp.New(sentryhttp.Options{})
 			r.Use(sentryHandler.Handle)
 		})
+		r.Post("/stripe-webhook", WithError(fc.StripeWebhook))
 		r.Mount("/check", CheckRouter(arenaManager, telegram, arenaManager.IsClientConnected))
 		r.Mount("/stat", AssetStatsRouter(api))
 		r.Mount(fmt.Sprintf("/%s/Supremacy_game", server.SupremacyGameUserID), PassportWebhookRouter(config.PassportWebhookSecret, api))

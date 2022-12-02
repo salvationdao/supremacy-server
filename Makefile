@@ -180,7 +180,7 @@ serve-arelo:
 
 .PHONY: serve-stripe-webhook
 serve-stripe-webhook:
-	stripe listen --forward-to localhost:8084/stripe-webhook
+	stripe listen --forward-to localhost:8084/api/stripe-webhook
 
 .PHONY: lb
 lb:
@@ -299,7 +299,7 @@ fill-incomplete-lobbies:
 
 .PHONY: stripe-listen
 stripe-listen:
-	$(BIN)/stripe listen --forward-to localhost:8084/stripe-webhook
+	$(BIN)/stripe listen --forward-to localhost:8084/api/stripe-webhook
 
 .PHONY: stripe-login
 stripe-login:
