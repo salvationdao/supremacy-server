@@ -132,6 +132,10 @@ type PowerCore struct {
 	EquippedOn   null.String     `json:"equipped_on,omitempty"`
 	CreatedAt    time.Time       `json:"created_at"`
 
+	MovementShare int `json:"movement_share,omitempty"`
+	WeaponShare   int `json:"weapon_share,omitempty"`
+	UtilityShare  int `json:"utility_share,omitempty"`
+
 	MovementSystemCurrentPower float32
 	ShieldSystemCurrentPower   float32
 	WeaponSystemCurrentPower   float32
@@ -143,9 +147,9 @@ type PowerCoreGameClient struct {
 	PowerCapacity            float64 `json:"power_capacity"`
 	RechargeRate             float64 `json:"recharge_rate"`
 	MaxDrawRate              float64 `json:"max_draw_rate"`
-	WeaponSystemAllocation   float64 `json:"weapon_system_allocation"`
-	MovementSystemAllocation float64 `json:"movement_system_allocation"`
-	UtilitySystemAllocation  float64 `json:"utility_system_allocation"`
+	WeaponSystemAllocation   int     `json:"weapon_system_allocation"`
+	MovementSystemAllocation int     `json:"movement_system_allocation"`
+	UtilitySystemAllocation  int     `json:"utility_system_allocation"`
 }
 
 type WarMachinePowerStats struct {
@@ -288,9 +292,9 @@ func WarMachineToClient(wm *WarMachine) *WarMachineGameClient {
 			PowerCapacity:            wm.PowerCore.Capacity.InexactFloat64(),
 			RechargeRate:             wm.PowerCore.RechargeRate.InexactFloat64(),
 			MaxDrawRate:              wm.PowerCore.MaxDrawRate.InexactFloat64(),
-			WeaponSystemAllocation:   100, // todo: wut this aye
-			MovementSystemAllocation: 0,
-			UtilitySystemAllocation:  0,
+			WeaponSystemAllocation:   wm.PowerCore.WeaponShare,
+			MovementSystemAllocation: wm.PowerCore.MovementShare,
+			UtilitySystemAllocation:  wm.PowerCore.UtilityShare,
 		}
 	}
 
@@ -356,16 +360,19 @@ func PowerCoreFromServer(pc *server.PowerCore) *PowerCore {
 		return nil
 	}
 	return &PowerCore{
-		ID:           pc.ID,
-		ModelID:      pc.BlueprintID,
-		Label:        pc.Label,
-		Capacity:     pc.Capacity,
-		MaxDrawRate:  pc.MaxDrawRate,
-		RechargeRate: pc.RechargeRate,
-		Armour:       pc.Armour,
-		MaxHitpoints: pc.MaxHitpoints,
-		EquippedOn:   pc.EquippedOn,
-		CreatedAt:    pc.CreatedAt,
+		ID:            pc.ID,
+		ModelID:       pc.BlueprintID,
+		Label:         pc.Label,
+		Capacity:      pc.Capacity,
+		MaxDrawRate:   pc.MaxDrawRate,
+		RechargeRate:  pc.RechargeRate,
+		Armour:        pc.Armour,
+		MaxHitpoints:  pc.MaxHitpoints,
+		EquippedOn:    pc.EquippedOn,
+		CreatedAt:     pc.CreatedAt,
+		MovementShare: pc.MovementShare,
+		WeaponShare:   pc.WeaponShare,
+		UtilityShare:  pc.UtilityShare,
 	}
 }
 

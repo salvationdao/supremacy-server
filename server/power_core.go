@@ -26,7 +26,10 @@ type PowerCore struct {
 	CreatedAt             time.Time       `json:"created_at"`
 	GenesisTokenID        null.Int64      `json:"genesis_token_id,omitempty"`
 	LimitedReleaseTokenID null.Int64      `json:"limited_release_token_id,omitempty"`
-
+	MovementShare         int             `json:"movement_share,omitempty"`
+	WeaponShare           int             `json:"weapon_share,omitempty"`
+	UtilityShare          int             `json:"utility_share,omitempty"`
+	Weapon
 	EquippedOnDetails *EquippedOnDetails
 }
 
