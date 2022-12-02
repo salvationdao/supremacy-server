@@ -618,36 +618,22 @@ func (am *ArenaManager) DefaultPublicLobbiesCheck() error {
 			return terror.Error(err, "Failed to insert public battle lobbies.")
 		}
 
-		// paidTxID, err = am.RPCClient.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
-		// 	FromUserID:           uuid.Must(uuid.FromString(server.SupremacyBattleUserID)),
-		// 	ToUserID:             uuid.Must(uuid.FromString(server.SupremacyBattleUserID)),
-		// 	Amount:               amount.StringFixed(0),
-		// 	TransactionReference: server.TransactionReference(fmt.Sprintf("battle_lobby_extra_reward|%s|%d", bl.ID, time.Now().UnixNano())),
-		// 	Group:                string(server.TransactionGroupSupremacy),
-		// 	SubGroup:             string(server.TransactionGroupBattle),
-		// 	Description:          "adding extra sups reward for battle lobby.",
-		// })
-		// if err != nil {
-		// 	return terror.Error(err, "Failed to add sups reward, check your balance and try again.")
-		// }
+		amount := db.GetDecimalWithDefault(db.KeySystemLobbyDefaultExtraReward, decimal.New(100, 18))
 
-		amount := decimal.NewFromInt(100).Mul(decimal.New(1, 18))
+		if amount.GreaterThan(decimal.Zero) {
+			blr := &boiler.BattleLobbyExtraSupsReward{
+				BattleLobbyID: bl.ID,
+				OfferedByID:   server.SupremacyBattleUserID,
+				Amount:        amount,
+				PaidTXID:      "SYSTEM_DEFAULT_REWARD",
+			}
 
-		var paidTxID string
-
-		blr := &boiler.BattleLobbyExtraSupsReward{
-			BattleLobbyID: bl.ID,
-			OfferedByID:   server.SupremacyBattleUserID,
-			Amount:        amount,
-			PaidTXID:      paidTxID,
+			err = blr.Insert(gamedb.StdConn, boil.Infer())
+			if err != nil {
+				gamelog.L.Error().Err(err).Interface("battle lobby reward", blr).Msg("Failed to add battle lobby reward.")
+				continue
+			}
 		}
-
-		err = blr.Insert(gamedb.StdConn, boil.Infer())
-		if err != nil {
-			gamelog.L.Error().Err(err).Interface("battle lobby reward", blr).Msg("Failed to add battle lobby reward.")
-			continue
-		}
-
 	}
 
 	return nil
@@ -1092,7 +1078,7 @@ func (am *ArenaManager) AddAIMechFillingProcess(battleLobbyID string) {
 
 			// insert AI mech into the lobby
 			q := fmt.Sprintf(
-				"INSERT INTO %s (%s, %s, %s, %s)  VALUES ",
+				"INSERT INTO %S (%S, %S, %S, %S)  VALUES ",
 				boiler.TableNames.BattleLobbiesMechs,
 				boiler.BattleLobbiesMechColumns.BattleLobbyID,
 				boiler.BattleLobbiesMechColumns.MechID,
@@ -1156,6 +1142,23 @@ func (am *ArenaManager) AddAIMechFillingProcess(battleLobbyID string) {
 			if err != nil {
 				gamelog.L.Error().Err(err).Msg("Failed to insert new battle lobby.")
 				return terror.Error(err, "Failed to insert new new battle lobby")
+			}
+
+			amount := db.GetDecimalWithDefault(db.KeySystemLobbyDefaultExtraReward, decimal.New(100, 18))
+
+			if amount.GreaterThan(decimal.Zero) {
+				blr := &boiler.BattleLobbyExtraSupsReward{
+					BattleLobbyID: newBattleLobby.ID,
+					OfferedByID:   server.SupremacyBattleUserID,
+					Amount:        amount,
+					PaidTXID:      "SYSTEM_DEFAULT_REWARD",
+				}
+
+				err = blr.Insert(tx, boil.Infer())
+				if err != nil {
+					gamelog.L.Error().Err(err).Interface("battle lobby reward", blr).Msg("Failed to add battle lobby reward to systme lobby.")
+					return terror.Error(err, "Failed to add system lobby default reward")
+				}
 			}
 
 			err = tx.Commit()
