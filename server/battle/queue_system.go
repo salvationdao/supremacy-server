@@ -4,6 +4,16 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"math/rand"
+	"server"
+	"server/db"
+	"server/db/boiler"
+	"server/gamedb"
+	"server/gamelog"
+	"server/helpers"
+	"server/system_messages"
+	"time"
+
 	"github.com/friendsofgo/errors"
 	"github.com/ninja-software/terror/v2"
 	"github.com/ninja-syndicate/ws"
@@ -14,15 +24,6 @@ import (
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 	"go.uber.org/atomic"
 	"golang.org/x/exp/slices"
-	"math/rand"
-	"server"
-	"server/db"
-	"server/db/boiler"
-	"server/gamedb"
-	"server/gamelog"
-	"server/helpers"
-	"server/system_messages"
-	"time"
 )
 
 func (am *ArenaManager) SendBattleQueueFunc(fn func() error) error {
@@ -616,6 +617,37 @@ func (am *ArenaManager) DefaultPublicLobbiesCheck() error {
 			gamelog.L.Error().Err(err).Msg("Failed to insert public battle lobbies.")
 			return terror.Error(err, "Failed to insert public battle lobbies.")
 		}
+
+		// paidTxID, err = am.RPCClient.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
+		// 	FromUserID:           uuid.Must(uuid.FromString(server.SupremacyBattleUserID)),
+		// 	ToUserID:             uuid.Must(uuid.FromString(server.SupremacyBattleUserID)),
+		// 	Amount:               amount.StringFixed(0),
+		// 	TransactionReference: server.TransactionReference(fmt.Sprintf("battle_lobby_extra_reward|%s|%d", bl.ID, time.Now().UnixNano())),
+		// 	Group:                string(server.TransactionGroupSupremacy),
+		// 	SubGroup:             string(server.TransactionGroupBattle),
+		// 	Description:          "adding extra sups reward for battle lobby.",
+		// })
+		// if err != nil {
+		// 	return terror.Error(err, "Failed to add sups reward, check your balance and try again.")
+		// }
+
+		amount := decimal.NewFromInt(100).Mul(decimal.New(1, 18))
+
+		var paidTxID string
+
+		blr := &boiler.BattleLobbyExtraSupsReward{
+			BattleLobbyID: bl.ID,
+			OfferedByID:   server.SupremacyBattleUserID,
+			Amount:        amount,
+			PaidTXID:      paidTxID,
+		}
+
+		err = blr.Insert(gamedb.StdConn, boil.Infer())
+		if err != nil {
+			gamelog.L.Error().Err(err).Interface("battle lobby reward", blr).Msg("Failed to add battle lobby reward.")
+			continue
+		}
+
 	}
 
 	return nil
