@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"github.com/gofrs/uuid"
 	"math/rand"
 	"server"
 	"server/db"
@@ -12,6 +13,7 @@ import (
 	"server/gamelog"
 	"server/helpers"
 	"server/system_messages"
+	"server/xsyn_rpcclient"
 	"time"
 
 	"github.com/friendsofgo/errors"
@@ -621,11 +623,24 @@ func (am *ArenaManager) DefaultPublicLobbiesCheck() error {
 		amount := db.GetDecimalWithDefault(db.KeySystemLobbyDefaultExtraReward, decimal.New(100, 18))
 
 		if amount.GreaterThan(decimal.Zero) {
+			paidTXID, err := am.RPCClient.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
+				FromUserID:           uuid.UUID(server.XsynTreasuryUserID),
+				ToUserID:             uuid.FromStringOrNil(server.SupremacyBattleUserID),
+				Amount:               amount.StringFixed(0),
+				TransactionReference: server.TransactionReference(fmt.Sprintf("top_up_system_lobby_default_reward|%s|%d", bl.ID, time.Now().UnixNano())),
+				Group:                string(server.TransactionGroupSupremacy),
+				SubGroup:             string(server.TransactionGroupBattle),
+				Description:          fmt.Sprintf("top up system lobby default reward %s.", bl.ID),
+			})
+			if err != nil {
+				return terror.Error(err, "Failed to top up reward.")
+			}
+
 			blr := &boiler.BattleLobbyExtraSupsReward{
 				BattleLobbyID: bl.ID,
-				OfferedByID:   server.XsynTreasuryUserID.String(),
+				OfferedByID:   server.SupremacyBattleUserID,
 				Amount:        amount,
-				PaidTXID:      "SYSTEM_DEFAULT_REWARD",
+				PaidTXID:      paidTXID,
 			}
 
 			err = blr.Insert(gamedb.StdConn, boil.Infer())
@@ -1147,11 +1162,24 @@ func (am *ArenaManager) AddAIMechFillingProcess(battleLobbyID string) {
 			amount := db.GetDecimalWithDefault(db.KeySystemLobbyDefaultExtraReward, decimal.New(100, 18))
 
 			if amount.GreaterThan(decimal.Zero) {
+				paidTXID, err := am.RPCClient.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
+					FromUserID:           uuid.UUID(server.XsynTreasuryUserID),
+					ToUserID:             uuid.FromStringOrNil(server.SupremacyBattleUserID),
+					Amount:               amount.StringFixed(0),
+					TransactionReference: server.TransactionReference(fmt.Sprintf("top_up_system_lobby_default_reward|%s|%d", newBattleLobby.ID, time.Now().UnixNano())),
+					Group:                string(server.TransactionGroupSupremacy),
+					SubGroup:             string(server.TransactionGroupBattle),
+					Description:          fmt.Sprintf("top up system lobby default reward %s.", newBattleLobby.ID),
+				})
+				if err != nil {
+					return terror.Error(err, "Failed to top up reward.")
+				}
+
 				blr := &boiler.BattleLobbyExtraSupsReward{
 					BattleLobbyID: newBattleLobby.ID,
-					OfferedByID:   server.XsynTreasuryUserID.String(),
+					OfferedByID:   server.SupremacyBattleUserID,
 					Amount:        amount,
-					PaidTXID:      "SYSTEM_DEFAULT_REWARD",
+					PaidTXID:      paidTXID,
 				}
 
 				err = blr.Insert(tx, boil.Infer())
