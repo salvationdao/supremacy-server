@@ -118,7 +118,7 @@ func (api *API) BattleLobbyCreate(ctx context.Context, user *boiler.Player, fact
 		return terror.Error(fmt.Errorf("mech more than 3"), "Amount of deployed war machine has exceeded the limit.")
 	}
 
-	availableMechIDs, err := MechAuthorisationFilter(user.ID, factionID, req.Payload.MechIDs)
+	availableMechIDs, err := MechAuthorisationFilter(user, factionID, req.Payload.MechIDs)
 	if err != nil {
 		return err
 	}
@@ -448,7 +448,7 @@ func (api *API) BattleLobbyJoin(ctx context.Context, user *boiler.Player, factio
 		return terror.Error(err, "Invalid request received.")
 	}
 
-	availableMechIDs, err := MechAuthorisationFilter(user.ID, factionID, req.Payload.MechIDs)
+	availableMechIDs, err := MechAuthorisationFilter(user, factionID, req.Payload.MechIDs)
 	if err != nil {
 		return err
 	}
