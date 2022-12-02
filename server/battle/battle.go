@@ -996,10 +996,6 @@ func (btl *Battle) RewardBattleMechOwners(winningFactionOrder []string) {
 			for _, blm := range blms {
 				if blm.FactionID == factionID && blm.R != nil && blm.R.QueuedBy != nil {
 					player := blm.R.QueuedBy
-					// skip AI player, when it is in production
-					if server.IsProductionEnv() && player.IsAi {
-						continue
-					}
 					btl.RewardMechOwner(
 						blm.MechID,
 						player,
@@ -1017,10 +1013,6 @@ func (btl *Battle) RewardBattleMechOwners(winningFactionOrder []string) {
 			for _, blm := range blms {
 				if blm.FactionID == factionID && blm.R != nil && blm.R.QueuedBy != nil {
 					player := blm.R.QueuedBy
-					// skip AI player, when it is in production
-					if server.IsProductionEnv() && player.IsAi {
-						continue
-					}
 					btl.RewardMechOwner(
 						blm.MechID,
 						player,
@@ -1038,12 +1030,6 @@ func (btl *Battle) RewardBattleMechOwners(winningFactionOrder []string) {
 			for _, blm := range blms {
 				if blm.FactionID == factionID && blm.R != nil && blm.R.QueuedBy != nil {
 					player := blm.R.QueuedBy
-
-					// skip AI player, when it is in production
-					if server.IsProductionEnv() && player.IsAi {
-						continue
-					}
-
 					btl.RewardMechOwner(
 						blm.MechID,
 						player,
