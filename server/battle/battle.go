@@ -905,8 +905,6 @@ func (btl *Battle) RewardBattleMechOwners(winningFactionOrder []string) {
 	// reward sups
 	taxRatio := db.GetDecimalWithDefault(db.KeyBattleRewardTaxRatio, decimal.NewFromFloat(0.025))
 
-	afkMechIDs := btl.AFKChecker()
-
 	for i, factionID := range winningFactionOrder {
 		switch i {
 		case 0: // winning faction
@@ -924,7 +922,7 @@ func (btl *Battle) RewardBattleMechOwners(winningFactionOrder []string) {
 						totalSups.Mul(btl.lobby.FirstFactionCut).Div(playerPerFaction[blm.FactionID]),
 						taxRatio,
 						blm,
-						slices.Index(afkMechIDs, blm.MechID) != -1, // if mech is in the afk mech list
+						false,
 						false,
 					)
 				}
@@ -945,7 +943,7 @@ func (btl *Battle) RewardBattleMechOwners(winningFactionOrder []string) {
 						totalSups.Mul(btl.lobby.SecondFactionCut).Div(playerPerFaction[blm.FactionID]),
 						taxRatio,
 						blm,
-						slices.Index(afkMechIDs, blm.MechID) != -1, // if mech is in the afk mech list
+						false,
 						false,
 					)
 				}
@@ -968,7 +966,7 @@ func (btl *Battle) RewardBattleMechOwners(winningFactionOrder []string) {
 						totalSups.Mul(btl.lobby.ThirdFactionCut).Div(playerPerFaction[blm.FactionID]),
 						taxRatio,
 						blm,
-						slices.Index(afkMechIDs, blm.MechID) != -1, // if mech is in the afk mech list
+						false,
 						true,
 					)
 				}
