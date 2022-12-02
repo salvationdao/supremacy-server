@@ -80,7 +80,7 @@ func NewStreamController(api *API) *StreamsWS {
 //	return req.TransactionID, messagebus.BusKey(HubKeyStreamCloseSubscribe), nil
 //}
 
-//creates api endpoint for manual override of games left until close and sends it via the subscription
+// creates api endpoint for manual override of games left until close and sends it via the subscription
 func (api *API) CreateStreamCloseHandler(w http.ResponseWriter, r *http.Request) (int, error) {
 	gamesToCloseStruct := &server.GamesToCloseStream{}
 	err := json.NewDecoder(r.Body).Decode(&gamesToCloseStruct)

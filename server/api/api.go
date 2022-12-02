@@ -264,6 +264,7 @@ func NewAPI(
 			r.Mount("/public", ws.NewServer(func(s *ws.Server) {
 				s.Mount("/commander", api.Commander)
 				s.WS("/online", "", nil)
+				s.WS("/livestream", HubKeyLivestream, api.GlobalLivestreamTrigger)
 				s.WS("/global_chat", HubKeyGlobalChatSubscribe, cc.GlobalChatUpdatedSubscribeHandler)
 				s.WS("/global_announcement", server.HubKeyGlobalAnnouncementSubscribe, sc.GlobalAnnouncementSubscribe)
 				s.WS("/global_active_players", HubKeyGlobalActivePlayersSubscribe, pc.GlobalActivePlayersSubscribeHandler)

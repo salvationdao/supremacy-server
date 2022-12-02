@@ -104,6 +104,8 @@ const KeyAutoFillLobbyAfterDurationSecond KVKey = "auto_fill_lobby_after_duratio
 const KeyPublicExhibitionLobbyExpireAfterDurationSecond KVKey = "public_exhibition_lobby_expire_after_duration_second"
 const KeyLobbyHostingMaximumAmount KVKey = "lobby_hosting_maximum_amount"
 
+const KeyLivestreamURL KVKey = "livestream_url"
+
 func get(key KVKey) string {
 	kv, err := boiler.KVS(boiler.KVWhere.Key.EQ(string(key))).One(gamedb.StdConn)
 	if err != nil {
