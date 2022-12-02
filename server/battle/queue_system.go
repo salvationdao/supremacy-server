@@ -1078,7 +1078,7 @@ func (am *ArenaManager) AddAIMechFillingProcess(battleLobbyID string) {
 
 			// insert AI mech into the lobby
 			q := fmt.Sprintf(
-				"INSERT INTO %S (%S, %S, %S, %S)  VALUES ",
+				"INSERT INTO %s (%s, %s, %s, %s)  VALUES ",
 				boiler.TableNames.BattleLobbiesMechs,
 				boiler.BattleLobbiesMechColumns.BattleLobbyID,
 				boiler.BattleLobbiesMechColumns.MechID,
