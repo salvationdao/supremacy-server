@@ -1754,7 +1754,7 @@ func MechAuthorisationFilter(playerID string, factionID string, mechIDs []string
 
 		if mqa.StakedOnFactionID.Valid {
 			// check faction id if the mech is staked in faction list
-			if mqa.StakedOnFactionID.String != factionID {
+			if mqa.StakedOnFactionID.String != factionID || mqa.OwnerID == playerID {
 				continue
 			}
 		} else {
