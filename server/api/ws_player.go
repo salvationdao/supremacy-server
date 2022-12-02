@@ -1614,3 +1614,13 @@ func (pc *PlayerController) PlayerFriendSearch(ctx context.Context, user *boiler
 
 	return nil
 }
+
+const HubKeyLivestream = "PUBLIC:LIVESTREAM"
+
+func (api *API) GlobalLivestreamTrigger(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
+	livestreamURL := db.GetStrWithDefault(db.KeyLivestreamURL, "")
+
+	reply(livestreamURL)
+
+	return nil
+}

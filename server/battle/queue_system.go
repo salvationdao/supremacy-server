@@ -942,7 +942,7 @@ func (am *ArenaManager) AddAIMechFillingProcess(battleLobbyID string) {
 				return nil
 			}
 
-			// fill the lobby with AI mechs
+			// fill the lobby with staked mechs
 			factionSlots := []struct {
 				factionID      string
 				availableSlots int
@@ -977,20 +977,72 @@ func (am *ArenaManager) AddAIMechFillingProcess(battleLobbyID string) {
 					continue
 				}
 
-				// generate insert rows
+				// queued by faction AI player
+				queuedByID := ""
+				switch factionSlot.factionID {
+				case server.RedMountainFactionID:
+					queuedByID = server.RedMountainPlayerID
+				case server.BostonCyberneticsFactionID:
+					queuedByID = server.BostonCyberneticsPlayerID
+				case server.ZaibatsuFactionID:
+					queuedByID = server.ZaibatsuPlayerID
+				}
+
+				// load available staked mechs
+				sms, err := boiler.StakedMechs(
+					boiler.StakedMechWhere.FactionID.EQ(factionSlot.factionID),
+					qm.Where(fmt.Sprintf(
+						"NOT EXISTS (SELECT 1 FROM %s WHERE %s = %s AND %s ISNULL AND %s ISNULL AND %s ISNULL)",
+						boiler.TableNames.BattleLobbiesMechs,
+						boiler.BattleLobbiesMechTableColumns.MechID,
+						boiler.StakedMechTableColumns.MechID,
+						boiler.BattleLobbiesMechTableColumns.EndedAt,
+						boiler.BattleLobbiesMechTableColumns.RefundTXID,
+						boiler.BattleLobbiesMechTableColumns.DeletedAt,
+					)),
+					// no AI mechs
+					qm.Where(fmt.Sprintf(
+						"EXISTS (SELECT 1 FROM %s WHERE %s = %s AND %s = FALSE)",
+						boiler.TableNames.Players,
+						boiler.PlayerTableColumns.ID,
+						boiler.StakedMechTableColumns.OwnerID,
+						boiler.PlayerTableColumns.IsAi,
+					)),
+					// no damaged mech
+					qm.Where(fmt.Sprintf(
+						"NOT EXISTS (SELECT 1 FROM %s WHERE %s = %s AND %s ISNULL)",
+						boiler.TableNames.RepairCases,
+						boiler.RepairCaseTableColumns.MechID,
+						boiler.StakedMechTableColumns.MechID,
+						boiler.RepairCaseTableColumns.CompletedAt,
+					)),
+					qm.Limit(factionSlot.availableSlots),
+				).All(gamedb.StdConn)
+				if err != nil {
+					gamelog.L.Error().Err(err).Msg("Failed to load staked mech.")
+				}
+
+				var mechIDs []string
+				for _, sm := range sms {
+					mechIDs = append(mechIDs, sm.MechID)
+				}
 				for _, ci := range cis {
 					// skip, if the faction id not match
 					if ci.R == nil || ci.R.Owner == nil || ci.R.Owner.FactionID.String != factionSlot.factionID {
 						continue
 					}
+					mechIDs = append(mechIDs, ci.ItemID)
+				}
 
+				// generate insert rows
+				for _, mechID := range mechIDs {
 					// fill AI mechs into the slots
 					insertRows = append(insertRows, fmt.Sprintf(
 						"('%s', '%s', '%s', '%s')",
 						battleLobbyID,
-						ci.ItemID,
-						ci.OwnerID,
-						ci.R.Owner.FactionID.String,
+						mechID,
+						queuedByID,
+						factionSlot.factionID,
 					))
 
 					factionSlot.availableSlots -= 1

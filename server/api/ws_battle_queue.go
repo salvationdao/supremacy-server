@@ -118,7 +118,7 @@ func (api *API) BattleLobbyCreate(ctx context.Context, user *boiler.Player, fact
 		return terror.Error(fmt.Errorf("mech more than 3"), "Amount of deployed war machine has exceeded the limit.")
 	}
 
-	availableMechIDs, err := MechAuthorisationFilter(user.ID, factionID, req.Payload.MechIDs)
+	availableMechIDs, err := MechAuthorisationFilter(user, factionID, req.Payload.MechIDs)
 	if err != nil {
 		return err
 	}
@@ -448,7 +448,7 @@ func (api *API) BattleLobbyJoin(ctx context.Context, user *boiler.Player, factio
 		return terror.Error(err, "Invalid request received.")
 	}
 
-	availableMechIDs, err := MechAuthorisationFilter(user.ID, factionID, req.Payload.MechIDs)
+	availableMechIDs, err := MechAuthorisationFilter(user, factionID, req.Payload.MechIDs)
 	if err != nil {
 		return err
 	}
@@ -1708,7 +1708,7 @@ func (api *API) BattleLobbyTopUpReward(ctx context.Context, user *boiler.Player,
 }
 
 // MechAuthorisationFilter return error if any mechs is not available to queue
-func MechAuthorisationFilter(playerID string, factionID string, mechIDs []string) ([]string, error) {
+func MechAuthorisationFilter(player *boiler.Player, factionID string, mechIDs []string) ([]string, error) {
 	if len(mechIDs) == 0 {
 		return []string{}, nil
 	}
@@ -1753,13 +1753,16 @@ func MechAuthorisationFilter(playerID string, factionID string, mechIDs []string
 		}
 
 		if mqa.StakedOnFactionID.Valid {
+			if !player.FactionPassExpiresAt.Valid || player.FactionPassExpiresAt.Time.Before(time.Now()) {
+				return nil, terror.Error(fmt.Errorf("faction pass is expired"), "Required faction pass to queue staked mechs.")
+			}
 			// check faction id if the mech is staked in faction list
-			if mqa.StakedOnFactionID.String != factionID {
+			if mqa.StakedOnFactionID.String != factionID || mqa.OwnerID == player.ID {
 				continue
 			}
 		} else {
 			// otherwise, check owner id
-			if mqa.OwnerID != playerID {
+			if mqa.OwnerID != player.ID {
 				continue
 			}
 		}
