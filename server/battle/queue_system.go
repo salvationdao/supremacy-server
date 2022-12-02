@@ -623,7 +623,7 @@ func (am *ArenaManager) DefaultPublicLobbiesCheck() error {
 		if amount.GreaterThan(decimal.Zero) {
 			blr := &boiler.BattleLobbyExtraSupsReward{
 				BattleLobbyID: bl.ID,
-				OfferedByID:   server.SupremacyBattleUserID,
+				OfferedByID:   server.XsynTreasuryUserID.String(),
 				Amount:        amount,
 				PaidTXID:      "SYSTEM_DEFAULT_REWARD",
 			}
@@ -1149,7 +1149,7 @@ func (am *ArenaManager) AddAIMechFillingProcess(battleLobbyID string) {
 			if amount.GreaterThan(decimal.Zero) {
 				blr := &boiler.BattleLobbyExtraSupsReward{
 					BattleLobbyID: newBattleLobby.ID,
-					OfferedByID:   server.SupremacyBattleUserID,
+					OfferedByID:   server.XsynTreasuryUserID.String(),
 					Amount:        amount,
 					PaidTXID:      "SYSTEM_DEFAULT_REWARD",
 				}

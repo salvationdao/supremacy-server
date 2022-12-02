@@ -718,7 +718,7 @@ func (api *API) BattleLobbyJoin(ctx context.Context, user *boiler.Player, factio
 				if amount.GreaterThan(decimal.Zero) {
 					blr := &boiler.BattleLobbyExtraSupsReward{
 						BattleLobbyID: newBattleLobby.ID,
-						OfferedByID:   server.SupremacyBattleUserID,
+						OfferedByID:   server.XsynTreasuryUserID.String(),
 						Amount:        amount,
 						PaidTXID:      "SYSTEM_DEFAULT_REWARD",
 					}
