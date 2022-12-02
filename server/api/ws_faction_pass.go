@@ -105,11 +105,9 @@ import (
 //}
 
 func NewFactionPassController(api *API) {
-	if server.IsDevelopmentEnv() {
-		api.SecureUserFactionCommand(HubKeyFactionPassSupsPurchase, api.FactionPassSupsPurchase)
-		api.SecureUserFactionCommand(HubKeyFactionPassStripePaymentIntent, api.FactionPassStripePaymentIntent)
-		api.SecureUserFactionCommand(HubKeyFactionPassStripePaymentClaim, api.FactionPassPaymentClaim)
-	}
+	api.SecureUserFactionCommand(HubKeyFactionPassSupsPurchase, api.FactionPassSupsPurchase)
+	api.SecureUserFactionCommand(HubKeyFactionPassStripePaymentIntent, api.FactionPassStripePaymentIntent)
+	api.SecureUserFactionCommand(HubKeyFactionPassStripePaymentClaim, api.FactionPassPaymentClaim)
 }
 
 type FactionPassPurchaseSupsRequest struct {
