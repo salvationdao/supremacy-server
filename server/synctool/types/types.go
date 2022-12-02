@@ -74,6 +74,8 @@ type FactionPass struct {
 	LastForDays        int             `json:"last_for_days"`
 	EthPriceWei        decimal.Decimal `json:"eth_price_wei"`
 	DiscountPercentage decimal.Decimal `json:"discount_percentage"`
+	SupsPrice          decimal.Decimal `json:"sups_price"`
+	UsdPrice           decimal.Decimal `json:"usd_price"`
 	DeletedAt          null.Time       `json:"deleted_at"`
 }
 

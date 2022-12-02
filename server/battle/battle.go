@@ -1321,9 +1321,80 @@ func (btl *Battle) end(payload *BattleEndPayload) {
 	btl.arena.beginBattleMux.Lock()
 	defer btl.arena.beginBattleMux.Unlock()
 
-	// skip assigning repair case, if the battle is AI driven
+	// if the battle is not an AI driven
 	if !btl.lobby.IsAiDrivenMatch {
+		// assigning repair case
 		btl.processWarMachineRepair()
+
+		taxRatio := db.GetDecimalWithDefault(db.KeyBattleRewardTaxRatio, decimal.NewFromFloat(0.1))
+		stakedMechReward := db.GetDecimalWithDefault(db.KeyStakedMechWinBattleReward, decimal.New(100, 18))
+		tax := stakedMechReward.Mul(taxRatio)
+
+		// reward sups for the owner of staked mech
+		for _, wwm := range payload.WinningWarMachines {
+			index := slices.IndexFunc(btl.WarMachines, func(wm *WarMachine) bool { return wm.Hash == wwm.Hash })
+			if index == -1 {
+				gamelog.L.Warn().Str("mech hash", wwm.Hash).Msg("Failed to find war machine from the hash of winning war machine")
+				continue
+			}
+
+			// check if the mech staked mech
+			sm, err := boiler.StakedMechs(
+				boiler.StakedMechWhere.MechID.EQ(btl.WarMachines[index].ID),
+			).One(gamedb.StdConn)
+			if err != nil && !errors.Is(err, sql.ErrNoRows) {
+				gamelog.L.Warn().Err(err).Msg("Failed to load staked mech from id")
+				continue
+			}
+
+			// if staked mech not exists
+			if sm == nil {
+				continue
+			}
+
+			// no reward for player who is the owner of the staked mech
+			if sm.OwnerID == btl.WarMachines[index].OwnedByID {
+				continue
+			}
+
+			// reward the owner of the staked mech
+			_, err = btl.arena.Manager.RPCClient.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
+				FromUserID:           uuid.UUID(server.XsynTreasuryUserID),
+				ToUserID:             uuid.Must(uuid.FromString(sm.OwnerID)),
+				Amount:               stakedMechReward.StringFixed(0),
+				TransactionReference: server.TransactionReference(fmt.Sprintf("staked_mech_battle_winning_reward|%s|%s|%d", btl.ID, sm.OwnerID, time.Now().UnixNano())),
+				Group:                string(server.TransactionGroupSupremacy),
+				SubGroup:             string(server.TransactionGroupBattle),
+				Description:          fmt.Sprintf("staked mech winning from battle #%d.", btl.BattleNumber),
+			})
+			if err != nil {
+				gamelog.L.Error().Err(err).
+					Str("from", server.XsynTreasuryUserID.String()).
+					Str("to", sm.OwnerID).
+					Str("amount", stakedMechReward.StringFixed(0)).
+					Msg("Failed to pay the owner of the staked mech winning battle reward")
+				continue
+			}
+
+			// tax the reward
+			_, err = btl.arena.Manager.RPCClient.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
+				FromUserID:           uuid.Must(uuid.FromString(sm.OwnerID)),
+				ToUserID:             uuid.UUID(server.XsynTreasuryUserID),
+				Amount:               tax.StringFixed(0),
+				TransactionReference: server.TransactionReference(fmt.Sprintf("tax_staked_mech_winning_reward|%s|%s|%d", btl.ID, sm.OwnerID, time.Now().UnixNano())),
+				Group:                string(server.TransactionGroupSupremacy),
+				SubGroup:             string(server.TransactionGroupBattle),
+				Description:          fmt.Sprintf("reward tax from battle #%d.", btl.BattleNumber),
+			})
+			if err != nil {
+				gamelog.L.Error().Err(err).
+					Str("from", sm.OwnerID).
+					Str("to", server.XsynTreasuryUserID.String()).
+					Str("amount", tax.StringFixed(0)).
+					Msg("Failed to pay the owner of the staked mech winning battle reward")
+				continue
+			}
+		}
 	}
 
 	// clean up current battle

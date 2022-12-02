@@ -285,6 +285,24 @@ func (am *ArenaManager) PlayerSupportAbilityUse(ctx context.Context, user *boile
 		return terror.Error(fmt.Errorf("wrong battle state"), "There is no battle currently to use this ability on.")
 	}
 
+	// error out if all the ally mech is dead
+	hasAliveMech := false
+	for _, wm := range btl.WarMachines {
+		if wm.FactionID != factionID {
+			continue
+		}
+		wm.Lock()
+		if wm.Health > 0 {
+			hasAliveMech = true
+			wm.Unlock()
+			break
+		}
+		wm.Unlock()
+	}
+	if !hasAliveMech {
+		return terror.Error(fmt.Errorf("no allies is alive"), "No allies mech is alive.")
+	}
+
 	pa, err := boiler.PlayerBattleAbilities(
 		boiler.PlayerBattleAbilityWhere.ID.EQ(req.Payload.AbilityID),
 		boiler.PlayerBattleAbilityWhere.PlayerID.EQ(user.ID),
@@ -647,18 +665,35 @@ func (am *ArenaManager) PlayerAbilityUse(ctx context.Context, user *boiler.Playe
 		return err
 	}
 
+	btl := arena.CurrentBattle()
+
 	// skip, if current not battle
-	if arena.CurrentBattle() == nil {
+	if btl == nil {
 		gamelog.L.Warn().Str("func", "PlayerAbilityUse").Msg("no current battle")
 		return terror.Error(fmt.Errorf("wrong battle state"), "There is no battle currently to use this ability on.")
 	}
 
-	if arena.CurrentBattleState() != BattlingState {
+	if btl.state.Load() != BattlingState {
 		return terror.Error(terror.ErrForbidden, "You cannot execute an ability when the battle has not started yet.")
 	}
 
-	if arena.IsRunningAIDrivenMatch() {
-		return terror.Error(fmt.Errorf("no ability is allowed for AI driven match"), "Player abilities are not allowed during AI driven match.")
+	// error out if all the ally mech is dead
+	hasAliveMech := false
+	for _, wm := range btl.WarMachines {
+		if wm.FactionID != factionID {
+			continue
+		}
+		wm.Lock()
+		if wm.Health > 0 {
+			hasAliveMech = true
+			wm.Unlock()
+			break
+		}
+		wm.Unlock()
+	}
+
+	if !hasAliveMech {
+		return terror.Error(fmt.Errorf("no allies is alive"), "No allies mech is alive.")
 	}
 
 	// mech command handler
@@ -1197,6 +1232,24 @@ func (am *ArenaManager) MechAbilityTriggerHandler(ctx context.Context, user *boi
 	btl := arena.CurrentBattle()
 	if btl == nil || btl.state.Load() != BattlingState {
 		return terror.Error(terror.ErrInvalidInput, "Current battle is ended.")
+	}
+
+	// error out if all the ally mech is dead
+	mechStillAlive := false
+	for _, wm := range btl.WarMachines {
+		if wm.Hash != req.Payload.Hash {
+			continue
+		}
+		wm.Lock()
+		if wm.Health > 0 {
+			mechStillAlive = true
+		}
+		wm.Unlock()
+		break
+
+	}
+	if !mechStillAlive {
+		return terror.Error(fmt.Errorf("mech is dead"), "The mech is already destroyed.")
 	}
 
 	if arena.IsRunningAIDrivenMatch() {
