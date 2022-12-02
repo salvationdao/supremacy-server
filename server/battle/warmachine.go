@@ -292,7 +292,7 @@ func WarMachineToClient(wm *WarMachine) *WarMachineGameClient {
 			PowerCapacity:            wm.PowerCore.Capacity.InexactFloat64(),
 			RechargeRate:             wm.PowerCore.RechargeRate.InexactFloat64(),
 			MaxDrawRate:              wm.PowerCore.MaxDrawRate.InexactFloat64(),
-			WeaponSystemAllocation:   wm.PowerCore.WeaponShare, // todo: wut this aye
+			WeaponSystemAllocation:   wm.PowerCore.WeaponShare,
 			MovementSystemAllocation: wm.PowerCore.MovementShare,
 			UtilitySystemAllocation:  wm.PowerCore.UtilityShare,
 		}
