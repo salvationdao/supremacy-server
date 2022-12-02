@@ -487,7 +487,7 @@ func (api *API) initialWSBroadcast() error {
 	go api.ArenaManager.FactionStakedMechDebounceBroadcaster()
 
 	// spin up exchange rate related price updater
-	go api.exchangeRatesUpdater()
+	//go api.exchangeRatesUpdater()
 
 	return nil
 }

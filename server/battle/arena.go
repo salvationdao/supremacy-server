@@ -1340,15 +1340,6 @@ func (arena *Arena) GameClientJsonDataParser() {
 				continue
 			}
 
-			gameClientBuildNo, err := strconv.ParseUint(dataPayload.ClientBuildNo, 10, 64)
-			if err != nil {
-				L.Panic().Str("game_client_build_no", dataPayload.ClientBuildNo).Msg("invalid game client build number received")
-			}
-
-			if gameClientBuildNo < arena.Manager.gameClientMinimumBuildNo {
-				L.Panic().Str("current_game_client_build", dataPayload.ClientBuildNo).Uint64("minimum_game_client_build", arena.Manager.gameClientMinimumBuildNo).Msg("unsupported game client build number")
-			}
-
 			err = btl.preIntro(dataPayload)
 			if err != nil {
 				L.Error().Msg("battle start load out has failed")
