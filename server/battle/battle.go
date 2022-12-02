@@ -1354,18 +1354,19 @@ func (btl *Battle) processWarMachineRepair() {
 		modelID := wm.ModelID
 		maxHealth := wm.MaxHealth
 		health := wm.Health
-		ownerID := wm.OwnedByID
 		wm.RUnlock()
 
 		go func() {
-			// skip, if player is AI
-			p, err := boiler.FindPlayer(gamedb.StdConn, ownerID)
-			if err != nil {
+			ci, err := boiler.CollectionItems(
+				boiler.CollectionItemWhere.ItemID.EQ(mechID),
+				qm.Load(boiler.CollectionItemRels.Owner),
+			).One(gamedb.StdConn)
+			if err != nil && !errors.Is(err, sql.ErrNoRows) {
 				gamelog.L.Error().Err(err).Msg("Failed to load mech owner detail")
 				return
 			}
 
-			if p.IsAi {
+			if ci.R == nil || ci.R.Owner == nil || ci.R.Owner.IsAi {
 				return
 			}
 
