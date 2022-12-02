@@ -1002,7 +1002,7 @@ func (am *ArenaManager) AddAIMechFillingProcess(battleLobbyID string) {
 					)),
 					// no AI mechs
 					qm.Where(fmt.Sprintf(
-						"EXISTS (SELECT 1 FROM %s WHRE %s = %s AND %s = FALSE)",
+						"EXISTS (SELECT 1 FROM %s WHERE %s = %s AND %s = FALSE)",
 						boiler.TableNames.Players,
 						boiler.PlayerTableColumns.ID,
 						boiler.StakedMechTableColumns.OwnerID,

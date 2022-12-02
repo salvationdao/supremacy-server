@@ -77,8 +77,9 @@ type Battle struct {
 	deadlock.RWMutex
 
 	// for reword calculation
-	playerBattleCompleteMessage []*PlayerBattleCompleteMessage
-	mechRewards                 []*MechReward
+	playerBattleCompleteMessage  []*PlayerBattleCompleteMessage
+	stakedMechOwnerRewardMessage []*PlayerBattleCompleteMessage
+	mechRewards                  []*MechReward
 
 	// for afk checker
 	introEndedAt time.Time
@@ -807,6 +808,90 @@ func (btl *Battle) handleBattleEnd(payload *BattleEndPayload) {
 		}
 	}(btl)
 
+	// broadcast staked mech owner reward system messages
+	go func(battle *Battle) {
+		// broadcast end info
+		for _, msg := range battle.stakedMechOwnerRewardMessage {
+			// get mechs data
+			for _, bm := range battleMechs {
+				// skip, if player does not have the mech
+				index := slices.IndexFunc(msg.MechBattleBriefs, func(mbb *MechBattleBrief) bool { return bm.MechID == mbb.MechID })
+				if index == -1 {
+					continue
+				}
+
+				mbb := msg.MechBattleBriefs[index]
+				mbb.FactionID = bm.FactionID
+
+				if idx := slices.IndexFunc(btl.WarMachines, func(wm *WarMachine) bool { return wm.ID == bm.MechID }); idx != -1 {
+					wm := btl.WarMachines[idx]
+					mbb.Name = wm.Label
+					if wm.Name != "" {
+						mbb.Name = wm.Name
+					}
+
+					mbb.Tier = wm.Tier
+					mbb.ImageUrl = wm.ImageAvatar
+
+					for _, destroyedMechRecord := range btl.destroyedWarMachineMap {
+						destroyedMech := destroyedMechRecord.DestroyedWarMachine
+						killerMech := destroyedMechRecord.KilledByWarMachine
+						killerUser := destroyedMechRecord.KilledByUser
+
+						killInfo := &KillInfo{
+							Name:      destroyedMechRecord.KilledBy,
+							FactionID: destroyedMechRecord.KillerFactionID,
+						}
+
+						// if destroyed mech is current mech
+						if destroyedMech.Hash == wm.Hash {
+							if killerMech != nil {
+								killInfo.Name = killerMech.Name
+								killInfo.ImageUrl = killerMech.ImageAvatar
+							} else if killerUser != nil {
+								killInfo.Name = fmt.Sprintf("%s %s", killerUser.Username, destroyedMechRecord.KilledBy)
+							}
+							mbb.KilledBy = killInfo // set kill by info
+							continue
+						} else if killerMech != nil && killerMech.Hash == wm.Hash {
+							// if current mech is the killer mech
+
+							killInfo.Name = destroyedMech.Name
+							killInfo.FactionID = destroyedMech.FactionID
+							killInfo.ImageUrl = destroyedMech.ImageAvatar
+							mbb.Kills = append(mbb.Kills, killInfo)
+							continue
+						}
+
+					}
+				}
+
+				msg.MechBattleBriefs = append(msg.MechBattleBriefs, mbb)
+			}
+
+			// send battle reward system message
+			b, err := json.Marshal(msg)
+			if err != nil {
+				gamelog.L.Error().Interface("player reward data", msg).Err(err).Msg("Failed to marshal player reward data into json.")
+				break
+			}
+			sysMsg := boiler.SystemMessage{
+				PlayerID: msg.PlayerID,
+				SenderID: server.SupremacyBattleUserID,
+				DataType: null.StringFrom(string(system_messages.SystemMessageDataTypeMechBattleComplete)),
+				Title:    "Battle Complete",
+				Message:  fmt.Sprintf("Staked mech owner reward from the battle #%d.", battle.BattleNumber),
+				Data:     null.JSONFrom(b),
+			}
+			err = sysMsg.Insert(gamedb.StdConn, boil.Infer())
+			if err != nil {
+				gamelog.L.Error().Err(err).Interface("newSystemMessage", sysMsg).Msg("failed to insert new system message into db")
+				break
+			}
+			ws.PublishMessage(fmt.Sprintf("/secure/user/%s/system_messages", msg.PlayerID), server.HubKeySystemMessageListUpdatedSubscribe, true)
+		}
+	}(btl)
+
 	// record staked mechs battle logs
 	go func(battle *Battle) {
 		stakedMechs, err := boiler.StakedMechs(
@@ -1258,6 +1343,10 @@ func (btl *Battle) RewardMechOwner(
 
 // rewardStakedMech staked mech function
 func (btl *Battle) rewardStakedMech(mechID string, rewardedSups decimal.Decimal, taxRatio decimal.Decimal) decimal.Decimal {
+	if rewardedSups.LessThanOrEqual(decimal.Zero) {
+		return decimal.Zero
+	}
+
 	remainSups := rewardedSups
 
 	stakedMechReward := remainSups.Div(decimal.NewFromInt(2))
@@ -1327,6 +1416,26 @@ func (btl *Battle) rewardStakedMech(mechID string, rewardedSups decimal.Decimal,
 			Msg("Failed to pay the owner of the staked mech winning battle reward")
 		return remainSups
 	}
+
+	index = slices.IndexFunc(btl.stakedMechOwnerRewardMessage, func(pr *PlayerBattleCompleteMessage) bool { return pr.PlayerID == sm.OwnerID })
+	if index == -1 {
+		btl.stakedMechOwnerRewardMessage = append(btl.stakedMechOwnerRewardMessage, &PlayerBattleCompleteMessage{
+			PlayerID:         sm.OwnerID,
+			MechBattleBriefs: []*MechBattleBrief{},
+		})
+		index = len(btl.stakedMechOwnerRewardMessage) - 1
+	}
+
+	pbm := btl.stakedMechOwnerRewardMessage[index]
+	// add sups
+	if pbm.BattleReward == nil {
+		pbm.BattleReward = &BattleReward{RewardedSups: stakedMechReward}
+	} else {
+		pbm.BattleReward.RewardedSups = pbm.BattleReward.RewardedSups.Add(stakedMechReward)
+	}
+
+	// append mechs
+	pbm.MechBattleBriefs = append(pbm.MechBattleBriefs, &MechBattleBrief{MechID: sm.OwnerID})
 
 	return remainSups
 }
