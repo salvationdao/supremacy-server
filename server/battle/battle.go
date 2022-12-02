@@ -1041,6 +1041,7 @@ func (btl *Battle) RewardMechOwner(
 	}()
 
 	// reward staked mech
+	rewardedSups = btl.rewardStakedMech(mechID, rewardedSups, taxRatio)
 
 	l := gamelog.L.With().Str("function", "RewardMechOwner").Logger()
 	pw := &BattleReward{
@@ -1257,17 +1258,17 @@ func (btl *Battle) RewardMechOwner(
 	pbm.BattleReward.RewardedPlayerAbility = ability.R.Blueprint
 }
 
-// TODO: finish staked mech function
-func (btl *Battle) rewardStakedMech(mechID string) {
+// rewardStakedMech staked mech function
+func (btl *Battle) rewardStakedMech(mechID string, rewardedSups decimal.Decimal, taxRatio decimal.Decimal) decimal.Decimal {
+	remainSups := rewardedSups
 
-	taxRatio := db.GetDecimalWithDefault(db.KeyBattleRewardTaxRatio, decimal.NewFromFloat(0.1))
-	stakedMechReward := db.GetDecimalWithDefault(db.KeyStakedMechWinBattleReward, decimal.New(100, 18))
+	stakedMechReward := remainSups.Div(decimal.NewFromInt(2))
 	tax := stakedMechReward.Mul(taxRatio)
 
 	// reward sups for the owner of staked mech
 	index := slices.IndexFunc(btl.WarMachines, func(wm *WarMachine) bool { return wm.ID == mechID })
 	if index == -1 {
-		return
+		return remainSups
 	}
 
 	// check if the mech staked mech
@@ -1276,17 +1277,17 @@ func (btl *Battle) rewardStakedMech(mechID string) {
 	).One(gamedb.StdConn)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		gamelog.L.Warn().Err(err).Msg("Failed to load staked mech from id")
-		return
+		return remainSups
 	}
 
 	// if staked mech not exists
 	if sm == nil {
-		return
+		return remainSups
 	}
 
 	// no reward for player who is the owner of the staked mech
 	if sm.OwnerID == btl.WarMachines[index].OwnedByID {
-		return
+		return remainSups
 	}
 
 	// reward the owner of the staked mech
@@ -1305,8 +1306,10 @@ func (btl *Battle) rewardStakedMech(mechID string) {
 			Str("to", sm.OwnerID).
 			Str("amount", stakedMechReward.StringFixed(0)).
 			Msg("Failed to pay the owner of the staked mech winning battle reward")
-		return
+		return remainSups
 	}
+
+	remainSups = remainSups.Sub(stakedMechReward)
 
 	// tax the reward
 	_, err = btl.arena.Manager.RPCClient.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
@@ -1324,8 +1327,10 @@ func (btl *Battle) rewardStakedMech(mechID string) {
 			Str("to", server.XsynTreasuryUserID.String()).
 			Str("amount", tax.StringFixed(0)).
 			Msg("Failed to pay the owner of the staked mech winning battle reward")
-		return
+		return remainSups
 	}
+
+	return remainSups
 }
 
 func (btl *Battle) processWarMachineRepair() {
@@ -1794,7 +1799,7 @@ func (btl *Battle) Tick(payload []byte) {
 			ws.PublishBytes(fmt.Sprintf("/mini_map/arena/%s/public/minimap_events", btl.ArenaID), server.BinaryKeyMiniMapEvents, mapEvents)
 
 			// Unpack and save static events for sending to newly joined frontend clients (ie: landmine, pickup locations and the hive status)
-			btl.MapEventList.MapEventsUnpack(mapEvents)
+			//btl.MapEventList.MapEventsUnpack(mapEvents)
 		}
 	}
 }
