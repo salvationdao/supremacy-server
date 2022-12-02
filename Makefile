@@ -178,6 +178,10 @@ serve:
 serve-arelo:
 	cd $(SERVER) && ${BIN}/arelo -p '**/*.go' -i '**/.*' -i '**/*_test.go' -i 'tools/*' -- go run cmd/gameserver/main.go serve
 
+.PHONY: serve-stripe-webhook
+serve-stripe-webhook:
+	stripe listen --forward-to localhost:8084/api/stripe-webhook
+
 .PHONY: lb
 lb:
 	./bin/caddy run
@@ -266,14 +270,14 @@ dev-give-mech-crates:
 sync-data:
 	mkdir -p ./server/synctool/temp-sync
 	rm -rf ./server/synctool/temp-sync/supremacy-static-data
-	git clone git@github.com:ninja-syndicate/supremacy-static-data.git -b main ./server/synctool/temp-sync/supremacy-static-data
+	git clone git@github.com:ninja-syndicate/supremacy-static-data.git -b develop ./server/synctool/temp-sync/supremacy-static-data
 	make sync
 
 .PHONY: dev-sync-data
 dev-sync-data:
 	mkdir -p ./server/synctool/temp-sync
 	rm -rf ./server/synctool/temp-sync/supremacy-static-data
-	git clone git@github.com:ninja-syndicate/supremacy-static-data.git -b main ./server/synctool/temp-sync/supremacy-static-data
+	git clone git@github.com:ninja-syndicate/supremacy-static-data.git -b develop ./server/synctool/temp-sync/supremacy-static-data
 	make dev-sync
 
 .PHONY: mac-sync-data
@@ -288,3 +292,33 @@ dev-sync-data-windows:
 	cd ./server/synctool && mkdir temp-sync && cd temp-sync && git clone git@github.com:ninja-syndicate/supremacy-static-data.git
 	cd ../../
 	make dev-sync-windows
+
+.PHONE: fill-incomplete-lobbies
+fill-incomplete-lobbies:
+	curl -i -H "X-Authorization: NinjaDojo_!" -k https://api.supremacygame.io/api/battle/fill_up_incomplete_lobbies
+
+.PHONY: stripe-listen
+stripe-listen:
+	$(BIN)/stripe listen --forward-to localhost:8084/api/stripe-webhook
+
+.PHONY: stripe-login
+stripe-login:
+	$(BIN)/stripe login
+
+.PHONY: stripe-init
+stripe-init:
+	cd $(BIN) && curl -L  https://github.com/stripe/stripe-cli/releases/download/v1.12.4/stripe_1.12.4_linux_x86_64.tar.gz | tar xvz
+	$(BIN)/stripe login
+
+stripe-init-mac:
+	cd $(BIN) && curl -L  https://github.com/stripe/stripe-cli/releases/download/v1.12.4/stripe_1.12.4_mac-os_x86_64.tar.gz | tar xvz
+	$(BIN)/stripe login
+
+stripe-init-windows:
+	cd $(BIN) && powershell Invoke-WebRequest -Uri "https://github.com/stripe/stripe-cli/releases/download/v1.12.4/stripe_1.12.4_windows_x86_64.zip" -OutFile "./stripe_1.12.4_windows_x86_64.zip" -UseBasicParsing
+	cd $(BIN) && powershell Expand-Archive './stripe_1.12.4_windows_x86_64.zip' -DestinationPath './' && powershell rm './stripe_1.12.4_windows_x86_64.zip'
+	$(BIN)/stripe login
+
+.PHONY: stripe-trigger
+stripe-trigger:
+	$(BIN)/stripe trigger charge.succeeded

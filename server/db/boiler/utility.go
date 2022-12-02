@@ -479,6 +479,7 @@ func (o *Utility) MechUtility(mods ...qm.QueryMod) mechUtilityQuery {
 func (o *Utility) UtilityShieldDontUse(mods ...qm.QueryMod) utilityShieldDontUseQuery {
 	queryMods := []qm.QueryMod{
 		qm.Where("\"utility_id\" = ?", o.ID),
+		qmhelper.WhereIsNull("deleted_at"),
 	}
 
 	queryMods = append(queryMods, mods...)
@@ -838,7 +839,7 @@ func (utilityL) LoadMechUtility(e boil.Executor, singular bool, maybeUtility int
 			}
 
 			for _, a := range args {
-				if a == obj.ID {
+				if queries.Equal(a, obj.ID) {
 					continue Outer
 				}
 			}
@@ -900,7 +901,7 @@ func (utilityL) LoadMechUtility(e boil.Executor, singular bool, maybeUtility int
 
 	for _, local := range slice {
 		for _, foreign := range resultSlice {
-			if local.ID == foreign.UtilityID {
+			if queries.Equal(local.ID, foreign.UtilityID) {
 				local.R.MechUtility = foreign
 				if foreign.R == nil {
 					foreign.R = &mechUtilityR{}
@@ -956,6 +957,7 @@ func (utilityL) LoadUtilityShieldDontUse(e boil.Executor, singular bool, maybeUt
 	query := NewQuery(
 		qm.From(`utility_shield_dont_use`),
 		qm.WhereIn(`utility_shield_dont_use.utility_id in ?`, args...),
+		qmhelper.WhereIsNull(`utility_shield_dont_use.deleted_at`),
 	)
 	if mods != nil {
 		mods.Apply(query)
@@ -1226,7 +1228,7 @@ func (o *Utility) SetMechUtility(exec boil.Executor, insert bool, related *MechU
 	var err error
 
 	if insert {
-		related.UtilityID = o.ID
+		queries.Assign(&related.UtilityID, o.ID)
 
 		if err = related.Insert(exec, boil.Infer()); err != nil {
 			return errors.Wrap(err, "failed to insert into foreign table")
@@ -1237,7 +1239,7 @@ func (o *Utility) SetMechUtility(exec boil.Executor, insert bool, related *MechU
 			strmangle.SetParamNames("\"", "\"", 1, []string{"utility_id"}),
 			strmangle.WhereClause("\"", "\"", 2, mechUtilityPrimaryKeyColumns),
 		)
-		values := []interface{}{o.ID, related.ID}
+		values := []interface{}{o.ID, related.ChassisID, related.SlotNumber}
 
 		if boil.DebugMode {
 			fmt.Fprintln(boil.DebugWriter, updateQuery)
@@ -1247,8 +1249,7 @@ func (o *Utility) SetMechUtility(exec boil.Executor, insert bool, related *MechU
 			return errors.Wrap(err, "failed to update foreign table")
 		}
 
-		related.UtilityID = o.ID
-
+		queries.Assign(&related.UtilityID, o.ID)
 	}
 
 	if o.R == nil {
@@ -1266,6 +1267,28 @@ func (o *Utility) SetMechUtility(exec boil.Executor, insert bool, related *MechU
 	} else {
 		related.R.Utility = o
 	}
+	return nil
+}
+
+// RemoveMechUtility relationship.
+// Sets o.R.MechUtility to nil.
+// Removes o from all passed in related items' relationships struct (Optional).
+func (o *Utility) RemoveMechUtility(exec boil.Executor, related *MechUtility) error {
+	var err error
+
+	queries.SetScanner(&related.UtilityID, nil)
+	if _, err = related.Update(exec, boil.Whitelist("utility_id")); err != nil {
+		return errors.Wrap(err, "failed to update local table")
+	}
+
+	if o.R != nil {
+		o.R.MechUtility = nil
+	}
+	if related == nil || related.R == nil {
+		return nil
+	}
+
+	related.R.Utility = nil
 	return nil
 }
 

@@ -58,6 +58,13 @@ const (
 	AbilityKillingPowerLevelNONE   = "NONE"
 )
 
+// Enum values for AbilityTriggerType
+const (
+	AbilityTriggerTypeBATTLE_ABILITY = "BATTLE_ABILITY"
+	AbilityTriggerTypeMECH_ABILITY   = "MECH_ABILITY"
+	AbilityTriggerTypePLAYER_ABILITY = "PLAYER_ABILITY"
+)
+
 // Enum values for AbilityTypeEnum
 const (
 	AbilityTypeEnumAIRSTRIKE      = "AIRSTRIKE"
@@ -71,19 +78,6 @@ const (
 	AbilityTypeEnumLANDMINE       = "LANDMINE"
 )
 
-// Enum values for AbilityTriggerType
-const (
-	AbilityTriggerTypeBATTLE_ABILITY = "BATTLE_ABILITY"
-	AbilityTriggerTypeMECH_ABILITY   = "MECH_ABILITY"
-	AbilityTriggerTypePLAYER_ABILITY = "PLAYER_ABILITY"
-)
-
-// Enum values for ArenaTypeEnum
-const (
-	ArenaTypeEnumSTORY      = "STORY"
-	ArenaTypeEnumEXPEDITION = "EXPEDITION"
-)
-
 // Enum values for BattleEvent
 const (
 	BattleEventKilled           = "killed"
@@ -91,6 +85,8 @@ const (
 	BattleEventKill             = "kill"
 	BattleEventAbilityTriggered = "ability_triggered"
 	BattleEventPickup           = "pickup"
+	BattleEventStunned          = "stunned"
+	BattleEventHacked           = "hacked"
 )
 
 // Enum values for RecordingStatus
@@ -133,9 +129,14 @@ const (
 
 // Enum values for BoostStat
 const (
-	BoostStatMECH_HEALTH  = "MECH_HEALTH"
-	BoostStatMECH_SPEED   = "MECH_SPEED"
-	BoostStatSHIELD_REGEN = "SHIELD_REGEN"
+	BoostStatMECH_HEALTH                 = "MECH_HEALTH"
+	BoostStatMECH_SPEED                  = "MECH_SPEED"
+	BoostStatSHIELD_REGEN                = "SHIELD_REGEN"
+	BoostStatMECH_MAX_SHIELD             = "MECH_MAX_SHIELD"
+	BoostStatMECH_SPRINT_SPREAD_MODIFIER = "MECH_SPRINT_SPREAD_MODIFIER"
+	BoostStatMECH_WALK_SPEED_MODIFIER    = "MECH_WALK_SPEED_MODIFIER"
+	BoostStatWEAPON_DAMAGE_FALLOFF       = "WEAPON_DAMAGE_FALLOFF"
+	BoostStatWEAPON_SPREAD               = "WEAPON_SPREAD"
 )
 
 // Enum values for PowercoreSize
@@ -143,6 +144,7 @@ const (
 	PowercoreSizeSMALL  = "SMALL"
 	PowercoreSizeMEDIUM = "MEDIUM"
 	PowercoreSizeLARGE  = "LARGE"
+	PowercoreSizeTURBO  = "TURBO"
 )
 
 // Enum values for  are not proper Go identifiers, cannot emit constants
@@ -241,6 +243,14 @@ const (
 	CouponItemTypeGENESIS_MECH = "GENESIS_MECH"
 )
 
+// Enum values for PaymentMethods
+const (
+	PaymentMethodsSups   = "sups"
+	PaymentMethodsStripe = "stripe"
+	PaymentMethodsEth    = "eth"
+	PaymentMethodsUsd    = "usd"
+)
+
 // Enum values for FeatureName
 const (
 	FeatureNameMECH_MOVE       = "MECH_MOVE"
@@ -249,6 +259,25 @@ const (
 	FeatureNameSYSTEM_MESSAGES = "SYSTEM_MESSAGES"
 	FeatureNameCHAT_BAN        = "CHAT_BAN"
 	FeatureNamePROFILE_AVATAR  = "PROFILE_AVATAR"
+	FeatureNameVOICE_CHAT      = "VOICE_CHAT"
+)
+
+// Enum values for FiatProductItemTypes
+const (
+	FiatProductItemTypesMechPackage   = "mech_package"
+	FiatProductItemTypesWeaponPackage = "weapon_package"
+	FiatProductItemTypesSingleItem    = "single_item"
+)
+
+// Enum values for FiatProductTypes
+const (
+	FiatProductTypesStarterPackage = "starter_package"
+	FiatProductTypesMysteryCrate   = "mystery_crate"
+	FiatProductTypesMechSkin       = "mech_skin"
+	FiatProductTypesWeaponSkin     = "weapon_skin"
+	FiatProductTypesMechAnimation  = "mech_animation"
+	FiatProductTypesMech           = "mech"
+	FiatProductTypesWeapon         = "weapon"
 )
 
 // Enum values for AbilityLevel
@@ -319,6 +348,13 @@ const (
 	TemplateItemTypePLAYER_ABILITY = "PLAYER_ABILITY"
 )
 
+// Enum values for OrderStatuses
+const (
+	OrderStatusesPending   = "pending"
+	OrderStatusesCompleted = "completed"
+	OrderStatusesRefunded  = "refunded"
+)
+
 // Enum values for BanFromType
 const (
 	BanFromTypeSYSTEM = "SYSTEM"
@@ -362,6 +398,22 @@ const (
 	RepairAgentFinishReasonABANDONED = "ABANDONED"
 	RepairAgentFinishReasonEXPIRED   = "EXPIRED"
 	RepairAgentFinishReasonSUCCEEDED = "SUCCEEDED"
+)
+
+// Enum values for RepairGameBlockType
+const (
+	RepairGameBlockTypeNORMAL = "NORMAL"
+	RepairGameBlockTypeSHRINK = "SHRINK"
+	RepairGameBlockTypeFAST   = "FAST"
+	RepairGameBlockTypeBOMB   = "BOMB"
+	RepairGameBlockTypeEND    = "END"
+)
+
+// Enum values for RepairGameBlockTriggerKey
+const (
+	RepairGameBlockTriggerKeyM        = "M"
+	RepairGameBlockTriggerKeyN        = "N"
+	RepairGameBlockTriggerKeySPACEBAR = "SPACEBAR"
 )
 
 // Enum values for RepairFinishReason
@@ -444,4 +496,10 @@ const (
 const (
 	SyndicateTypeCORPORATION   = "CORPORATION"
 	SyndicateTypeDECENTRALISED = "DECENTRALISED"
+)
+
+// Enum values for VoiceSenderType
+const (
+	VoiceSenderTypeMECH_OWNER        = "MECH_OWNER"
+	VoiceSenderTypeFACTION_COMMANDER = "FACTION_COMMANDER"
 )

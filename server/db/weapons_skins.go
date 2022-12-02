@@ -3,15 +3,16 @@ package db
 import (
 	"database/sql"
 	"fmt"
+	"server"
+	"server/db/boiler"
+	"server/gamedb"
+	"server/gamelog"
+
 	"github.com/gofrs/uuid"
 	"github.com/ninja-software/terror/v2"
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
-	"server"
-	"server/db/boiler"
-	"server/gamedb"
-	"server/gamelog"
 )
 
 func InsertNewWeaponSkin(tx *sql.Tx, ownerID uuid.UUID, blueprintWeaponSkin *server.BlueprintWeaponSkin, modelID *string) (*server.WeaponSkin, error) {
@@ -41,17 +42,30 @@ func InsertNewWeaponSkin(tx *sql.Tx, ownerID uuid.UUID, blueprintWeaponSkin *ser
 }
 
 func WeaponSkin(tx boil.Executor, id string, blueprintID *string) (*server.WeaponSkin, error) {
+	L := gamelog.L.With().Str("func", "WeaponSkin").Str("id", id).Logger()
+
+	if blueprintID != nil {
+		L = L.With().Str("blueprintID", *blueprintID).Logger()
+	}
+
 	boilerWeaponSkin, err := boiler.WeaponSkins(
 		boiler.WeaponSkinWhere.ID.EQ(id),
 		qm.Load(boiler.WeaponSkinRels.Blueprint),
 	).One(tx)
 	if err != nil {
+		L.Error().Err(err).Msg("failed to get weapon skin object")
 		return nil, err
 	}
+
+	L = L.With().Interface("boilerWeaponSkin", boilerWeaponSkin).Logger()
+
 	boilerWeaponCollectionDetails, err := boiler.CollectionItems(boiler.CollectionItemWhere.ItemID.EQ(id)).One(tx)
 	if err != nil {
+		L.Error().Err(err).Msg("failed to get weapon skin collection object")
 		return nil, err
 	}
+
+	L = L.With().Interface("boilerWeaponCollectionDetails", boilerWeaponCollectionDetails).Logger()
 
 	queryMods := []qm.QueryMod{
 		boiler.WeaponModelSkinCompatibilityWhere.BlueprintWeaponSkinID.EQ(boilerWeaponSkin.BlueprintID),
@@ -65,8 +79,12 @@ func WeaponSkin(tx boil.Executor, id string, blueprintID *string) (*server.Weapo
 		queryMods...,
 	).One(tx)
 	if err != nil {
+		L.Error().Err(err).Msg("failed to get weapon skin compatability matrix")
 		return nil, err
 	}
+
+	L = L.With().Interface("weaponSkinCompatMatrix", weaponSkinCompatMatrix).Logger()
+
 	return server.WeaponSkinFromBoiler(boilerWeaponSkin, boilerWeaponCollectionDetails, weaponSkinCompatMatrix, boilerWeaponSkin.R.Blueprint), nil
 }
 
@@ -100,13 +118,15 @@ type WeaponSkinListOpts struct {
 	FilterEquippedStatuses   []string `json:"equipped_statuses"`
 }
 
-func WeaponSkinList(opts *WeaponSkinListOpts) (int64, []*server.WeaponSkin, error) {
+func WeaponSkinListDetailed(opts *WeaponSkinListOpts) (int64, []*server.WeaponSkin, error) {
 
 	var weaponSkins []*server.WeaponSkin
 
 	var queryMods []qm.QueryMod
 
 	queryMods = append(queryMods,
+		// hide hidden assets
+		boiler.CollectionItemWhere.AssetHidden.IsNull(),
 		// where owner id = ?
 		GenerateListFilterQueryMod(ListFilterRequestItem{
 			Table:    boiler.TableNames.CollectionItems,
@@ -114,7 +134,7 @@ func WeaponSkinList(opts *WeaponSkinListOpts) (int64, []*server.WeaponSkin, erro
 			Operator: OperatorValueTypeEquals,
 			Value:    opts.OwnerID,
 		}, 0, ""),
-		// and item type = weapon Skin
+		// and item type = weapon SkinID
 		GenerateListFilterQueryMod(ListFilterRequestItem{
 			Table:    boiler.TableNames.CollectionItems,
 			Column:   boiler.CollectionItemColumns.ItemType,
@@ -212,7 +232,7 @@ func WeaponSkinList(opts *WeaponSkinListOpts) (int64, []*server.WeaponSkin, erro
 		queryMods = append(queryMods, qm.AndIn(fmt.Sprintf("%s IN ?", qm.Rels(boiler.TableNames.BlueprintWeaponSkin, boiler.BlueprintWeaponSkinColumns.Tier)), vals...))
 	}
 	if len(opts.FilterEquippedStatuses) == 1 {
-		if opts.FilterEquippedStatuses[0] == "UNEQUIPPED" {
+		if opts.FilterEquippedStatuses[0] == "unequipped" {
 			queryMods = append(queryMods, GenerateListFilterQueryMod(ListFilterRequestItem{
 				Table:    boiler.TableNames.WeaponSkin,
 				Column:   boiler.WeaponSkinColumns.EquippedOn,
@@ -271,6 +291,7 @@ func WeaponSkinList(opts *WeaponSkinListOpts) (int64, []*server.WeaponSkin, erro
 			qm.Rels(boiler.TableNames.WeaponSkin, boiler.WeaponSkinColumns.ID),
 			qm.Rels(boiler.TableNames.WeaponSkin, boiler.WeaponSkinColumns.EquippedOn),
 			qm.Rels(boiler.TableNames.BlueprintWeaponSkin, boiler.BlueprintWeaponSkinColumns.ID),
+			qm.Rels(boiler.TableNames.BlueprintWeaponSkin, boiler.BlueprintWeaponSkinColumns.StatModifier),
 			qm.Rels(boiler.TableNames.BlueprintWeaponSkin, boiler.BlueprintWeaponSkinColumns.Label),
 			qm.Rels(boiler.TableNames.BlueprintWeaponSkin, boiler.BlueprintWeaponSkinColumns.Tier),
 			qm.Rels(boiler.TableNames.BlueprintWeaponSkin, boiler.BlueprintWeaponSkinColumns.ImageURL),
@@ -312,6 +333,7 @@ func WeaponSkinList(opts *WeaponSkinListOpts) (int64, []*server.WeaponSkin, erro
 					qm.Rels(boiler.TableNames.BlueprintWeaponSkin, boiler.BlueprintWeaponSkinColumns.Label),
 				)))
 	}
+
 	rows, err := boiler.NewQuery(
 		queryMods...,
 	).Query(gamedb.StdConn)
@@ -341,6 +363,7 @@ func WeaponSkinList(opts *WeaponSkinListOpts) (int64, []*server.WeaponSkin, erro
 			&ws.ID,
 			&ws.EquippedOn,
 			&ws.BlueprintID,
+			&ws.StatModifier,
 			&ws.Label,
 			&ws.Tier,
 			&ws.SkinSwatch.ImageURL,
@@ -365,6 +388,155 @@ func WeaponSkinList(opts *WeaponSkinListOpts) (int64, []*server.WeaponSkin, erro
 		}
 		weaponSkins = append(weaponSkins, ws)
 	}
-	
+
 	return total, weaponSkins, nil
+}
+
+func PlayerWeaponSkins(playerID string, weaponSkinIDs ...string) ([]*server.WeaponSkin, error) {
+	playerIDWhere := ""
+	if playerID != "" {
+		_, err := uuid.FromString(playerID)
+		if err != nil {
+			return nil, terror.Error(err, "Invalid player id")
+		}
+
+		playerIDWhere = fmt.Sprintf(" AND %s = '%s'", boiler.CollectionItemTableColumns.OwnerID, playerID)
+	}
+
+	weaponSkinIDWhereIn := ""
+	if len(weaponSkinIDs) > 0 {
+		weaponSkinIDWhereIn = fmt.Sprintf(" AND %s IN (", boiler.CollectionItemTableColumns.ItemID)
+		for i, weaponSkinID := range weaponSkinIDs {
+
+			_, err := uuid.FromString(weaponSkinID)
+			if err != nil {
+				return nil, terror.Error(err, "Invalid weapon skin id.")
+			}
+
+			weaponSkinIDWhereIn += "'" + weaponSkinID + "'"
+
+			if i < len(weaponSkinIDs)-1 {
+				weaponSkinIDWhereIn += ","
+				continue
+			}
+
+			weaponSkinIDWhereIn += ")"
+		}
+	}
+
+	queries := []qm.QueryMod{
+		qm.Select(
+			boiler.CollectionItemTableColumns.CollectionSlug,
+			boiler.CollectionItemTableColumns.Hash,
+			boiler.CollectionItemTableColumns.TokenID,
+			boiler.CollectionItemTableColumns.OwnerID,
+			boiler.CollectionItemTableColumns.ItemType,
+			boiler.CollectionItemTableColumns.MarketLocked,
+			boiler.CollectionItemTableColumns.XsynLocked,
+			boiler.CollectionItemTableColumns.LockedToMarketplace,
+			boiler.CollectionItemTableColumns.AssetHidden,
+
+			boiler.WeaponSkinTableColumns.ID,
+			boiler.WeaponSkinTableColumns.EquippedOn,
+
+			boiler.BlueprintWeaponSkinTableColumns.ID,
+			boiler.BlueprintWeaponSkinTableColumns.StatModifier,
+			boiler.BlueprintWeaponSkinTableColumns.Label,
+			boiler.BlueprintWeaponSkinTableColumns.Tier,
+
+			boiler.BlueprintWeaponSkinTableColumns.ImageURL,
+			boiler.BlueprintWeaponSkinTableColumns.AvatarURL,
+			boiler.BlueprintWeaponSkinTableColumns.CardAnimationURL,
+			boiler.BlueprintWeaponSkinTableColumns.LargeImageURL,
+			boiler.BlueprintWeaponSkinTableColumns.AnimationURL,
+			boiler.BlueprintWeaponSkinTableColumns.YoutubeURL,
+			boiler.BlueprintWeaponSkinTableColumns.BackgroundColor,
+
+			fmt.Sprintf(
+				"(SELECT TO_JSON(%s) FROM %s WHERE %s = %s LIMIT 1) AS images",
+				boiler.TableNames.WeaponModelSkinCompatibilities,
+				boiler.TableNames.WeaponModelSkinCompatibilities,
+				boiler.WeaponModelSkinCompatibilityTableColumns.BlueprintWeaponSkinID,
+				boiler.BlueprintWeaponSkinTableColumns.ID,
+			),
+		),
+
+		qm.From(fmt.Sprintf(
+			"(SELECT * FROM %s WHERE %s ISNULL AND %s = '%s' %s) %s",
+			boiler.TableNames.CollectionItems,
+			boiler.CollectionItemTableColumns.AssetHidden,
+			boiler.CollectionItemTableColumns.ItemType,
+			boiler.ItemTypeWeaponSkin,
+			playerIDWhere,
+			boiler.TableNames.CollectionItems,
+		)),
+
+		qm.InnerJoin(fmt.Sprintf(
+			"%s ON %s = %s",
+			boiler.TableNames.WeaponSkin,
+			boiler.WeaponSkinTableColumns.ID,
+			boiler.CollectionItemTableColumns.ItemID,
+		)),
+
+		// inner join weapon skin blueprint
+		qm.InnerJoin(fmt.Sprintf("%s ON %s = %s",
+			boiler.TableNames.BlueprintWeaponSkin,
+			boiler.BlueprintWeaponSkinTableColumns.ID,
+			boiler.WeaponSkinTableColumns.BlueprintID,
+		)),
+	}
+
+	rows, err := boiler.NewQuery(queries...).Query(gamedb.StdConn)
+	if err != nil {
+		return nil, terror.Error(err, "Failed to update")
+	}
+
+	result := []*server.WeaponSkin{}
+	for rows.Next() {
+		ws := &server.WeaponSkin{
+			CollectionItem: &server.CollectionItem{},
+			SkinSwatch:     &server.Images{},
+		}
+
+		images := &server.Images{}
+
+		err = rows.Scan(
+			&ws.CollectionItem.CollectionSlug,
+			&ws.CollectionItem.Hash,
+			&ws.CollectionItem.TokenID,
+			&ws.CollectionItem.OwnerID,
+			&ws.CollectionItem.ItemType,
+			&ws.CollectionItem.MarketLocked,
+			&ws.CollectionItem.XsynLocked,
+			&ws.CollectionItem.LockedToMarketplace,
+			&ws.CollectionItem.AssetHidden,
+			&ws.ID,
+			&ws.EquippedOn,
+
+			&ws.BlueprintID,
+			&ws.StatModifier,
+			&ws.Label,
+			&ws.Tier,
+			&ws.SkinSwatch.ImageURL,
+			&ws.SkinSwatch.AvatarURL,
+			&ws.SkinSwatch.CardAnimationURL,
+			&ws.SkinSwatch.LargeImageURL,
+			&ws.SkinSwatch.AnimationURL,
+			&ws.SkinSwatch.YoutubeURL,
+			&ws.SkinSwatch.BackgroundColor,
+
+			&images,
+		)
+		if err != nil {
+			gamelog.L.Error().Err(err).Msg("Failed to scan weapon skin.")
+			return nil, terror.Error(err, "Failed to scan weapon skin.")
+		}
+
+		ws.Images = images
+
+		result = append(result, ws)
+
+	}
+
+	return result, nil
 }

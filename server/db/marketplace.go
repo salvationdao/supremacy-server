@@ -52,7 +52,7 @@ var ItemSaleQueryMods = []qm.QueryMod{
 		fmt.Sprintf(`%s AS updated_at`, qm.Rels(boiler.TableNames.ItemSales, boiler.ItemSaleColumns.UpdatedAt)),
 		fmt.Sprintf(`%s AS created_at`, qm.Rels(boiler.TableNames.ItemSales, boiler.ItemSaleColumns.CreatedAt)),
 		fmt.Sprintf(`%s AS collection_item_type`, qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.ItemType)),
-		fmt.Sprintf(`(SELECT COUNT(*) FROM %s _isbh WHERE %s = %s) AS total_bids`, boiler.TableNames.ItemSalesBidHistory, boiler.ItemSalesBidHistoryTableColumns.ItemSaleID, qm.Rels(boiler.TableNames.ItemSales, boiler.ItemSaleColumns.ID)),
+		fmt.Sprintf(`(SELECT COUNT(*) FROM %s _isbh WHERE _isbh.%s = %s) AS total_bids`, boiler.TableNames.ItemSalesBidHistory, boiler.ItemSalesBidHistoryColumns.ItemSaleID, qm.Rels(boiler.TableNames.ItemSales, boiler.ItemSaleColumns.ID)),
 		fmt.Sprintf(`%s AS "players.id"`, qm.Rels(boiler.TableNames.Players, boiler.PlayerColumns.ID)),
 		fmt.Sprintf(`%s AS "players.username"`, qm.Rels(boiler.TableNames.Players, boiler.PlayerColumns.Username)),
 		fmt.Sprintf(`%s AS "players.faction_id"`, qm.Rels(boiler.TableNames.Players, boiler.PlayerColumns.FactionID)),
@@ -1114,7 +1114,7 @@ func MarketplaceEventList(
 		return 0, nil, terror.Error(err)
 	}
 
-	// Populate reasons
+	// Populate results
 	collectionToMechID := map[string]string{}
 	collectionToMysteryCrateID := map[string]string{}
 	collectionToWeaponID := map[string]string{}
@@ -1446,7 +1446,7 @@ func MarketplaceSaleCreate(
 	conn boil.Executor,
 	ownerID uuid.UUID,
 	factionID uuid.UUID,
-	listFeeTxnID string,
+	listFeeTxnID null.String,
 	endAt time.Time,
 	collectionItemID uuid.UUID,
 	hasBuyout bool,
@@ -1635,7 +1635,7 @@ func MarketplaceKeycardSaleCreate(
 	conn boil.Executor,
 	ownerID uuid.UUID,
 	factionID uuid.UUID,
-	listFeeTxnID string,
+	listFeeTxnID null.String,
 	endAt time.Time,
 	itemID uuid.UUID,
 	askingPrice decimal.Decimal,

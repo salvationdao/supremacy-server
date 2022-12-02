@@ -14,6 +14,7 @@ type PowerCore struct {
 	*CollectionItem
 	*Images
 	ID                    string          `json:"id"`
+	BlueprintID           string          `json:"blueprint_id"`
 	Label                 string          `json:"label"`
 	Size                  string          `json:"size"`
 	Capacity              decimal.Decimal `json:"capacity"`
@@ -25,7 +26,10 @@ type PowerCore struct {
 	CreatedAt             time.Time       `json:"created_at"`
 	GenesisTokenID        null.Int64      `json:"genesis_token_id,omitempty"`
 	LimitedReleaseTokenID null.Int64      `json:"limited_release_token_id,omitempty"`
-
+	MovementShare         int             `json:"movement_share,omitempty"`
+	WeaponShare           int             `json:"weapon_share,omitempty"`
+	UtilityShare          int             `json:"utility_share,omitempty"`
+	Weapon
 	EquippedOnDetails *EquippedOnDetails
 }
 
@@ -91,38 +95,39 @@ func BlueprintPowerCoreFromBoiler(core *boiler.BlueprintPowerCore) *BlueprintPow
 	}
 }
 
-func PowerCoreFromBoiler(skin *boiler.PowerCore, collection *boiler.CollectionItem) *PowerCore {
+func PowerCoreFromBoiler(pc *boiler.PowerCore, collection *boiler.CollectionItem) *PowerCore {
 	return &PowerCore{
 		CollectionItem: &CollectionItem{
-			CollectionSlug:   collection.CollectionSlug,
-			Hash:             collection.Hash,
-			TokenID:          collection.TokenID,
-			ItemType:         collection.ItemType,
-			ItemID:           collection.ItemID,
-			Tier:             collection.Tier,
-			OwnerID:          collection.OwnerID,
-			MarketLocked:     collection.MarketLocked,
-			XsynLocked:       collection.XsynLocked,
-			AssetHidden:      collection.AssetHidden,
+			CollectionSlug: collection.CollectionSlug,
+			Hash:           collection.Hash,
+			TokenID:        collection.TokenID,
+			ItemType:       collection.ItemType,
+			ItemID:         collection.ItemID,
+			Tier:           collection.Tier,
+			OwnerID:        collection.OwnerID,
+			MarketLocked:   collection.MarketLocked,
+			XsynLocked:     collection.XsynLocked,
+			AssetHidden:    collection.AssetHidden,
 		},
 		Images: &Images{
-			ImageURL:         skin.R.Blueprint.ImageURL,
-			CardAnimationURL: skin.R.Blueprint.CardAnimationURL,
-			AvatarURL:        skin.R.Blueprint.AvatarURL,
-			LargeImageURL:    skin.R.Blueprint.LargeImageURL,
-			BackgroundColor:  skin.R.Blueprint.BackgroundColor,
-			AnimationURL:     skin.R.Blueprint.AnimationURL,
-			YoutubeURL:       skin.R.Blueprint.YoutubeURL,
+			ImageURL:         pc.R.Blueprint.ImageURL,
+			CardAnimationURL: pc.R.Blueprint.CardAnimationURL,
+			AvatarURL:        pc.R.Blueprint.AvatarURL,
+			LargeImageURL:    pc.R.Blueprint.LargeImageURL,
+			BackgroundColor:  pc.R.Blueprint.BackgroundColor,
+			AnimationURL:     pc.R.Blueprint.AnimationURL,
+			YoutubeURL:       pc.R.Blueprint.YoutubeURL,
 		},
-		ID:           skin.ID,
-		Label:        skin.Label,
-		Size:         skin.Size,
-		Capacity:     skin.Capacity,
-		MaxDrawRate:  skin.MaxDrawRate,
-		RechargeRate: skin.RechargeRate,
-		Armour:       skin.Armour,
-		MaxHitpoints: skin.MaxHitpoints,
-		EquippedOn:   skin.EquippedOn,
-		CreatedAt:    skin.CreatedAt,
+		ID:           pc.ID,
+		BlueprintID:  pc.BlueprintID,
+		Label:        pc.R.Blueprint.Label,
+		Size:         pc.R.Blueprint.Size,
+		Capacity:     pc.R.Blueprint.Capacity,
+		MaxDrawRate:  pc.R.Blueprint.MaxDrawRate,
+		RechargeRate: pc.R.Blueprint.RechargeRate,
+		Armour:       pc.R.Blueprint.Armour,
+		MaxHitpoints: pc.R.Blueprint.MaxHitpoints,
+		EquippedOn:   pc.EquippedOn,
+		CreatedAt:    pc.CreatedAt,
 	}
 }

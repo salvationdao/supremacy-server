@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"math"
 	"server"
-	"server/battle"
 	"server/db"
 	"server/db/boiler"
 	"server/gamedb"
@@ -452,6 +451,10 @@ func (mp *MarketplaceController) SalesCreateHandler(ctx context.Context, user *b
 		return terror.Error(fmt.Errorf("unable to list assets staked with old staking contract"))
 	}
 
+	if collectionItem.XsynLocked {
+		return terror.Error(fmt.Errorf("asset does not live on supremacy"))
+	}
+
 	ciUUID := uuid.FromStringOrNil(collectionItem.ID)
 
 	if ciUUID.IsNil() {
@@ -502,18 +505,18 @@ func (mp *MarketplaceController) SalesCreateHandler(ctx context.Context, user *b
 
 	// check if queue
 	if collectionItem.ItemType == boiler.ItemTypeMech {
-		position, err := db.MechQueuePosition(collectionItem.ItemID, user.FactionID.String)
+		blm, err := boiler.BattleLobbiesMechs(
+			boiler.BattleLobbiesMechWhere.MechID.EQ(collectionItem.ItemID),
+			boiler.BattleLobbiesMechWhere.EndedAt.IsNull(),
+			boiler.BattleLobbiesMechWhere.RefundTXID.IsNull(),
+		).One(gamedb.StdConn)
 		if err != nil && !errors.Is(err, sql.ErrNoRows) {
-			gamelog.L.Error().
-				Str("user_id", user.ID).
-				Str("item_id", req.Payload.ItemID.String()).
-				Str("item_type", req.Payload.ItemType).
-				Err(err).
-				Msg("unable to get queue pos")
-			return err
+			gamelog.L.Error().Err(err).Str("mech id", collectionItem.ItemID).Msg("Failed to check mech queue.")
+			return terror.Error(err, "Failed to check mech queue.")
 		}
-		if position != nil && position.QueuePosition >= 0 {
-			return fmt.Errorf("cannot sell war machine in battle queue")
+
+		if blm != nil {
+			return fmt.Errorf("cannot sell war machine which is already in battle lobby")
 		}
 	}
 
@@ -546,64 +549,64 @@ func (mp *MarketplaceController) SalesCreateHandler(ctx context.Context, user *b
 	//	return terror.Error(err, errMsg)
 	//}
 
-	balance := mp.API.Passport.UserBalanceGet(userID)
-	feePrice := db.GetDecimalWithDefault(db.KeyMarketplaceListingFee, decimal.NewFromInt(10))
-	if hasBuyout {
-		feePrice = feePrice.Add(db.GetDecimalWithDefault(db.KeyMarketplaceListingBuyoutFee, decimal.NewFromInt(5)))
-	}
-	if req.Payload.AuctionReservedPrice.Valid {
-		feePrice = feePrice.Add(db.GetDecimalWithDefault(db.KeyMarketplaceListingAuctionReserveFee, decimal.NewFromInt(5)))
-	}
-	if req.Payload.ListingDurationHours > 24 {
-		listingDurationFee := (req.Payload.ListingDurationHours/24 - 1) * 5
-		feePrice = feePrice.Add(decimal.NewFromInt(int64(listingDurationFee)))
-	}
+	// balance := mp.API.Passport.UserBalanceGet(userID)
+	// feePrice := db.GetDecimalWithDefault(db.KeyMarketplaceListingFee, decimal.NewFromInt(10))
+	// if hasBuyout {
+	// 	feePrice = feePrice.Add(db.GetDecimalWithDefault(db.KeyMarketplaceListingBuyoutFee, decimal.NewFromInt(5)))
+	// }
+	// if req.Payload.AuctionReservedPrice.Valid {
+	// 	feePrice = feePrice.Add(db.GetDecimalWithDefault(db.KeyMarketplaceListingAuctionReserveFee, decimal.NewFromInt(5)))
+	// }
+	// if req.Payload.ListingDurationHours > 24 {
+	// 	listingDurationFee := (req.Payload.ListingDurationHours/24 - 1) * 5
+	// 	feePrice = feePrice.Add(decimal.NewFromInt(int64(listingDurationFee)))
+	// }
 
-	feePrice = feePrice.Mul(decimal.New(1, 18))
+	// feePrice = feePrice.Mul(decimal.New(1, 18))
 
-	if balance.Sub(feePrice).LessThan(decimal.Zero) {
-		err = fmt.Errorf("insufficient funds")
-		gamelog.L.Error().
-			Str("user_id", user.ID).
-			Str("balance", balance.String()).
-			Str("item_type", req.Payload.ItemType).
-			Str("item_id", req.Payload.ItemID.String()).
-			Err(err).
-			Msg("Player does not have enough sups.")
-		return terror.Error(err, "You do not have enough sups to list item.")
-	}
+	// if balance.Sub(feePrice).LessThan(decimal.Zero) {
+	// 	err = fmt.Errorf("insufficient funds")
+	// 	gamelog.L.Error().
+	// 		Str("user_id", user.ID).
+	// 		Str("balance", balance.String()).
+	// 		Str("item_type", req.Payload.ItemType).
+	// 		Str("item_id", req.Payload.ItemID.String()).
+	// 		Err(err).
+	// 		Msg("Player does not have enough sups.")
+	// 	return terror.Error(err, "You do not have enough sups to list item.")
+	// }
 
-	// Pay Listing Fees
-	txid, err := mp.API.Passport.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
-		FromUserID:           userID,
-		ToUserID:             uuid.Must(uuid.FromString(server.SupremacyChallengeFundUserID)), // NOTE: send fees to challenge fund for now. (was faction account)
-		Amount:               feePrice.String(),
-		TransactionReference: server.TransactionReference(fmt.Sprintf("marketplace_fee|%s|%s|%d", req.Payload.ItemType, req.Payload.ItemID.String(), time.Now().UnixNano())),
-		Group:                string(server.TransactionGroupSupremacy),
-		SubGroup:             string(server.TransactionGroupMarketplace),
-		Description:          fmt.Sprintf("Marketplace List Item Fee: %s (%s)", req.Payload.ItemID.String(), req.Payload.ItemType),
-	})
-	if err != nil {
-		err = fmt.Errorf("failed to process marketplace fee transaction")
-		gamelog.L.Error().
-			Str("user_id", user.ID).
-			Str("balance", balance.String()).
-			Str("item_type", req.Payload.ItemType).
-			Str("item_id", req.Payload.ItemID.String()).
-			Err(err).
-			Msg("Failed to process transaction for Marketplace Fee.")
-		return terror.Error(err, "Failed tp process transaction for Marketplace Fee.")
-	}
+	// // Pay Listing Fees
+	// txid, err := mp.API.Passport.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
+	// 	FromUserID:           userID,
+	// 	ToUserID:             uuid.Must(uuid.FromString(server.SupremacyChallengeFundUserID)), // NOTE: send fees to challenge fund for now. (was faction account)
+	// 	Amount:               feePrice.String(),
+	// 	TransactionReference: server.TransactionReference(fmt.Sprintf("marketplace_fee|%s|%s|%d", req.Payload.ItemType, req.Payload.ItemID.String(), time.Now().UnixNano())),
+	// 	Group:                string(server.TransactionGroupSupremacy),
+	// 	SubGroup:             string(server.TransactionGroupMarketplace),
+	// 	Description:          fmt.Sprintf("Marketplace List Item Fee: %s (%s)", req.Payload.ItemID.String(), req.Payload.ItemType),
+	// })
+	// if err != nil {
+	// 	err = fmt.Errorf("failed to process marketplace fee transaction")
+	// 	gamelog.L.Error().
+	// 		Str("user_id", user.ID).
+	// 		Str("balance", balance.String()).
+	// 		Str("item_type", req.Payload.ItemType).
+	// 		Str("item_id", req.Payload.ItemID.String()).
+	// 		Err(err).
+	// 		Msg("Failed to process transaction for Marketplace Fee.")
+	// 	return terror.Error(err, "Failed tp process transaction for Marketplace Fee.")
+	// }
 
-	// trigger challenge fund update
-	defer func() {
-		mp.API.ArenaManager.ChallengeFundUpdateChan <- true
-	}()
+	// // trigger challenge fund update
+	// defer func() {
+	// 	mp.API.ArenaManager.ChallengeFundUpdateChan <- true
+	// }()
 
 	// Begin transaction
 	tx, err := gamedb.StdConn.Begin()
 	if err != nil {
-		mp.API.Passport.RefundSupsMessage(txid)
+		// mp.API.Passport.RefundSupsMessage(txid)
 		gamelog.L.Error().
 			Str("user_id", user.ID).
 			Str("item_type", req.Payload.ItemType).
@@ -625,7 +628,7 @@ func (mp *MarketplaceController) SalesCreateHandler(ctx context.Context, user *b
 		tx,
 		userID,
 		factionID,
-		txid,
+		null.String{},
 		endAt,
 		ciUUID,
 		hasBuyout,
@@ -637,7 +640,7 @@ func (mp *MarketplaceController) SalesCreateHandler(ctx context.Context, user *b
 		req.Payload.DutchAuctionDropRate,
 	)
 	if err != nil {
-		mp.API.Passport.RefundSupsMessage(txid)
+		// mp.API.Passport.RefundSupsMessage(txid)
 		gamelog.L.Error().
 			Str("user_id", user.ID).
 			Str("item_type", req.Payload.ItemType).
@@ -654,7 +657,7 @@ func (mp *MarketplaceController) SalesCreateHandler(ctx context.Context, user *b
 		boiler.CollectionItemColumns.LockedToMarketplace,
 	))
 	if err != nil {
-		mp.API.Passport.RefundSupsMessage(txid)
+		// mp.API.Passport.RefundSupsMessage(txid)
 		gamelog.L.Error().
 			Str("user_id", user.ID).
 			Str("item_type", req.Payload.ItemType).
@@ -667,7 +670,7 @@ func (mp *MarketplaceController) SalesCreateHandler(ctx context.Context, user *b
 	// Commit Transaction
 	err = tx.Commit()
 	if err != nil {
-		mp.API.Passport.RefundSupsMessage(txid)
+		// mp.API.Passport.RefundSupsMessage(txid)
 		gamelog.L.Error().
 			Str("user_id", user.ID).
 			Str("item_type", req.Payload.ItemType).
@@ -699,9 +702,7 @@ func (mp *MarketplaceController) SalesCreateHandler(ctx context.Context, user *b
 	}
 
 	if ci.ItemType == boiler.ItemTypeMech {
-		ws.PublishMessage(fmt.Sprintf("/faction/%s/queue/%s", factionID, ci.ItemID), battle.WSPlayerAssetMechQueueSubscribe, &server.MechArenaInfo{
-			Status: server.MechArenaStatusMarket,
-		})
+		mp.API.ArenaManager.MechDebounceBroadcastChan <- []string{ci.ItemID}
 	}
 
 	return nil
@@ -758,7 +759,7 @@ func (mp *MarketplaceController) SalesKeycardCreateHandler(ctx context.Context, 
 	//}
 
 	// Check if can sell any keycards
-	keycard, err := db.PlayerKeycard(req.Payload.ItemID)
+	keycards, err := db.PlayerKeycards("", req.Payload.ItemID.String())
 	if errors.Is(err, sql.ErrNoRows) {
 		return terror.Error(err, "Player Keycard not found.")
 	}
@@ -771,6 +772,13 @@ func (mp *MarketplaceController) SalesKeycardCreateHandler(ctx context.Context, 
 			Msg("unable to get player's keycard")
 		return terror.Error(err, errMsg)
 	}
+
+	if len(keycards) == 0 {
+		return terror.Error(fmt.Errorf("keycard not found"), "Keycard not found.")
+	}
+
+	keycard := keycards[0]
+
 	if keycard.Count < 1 {
 		return terror.Error(fmt.Errorf("all keycards are on marketplace"), "Your keycard(s) are already for sale on Marketplace.")
 	}
@@ -817,58 +825,57 @@ func (mp *MarketplaceController) SalesKeycardCreateHandler(ctx context.Context, 
 		return terror.Error(err, "Failed to update XSYN asset count")
 	}
 
-	// Process fee
-	balance := mp.API.Passport.UserBalanceGet(userID)
+	// // Process fee
+	// balance := mp.API.Passport.UserBalanceGet(userID)
 
-	feePrice := db.GetDecimalWithDefault(db.KeyMarketplaceListingFee, decimal.NewFromInt(10)).Mul(decimal.New(1, 18))
-	if req.Payload.ListingDurationHours > 24 {
-		listingDurationFee := (req.Payload.ListingDurationHours/24 - 1) * 5
-		feePrice = feePrice.Add(decimal.NewFromInt(int64(listingDurationFee)))
-	}
+	// feePrice := db.GetDecimalWithDefault(db.KeyMarketplaceListingFee, decimal.NewFromInt(10)).Mul(decimal.New(1, 18))
+	// if req.Payload.ListingDurationHours > 24 {
+	// 	listingDurationFee := (req.Payload.ListingDurationHours/24 - 1) * 5
+	// 	feePrice = feePrice.Add(decimal.NewFromInt(int64(listingDurationFee)))
+	// }
 
-	if balance.Sub(feePrice).LessThan(decimal.Zero) {
-		err = fmt.Errorf("insufficient funds")
-		gamelog.L.Error().
-			Str("user_id", user.ID).
-			Str("balance", balance.String()).
-			Str("item_id", req.Payload.ItemID.String()).
-			Err(err).
-			Msg("Player does not have enough sups.")
-		return terror.Error(err, "You do not have enough sups to list item.")
-	}
+	// if balance.Sub(feePrice).LessThan(decimal.Zero) {
+	// 	err = fmt.Errorf("insufficient funds")
+	// 	gamelog.L.Error().
+	// 		Str("user_id", user.ID).
+	// 		Str("balance", balance.String()).
+	// 		Str("item_id", req.Payload.ItemID.String()).
+	// 		Err(err).
+	// 		Msg("Player does not have enough sups.")
+	// 	return terror.Error(err, "You do not have enough sups to list item.")
+	// }
 
-	// Pay sup
-	txid, err := mp.API.Passport.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
-		FromUserID:           userID,
-		ToUserID:             uuid.Must(uuid.FromString(server.SupremacyChallengeFundUserID)), // NOTE: send fees to challenge fund for now. (was faction account)
-		Amount:               feePrice.String(),
-		TransactionReference: server.TransactionReference(fmt.Sprintf("marketplace_fee|keycard|%s|%d", req.Payload.ItemID.String(), time.Now().UnixNano())),
-		Group:                string(server.TransactionGroupSupremacy),
-		SubGroup:             string(server.TransactionGroupMarketplace),
-		Description:          fmt.Sprintf("Marketplace List Item Fee: %s (keycard)", req.Payload.ItemID.String()),
-	})
-	if err != nil {
-		gamelog.L.Error().
-			Str("user_id", user.ID).
-			Str("balance", balance.String()).
-			Str("item_id", req.Payload.ItemID.String()).
-			Err(err).
-			Msg("Failed to process transaction for Marketplace Fee.")
-		err = fmt.Errorf("failed to process marketplace fee transaction")
-		return terror.Error(err, "Failed tp process transaction for Marketplace Fee.")
-	}
+	// // Pay sup
+	// txid, err := mp.API.Passport.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
+	// 	FromUserID:           userID,
+	// 	ToUserID:             uuid.Must(uuid.FromString(server.SupremacyChallengeFundUserID)), // NOTE: send fees to challenge fund for now. (was faction account)
+	// 	Amount:               feePrice.String(),
+	// 	TransactionReference: server.TransactionReference(fmt.Sprintf("marketplace_fee|keycard|%s|%d", req.Payload.ItemID.String(), time.Now().UnixNano())),
+	// 	Group:                string(server.TransactionGroupSupremacy),
+	// 	SubGroup:             string(server.TransactionGroupMarketplace),
+	// 	Description:          fmt.Sprintf("Marketplace List Item Fee: %s (keycard)", req.Payload.ItemID.String()),
+	// })
+	// if err != nil {
+	// 	gamelog.L.Error().
+	// 		Str("user_id", user.ID).
+	// 		Str("balance", balance.String()).
+	// 		Str("item_id", req.Payload.ItemID.String()).
+	// 		Err(err).
+	// 		Msg("Failed to process transaction for Marketplace Fee.")
+	// 	err = fmt.Errorf("failed to process marketplace fee transaction")
+	// 	return terror.Error(err, "Failed tp process transaction for Marketplace Fee.")
+	// }
 
-	// trigger challenge fund update
-	defer func() {
-		mp.API.ArenaManager.ChallengeFundUpdateChan <- true
-	}()
+	// // trigger challenge fund update
+	// defer func() {
+	// 	mp.API.ArenaManager.ChallengeFundUpdateChan <- true
+	// }()
 
 	// Start transaction
 	tx, err := gamedb.StdConn.Begin()
 	if err != nil {
 		gamelog.L.Error().
 			Str("user_id", user.ID).
-			Str("balance", balance.String()).
 			Str("item_id", req.Payload.ItemID.String()).
 			Err(err).
 			Msg("Unable to start db transaction (add player keycard sale item listing)")
@@ -878,7 +885,7 @@ func (mp *MarketplaceController) SalesKeycardCreateHandler(ctx context.Context, 
 	// Deduct Keycard Count
 	err = db.DecrementPlayerKeycardCount(tx, req.Payload.ItemID)
 	if err != nil {
-		mp.API.Passport.RefundSupsMessage(txid)
+		// mp.API.Passport.RefundSupsMessage(txid)
 		gamelog.L.Error().
 			Str("user_id", user.ID).
 			Str("item_id", req.Payload.ItemID.String()).
@@ -893,13 +900,13 @@ func (mp *MarketplaceController) SalesKeycardCreateHandler(ctx context.Context, 
 		tx,
 		userID,
 		factionID,
-		txid,
+		null.String{},
 		endAt,
 		req.Payload.ItemID,
 		req.Payload.AskingPrice,
 	)
 	if err != nil {
-		mp.API.Passport.RefundSupsMessage(txid)
+		// mp.API.Passport.RefundSupsMessage(txid)
 		gamelog.L.Error().
 			Str("user_id", user.ID).
 			Str("item_id", req.Payload.ItemID.String()).
@@ -911,7 +918,7 @@ func (mp *MarketplaceController) SalesKeycardCreateHandler(ctx context.Context, 
 	// Commit Transaction
 	err = tx.Commit()
 	if err != nil {
-		mp.API.Passport.RefundSupsMessage(txid)
+		// mp.API.Passport.RefundSupsMessage(txid)
 		gamelog.L.Error().
 			Str("user_id", user.ID).
 			Str("item_id", req.Payload.ItemID.String()).
@@ -1076,27 +1083,7 @@ func (mp *MarketplaceController) SalesArchiveHandler(ctx context.Context, user *
 	}
 
 	if ci.ItemType == boiler.ItemTypeMech {
-		mai := &server.MechArenaInfo{
-			Status:    server.MechArenaStatusIdle,
-			CanDeploy: true,
-		}
-
-		mrc, err := boiler.RepairCases(
-			boiler.RepairCaseWhere.MechID.EQ(ci.ItemID),
-			boiler.RepairCaseWhere.CompletedAt.IsNull(),
-		).One(gamedb.StdConn)
-		if err != nil && !errors.Is(err, sql.ErrNoRows) {
-			l.Error().Err(err).Msg("Failed to load repair case")
-		}
-
-		if mrc != nil {
-			mai.Status = server.MechArenaStatusDamaged
-			if mrc.BlocksRepaired*2 < mrc.BlocksRequiredRepair {
-				mai.CanDeploy = false
-			}
-		}
-
-		ws.PublishMessage(fmt.Sprintf("/faction/%s/queue/%s", fID, ci.ItemID), battle.WSPlayerAssetMechQueueSubscribe, mai)
+		mp.API.ArenaManager.MechDebounceBroadcastChan <- []string{ci.ItemID}
 	}
 
 	return nil
@@ -1498,7 +1485,9 @@ func (mp *MarketplaceController) SalesBuyHandler(ctx context.Context, user *boil
 		}
 
 		if ci != nil {
-			ws.PublishMessage(fmt.Sprintf("/faction/%s/queue/%s", saleItem.FactionID, ci.ItemID), battle.WSPlayerAssetMechQueueSubscribe, &server.MechArenaInfo{
+			mp.API.ArenaManager.MechDebounceBroadcastChan <- []string{ci.ItemID}
+
+			ws.PublishMessage(fmt.Sprintf("/faction/%s/queue/%s", saleItem.FactionID, ci.ItemID), server.HubKeyPlayerAssetMechQueueSubscribe, &server.MechArenaInfo{
 				Status: server.MechArenaStatusSold,
 			})
 		}

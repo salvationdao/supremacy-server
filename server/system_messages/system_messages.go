@@ -21,13 +21,14 @@ type SystemMessagingManager struct {
 type SystemMessageDataType string
 
 const (
-	SystemMessageDataTypeMechQueue             SystemMessageDataType = "MECH_QUEUE"
 	SystemMessageDataTypeMechBattleBegin       SystemMessageDataType = "MECH_BATTLE_BEGIN"
 	SystemMessageDataTypeMechBattleComplete    SystemMessageDataType = "MECH_BATTLE_COMPLETE"
 	SystemMessageDataTypeMechOwnerBattleReward SystemMessageDataType = "MECH_OWNER_BATTLE_REWARD"
 	SystemMessageDataTypePlayerAbilityRefunded SystemMessageDataType = "PLAYER_ABILITY_REFUNDED"
 	SystemMessageDataTypeGlobal                SystemMessageDataType = "GLOBAL"
 	SystemMessageDataTypeFaction               SystemMessageDataType = "FACTION"
+	SystemMessageDataTypeExpiredBattleLobby    SystemMessageDataType = "EXPIRED_BATTLE_LOBBY"
+	SystemMessageDataTypeBattleLobbyInvitation SystemMessageDataType = "BATTLE_LOBBY_INVITATION"
 )
 
 var bm = bluemonday.StrictPolicy()

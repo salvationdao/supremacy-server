@@ -2,13 +2,14 @@ package api
 
 import (
 	"fmt"
-	"github.com/go-chi/chi/v5"
-	"github.com/ninja-software/terror/v2"
 	"net/http"
 	"server/gamedb"
 	"server/helpers"
 	"server/synctool"
 	"time"
+
+	"github.com/go-chi/chi/v5"
+	"github.com/ninja-software/terror/v2"
 )
 
 func (api *API) SyncStaticData(w http.ResponseWriter, r *http.Request) (int, error) {
@@ -19,8 +20,18 @@ func (api *API) SyncStaticData(w http.ResponseWriter, r *http.Request) (int, err
 
 	timeout := time.Minute
 
-	url := fmt.Sprintf("%s/%s/factions.csv", api.SyncConfig.FilePath, branch)
+	url := fmt.Sprintf("%s/%s/sbattle_arena.csv", api.SyncConfig.FilePath, branch)
 	f, err := synctool.DownloadFile(api.ctx, url, timeout)
+	if err != nil {
+		return http.StatusInternalServerError, terror.Error(err, "Failed to sync battle arena data")
+	}
+	err = synctool.SyncBattleArenas(f, gamedb.StdConn)
+	if err != nil {
+		return http.StatusInternalServerError, terror.Error(err, "Failed to sync battle arena with db")
+	}
+
+	url = fmt.Sprintf("%s/%s/factions.csv", api.SyncConfig.FilePath, branch)
+	f, err = synctool.DownloadFile(api.ctx, url, timeout)
 	if err != nil {
 		return http.StatusInternalServerError, terror.Error(err, "Failed to sync faction data")
 	}
@@ -29,12 +40,52 @@ func (api *API) SyncStaticData(w http.ResponseWriter, r *http.Request) (int, err
 		return http.StatusInternalServerError, terror.Error(err, "Failed to sync faction with db")
 	}
 
+	url = fmt.Sprintf("%s/%s/sfaction_palettes.csv", api.SyncConfig.FilePath, branch)
+	f, err = synctool.DownloadFile(api.ctx, url, timeout)
+	if err != nil {
+		return http.StatusInternalServerError, terror.Error(err, "Failed to sync faction palette data")
+	}
+	err = synctool.SyncFactionPalettes(f, gamedb.StdConn)
+	if err != nil {
+		return http.StatusInternalServerError, terror.Error(err, "Failed to sync faction palettes with db")
+	}
+
+	url = fmt.Sprintf("%s/%s/sfaction_passes.csv", api.SyncConfig.FilePath, branch)
+	f, err = synctool.DownloadFile(api.ctx, url, timeout)
+	if err != nil {
+		return http.StatusInternalServerError, terror.Error(err, "Failed to sync faction pass data")
+	}
+	err = synctool.SyncFactionPasses(f, gamedb.StdConn)
+	if err != nil {
+		return http.StatusInternalServerError, terror.Error(err, "Failed to sync faction pass with db")
+	}
+
 	url = fmt.Sprintf("%s/%s/brands.csv", api.SyncConfig.FilePath, branch)
 	f, err = synctool.DownloadFile(api.ctx, url, timeout)
 	if err != nil {
 		return http.StatusInternalServerError, terror.Error(err, "Failed to sync faction data")
 	}
 	err = synctool.SyncBrands(f, gamedb.StdConn)
+	if err != nil {
+		return http.StatusInternalServerError, terror.Error(err, "Failed to sync faction with db")
+	}
+
+	url = fmt.Sprintf("%s/%s/shield_types.csv", api.SyncConfig.FilePath, branch)
+	f, err = synctool.DownloadFile(api.ctx, url, timeout)
+	if err != nil {
+		return http.StatusInternalServerError, terror.Error(err, "Failed to sync faction data")
+	}
+	err = synctool.SyncShieldTypes(f, gamedb.StdConn)
+	if err != nil {
+		return http.StatusInternalServerError, terror.Error(err, "Failed to sync faction with db")
+	}
+
+	url = fmt.Sprintf("%s/%s/weapon_skins.csv", api.SyncConfig.FilePath, branch)
+	f, err = synctool.DownloadFile(api.ctx, url, timeout)
+	if err != nil {
+		return http.StatusInternalServerError, terror.Error(err, "Failed to sync faction data")
+	}
+	err = synctool.SyncWeaponSkins(f, gamedb.StdConn)
 	if err != nil {
 		return http.StatusInternalServerError, terror.Error(err, "Failed to sync faction with db")
 	}
@@ -65,16 +116,6 @@ func (api *API) SyncStaticData(w http.ResponseWriter, r *http.Request) (int, err
 		return http.StatusInternalServerError, terror.Error(err, "Failed to sync faction data")
 	}
 	err = synctool.SyncMechModelSkinCompatibilities(f, gamedb.StdConn)
-	if err != nil {
-		return http.StatusInternalServerError, terror.Error(err, "Failed to sync faction with db")
-	}
-
-	url = fmt.Sprintf("%s/%s/weapon_skins.csv", api.SyncConfig.FilePath, branch)
-	f, err = synctool.DownloadFile(api.ctx, url, timeout)
-	if err != nil {
-		return http.StatusInternalServerError, terror.Error(err, "Failed to sync faction data")
-	}
-	err = synctool.SyncWeaponSkins(f, gamedb.StdConn)
 	if err != nil {
 		return http.StatusInternalServerError, terror.Error(err, "Failed to sync faction with db")
 	}
@@ -145,16 +186,6 @@ func (api *API) SyncStaticData(w http.ResponseWriter, r *http.Request) (int, err
 		return http.StatusInternalServerError, terror.Error(err, "Failed to sync faction data")
 	}
 	err = synctool.SyncStaticQuest(f, gamedb.StdConn)
-	if err != nil {
-		return http.StatusInternalServerError, terror.Error(err, "Failed to sync faction with db")
-	}
-
-	url = fmt.Sprintf("%s/%s/utility_shields.csv", api.SyncConfig.FilePath, branch)
-	f, err = synctool.DownloadFile(api.ctx, url, timeout)
-	if err != nil {
-		return http.StatusInternalServerError, terror.Error(err, "Failed to sync faction data")
-	}
-	err = synctool.SyncStaticUtilityShields(f, gamedb.StdConn)
 	if err != nil {
 		return http.StatusInternalServerError, terror.Error(err, "Failed to sync faction with db")
 	}

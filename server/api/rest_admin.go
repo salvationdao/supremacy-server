@@ -16,7 +16,6 @@ func AdminRoutes(api *API, key string) chi.Router {
 
 	r.Post("/video_server", WithToken(key, WithError(api.CreateStreamHandler)))
 	r.Get("/video_server", WithError(api.GetStreamsHandler))
-	r.Get("/video_server/oven_streams", WithError(api.GetOvenStreamsHandler))
 
 	r.Delete("/video_server", WithToken(key, WithError(api.DeleteStreamHandler)))
 	r.Post("/close_stream", WithToken(key, WithError(api.CreateStreamCloseHandler)))

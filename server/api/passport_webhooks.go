@@ -21,6 +21,7 @@ import (
 	"github.com/shopspring/decimal"
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
+	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 )
 
 type PassportWebhookController struct {
@@ -98,8 +99,6 @@ func (pc *PassportWebhookController) UserUpdated(w http.ResponseWriter, r *http.
 
 	ws.PublishMessage(fmt.Sprintf("/secure/user/%s", player.ID), server.HubKeyUserSubscribe, server.PlayerFromBoiler(player))
 
-	ws.PublishMessage(fmt.Sprintf("/secure/user/%s", player.ID), server.HubKeyUserSubscribe, server.PlayerFromBoiler(player))
-
 	// update active player list
 	if fap, ok := pc.API.FactionActivePlayers[player.FactionID.String]; ok {
 		fap.activePlayerUpdate(player)
@@ -160,7 +159,7 @@ func (pc *PassportWebhookController) UserEnlistFaction(w http.ResponseWriter, r 
 		SyndicateID:   player.SyndicateID,
 	}
 
-	faction, err := boiler.FindFaction(gamedb.StdConn, req.FactionID.String())
+	faction, err := boiler.Factions(boiler.FactionWhere.ID.EQ(req.FactionID.String()), qm.Load(boiler.FactionRels.FactionPalette)).One(gamedb.StdConn)
 	if err != nil {
 		return http.StatusInternalServerError, terror.Error(err, "Unable to find faction from db, contact support or try again.")
 	}

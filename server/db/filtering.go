@@ -20,6 +20,9 @@ const (
 	OperatorValueTypeEndsWith   = "endsWith"
 	OperatorValueTypeEquals     = "equals"
 
+	OperatorValueTypeIn    = "in"
+	OperatorValueTypeNotIn = "notIn"
+
 	OperatorValueTypeIsNull    = "isnull"
 	OperatorValueTypeIsNotNull = "isnotnull"
 
@@ -75,40 +78,33 @@ func GenerateListFilterQueryMod(filterItem ListFilterRequestItem, index int, lin
 		case OperatorValueTypeEndsWith:
 			checkValue = "%" + filterItem.Value
 		}
-		break
 	}
 
 	switch filterItem.Operator {
+	case OperatorValueTypeIn:
+		condition = fmt.Sprintf("%s IN ?", checkColumn)
+	case OperatorValueTypeNotIn:
+		condition = fmt.Sprintf("%s NOT IN ?", checkColumn)
 	case OperatorValueTypeIsTrue:
 		condition = fmt.Sprintf("%s IS TRUE", checkColumn)
-		break
 	case OperatorValueTypeIsFalse:
 		condition = fmt.Sprintf("%s IS FALSE", checkColumn)
-		break
 	case OperatorValueTypeIsNull:
 		condition = fmt.Sprintf("%s IS NULL", checkColumn)
-		break
 	case OperatorValueTypeIsNotNull:
 		condition = fmt.Sprintf("%s IS NOT NULL", checkColumn)
-		break
 	case OperatorValueTypeEquals, OperatorValueTypeIs, OperatorValueTypeNumberEquals:
 		condition = fmt.Sprintf("%s = ?", checkColumn)
-		break
 	case OperatorValueTypeIsNot, OperatorValueTypeNumberNotEquals:
 		condition = fmt.Sprintf("%s <> ?", checkColumn)
-		break
 	case OperatorValueTypeIsAfter, OperatorValueTypeGreaterThan:
 		condition = fmt.Sprintf("%s > ?", checkColumn)
-		break
 	case OperatorValueTypeIsOnOrAfter, OperatorValueTypeGreaterOrEqual:
 		condition = fmt.Sprintf("%s >= ?", checkColumn)
-		break
 	case OperatorValueTypeIsBefore, OperatorValueTypeLessThan:
 		condition = fmt.Sprintf("%s < ?", checkColumn)
-		break
 	case OperatorValueTypeIsOnOrBefore, OperatorValueTypeLessOrEqual:
 		condition = fmt.Sprintf("%s <= ?", checkColumn)
-		break
 	case OperatorValueTypeContains, OperatorValueTypeStartsWith, OperatorValueTypeEndsWith:
 		condition = fmt.Sprintf("%s ILIKE ?", checkColumn)
 	}

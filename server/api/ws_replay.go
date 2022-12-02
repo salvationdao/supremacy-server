@@ -47,7 +47,6 @@ func (rc *ReplayController) GetAllBattleReplays(ctx context.Context, key string,
 	req := &BattleReplayGetRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
-		fmt.Println(string(payload))
 		return terror.Error(err, "Invalid request received")
 	}
 

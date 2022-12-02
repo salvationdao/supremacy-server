@@ -1,23 +1,35 @@
 package types
 
 import (
+	"github.com/shopspring/decimal"
 	"github.com/volatiletech/null/v8"
 )
 
 type MechModel struct {
-	ID                   string      `json:"id"`
-	Label                string      `json:"label"`
-	DefaultChassisSkinID string      `json:"default_chassis_skin_id"`
-	BrandID              string      `json:"brand_id"`
-	MechType             string      `json:"mech_type"`
-	BoostStat            string      `json:"boost_stat"`
-	WeaponHardpoints     string      `json:"weapon_hardpoints"`
-	UtilitySlots         string      `json:"utility_slots"`
-	Speed                string      `json:"speed"`
-	MaxHitpoints         string      `json:"max_hitpoints"`
-	PowerCoreSize        string      `json:"power_core_size"`
-	Collection           string      `json:"collection"`
-	AvailabilityID       null.String `json:"availability_id"`
+	ID                      string      `json:"id"`
+	Label                   string      `json:"label"`
+	DefaultChassisSkinID    string      `json:"default_chassis_skin_id"`
+	BrandID                 string      `json:"brand_id"`
+	MechType                string      `json:"mech_type"`
+	BoostStat               string      `json:"boost_stat"`
+	WeaponHardpoints        string      `json:"weapon_hardpoints"`
+	UtilitySlots            string      `json:"utility_slots"`
+	Speed                   string      `json:"speed"`
+	MaxHitpoints            string      `json:"max_hitpoints"`
+	PowerCoreSize           string      `json:"power_core_size"`
+	Collection              string      `json:"collection"`
+	AvailabilityID          null.String `json:"availability_id"`
+	ShieldMax               string      `json:"shield_max"`
+	ShieldRechargeRate      string      `json:"shield_recharge_rate"`
+	ShieldRechargePowerCost string      `json:"shield_recharge_power_cost"`
+	ShieldTypeID            string      `json:"shield_type_id"`
+	ShieldRechargeDelay     string      `json:"shield_recharge_delay"`
+	HeightMeters            string      `json:"height_meter"`
+	WalkSpeedModifier       string      `json:"walk_speed_modifier"`
+	SprintSpreadModifier    string      `json:"sprint_spread_modifier"`
+	IdleDrain               string      `json:"idle_drain"`
+	WalkDrain               string      `json:"walk_drain"`
+	RunDrain                string      `json:"run_drain"`
 }
 
 type Brands struct {
@@ -27,35 +39,60 @@ type Brands struct {
 }
 
 type Faction struct {
-	ID              string `json:"id"`
-	ContractReward  string `json:"contract_reward"`
-	VotePrice       string `json:"vote_Price"`
-	Label           string `json:"label"`
-	GuildID         string `json:"guild_id"`
-	DeletedAt       string `json:"deleted_at"`
-	UpdatedAt       string `json:"updated_at"`
-	CreatedAt       string `json:"created_at"`
-	PrimaryColor    string `json:"primary_color"`
-	SecondaryColor  string `json:"secondary_color"`
-	BackgroundColor string `json:"background_color"`
-	LogoURL         string `json:"logo_url"`
-	BackgroundURL   string `json:"background_url"`
-	Description     string `json:"description"`
+	ID             string `json:"id"`
+	ContractReward string `json:"contract_reward"`
+	VotePrice      string `json:"vote_Price"`
+	Label          string `json:"label"`
+	GuildID        string `json:"guild_id"`
+	DeletedAt      string `json:"deleted_at"`
+	UpdatedAt      string `json:"updated_at"`
+	CreatedAt      string `json:"created_at"`
+	LogoURL        string `json:"logo_url"`
+	BackgroundURL  string `json:"background_url"`
+	Description    string `json:"description"`
+}
+
+type FactionPalette struct {
+	FactionID  string `json:"faction_id"`
+	Primary    string `json:"primary"`
+	Text       string `json:"text"`
+	Background string `json:"background"`
+	S100       string `json:"s100"`
+	S200       string `json:"s200"`
+	S300       string `json:"s300"`
+	S400       string `json:"s400"`
+	S500       string `json:"s500"`
+	S600       string `json:"s600"`
+	S700       string `json:"s700"`
+	S800       string `json:"s800"`
+	S900       string `json:"s900"`
+}
+
+type FactionPass struct {
+	ID                 string          `json:"id"`
+	Label              string          `json:"label"`
+	LastForDays        int             `json:"last_for_days"`
+	EthPriceWei        decimal.Decimal `json:"eth_price_wei"`
+	DiscountPercentage decimal.Decimal `json:"discount_percentage"`
+	SupsPrice          decimal.Decimal `json:"sups_price"`
+	UsdPrice           decimal.Decimal `json:"usd_price"`
+	DeletedAt          null.Time       `json:"deleted_at"`
 }
 
 type MechSkin struct {
-	ID               string      `json:"id"`
-	Collection       string      `json:"collection"`
-	Label            string      `json:"label"`
-	Tier             string      `json:"tier"`
-	DefaultLevel     string      `json:"default_level"`
-	ImageUrl         null.String `json:"image_url"`
-	AnimationUrl     null.String `json:"animation_url"`
-	CardAnimationUrl null.String `json:"card_animation_url"`
-	LargeImageUrl    null.String `json:"large_image_url"`
-	AvatarUrl        null.String `json:"avatar_url"`
-	BackgroundColor  null.String `json:"background_color"`
-	YoutubeUrl       null.String `json:"youtube_url"`
+	ID                    string      `json:"id"`
+	Collection            string      `json:"collection"`
+	Label                 string      `json:"label"`
+	Tier                  string      `json:"tier"`
+	DefaultLevel          string      `json:"default_level"`
+	BlueprintWeaponSkinID null.String `json:"blueprint_weapon_skin_id"`
+	ImageUrl              null.String `json:"image_url"`
+	AnimationUrl          null.String `json:"animation_url"`
+	CardAnimationUrl      null.String `json:"card_animation_url"`
+	LargeImageUrl         null.String `json:"large_image_url"`
+	AvatarUrl             null.String `json:"avatar_url"`
+	BackgroundColor       null.String `json:"background_color"`
+	YoutubeUrl            null.String `json:"youtube_url"`
 }
 
 type MechModelSkinCompatibility struct {
@@ -112,6 +149,10 @@ type Weapon struct {
 	ChargeTimeSeconds   string      `json:"charge_time_seconds"`
 	BurstRateOfFire     string      `json:"burst_rate_of_fire"`
 	PowerInstantDrain   string      `json:"power_instant_drain"`
+	DotTickDuration     int         `boiler:"dot_tick_duration"`
+	ProjectileLifeSpan  string      `boiler:"projectile_life_span"`
+	RecoilForce         string      `boiler:"recoil_force"`
+	IdlePowerCost       string      `boiler:"idle_power_cost"`
 }
 
 type WeaponSkin struct {
@@ -182,6 +223,9 @@ type PowerCores struct {
 	BackgroundColor  string `json:"background_color"`
 	AnimationUrl     string `json:"animation_url"`
 	YoutubeUrl       string `json:"youtube_url"`
+	WeaponShare      string `json:"weapon_share"`
+	MovementShare    string `json:"movement_share"`
+	UtilityShare     string `json:"utility_share"`
 }
 
 type BlueprintWeapons struct {
@@ -208,21 +252,4 @@ type BlueprintWeapons struct {
 	Tier                string `json:"tier"`
 	EnergyCost          string `json:"energy_cost"`
 	WeaponModelID       string `json:"weapon_model_id"`
-}
-
-type BlueprintMechs struct {
-	ID               string `json:"id"`
-	Label            string `json:"label"`
-	Slug             string `json:"slug"`
-	WeaponHardpoints string `json:"weapon_hardpoints"`
-	UtilitySlots     string `json:"utility_slots"`
-	Speed            string `json:"speed"`
-	MaxHitpoints     string `json:"max_hitpoints"`
-	DeletedAt        string `json:"deleted_at"`
-	UpdatedAt        string `json:"updated_at"`
-	CreatedAt        string `json:"created_at"`
-	ModelID          string `json:"model_id"`
-	Collection       string `json:"collection"`
-	PowerCoreSize    string `json:"power_core_size"`
-	Tier             string `json:"tier"`
 }

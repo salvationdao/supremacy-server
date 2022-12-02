@@ -377,6 +377,7 @@ func (o *Template) TemplateBlueprints(mods ...qm.QueryMod) templateBlueprintQuer
 
 	queryMods = append(queryMods,
 		qm.Where("\"template_blueprints\".\"template_id\"=?", o.ID),
+		qmhelper.WhereIsNull("\"template_blueprints\".\"deleted_at\""),
 	)
 
 	query := TemplateBlueprints(queryMods...)
@@ -431,6 +432,7 @@ func (templateL) LoadTemplateBlueprints(e boil.Executor, singular bool, maybeTem
 	query := NewQuery(
 		qm.From(`template_blueprints`),
 		qm.WhereIn(`template_blueprints.template_id in ?`, args...),
+		qmhelper.WhereIsNull(`template_blueprints.deleted_at`),
 	)
 	if mods != nil {
 		mods.Apply(query)

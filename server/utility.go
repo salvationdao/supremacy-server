@@ -3,7 +3,6 @@ package server
 import (
 	"encoding/json"
 	"fmt"
-	"server/db/boiler"
 	"time"
 
 	"github.com/volatiletech/null/v8"
@@ -23,8 +22,9 @@ type Utility struct {
 	LimitedReleaseTokenID null.Int64  `json:"limited_release_token_id,omitempty"`
 	EquippedOn            null.String `json:"equipped_on,omitempty"`
 	Type                  string      `json:"type"`
+	LockedToMech          bool        `json:"locked_to_mech"`
+	SlotNumber            null.Int    `json:"slot_number,omitempty"`
 
-	Shield      *UtilityShield      `json:"shield,omitempty"`
 	AttackDrone *UtilityAttackDrone `json:"attack_drone,omitempty"`
 	RepairDrone *UtilityRepairDrone `json:"repair_drone,omitempty"`
 	Accelerator *UtilityAccelerator `json:"accelerator,omitempty"`
@@ -222,62 +222,4 @@ func (b *BlueprintUtilityAntiMissile) Scan(value interface{}) error {
 		return fmt.Errorf("unable to scan value into byte array")
 	}
 	return json.Unmarshal(v, b)
-}
-
-func BlueprintUtilityShieldFromBoiler(utility *boiler.BlueprintUtility, shield *boiler.BlueprintUtilityShield) *BlueprintUtility {
-	return &BlueprintUtility{
-		ID:         utility.ID,
-		BrandID:    utility.BrandID,
-		Label:      utility.Label,
-		UpdatedAt:  utility.UpdatedAt,
-		CreatedAt:  utility.CreatedAt,
-		Type:       utility.Type,
-		Collection: utility.Collection,
-		Tier:       utility.Tier,
-		ShieldBlueprint: &BlueprintUtilityShield{
-			ID:                 shield.ID,
-			BlueprintUtilityID: shield.BlueprintUtilityID,
-			Hitpoints:          shield.Hitpoints,
-			RechargeRate:       shield.RechargeRate,
-			RechargeEnergyCost: shield.RechargeEnergyCost,
-			CreatedAt:          shield.CreatedAt,
-		},
-		ImageURL:         utility.ImageURL,
-		AnimationURL:     utility.AnimationURL,
-		CardAnimationURL: utility.CardAnimationURL,
-		LargeImageURL:    utility.LargeImageURL,
-		AvatarURL:        utility.AvatarURL,
-	}
-}
-
-func UtilityShieldFromBoiler(utility *boiler.Utility, shield *boiler.BlueprintUtilityShield, collection *boiler.CollectionItem) *Utility {
-	return &Utility{
-		CollectionItem: &CollectionItem{
-			CollectionSlug: collection.CollectionSlug,
-			Hash:           collection.Hash,
-			TokenID:        collection.TokenID,
-			ItemType:       collection.ItemType,
-			ItemID:         collection.ItemID,
-			Tier:           collection.Tier,
-			OwnerID:        collection.OwnerID,
-			MarketLocked:   collection.MarketLocked,
-			XsynLocked:     collection.XsynLocked,
-			AssetHidden:    collection.AssetHidden,
-		},
-		ID:             utility.ID,
-		BrandID:        utility.R.Blueprint.BrandID,
-		Label:          utility.R.Blueprint.Label,
-		UpdatedAt:      utility.UpdatedAt,
-		CreatedAt:      utility.CreatedAt,
-		BlueprintID:    utility.BlueprintID,
-		GenesisTokenID: utility.GenesisTokenID,
-		EquippedOn:     utility.EquippedOn,
-		Type:           utility.Type,
-		Shield: &UtilityShield{
-			UtilityID:          utility.ID,
-			Hitpoints:          shield.Hitpoints,
-			RechargeRate:       shield.RechargeRate,
-			RechargeEnergyCost: shield.RechargeEnergyCost,
-		},
-	}
 }

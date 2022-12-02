@@ -77,6 +77,8 @@ func MysteryCrateFromBoiler(mysteryCrate *boiler.MysteryCrate, collection *boile
 
 type StorefrontMysteryCrate struct {
 	ID               string          `json:"id"`
+	FiatProductID    string          `json:"fiat_product_id"`
+	FiatProduct      *FiatProduct    `json:"fiat_product"`
 	MysteryCrateType string          `json:"mystery_crate_type"`
 	Price            decimal.Decimal `json:"price"`
 	Amount           int             `json:"amount"`
@@ -102,10 +104,10 @@ func (b *StorefrontMysteryCrate) Scan(value interface{}) error {
 }
 
 func StoreFrontMysteryCrateFromBoiler(storefrontMysteryCrate *boiler.StorefrontMysteryCrate) *StorefrontMysteryCrate {
-	return &StorefrontMysteryCrate{
+	output := &StorefrontMysteryCrate{
 		ID:               storefrontMysteryCrate.ID,
+		FiatProductID:    storefrontMysteryCrate.FiatProductID,
 		MysteryCrateType: storefrontMysteryCrate.MysteryCrateType,
-		Price:            storefrontMysteryCrate.Price,
 		Amount:           storefrontMysteryCrate.Amount,
 		AmountSold:       storefrontMysteryCrate.AmountSold,
 		FactionID:        storefrontMysteryCrate.FactionID,
@@ -119,6 +121,29 @@ func StoreFrontMysteryCrateFromBoiler(storefrontMysteryCrate *boiler.StorefrontM
 		AnimationURL:     storefrontMysteryCrate.AnimationURL,
 		YoutubeURL:       storefrontMysteryCrate.YoutubeURL,
 	}
+	if storefrontMysteryCrate.R != nil && storefrontMysteryCrate.R.FiatProduct != nil {
+		pricing := []*FiatProductPricing{}
+		if storefrontMysteryCrate.R.FiatProduct.R != nil && len(storefrontMysteryCrate.R.FiatProduct.R.FiatProductPricings) > 0 {
+			for _, p := range storefrontMysteryCrate.R.FiatProduct.R.FiatProductPricings {
+				item := &FiatProductPricing{
+					CurrencyCode: p.CurrencyCode,
+					Amount:       p.Amount,
+				}
+				pricing = append(pricing, item)
+				if p.CurrencyCode == FiatCurrencyCodeSUPS {
+					output.Price = p.Amount
+				}
+			}
+		}
+		output.FiatProduct = &FiatProduct{
+			ID:          storefrontMysteryCrate.FiatProductID,
+			ProductType: FiatProductTypeMysteryCrate,
+			Name:        storefrontMysteryCrate.R.FiatProduct.Name,
+			Description: storefrontMysteryCrate.R.FiatProduct.Description,
+			Pricing:     pricing,
+		}
+	}
+	return output
 }
 
 func StoreFrontMysteryCrateSliceFromBoiler(storefrontMysteryCrates []*boiler.StorefrontMysteryCrate) []*StorefrontMysteryCrate {

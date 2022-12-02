@@ -941,7 +941,7 @@ func (weaponL) LoadMechWeapon(e boil.Executor, singular bool, maybeWeapon interf
 			}
 
 			for _, a := range args {
-				if a == obj.ID {
+				if queries.Equal(a, obj.ID) {
 					continue Outer
 				}
 			}
@@ -1003,7 +1003,7 @@ func (weaponL) LoadMechWeapon(e boil.Executor, singular bool, maybeWeapon interf
 
 	for _, local := range slice {
 		for _, foreign := range resultSlice {
-			if local.ID == foreign.WeaponID {
+			if queries.Equal(local.ID, foreign.WeaponID) {
 				local.R.MechWeapon = foreign
 				if foreign.R == nil {
 					foreign.R = &mechWeaponR{}
@@ -1391,7 +1391,7 @@ func (o *Weapon) SetMechWeapon(exec boil.Executor, insert bool, related *MechWea
 	var err error
 
 	if insert {
-		related.WeaponID = o.ID
+		queries.Assign(&related.WeaponID, o.ID)
 
 		if err = related.Insert(exec, boil.Infer()); err != nil {
 			return errors.Wrap(err, "failed to insert into foreign table")
@@ -1402,7 +1402,7 @@ func (o *Weapon) SetMechWeapon(exec boil.Executor, insert bool, related *MechWea
 			strmangle.SetParamNames("\"", "\"", 1, []string{"weapon_id"}),
 			strmangle.WhereClause("\"", "\"", 2, mechWeaponPrimaryKeyColumns),
 		)
-		values := []interface{}{o.ID, related.ID}
+		values := []interface{}{o.ID, related.ChassisID, related.SlotNumber}
 
 		if boil.DebugMode {
 			fmt.Fprintln(boil.DebugWriter, updateQuery)
@@ -1412,8 +1412,7 @@ func (o *Weapon) SetMechWeapon(exec boil.Executor, insert bool, related *MechWea
 			return errors.Wrap(err, "failed to update foreign table")
 		}
 
-		related.WeaponID = o.ID
-
+		queries.Assign(&related.WeaponID, o.ID)
 	}
 
 	if o.R == nil {
@@ -1431,6 +1430,28 @@ func (o *Weapon) SetMechWeapon(exec boil.Executor, insert bool, related *MechWea
 	} else {
 		related.R.Weapon = o
 	}
+	return nil
+}
+
+// RemoveMechWeapon relationship.
+// Sets o.R.MechWeapon to nil.
+// Removes o from all passed in related items' relationships struct (Optional).
+func (o *Weapon) RemoveMechWeapon(exec boil.Executor, related *MechWeapon) error {
+	var err error
+
+	queries.SetScanner(&related.WeaponID, nil)
+	if _, err = related.Update(exec, boil.Whitelist("weapon_id")); err != nil {
+		return errors.Wrap(err, "failed to update local table")
+	}
+
+	if o.R != nil {
+		o.R.MechWeapon = nil
+	}
+	if related == nil || related.R == nil {
+		return nil
+	}
+
+	related.R.Weapon = nil
 	return nil
 }
 

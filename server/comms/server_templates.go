@@ -2,6 +2,7 @@ package comms
 
 import (
 	"server/db"
+	"server/gamedb"
 	"server/gamelog"
 	"server/rpctypes"
 )
@@ -32,14 +33,13 @@ func (s *S) TemplateRegisterHandler(req rpctypes.TemplateRegisterReq, resp *rpct
 		m.CheckAndSetAsGenesisOrLimited()
 	}
 
-
 	assets = append(assets, rpctypes.ServerMechsToXsynAsset(loadedMechs)...)
-	if loadedMechs != nil && !loadedMechs[0].GenesisTokenID.Valid && !loadedMechs[0].LimitedReleaseTokenID.Valid {
+	if loadedMechs != nil {
 		assets = append(assets, rpctypes.ServerMechAnimationsToXsynAsset(mechAnimations)...)
-		assets = append(assets, rpctypes.ServerMechSkinsToXsynAsset(mechSkins)...)
+		assets = append(assets, rpctypes.ServerMechSkinsToXsynAsset(gamedb.StdConn, mechSkins)...)
 		assets = append(assets, rpctypes.ServerPowerCoresToXsynAsset(powerCores)...)
 		assets = append(assets, rpctypes.ServerWeaponsToXsynAsset(weapons)...)
-		assets = append(assets, rpctypes.ServerWeaponSkinsToXsynAsset(weaponSkins)...)
+		assets = append(assets, rpctypes.ServerWeaponSkinsToXsynAsset(gamedb.StdConn, weaponSkins)...)
 		assets = append(assets, rpctypes.ServerUtilitiesToXsynAsset(utilities)...)
 	}
 

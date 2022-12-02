@@ -46,6 +46,7 @@ const KeyAdvanceBattleAbilityShowUpUntilSeconds KVKey = "advance_battle_ability_
 const KeyAdvanceBattleAbilityLabel KVKey = "advance_battle_ability_label"
 const KeyFirstBattleAbilityLabel KVKey = "first_battle_ability_label"
 const KeyPunishVoteCooldownHour KVKey = "punish_vote_cooldown_hour"
+const KeyPreBattleTimeSeconds KVKey = "pre_battle_time_seconds"
 
 const KeyLastTransferEventID KVKey = "last_transfer_event_id"
 
@@ -62,6 +63,7 @@ const KeyRequiredRepairStacks KVKey = "required_repair_stacks"
 const KeyBattleQueueFee KVKey = "battle_queue_fee"
 const KeyDefaultRepairBlocks KVKey = "default_repair_blocks"
 const KeyBattleRewardTaxRatio KVKey = "battle_reward_tax_ratio"
+const KeyStakedMechWinBattleReward KVKey = "staked_mech_win_battle_reward"
 const KeyFirstRankFactionRewardSups KVKey = "first_rank_faction_reward_sups"
 const KeySecondRankFactionRewardSups KVKey = "second_rank_faction_reward_sups"
 const KeyThirdRankFactionRewardSups KVKey = "third_rank_faction_reward_sups"
@@ -72,7 +74,11 @@ const KeyDecentralisedAutonomousSyndicateTax KVKey = "decentralised_autonomous_s
 const KeyCorporationSyndicateTax KVKey = "corporation_syndicate_tax"
 
 const KeyOvenmediaAPIBaseUrl KVKey = "ovenmedia_api_base_url"
+const KeyOvenmediaVoiceStreamURL KVKey = "ovenmedia_stream_voice_base_url"
+const KeyOvenmediaStreamURL KVKey = "ovenmedia_stream_base_url"
 const KeyCanRecordReplayStatus KVKey = "can_record_replay"
+const KeyVoiceExpiryTimeHours KVKey = "voice_expiry_time_hours"
+const KeyVoiceBanTimeHours KVKey = "voice_ban_time_hours"
 
 const KeySlackModChannelID KVKey = "slack_mod_channel_id"
 const KeySlackRapiChannelID KVKey = "slack_rapid_channel_id"
@@ -83,10 +89,20 @@ const KeyAutoRepairDurationSeconds KVKey = "auto_repair_duration_seconds"
 
 const KeyMinimumMechActionCount KVKey = "minimum_mech_action_count"
 
-const KeyAutoFillCountdownSecond KVKey = "auto_fill_countdown_second"
-const KeyAutoFillDurationBase KVKey = "auto_fill_duration_base"
-const KeyAutoFillDurationVariable KVKey = "auto_fill_duration_variable"
-const KeyApproachOpponentAfterSecond KVKey = "approach_opponent_after_second"
+const KeyFiatToSUPCut KVKey = "fiat_to_sup_cut" // TODO: find better name to describe: "20% cheaper than fiat pricing"
+
+const KeyDefaultPublicLobbyCount KVKey = "default_public_lobby_count"
+const KeyScheduledLobbyPrepareDurationSeconds KVKey = "scheduled_lobby_prepare_duration_seconds"
+const KeyOpenNewArenaEveryXAmountOfBattleLobbies KVKey = "open_new_arena_after_x_amount_of_battle_lobbies"
+
+const KeyDeductBlockCountFromBomb KVKey = "deduct_block_count_from_bomb"
+
+const KeyDiscordChannelID KVKey = "discord_channel_id"
+const KeyDiscordGuildID KVKey = "discord_guild_id"
+
+const KeyAutoFillLobbyAfterDurationSecond KVKey = "auto_fill_lobby_after_duration_second"
+const KeyPublicExhibitionLobbyExpireAfterDurationSecond KVKey = "public_exhibition_lobby_expire_after_duration_second"
+const KeyLobbyHostingMaximumAmount KVKey = "lobby_hosting_maximum_amount"
 
 func get(key KVKey) string {
 	kv, err := boiler.KVS(boiler.KVWhere.Key.EQ(string(key))).One(gamedb.StdConn)

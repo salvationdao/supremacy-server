@@ -1,8 +1,10 @@
 package xsyn_rpcclient
 
 import (
+	"database/sql"
 	"server"
 	"server/gamelog"
+	"strings"
 	"time"
 
 	"github.com/volatiletech/null/v8"
@@ -26,10 +28,12 @@ type UserReq struct {
 }
 
 type UserResp struct {
-	ID            string
-	Username      string
-	FactionID     null.String
-	PublicAddress null.String
+	ID               string
+	AccountID        string
+	Username         string
+	FactionID        null.String
+	PublicAddress    null.String
+	AcceptsMarketing null.Bool
 }
 
 // UserGet get user by id
@@ -77,8 +81,8 @@ func (pp *XsynXrpcClient) TokenLogin(tokenBase64 string) (*UserResp, error) {
 	resp := &UserResp{}
 	err := pp.XrpcClient.Call("S.TokenLogin", TokenReq{pp.ApiKey, tokenBase64}, resp)
 
-	if err != nil {
-		gamelog.L.Err(err).Str("method", "TokenLogin").Msg("rpc error")
+	if err != nil && !strings.Contains(err.Error(), sql.ErrNoRows.Error()) {
+		gamelog.L.Error().Err(err).Str("method", "TokenLogin").Msg("rpc error")
 		return nil, terror.Error(err, "Failed to get user from passport server")
 	}
 	return resp, nil
@@ -159,6 +163,27 @@ func (pp *XsynXrpcClient) UserFactionEnlist(userID string, factionID string) err
 	err := pp.XrpcClient.Call("S.UserFactionEnlistHandler", UserFactionEnlistReq{pp.ApiKey, userID, factionID}, resp)
 	if err != nil {
 		gamelog.L.Err(err).Str("method", "UserFactionEnlistHandler").Msg("rpc error")
+		return err
+	}
+
+	return nil
+}
+
+type UserMarketingUpdateReq struct {
+	ApiKey           string
+	UserID           string `json:"userID"`
+	AcceptsMarketing bool   `json:"acceptsMarketing"`
+	NewEmail         string `json:"newEmail"`
+}
+
+type UserMarketingUpdateResp struct{}
+
+// UserMarketingUpdate updates user's marketing preferences
+func (pp *XsynXrpcClient) UserMarketingUpdate(userID string, acceptsMarketing bool, newEmail string) error {
+	resp := &UserMarketingUpdateResp{}
+	err := pp.XrpcClient.Call("S.UserMarketingUpdateHandler", UserMarketingUpdateReq{pp.ApiKey, userID, acceptsMarketing, newEmail}, resp)
+	if err != nil {
+		gamelog.L.Err(err).Str("method", "UserMarketingUpdateHandler").Msg("rpc error")
 		return err
 	}
 

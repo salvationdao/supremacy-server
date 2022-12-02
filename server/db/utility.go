@@ -1,12 +1,14 @@
 package db
 
 import (
+	"database/sql"
 	"fmt"
 	"server"
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
 
+	"github.com/pkg/errors"
 	"github.com/volatiletech/null/v8"
 
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
@@ -15,6 +17,227 @@ import (
 	"github.com/ninja-software/terror/v2"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 )
+
+func getDefaultUtilityQueryMods() []qm.QueryMod {
+	return []qm.QueryMod{
+		boiler.CollectionItemWhere.ItemType.EQ(boiler.ItemTypeUtility),
+		qm.InnerJoin(fmt.Sprintf("%s ON %s = %s",
+			boiler.TableNames.Utility,
+			qm.Rels(boiler.TableNames.Utility, boiler.UtilityColumns.ID),
+			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.ItemID),
+		)),
+		// join utility blueprint
+		qm.InnerJoin(fmt.Sprintf("%s ON %s = %s",
+			boiler.TableNames.BlueprintUtility,
+			qm.Rels(boiler.TableNames.BlueprintUtility, boiler.BlueprintUtilityColumns.ID),
+			qm.Rels(boiler.TableNames.Utility, boiler.UtilityColumns.BlueprintID),
+		)),
+	}
+}
+
+type UtilityListOpts struct {
+	Search                 string
+	Filter                 *ListFilterRequest
+	Sort                   *ListSortRequest
+	SortBy                 string
+	SortDir                SortByDir
+	PageSize               int
+	Page                   int
+	OwnerID                string
+	DisplayXsynLocked      bool
+	DisplayHidden          bool
+	ExcludeMarketLocked    bool
+	IncludeMarketListed    bool
+	ExcludeMechLocked      bool
+	ExcludeIDs             []string
+	FilterRarities         []string `json:"rarities"`
+	FilterTypes            []string `json:"types"`
+	FilterEquippedStatuses []string `json:"equipped_statuses"`
+}
+
+type UtilityStatFilterRange struct {
+	Min null.Int `json:"min"`
+	Max null.Int `json:"max"`
+}
+
+func GenerateUtilityStatFilterQueryMods(column string, filter *UtilityStatFilterRange) []qm.QueryMod {
+	output := []qm.QueryMod{}
+	if filter == nil {
+		return output
+	}
+	if filter.Min.Valid {
+		output = append(output, qm.Where(qm.Rels(boiler.TableNames.Utility, column)+" >= ?", filter.Min))
+	}
+	if filter.Max.Valid {
+		output = append(output, qm.Where(qm.Rels(boiler.TableNames.Utility, column)+" <= ?", filter.Max))
+	}
+	return output
+}
+
+func UtilityList(opts *UtilityListOpts) (int64, []*PlayerAsset, error) {
+	queryMods := getDefaultUtilityQueryMods()
+
+	if opts.OwnerID != "" {
+		queryMods = append(queryMods, boiler.CollectionItemWhere.OwnerID.EQ(opts.OwnerID))
+	}
+	if !opts.DisplayXsynLocked {
+		queryMods = append(queryMods, boiler.CollectionItemWhere.XsynLocked.EQ(false))
+	}
+	if !opts.IncludeMarketListed {
+		queryMods = append(queryMods, boiler.CollectionItemWhere.LockedToMarketplace.EQ(false))
+	}
+	if opts.ExcludeMarketLocked {
+		queryMods = append(queryMods, boiler.CollectionItemWhere.MarketLocked.EQ(false))
+	}
+	if !opts.DisplayHidden {
+		queryMods = append(queryMods, boiler.CollectionItemWhere.AssetHidden.IsNull())
+	}
+	if opts.ExcludeMechLocked {
+		queryMods = append(queryMods,
+			boiler.UtilityWhere.LockedToMech.EQ(false),
+		)
+	}
+
+	// Filters
+	if opts.Filter != nil {
+		// if we have filter
+		for i, f := range opts.Filter.Items {
+			// validate it is the right table and valid column
+			if f.Table == boiler.TableNames.Utility && IsMechColumn(f.Column) {
+				queryMods = append(queryMods, GenerateListFilterQueryMod(*f, i+1, opts.Filter.LinkOperator))
+			}
+		}
+	}
+
+	if len(opts.ExcludeIDs) > 0 {
+		queryMods = append(queryMods, boiler.UtilityWhere.ID.NIN(opts.ExcludeIDs))
+	}
+
+	if len(opts.FilterRarities) > 0 {
+		queryMods = append(queryMods, boiler.BlueprintUtilityWhere.Tier.IN(opts.FilterRarities))
+	}
+
+	if len(opts.FilterEquippedStatuses) > 0 {
+		showEquipped := false
+		showUnequipped := false
+		for _, s := range opts.FilterEquippedStatuses {
+			if s == "equipped" {
+				showEquipped = true
+			} else if s == "unequipped" {
+				showUnequipped = true
+			}
+			if showEquipped && showUnequipped {
+				break
+			}
+		}
+
+		if showEquipped && !showUnequipped {
+			queryMods = append(queryMods, boiler.UtilityWhere.EquippedOn.IsNotNull())
+		} else if showUnequipped && !showEquipped {
+			queryMods = append(queryMods, boiler.UtilityWhere.EquippedOn.IsNull())
+		}
+	}
+
+	if len(opts.FilterTypes) > 0 {
+		queryMods = append(queryMods, boiler.BlueprintUtilityWhere.Type.IN(opts.FilterTypes))
+	}
+
+	// Search
+	if opts.Search != "" {
+		xSearch := ParseQueryText(opts.Search, true)
+		if len(xSearch) > 0 {
+			queryMods = append(queryMods,
+				qm.And(fmt.Sprintf(
+					"((to_tsvector('english', %s) @@ to_tsquery(?))",
+					qm.Rels(boiler.TableNames.BlueprintUtility, boiler.BlueprintUtilityColumns.Label),
+				),
+					xSearch,
+				))
+		}
+	}
+	total, err := boiler.CollectionItems(
+		queryMods...,
+	).Count(gamedb.StdConn)
+	if err != nil {
+		return 0, nil, err
+	}
+	// Limit/Offset
+	if opts.PageSize > 0 {
+		queryMods = append(queryMods, qm.Limit(opts.PageSize))
+	}
+	if opts.Page > 0 {
+		queryMods = append(queryMods, qm.Offset(opts.PageSize*(opts.Page-1)))
+	}
+
+	// Build query
+	queryMods = append(queryMods,
+		qm.Select(
+			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.CollectionSlug),
+			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.Hash),
+			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.TokenID),
+			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.OwnerID),
+			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.Tier),
+			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.ItemType),
+			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.ItemID),
+			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.MarketLocked),
+			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.XsynLocked),
+			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.LockedToMarketplace),
+			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.AssetHidden),
+			qm.Rels(boiler.TableNames.Utility, boiler.UtilityColumns.ID),
+			qm.Rels(boiler.TableNames.BlueprintUtility, boiler.BlueprintUtilityColumns.Label),
+		),
+		qm.From(boiler.TableNames.CollectionItems),
+	)
+
+	if opts.SortBy != "" && opts.SortDir.IsValid() {
+		if opts.SortBy == "alphabetical" {
+			queryMods = append(queryMods, qm.OrderBy(fmt.Sprintf("%s %s", qm.Rels(boiler.TableNames.BlueprintUtility, boiler.BlueprintUtilityColumns.Label), opts.SortDir)))
+		} else if opts.SortBy == "rarity" {
+			queryMods = append(queryMods, GenerateTierSort(qm.Rels(boiler.TableNames.BlueprintUtility, boiler.BlueprintUtilityColumns.Tier), opts.SortDir))
+		}
+	} else {
+		queryMods = append(queryMods, qm.OrderBy(fmt.Sprintf("%s ASC", qm.Rels(boiler.TableNames.BlueprintUtility, boiler.BlueprintUtilityColumns.Label))))
+	}
+
+	rows, err := boiler.NewQuery(
+		queryMods...,
+	).Query(gamedb.StdConn)
+	if err != nil {
+		return 0, nil, err
+	}
+	defer rows.Close()
+
+	var utilities []*PlayerAsset
+	for rows.Next() {
+		u := &PlayerAsset{
+			CollectionItem: &server.CollectionItem{},
+		}
+
+		scanArgs := []interface{}{
+			&u.CollectionItem.CollectionSlug,
+			&u.CollectionItem.Hash,
+			&u.CollectionItem.TokenID,
+			&u.CollectionItem.OwnerID,
+			&u.CollectionItem.Tier,
+			&u.CollectionItem.ItemType,
+			&u.CollectionItem.ItemID,
+			&u.CollectionItem.MarketLocked,
+			&u.CollectionItem.XsynLocked,
+			&u.CollectionItem.LockedToMarketplace,
+			&u.CollectionItem.AssetHidden,
+			&u.ID,
+			&u.Label,
+		}
+
+		err = rows.Scan(scanArgs...)
+		if err != nil {
+			return total, utilities, err
+		}
+		utilities = append(utilities, u)
+	}
+
+	return total, utilities, nil
+}
 
 func InsertNewUtility(tx boil.Executor, ownerID uuid.UUID, utility *server.BlueprintUtility) (*server.Utility, error) {
 	newUtility := boiler.Utility{
@@ -39,7 +262,7 @@ func InsertNewUtility(tx boil.Executor, ownerID uuid.UUID, utility *server.Bluep
 	if err != nil {
 		return nil, terror.Error(err)
 	}
-	
+
 	return Utility(tx, newUtility.ID)
 }
 
@@ -47,25 +270,16 @@ func Utility(tx boil.Executor, id string) (*server.Utility, error) {
 	boilerUtility, err := boiler.Utilities(
 		boiler.UtilityWhere.ID.EQ(id),
 		qm.Load(boiler.UtilityRels.Blueprint),
-		).One(tx)
+	).One(tx)
 	if err != nil {
 		return nil, err
 	}
-	boilerMechCollectionDetails, err := boiler.CollectionItems(boiler.CollectionItemWhere.ItemID.EQ(id)).One(tx)
+	_, err = boiler.CollectionItems(boiler.CollectionItemWhere.ItemID.EQ(id)).One(tx)
 	if err != nil {
 		return nil, err
 	}
 
 	switch boilerUtility.Type {
-	case boiler.UtilityTypeSHIELD:
-		boilerShield, err := boiler.BlueprintUtilityShields(
-			boiler.BlueprintUtilityShieldWhere.BlueprintUtilityID.EQ(boilerUtility.BlueprintID),
-
-			).One(tx)
-		if err != nil {
-			return nil, err
-		}
-		return server.UtilityShieldFromBoiler(boilerUtility, boilerShield, boilerMechCollectionDetails), nil
 	}
 
 	return nil, fmt.Errorf("invalid utility type %s", boilerUtility.Type)
@@ -73,24 +287,18 @@ func Utility(tx boil.Executor, id string) (*server.Utility, error) {
 
 func Utilities(id ...string) ([]*server.Utility, error) {
 	var utilities []*server.Utility
-	boilerUtilities, err := boiler.Utilities(boiler.UtilityWhere.ID.IN(id)).All(gamedb.StdConn)
+	boilerUtilities, err := boiler.Utilities(boiler.UtilityWhere.ID.IN(id), qm.Load(boiler.UtilityRels.Blueprint)).All(gamedb.StdConn)
 	if err != nil {
 		return nil, err
 	}
 
 	for _, util := range boilerUtilities {
-		boilerMechCollectionDetails, err := boiler.CollectionItems(boiler.CollectionItemWhere.ItemID.EQ(util.ID)).One(gamedb.StdConn)
+		_, err := boiler.CollectionItems(boiler.CollectionItemWhere.ItemID.EQ(util.ID)).One(gamedb.StdConn)
 		if err != nil {
 			return nil, err
 		}
 
 		switch util.Type {
-		case boiler.UtilityTypeSHIELD:
-			boilerShield, err := boiler.BlueprintUtilityShields(boiler.BlueprintUtilityShieldWhere.BlueprintUtilityID.EQ(util.BlueprintID)).One(gamedb.StdConn)
-			if err != nil {
-				return nil, err
-			}
-			utilities = append(utilities, server.UtilityShieldFromBoiler(util, boilerShield, boilerMechCollectionDetails))
 		}
 	}
 	return utilities, nil
@@ -98,7 +306,18 @@ func Utilities(id ...string) ([]*server.Utility, error) {
 
 // AttachUtilityToMech attaches a Utility to a mech
 // If lockedToMech == true utility cannot be removed from mech ever (used for genesis and limited mechs)
-func AttachUtilityToMech(tx boil.Executor, ownerID, mechID, utilityID string, lockedToMech bool) error {
+func AttachUtilityToMech(trx *sql.Tx, ownerID, mechID, utilityID string, lockedToMech bool) error {
+	tx := trx
+	var err error
+	if trx == nil {
+		tx, err = gamedb.StdConn.Begin()
+		if err != nil {
+			gamelog.L.Error().Err(err).Str("mech.ID", mechID).Str("utility ID", utilityID).Msg("failed to equip utility to mech, issue creating tx")
+			return terror.Error(err, "Issue preventing equipping this utility to the war machine, try again or contact support.")
+		}
+		defer tx.Rollback()
+	}
+
 	// TODO: possible optimize this, 6 queries to attach a part seems like a lot?
 	mechCI, err := CollectionItemFromItemID(tx, mechID)
 	if err != nil {
@@ -140,15 +359,8 @@ func AttachUtilityToMech(tx boil.Executor, ownerID, mechID, utilityID string, lo
 		return terror.Error(err)
 	}
 
-	// check current utility count
-	if len(mech.R.ChassisMechUtilities)+1 > mech.R.Blueprint.UtilitySlots {
-		err := fmt.Errorf("utility cannot fit")
-		gamelog.L.Error().Err(err).Str("utilityID", utilityID).Msg("adding this utility brings mechs utilities over mechs utility slots")
-		return terror.Error(err, fmt.Sprintf("War machine already has %d utilities equipped and is only has %d utility slots.", len(mech.R.ChassisMechUtilities), mech.R.Blueprint.UtilitySlots))
-	}
-
 	// check utility isn't already equipped to another war machine
-	exists, err := boiler.MechUtilities(boiler.MechUtilityWhere.UtilityID.EQ(utilityID)).Exists(tx)
+	exists, err := boiler.MechUtilities(boiler.MechUtilityWhere.UtilityID.EQ(null.StringFrom(utilityID))).Exists(tx)
 	if err != nil {
 		gamelog.L.Error().Err(err).Str("utilityID", utilityID).Msg("failed to check if a mech and utility join already exists")
 		return terror.Error(err)
@@ -159,25 +371,41 @@ func AttachUtilityToMech(tx boil.Executor, ownerID, mechID, utilityID string, lo
 		return terror.Error(err, "This utility is already equipped to another war machine, try again or contact support.")
 	}
 
+	// get next available slot
+	availableSlot, err := boiler.MechUtilities(
+		boiler.MechUtilityWhere.ChassisID.EQ(mech.ID),
+		boiler.MechUtilityWhere.UtilityID.IsNull(),
+		qm.OrderBy(fmt.Sprintf("%s ASC", boiler.MechWeaponColumns.SlotNumber)),
+	).One(tx)
+	if errors.Is(err, sql.ErrNoRows) {
+		gamelog.L.Error().Err(err).Str("mechID", mech.ID).Msg("no available slots on mech to insert utility")
+		return terror.Error(err, "There are no more slots on this mech to equip this utility.")
+	} else if err != nil {
+		gamelog.L.Error().Err(err).Str("mechID", mech.ID).Msg("failed to check for available utility slots on mech")
+		return terror.Error(err)
+	}
+
 	utility.EquippedOn = null.StringFrom(mech.ID)
 	utility.LockedToMech = lockedToMech
-
 	_, err = utility.Update(tx, boil.Infer())
 	if err != nil {
 		gamelog.L.Error().Err(err).Interface("utility", utility).Msg("failed to update utility")
 		return terror.Error(err, "Issue preventing equipping this utility to the war machine, try again or contact support.")
 	}
 
-	utilityMechJoin := boiler.MechUtility{
-		ChassisID:  mech.ID,
-		UtilityID:  utility.ID,
-		SlotNumber: len(mech.R.ChassisMechUtilities), // slot number starts at 0, so if we currently have 2 equipped and this is the 3rd, it will be slot 2.
+	availableSlot.UtilityID = null.StringFrom(utility.ID)
+	_, err = availableSlot.Update(tx, boil.Infer())
+	if err != nil {
+		gamelog.L.Error().Err(err).Interface("utility", utility).Msg(" failed to equip utility to war machine")
+		return terror.Error(err, "Issue preventing equipping this utility to the war machine, try again or contact support.")
 	}
 
-	err = utilityMechJoin.Insert(tx, boil.Infer())
-	if err != nil {
-		gamelog.L.Error().Err(err).Interface("utilityMechJoin", utilityMechJoin).Msg(" failed to equip utility to war machine")
-		return terror.Error(err, "Issue preventing equipping this utility to the war machine, try again or contact support.")
+	if trx == nil {
+		err = tx.Commit()
+		if err != nil {
+			gamelog.L.Error().Err(err).Msg("failed to commit transaction - AttachUtilityToMech")
+			return terror.Error(err)
+		}
 	}
 
 	return nil

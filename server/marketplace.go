@@ -13,7 +13,7 @@ type MarketplaceSaleItem struct {
 	FactionID            string                          `json:"faction_id" boil:"faction_id"`
 	CollectionItemID     string                          `json:"collection_item_id" boil:"collection_item_id"`
 	CollectionItemType   string                          `json:"collection_item_type" boil:"collection_item_type"`
-	ListingFeeTXID       string                          `json:"listing_fee_tx_id" boil:"listing_fee_tx_id"`
+	ListingFeeTXID       null.String                     `json:"listing_fee_tx_id" boil:"listing_fee_tx_id"`
 	OwnerID              string                          `json:"owner_id" boil:"owner_id"`
 	Auction              bool                            `json:"auction" boil:"auction"`
 	AuctionCurrentPrice  decimal.NullDecimal             `json:"auction_current_price,omitempty" boil:"auction_current_price"`
@@ -139,7 +139,7 @@ type MarketplaceSaleItem1155 struct {
 	ID             string                `json:"id" boil:"id"`
 	FactionID      string                `json:"faction_id" boil:"faction_id"`
 	ItemID         string                `json:"item_id" boil:"item_id"`
-	ListingFeeTXID string                `json:"listing_fee_tx_id" boil:"listing_fee_tx_id"`
+	ListingFeeTXID null.String           `json:"listing_fee_tx_id" boil:"listing_fee_tx_id"`
 	OwnerID        string                `json:"owner_id" boil:"owner_id"`
 	BuyoutPrice    decimal.Decimal       `json:"buyout_price" boil:"buyout_price"`
 	EndAt          time.Time             `json:"end_at" boil:"end_at"`
@@ -158,19 +158,18 @@ type MarketplaceSaleItem1155 struct {
 type MechArenaStatus string
 
 const (
-	MechArenaStatusPendingQueue MechArenaStatus = "PENDING_QUEUE"
-	MechArenaStatusQueue        MechArenaStatus = "QUEUE"
-	MechArenaStatusBattle       MechArenaStatus = "BATTLE"
-	MechArenaStatusMarket       MechArenaStatus = "MARKET"
-	MechArenaStatusIdle         MechArenaStatus = "IDLE"
-	MechArenaStatusSold         MechArenaStatus = "SOLD"
-	MechArenaStatusDamaged      MechArenaStatus = "DAMAGED"
+	MechArenaStatusQueue   MechArenaStatus = "QUEUE"
+	MechArenaStatusBattle  MechArenaStatus = "BATTLE"
+	MechArenaStatusMarket  MechArenaStatus = "MARKET"
+	MechArenaStatusIdle    MechArenaStatus = "IDLE"
+	MechArenaStatusSold    MechArenaStatus = "SOLD"
+	MechArenaStatusDamaged MechArenaStatus = "DAMAGED"
 )
 
 type MechArenaInfo struct {
-	Status        MechArenaStatus `json:"status"` // "PENDING_QUEUE" | "QUEUE" | "BATTLE" | "MARKET" | "IDLE" | "SOLD"
-	CanDeploy     bool            `json:"can_deploy"`
-	QueuePosition null.Int64      `json:"queue_position"`
+	Status              MechArenaStatus `json:"status"` // "QUEUE" | "BATTLE" | "MARKET" | "IDLE" | "SOLD"
+	CanDeploy           bool            `json:"can_deploy"`
+	BattleLobbyIsLocked bool            `json:"battle_lobby_is_locked"`
 }
 
 type MarketplaceEvent struct {
@@ -186,7 +185,7 @@ type MarketplaceEventItem struct {
 	FactionID            string                          `json:"faction_id" boil:"faction_id"`
 	CollectionItemID     string                          `json:"collection_item_id" boil:"collection_item_id"`
 	CollectionItemType   string                          `json:"collection_item_type" boil:"collection_item_type"`
-	ListingFeeTXID       string                          `json:"listing_fee_tx_id" boil:"listing_fee_tx_id"`
+	ListingFeeTXID       null.String                     `json:"listing_fee_tx_id" boil:"listing_fee_tx_id"`
 	OwnerID              string                          `json:"owner_id" boil:"owner_id"`
 	Auction              bool                            `json:"auction" boil:"auction"`
 	AuctionCurrentPrice  decimal.NullDecimal             `json:"auction_current_price,omitempty" boil:"auction_current_price"`

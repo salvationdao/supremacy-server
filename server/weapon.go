@@ -25,8 +25,10 @@ type Weapon struct {
 	LimitedReleaseTokenID null.Int64          `json:"limited_release_token_id,omitempty"`
 	WeaponType            string              `json:"weapon_type"`
 	DamageFalloff         null.Int            `json:"damage_falloff,omitempty"`
+	BoostedDamageFalloff  null.Int            `json:"boosted_damage_falloff,omitempty"`
 	DamageFalloffRate     null.Int            `json:"damage_falloff_rate,omitempty"`
 	Spread                decimal.NullDecimal `json:"spread,omitempty"`
+	BoostedSpread         decimal.NullDecimal `json:"boosted_spread,omitempty"`
 	RateOfFire            decimal.NullDecimal `json:"rate_of_fire,omitempty"`
 	Radius                null.Int            `json:"radius,omitempty"`
 	RadiusDamageFalloff   null.Int            `json:"radius_damage_falloff,omitempty"`
@@ -42,6 +44,9 @@ type Weapon struct {
 	IsArced               null.Bool           `json:"is_arced,omitempty"`
 	ChargeTimeSeconds     decimal.NullDecimal `json:"charge_time_seconds,omitempty"`
 	BurstRateOfFire       decimal.NullDecimal `json:"burst_rate_of_fire,omitempty"`
+	LockedToMech          bool                `json:"locked_to_mech"`
+	SlotNumber            null.Int            `json:"slot_number,omitempty"`
+	InheritSkin           bool                `json:"inherit_skin"`
 
 	WeaponSkin *WeaponSkin `json:"weapon_skin,omitempty"`
 	// TODO: AMMO //BlueprintAmmo []*
@@ -191,6 +196,7 @@ func WeaponFromBoiler(weapon *boiler.Weapon, collection *boiler.CollectionItem, 
 		CreatedAt:            weapon.CreatedAt,
 		EquippedOn:           weapon.EquippedOn,
 		EquippedWeaponSkinID: weapon.EquippedWeaponSkinID,
+		LockedToMech:         weapon.LockedToMech,
 		WeaponSkin:           weaponSkin,
 		ItemSaleID:           itemSaleID,
 	}

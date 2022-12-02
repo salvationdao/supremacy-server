@@ -3,14 +3,15 @@ package api
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/ninja-software/terror/v2"
-	"github.com/ninja-syndicate/ws"
-	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 	"net/http"
 	"server"
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
+
+	"github.com/ninja-software/terror/v2"
+	"github.com/ninja-syndicate/ws"
+	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 )
 
 func WithDev(next func(w http.ResponseWriter, r *http.Request) (int, error)) func(w http.ResponseWriter, r *http.Request) (int, error) {
@@ -65,6 +66,7 @@ func (api *API) ProdGiveCrate(w http.ResponseWriter, r *http.Request) (int, erro
 	storeMechCrate, err := boiler.StorefrontMysteryCrates(
 		boiler.StorefrontMysteryCrateWhere.MysteryCrateType.EQ(boiler.CrateTypeMECH),
 		boiler.StorefrontMysteryCrateWhere.FactionID.EQ(user.FactionID.String),
+		qm.Load(qm.Rels(boiler.StorefrontMysteryCrateRels.FiatProduct, boiler.FiatProductRels.FiatProductPricings)),
 	).One(gamedb.StdConn)
 	if err != nil {
 		return http.StatusInternalServerError, terror.Error(err, "Failed to get mech crate for claim, please try again or contact support.")
@@ -74,6 +76,7 @@ func (api *API) ProdGiveCrate(w http.ResponseWriter, r *http.Request) (int, erro
 	storeWeaponCrate, err := boiler.StorefrontMysteryCrates(
 		boiler.StorefrontMysteryCrateWhere.MysteryCrateType.EQ(boiler.CrateTypeWEAPON),
 		boiler.StorefrontMysteryCrateWhere.FactionID.EQ(user.FactionID.String),
+		qm.Load(qm.Rels(boiler.StorefrontMysteryCrateRels.FiatProduct, boiler.FiatProductRels.FiatProductPricings)),
 	).One(gamedb.StdConn)
 	if err != nil {
 		return http.StatusInternalServerError, terror.Error(err, "Failed to get mech crate for claim, please try again or contact support.")
@@ -91,7 +94,7 @@ func (api *API) ProdGiveCrate(w http.ResponseWriter, r *http.Request) (int, erro
 			return http.StatusInternalServerError, terror.Error(err, "Failed to get mystery crate, please try again or contact support.")
 		}
 		serverMechCrate := server.StoreFrontMysteryCrateFromBoiler(storeMechCrate)
-		ws.PublishMessage(fmt.Sprintf("/faction/%s/crate/%s", user.FactionID.String, assignedMechCrate.ID), HubKeyMysteryCrateSubscribe, serverMechCrate)
+		ws.PublishMessage(fmt.Sprintf("/faction/%s/crate/%s", user.FactionID.String, assignedMechCrate.ID), server.HubKeyMysteryCrateSubscribe, serverMechCrate)
 
 	case "weapon":
 		assignedWeaponCrate, xa, err := assignAndRegisterPurchasedCrate(user.ID, storeWeaponCrate, tx, api)
@@ -104,7 +107,7 @@ func (api *API) ProdGiveCrate(w http.ResponseWriter, r *http.Request) (int, erro
 			return http.StatusInternalServerError, terror.Error(err, "Failed to get mystery crate, please try again or contact support.")
 		}
 		serverWeaponCrate := server.StoreFrontMysteryCrateFromBoiler(storeWeaponCrate)
-		ws.PublishMessage(fmt.Sprintf("/faction/%s/crate/%s", user.FactionID.String, assignedWeaponCrate.ID), HubKeyMysteryCrateSubscribe, serverWeaponCrate)
+		ws.PublishMessage(fmt.Sprintf("/faction/%s/crate/%s", user.FactionID.String, assignedWeaponCrate.ID), server.HubKeyMysteryCrateSubscribe, serverWeaponCrate)
 	}
 	err = tx.Commit()
 	if err != nil {

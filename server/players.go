@@ -3,15 +3,17 @@ package server
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/shopspring/decimal"
 	"server/db/boiler"
 	"time"
+
+	"github.com/shopspring/decimal"
 
 	"github.com/volatiletech/null/v8"
 )
 
 type Player struct {
 	ID               string          `json:"id"`
+	AccountID        string          `json:"account_id"`
 	FactionID        null.String     `json:"faction_id,omitempty"`
 	Username         null.String     `json:"username,omitempty"`
 	PublicAddress    null.String     `json:"public_address,omitempty"`
@@ -26,6 +28,7 @@ type Player struct {
 	Rank             string          `json:"rank"`
 	SentMessageCount int             `json:"sent_message_count"`
 	SyndicateID      null.String     `json:"syndicate_id"`
+	AcceptsMarketing null.Bool       `json:"accepts_marketing"`
 
 	Stat      *boiler.PlayerStat `json:"stat"`
 	Syndicate *boiler.Syndicate  `json:"syndicate"`
@@ -34,14 +37,22 @@ type Player struct {
 	RoleType string     `json:"role_type"`
 }
 
+func (p *PublicPlayer) Scan(value interface{}) error {
+	v, ok := value.([]byte)
+	if !ok {
+		return fmt.Errorf("unable to scan value into byte array")
+	}
+	return json.Unmarshal(v, p)
+}
+
 type PublicPlayer struct {
-	ID        string      `json:"id"`
-	Username  null.String `json:"username"`
-	Gid       int         `json:"gid"`
-	FactionID null.String `json:"faction_id"`
-	AboutMe   null.String `json:"about_me"`
-	Rank      string      `json:"rank"`
-	CreatedAt time.Time   `json:"created_at"`
+	ID        string      `json:"id" db:"id"`
+	Username  null.String `json:"username" db:"username"`
+	Gid       int         `json:"gid" db:"gid"`
+	FactionID null.String `json:"faction_id" db:"faction_id"`
+	AboutMe   null.String `json:"about_me" db:"about_me"`
+	Rank      string      `json:"rank" db:"rank"`
+	CreatedAt time.Time   `json:"created_at" db:"created_at"`
 }
 
 func (p *Player) Scan(value interface{}) error {
@@ -75,6 +86,8 @@ func PlayerFromBoiler(player *boiler.Player, features ...boiler.FeatureSlice) *P
 		SentMessageCount: player.SentMessageCount,
 		SyndicateID:      player.SyndicateID,
 		Features:         serverFeatures,
+		AcceptsMarketing: player.AcceptsMarketing,
+		AccountID:        player.XsynAccountID.String,
 	}
 
 	if player.R != nil {
@@ -127,4 +140,9 @@ type QuestStat struct {
 	Description   string    `db:"description" json:"description"`
 	RequestAmount int       `db:"request_amount" json:"request_amount"`
 	Obtained      bool      `db:"obtained" json:"obtained"`
+}
+
+type PlayerQueueStatus struct {
+	TotalQueued int `json:"total_queued"`
+	QueueLimit  int `json:"queue_limit"`
 }

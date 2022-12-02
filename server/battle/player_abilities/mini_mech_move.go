@@ -2,6 +2,7 @@ package player_abilities
 
 import (
 	"fmt"
+	"github.com/shopspring/decimal"
 	"time"
 
 	"github.com/sasha-s/go-deadlock"
@@ -10,8 +11,8 @@ import (
 
 type MiniMechMoveCommand struct {
 	BattleID       string
-	CellX          int
-	CellY          int
+	CellX          decimal.Decimal
+	CellY          decimal.Decimal
 	TriggeredByID  string
 	FactionID      string
 	MechHash       string

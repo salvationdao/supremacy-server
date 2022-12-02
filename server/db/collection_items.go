@@ -6,11 +6,186 @@ import (
 	"server/db/boiler"
 	"server/gamelog"
 
+	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 
 	"github.com/ninja-software/terror/v2"
 )
+
+type PlayerAsset struct {
+	*server.CollectionItem
+
+	ID         string      `json:"id"`
+	Label      string      `json:"label"`
+	Name       null.String `json:"name,omitempty"`
+	ItemSaleID null.String `json:"item_sale_id,omitempty"`
+}
+
+type ForbiddenAssetModificationReason int8
+
+const (
+	ForbiddenAssetModificationReasonInvalid     ForbiddenAssetModificationReason = 0
+	ForbiddenAssetModificationReasonMarketplace ForbiddenAssetModificationReason = 1
+	ForbiddenAssetModificationReasonXsyn        ForbiddenAssetModificationReason = 2
+	ForbiddenAssetModificationReasonQueue       ForbiddenAssetModificationReason = 3
+	ForbiddenAssetModificationReasonBattle      ForbiddenAssetModificationReason = 4
+	ForbiddenAssetModificationReasonOwner       ForbiddenAssetModificationReason = 5
+	ForbiddenAssetModificationReasonMechLocked  ForbiddenAssetModificationReason = 6
+	ForbiddenAssetModificationReasonOldStaked   ForbiddenAssetModificationReason = 7
+)
+
+func (f ForbiddenAssetModificationReason) String() string {
+	switch f {
+	case ForbiddenAssetModificationReasonMarketplace:
+		return "The asset is currently being listed on the marketplace."
+	case ForbiddenAssetModificationReasonXsyn:
+		return "The asset is currently locked to the XSYN ecosystem."
+	case ForbiddenAssetModificationReasonQueue:
+		return "The asset is currently in the battle queue."
+	case ForbiddenAssetModificationReasonBattle:
+		return "The asset is currently in a battle."
+	case ForbiddenAssetModificationReasonOwner:
+		return "You do not own this asset."
+	case ForbiddenAssetModificationReasonMechLocked:
+		return "The asset is locked to its mech."
+	case ForbiddenAssetModificationReasonOldStaked:
+		return "The asset is currently staked on the old contract."
+	}
+	return "The asset cannot be modified, unequipped, or equipped."
+}
+
+func IsValidCollectionItemType(itemType string) bool {
+	switch itemType {
+	case boiler.ItemTypeUtility,
+		boiler.ItemTypeWeapon,
+		boiler.ItemTypeMech,
+		boiler.ItemTypeMechSkin,
+		boiler.ItemTypeMechAnimation,
+		boiler.ItemTypePowerCore,
+		boiler.ItemTypeMysteryCrate,
+		boiler.ItemTypeWeaponSkin:
+		return true
+	}
+	return false
+}
+
+func CanAssetBeModifiedOrMoved(exec boil.Executor, itemID string, itemType string, ownerID ...string) (bool, ForbiddenAssetModificationReason, error) {
+	l := gamelog.L.With().Str("func", "CanAssetBeModifiedOrMoved").Str("itemID", itemID).Str("itemType", itemType).Logger()
+
+	if !IsValidCollectionItemType(itemType) {
+		l.Debug().Msg("invalid collection item type")
+		return false, -1, fmt.Errorf("unknown collection item type")
+	}
+
+	if itemType == boiler.ItemTypeMysteryCrate || itemType == boiler.ItemTypeWeaponSkin {
+		err := fmt.Errorf("item type cannot be modified or moved")
+		l.Error().Err(err)
+		return false, ForbiddenAssetModificationReasonInvalid, err
+	}
+
+	ci, err := boiler.CollectionItems(
+		boiler.CollectionItemWhere.ItemID.EQ(itemID),
+		boiler.CollectionItemWhere.ItemType.EQ(itemType),
+	).One(exec)
+	if err != nil {
+		l.Error().Err(err).Msg("failed to get collection item")
+		return false, -1, err
+	}
+	l = l.With().Interface("collectionItem", ci).Logger()
+
+	if len(ownerID) > 0 && ownerID[0] != "" && ci.OwnerID != ownerID[0] {
+		l = l.With().Str("ownerID", ownerID[0]).Logger()
+		l.Debug().Msg("user is not owner of collection item")
+		return false, ForbiddenAssetModificationReasonOwner, nil
+	}
+
+	if ci.MarketLocked {
+		l.Debug().Msg("item is staked on the old staking contract")
+		return false, ForbiddenAssetModificationReasonOldStaked, nil
+	}
+	if ci.LockedToMarketplace {
+		l.Debug().Msg("item is locked to marketplace")
+		return false, ForbiddenAssetModificationReasonMarketplace, nil
+	}
+	if ci.XsynLocked {
+		l.Debug().Msg("item is locked to xsyn")
+		return false, ForbiddenAssetModificationReasonXsyn, nil
+	}
+
+	switch itemType {
+	case boiler.ItemTypeUtility:
+		utility, err := boiler.FindUtility(exec, itemID)
+		if err != nil {
+			l.Error().Err(err).Msg("failed to get utility")
+			return false, -1, err
+		}
+		l = l.With().Interface("utility", utility).Logger()
+		if utility.LockedToMech {
+			l.Debug().Msg("utility is locked to mech")
+			return false, ForbiddenAssetModificationReasonMechLocked, nil
+		}
+		if utility.EquippedOn.Valid {
+			return CanAssetBeModifiedOrMoved(exec, utility.EquippedOn.String, boiler.ItemTypeMech)
+		}
+	case boiler.ItemTypeWeapon:
+		weapon, err := boiler.FindWeapon(exec, itemID)
+		if err != nil {
+			l.Error().Err(err).Msg("failed to get weapon")
+			return false, -1, err
+		}
+		l = l.With().Interface("weapon", weapon).Logger()
+		if weapon.LockedToMech {
+			l.Debug().Msg("weapon is locked to mech")
+			return false, ForbiddenAssetModificationReasonMechLocked, nil
+		}
+		if weapon.EquippedOn.Valid {
+			return CanAssetBeModifiedOrMoved(exec, weapon.EquippedOn.String, boiler.ItemTypeMech)
+		}
+	case boiler.ItemTypeMech:
+		mechStatus, err := GetMechQueueStatus(ci.ItemID)
+		if err != nil {
+			l.Error().Err(err).Msg("failed to get mech status")
+			return false, -1, err
+		}
+		l = l.With().Interface("mechStatus", mechStatus).Logger()
+		if mechStatus.Status == server.MechArenaStatusBattle {
+			l.Debug().Msg("mech is in battle")
+			return false, ForbiddenAssetModificationReasonBattle, nil
+		}
+		if mechStatus.Status == server.MechArenaStatusQueue {
+			l.Debug().Msg("mech is in queue")
+			return false, ForbiddenAssetModificationReasonQueue, nil
+		}
+	case boiler.ItemTypeMechSkin:
+		mechSkin, err := boiler.FindMechSkin(exec, itemID)
+		if err != nil {
+			l.Error().Err(err).Msg("failed to get mech skin")
+			return false, -1, err
+		}
+		l = l.With().Interface("mechSkin", mechSkin).Logger()
+		if mechSkin.LockedToMech {
+			l.Debug().Msg("mech skin is locked to mech")
+			return false, ForbiddenAssetModificationReasonMechLocked, nil
+		}
+		if mechSkin.EquippedOn.Valid {
+			return CanAssetBeModifiedOrMoved(exec, mechSkin.EquippedOn.String, boiler.ItemTypeMech)
+		}
+	// case boiler.ItemTypeMechAnimation:
+	case boiler.ItemTypePowerCore:
+		powerCore, err := boiler.FindPowerCore(exec, itemID)
+		if err != nil {
+			l.Error().Err(err).Msg("failed to get power core")
+			return false, -1, err
+		}
+		l = l.With().Interface("powerCore", powerCore).Logger()
+		if powerCore.EquippedOn.Valid {
+			return CanAssetBeModifiedOrMoved(exec, powerCore.EquippedOn.String, boiler.ItemTypeMech)
+		}
+	}
+
+	return true, -1, nil
+}
 
 // InsertNewCollectionItem inserts a collection item,
 // It takes a TX and DOES NOT COMMIT, commit needs to be called in the parent function.
@@ -128,8 +303,8 @@ func CollectionItemFromBoiler(ci *boiler.CollectionItem) *server.CollectionItem 
 	}
 }
 
-func GenerateTierSort(col string, sortDir SortByDir) qm.QueryMod {
-	return qm.OrderBy(fmt.Sprintf(`(
+func GenerateRawTierSort(col string, sortDir SortByDir) string {
+	return fmt.Sprintf(`(
 		CASE %s
 			WHEN 'MEGA' THEN 1
 			WHEN 'COLOSSAL' THEN 2
@@ -143,5 +318,9 @@ func GenerateTierSort(col string, sortDir SortByDir) qm.QueryMod {
 			WHEN 'DEUS_EX' THEN 10
 			WHEN 'TITAN' THEN 11
 		END
-	) %s NULLS LAST`, col, sortDir))
+	) %s NULLS LAST`, col, sortDir)
+}
+
+func GenerateTierSort(col string, sortDir SortByDir) qm.QueryMod {
+	return qm.OrderBy(GenerateRawTierSort(col, sortDir))
 }

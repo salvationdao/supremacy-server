@@ -24,8 +24,7 @@ import (
 // BattleArena is an object representing the database table.
 type BattleArena struct {
 	ID        string    `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
-	Type      string    `boiler:"type" boil:"type" json:"type" toml:"type" yaml:"type"`
-	Gid       null.Int  `boiler:"gid" boil:"gid" json:"gid,omitempty" toml:"gid" yaml:"gid,omitempty"`
+	Gid       int       `boiler:"gid" boil:"gid" json:"gid" toml:"gid" yaml:"gid"`
 	CreatedAt time.Time `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
 	UpdatedAt time.Time `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
 	DeletedAt null.Time `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
@@ -36,14 +35,12 @@ type BattleArena struct {
 
 var BattleArenaColumns = struct {
 	ID        string
-	Type      string
 	Gid       string
 	CreatedAt string
 	UpdatedAt string
 	DeletedAt string
 }{
 	ID:        "id",
-	Type:      "type",
 	Gid:       "gid",
 	CreatedAt: "created_at",
 	UpdatedAt: "updated_at",
@@ -52,14 +49,12 @@ var BattleArenaColumns = struct {
 
 var BattleArenaTableColumns = struct {
 	ID        string
-	Type      string
 	Gid       string
 	CreatedAt string
 	UpdatedAt string
 	DeletedAt string
 }{
 	ID:        "battle_arena.id",
-	Type:      "battle_arena.type",
 	Gid:       "battle_arena.gid",
 	CreatedAt: "battle_arena.created_at",
 	UpdatedAt: "battle_arena.updated_at",
@@ -68,41 +63,15 @@ var BattleArenaTableColumns = struct {
 
 // Generated where
 
-type whereHelpernull_Int struct{ field string }
-
-func (w whereHelpernull_Int) EQ(x null.Int) qm.QueryMod {
-	return qmhelper.WhereNullEQ(w.field, false, x)
-}
-func (w whereHelpernull_Int) NEQ(x null.Int) qm.QueryMod {
-	return qmhelper.WhereNullEQ(w.field, true, x)
-}
-func (w whereHelpernull_Int) LT(x null.Int) qm.QueryMod {
-	return qmhelper.Where(w.field, qmhelper.LT, x)
-}
-func (w whereHelpernull_Int) LTE(x null.Int) qm.QueryMod {
-	return qmhelper.Where(w.field, qmhelper.LTE, x)
-}
-func (w whereHelpernull_Int) GT(x null.Int) qm.QueryMod {
-	return qmhelper.Where(w.field, qmhelper.GT, x)
-}
-func (w whereHelpernull_Int) GTE(x null.Int) qm.QueryMod {
-	return qmhelper.Where(w.field, qmhelper.GTE, x)
-}
-
-func (w whereHelpernull_Int) IsNull() qm.QueryMod    { return qmhelper.WhereIsNull(w.field) }
-func (w whereHelpernull_Int) IsNotNull() qm.QueryMod { return qmhelper.WhereIsNotNull(w.field) }
-
 var BattleArenaWhere = struct {
 	ID        whereHelperstring
-	Type      whereHelperstring
-	Gid       whereHelpernull_Int
+	Gid       whereHelperint
 	CreatedAt whereHelpertime_Time
 	UpdatedAt whereHelpertime_Time
 	DeletedAt whereHelpernull_Time
 }{
 	ID:        whereHelperstring{field: "\"battle_arena\".\"id\""},
-	Type:      whereHelperstring{field: "\"battle_arena\".\"type\""},
-	Gid:       whereHelpernull_Int{field: "\"battle_arena\".\"gid\""},
+	Gid:       whereHelperint{field: "\"battle_arena\".\"gid\""},
 	CreatedAt: whereHelpertime_Time{field: "\"battle_arena\".\"created_at\""},
 	UpdatedAt: whereHelpertime_Time{field: "\"battle_arena\".\"updated_at\""},
 	DeletedAt: whereHelpernull_Time{field: "\"battle_arena\".\"deleted_at\""},
@@ -110,23 +79,29 @@ var BattleArenaWhere = struct {
 
 // BattleArenaRels is where relationship names are stored.
 var BattleArenaRels = struct {
-	ArenaBattleReplays       string
-	ArenaBattles             string
-	ArenaChatHistories       string
-	ArenaMechMoveCommandLogs string
+	AssignedToArenaBattleLobbies string
+	ArenaBattleReplays           string
+	ArenaBattles                 string
+	ArenaChatHistories           string
+	ArenaMechMoveCommandLogs     string
+	ArenaVoiceStreams            string
 }{
-	ArenaBattleReplays:       "ArenaBattleReplays",
-	ArenaBattles:             "ArenaBattles",
-	ArenaChatHistories:       "ArenaChatHistories",
-	ArenaMechMoveCommandLogs: "ArenaMechMoveCommandLogs",
+	AssignedToArenaBattleLobbies: "AssignedToArenaBattleLobbies",
+	ArenaBattleReplays:           "ArenaBattleReplays",
+	ArenaBattles:                 "ArenaBattles",
+	ArenaChatHistories:           "ArenaChatHistories",
+	ArenaMechMoveCommandLogs:     "ArenaMechMoveCommandLogs",
+	ArenaVoiceStreams:            "ArenaVoiceStreams",
 }
 
 // battleArenaR is where relationships are stored.
 type battleArenaR struct {
-	ArenaBattleReplays       BattleReplaySlice       `boiler:"ArenaBattleReplays" boil:"ArenaBattleReplays" json:"ArenaBattleReplays" toml:"ArenaBattleReplays" yaml:"ArenaBattleReplays"`
-	ArenaBattles             BattleSlice             `boiler:"ArenaBattles" boil:"ArenaBattles" json:"ArenaBattles" toml:"ArenaBattles" yaml:"ArenaBattles"`
-	ArenaChatHistories       ChatHistorySlice        `boiler:"ArenaChatHistories" boil:"ArenaChatHistories" json:"ArenaChatHistories" toml:"ArenaChatHistories" yaml:"ArenaChatHistories"`
-	ArenaMechMoveCommandLogs MechMoveCommandLogSlice `boiler:"ArenaMechMoveCommandLogs" boil:"ArenaMechMoveCommandLogs" json:"ArenaMechMoveCommandLogs" toml:"ArenaMechMoveCommandLogs" yaml:"ArenaMechMoveCommandLogs"`
+	AssignedToArenaBattleLobbies BattleLobbySlice        `boiler:"AssignedToArenaBattleLobbies" boil:"AssignedToArenaBattleLobbies" json:"AssignedToArenaBattleLobbies" toml:"AssignedToArenaBattleLobbies" yaml:"AssignedToArenaBattleLobbies"`
+	ArenaBattleReplays           BattleReplaySlice       `boiler:"ArenaBattleReplays" boil:"ArenaBattleReplays" json:"ArenaBattleReplays" toml:"ArenaBattleReplays" yaml:"ArenaBattleReplays"`
+	ArenaBattles                 BattleSlice             `boiler:"ArenaBattles" boil:"ArenaBattles" json:"ArenaBattles" toml:"ArenaBattles" yaml:"ArenaBattles"`
+	ArenaChatHistories           ChatHistorySlice        `boiler:"ArenaChatHistories" boil:"ArenaChatHistories" json:"ArenaChatHistories" toml:"ArenaChatHistories" yaml:"ArenaChatHistories"`
+	ArenaMechMoveCommandLogs     MechMoveCommandLogSlice `boiler:"ArenaMechMoveCommandLogs" boil:"ArenaMechMoveCommandLogs" json:"ArenaMechMoveCommandLogs" toml:"ArenaMechMoveCommandLogs" yaml:"ArenaMechMoveCommandLogs"`
+	ArenaVoiceStreams            VoiceStreamSlice        `boiler:"ArenaVoiceStreams" boil:"ArenaVoiceStreams" json:"ArenaVoiceStreams" toml:"ArenaVoiceStreams" yaml:"ArenaVoiceStreams"`
 }
 
 // NewStruct creates a new relationship struct
@@ -138,8 +113,8 @@ func (*battleArenaR) NewStruct() *battleArenaR {
 type battleArenaL struct{}
 
 var (
-	battleArenaAllColumns            = []string{"id", "type", "gid", "created_at", "updated_at", "deleted_at"}
-	battleArenaColumnsWithoutDefault = []string{"type"}
+	battleArenaAllColumns            = []string{"id", "gid", "created_at", "updated_at", "deleted_at"}
+	battleArenaColumnsWithoutDefault = []string{}
 	battleArenaColumnsWithDefault    = []string{"id", "gid", "created_at", "updated_at", "deleted_at"}
 	battleArenaPrimaryKeyColumns     = []string{"id"}
 	battleArenaGeneratedColumns      = []string{}
@@ -387,6 +362,28 @@ func (q battleArenaQuery) Exists(exec boil.Executor) (bool, error) {
 	return count > 0, nil
 }
 
+// AssignedToArenaBattleLobbies retrieves all the battle_lobby's BattleLobbies with an executor via assigned_to_arena_id column.
+func (o *BattleArena) AssignedToArenaBattleLobbies(mods ...qm.QueryMod) battleLobbyQuery {
+	var queryMods []qm.QueryMod
+	if len(mods) != 0 {
+		queryMods = append(queryMods, mods...)
+	}
+
+	queryMods = append(queryMods,
+		qm.Where("\"battle_lobbies\".\"assigned_to_arena_id\"=?", o.ID),
+		qmhelper.WhereIsNull("\"battle_lobbies\".\"deleted_at\""),
+	)
+
+	query := BattleLobbies(queryMods...)
+	queries.SetFrom(query.Query, "\"battle_lobbies\"")
+
+	if len(queries.GetSelect(query.Query)) == 0 {
+		queries.SetSelect(query.Query, []string{"\"battle_lobbies\".*"})
+	}
+
+	return query
+}
+
 // ArenaBattleReplays retrieves all the battle_replay's BattleReplays with an executor via arena_id column.
 func (o *BattleArena) ArenaBattleReplays(mods ...qm.QueryMod) battleReplayQuery {
 	var queryMods []qm.QueryMod
@@ -470,6 +467,126 @@ func (o *BattleArena) ArenaMechMoveCommandLogs(mods ...qm.QueryMod) mechMoveComm
 	}
 
 	return query
+}
+
+// ArenaVoiceStreams retrieves all the voice_stream's VoiceStreams with an executor via arena_id column.
+func (o *BattleArena) ArenaVoiceStreams(mods ...qm.QueryMod) voiceStreamQuery {
+	var queryMods []qm.QueryMod
+	if len(mods) != 0 {
+		queryMods = append(queryMods, mods...)
+	}
+
+	queryMods = append(queryMods,
+		qm.Where("\"voice_streams\".\"arena_id\"=?", o.ID),
+	)
+
+	query := VoiceStreams(queryMods...)
+	queries.SetFrom(query.Query, "\"voice_streams\"")
+
+	if len(queries.GetSelect(query.Query)) == 0 {
+		queries.SetSelect(query.Query, []string{"\"voice_streams\".*"})
+	}
+
+	return query
+}
+
+// LoadAssignedToArenaBattleLobbies allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for a 1-M or N-M relationship.
+func (battleArenaL) LoadAssignedToArenaBattleLobbies(e boil.Executor, singular bool, maybeBattleArena interface{}, mods queries.Applicator) error {
+	var slice []*BattleArena
+	var object *BattleArena
+
+	if singular {
+		object = maybeBattleArena.(*BattleArena)
+	} else {
+		slice = *maybeBattleArena.(*[]*BattleArena)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &battleArenaR{}
+		}
+		args = append(args, object.ID)
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &battleArenaR{}
+			}
+
+			for _, a := range args {
+				if queries.Equal(a, obj.ID) {
+					continue Outer
+				}
+			}
+
+			args = append(args, obj.ID)
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`battle_lobbies`),
+		qm.WhereIn(`battle_lobbies.assigned_to_arena_id in ?`, args...),
+		qmhelper.WhereIsNull(`battle_lobbies.deleted_at`),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load battle_lobbies")
+	}
+
+	var resultSlice []*BattleLobby
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice battle_lobbies")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results in eager load on battle_lobbies")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for battle_lobbies")
+	}
+
+	if len(battleLobbyAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+	if singular {
+		object.R.AssignedToArenaBattleLobbies = resultSlice
+		for _, foreign := range resultSlice {
+			if foreign.R == nil {
+				foreign.R = &battleLobbyR{}
+			}
+			foreign.R.AssignedToArena = object
+		}
+		return nil
+	}
+
+	for _, foreign := range resultSlice {
+		for _, local := range slice {
+			if queries.Equal(local.ID, foreign.AssignedToArenaID) {
+				local.R.AssignedToArenaBattleLobbies = append(local.R.AssignedToArenaBattleLobbies, foreign)
+				if foreign.R == nil {
+					foreign.R = &battleLobbyR{}
+				}
+				foreign.R.AssignedToArena = local
+				break
+			}
+		}
+	}
+
+	return nil
 }
 
 // LoadArenaBattleReplays allows an eager lookup of values, cached into the
@@ -865,6 +982,229 @@ func (battleArenaL) LoadArenaMechMoveCommandLogs(e boil.Executor, singular bool,
 	return nil
 }
 
+// LoadArenaVoiceStreams allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for a 1-M or N-M relationship.
+func (battleArenaL) LoadArenaVoiceStreams(e boil.Executor, singular bool, maybeBattleArena interface{}, mods queries.Applicator) error {
+	var slice []*BattleArena
+	var object *BattleArena
+
+	if singular {
+		object = maybeBattleArena.(*BattleArena)
+	} else {
+		slice = *maybeBattleArena.(*[]*BattleArena)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &battleArenaR{}
+		}
+		args = append(args, object.ID)
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &battleArenaR{}
+			}
+
+			for _, a := range args {
+				if a == obj.ID {
+					continue Outer
+				}
+			}
+
+			args = append(args, obj.ID)
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`voice_streams`),
+		qm.WhereIn(`voice_streams.arena_id in ?`, args...),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load voice_streams")
+	}
+
+	var resultSlice []*VoiceStream
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice voice_streams")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results in eager load on voice_streams")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for voice_streams")
+	}
+
+	if len(voiceStreamAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+	if singular {
+		object.R.ArenaVoiceStreams = resultSlice
+		for _, foreign := range resultSlice {
+			if foreign.R == nil {
+				foreign.R = &voiceStreamR{}
+			}
+			foreign.R.Arena = object
+		}
+		return nil
+	}
+
+	for _, foreign := range resultSlice {
+		for _, local := range slice {
+			if local.ID == foreign.ArenaID {
+				local.R.ArenaVoiceStreams = append(local.R.ArenaVoiceStreams, foreign)
+				if foreign.R == nil {
+					foreign.R = &voiceStreamR{}
+				}
+				foreign.R.Arena = local
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
+// AddAssignedToArenaBattleLobbies adds the given related objects to the existing relationships
+// of the battle_arena, optionally inserting them as new records.
+// Appends related to o.R.AssignedToArenaBattleLobbies.
+// Sets related.R.AssignedToArena appropriately.
+func (o *BattleArena) AddAssignedToArenaBattleLobbies(exec boil.Executor, insert bool, related ...*BattleLobby) error {
+	var err error
+	for _, rel := range related {
+		if insert {
+			queries.Assign(&rel.AssignedToArenaID, o.ID)
+			if err = rel.Insert(exec, boil.Infer()); err != nil {
+				return errors.Wrap(err, "failed to insert into foreign table")
+			}
+		} else {
+			updateQuery := fmt.Sprintf(
+				"UPDATE \"battle_lobbies\" SET %s WHERE %s",
+				strmangle.SetParamNames("\"", "\"", 1, []string{"assigned_to_arena_id"}),
+				strmangle.WhereClause("\"", "\"", 2, battleLobbyPrimaryKeyColumns),
+			)
+			values := []interface{}{o.ID, rel.ID}
+
+			if boil.DebugMode {
+				fmt.Fprintln(boil.DebugWriter, updateQuery)
+				fmt.Fprintln(boil.DebugWriter, values)
+			}
+			if _, err = exec.Exec(updateQuery, values...); err != nil {
+				return errors.Wrap(err, "failed to update foreign table")
+			}
+
+			queries.Assign(&rel.AssignedToArenaID, o.ID)
+		}
+	}
+
+	if o.R == nil {
+		o.R = &battleArenaR{
+			AssignedToArenaBattleLobbies: related,
+		}
+	} else {
+		o.R.AssignedToArenaBattleLobbies = append(o.R.AssignedToArenaBattleLobbies, related...)
+	}
+
+	for _, rel := range related {
+		if rel.R == nil {
+			rel.R = &battleLobbyR{
+				AssignedToArena: o,
+			}
+		} else {
+			rel.R.AssignedToArena = o
+		}
+	}
+	return nil
+}
+
+// SetAssignedToArenaBattleLobbies removes all previously related items of the
+// battle_arena replacing them completely with the passed
+// in related items, optionally inserting them as new records.
+// Sets o.R.AssignedToArena's AssignedToArenaBattleLobbies accordingly.
+// Replaces o.R.AssignedToArenaBattleLobbies with related.
+// Sets related.R.AssignedToArena's AssignedToArenaBattleLobbies accordingly.
+func (o *BattleArena) SetAssignedToArenaBattleLobbies(exec boil.Executor, insert bool, related ...*BattleLobby) error {
+	query := "update \"battle_lobbies\" set \"assigned_to_arena_id\" = null where \"assigned_to_arena_id\" = $1"
+	values := []interface{}{o.ID}
+	if boil.DebugMode {
+		fmt.Fprintln(boil.DebugWriter, query)
+		fmt.Fprintln(boil.DebugWriter, values)
+	}
+	_, err := exec.Exec(query, values...)
+	if err != nil {
+		return errors.Wrap(err, "failed to remove relationships before set")
+	}
+
+	if o.R != nil {
+		for _, rel := range o.R.AssignedToArenaBattleLobbies {
+			queries.SetScanner(&rel.AssignedToArenaID, nil)
+			if rel.R == nil {
+				continue
+			}
+
+			rel.R.AssignedToArena = nil
+		}
+
+		o.R.AssignedToArenaBattleLobbies = nil
+	}
+	return o.AddAssignedToArenaBattleLobbies(exec, insert, related...)
+}
+
+// RemoveAssignedToArenaBattleLobbies relationships from objects passed in.
+// Removes related items from R.AssignedToArenaBattleLobbies (uses pointer comparison, removal does not keep order)
+// Sets related.R.AssignedToArena.
+func (o *BattleArena) RemoveAssignedToArenaBattleLobbies(exec boil.Executor, related ...*BattleLobby) error {
+	if len(related) == 0 {
+		return nil
+	}
+
+	var err error
+	for _, rel := range related {
+		queries.SetScanner(&rel.AssignedToArenaID, nil)
+		if rel.R != nil {
+			rel.R.AssignedToArena = nil
+		}
+		if _, err = rel.Update(exec, boil.Whitelist("assigned_to_arena_id")); err != nil {
+			return err
+		}
+	}
+	if o.R == nil {
+		return nil
+	}
+
+	for _, rel := range related {
+		for i, ri := range o.R.AssignedToArenaBattleLobbies {
+			if rel != ri {
+				continue
+			}
+
+			ln := len(o.R.AssignedToArenaBattleLobbies)
+			if ln > 1 && i < ln-1 {
+				o.R.AssignedToArenaBattleLobbies[i] = o.R.AssignedToArenaBattleLobbies[ln-1]
+			}
+			o.R.AssignedToArenaBattleLobbies = o.R.AssignedToArenaBattleLobbies[:ln-1]
+			break
+		}
+	}
+
+	return nil
+}
+
 // AddArenaBattleReplays adds the given related objects to the existing relationships
 // of the battle_arena, optionally inserting them as new records.
 // Appends related to o.R.ArenaBattleReplays.
@@ -1137,6 +1477,58 @@ func (o *BattleArena) AddArenaMechMoveCommandLogs(exec boil.Executor, insert boo
 	for _, rel := range related {
 		if rel.R == nil {
 			rel.R = &mechMoveCommandLogR{
+				Arena: o,
+			}
+		} else {
+			rel.R.Arena = o
+		}
+	}
+	return nil
+}
+
+// AddArenaVoiceStreams adds the given related objects to the existing relationships
+// of the battle_arena, optionally inserting them as new records.
+// Appends related to o.R.ArenaVoiceStreams.
+// Sets related.R.Arena appropriately.
+func (o *BattleArena) AddArenaVoiceStreams(exec boil.Executor, insert bool, related ...*VoiceStream) error {
+	var err error
+	for _, rel := range related {
+		if insert {
+			rel.ArenaID = o.ID
+			if err = rel.Insert(exec, boil.Infer()); err != nil {
+				return errors.Wrap(err, "failed to insert into foreign table")
+			}
+		} else {
+			updateQuery := fmt.Sprintf(
+				"UPDATE \"voice_streams\" SET %s WHERE %s",
+				strmangle.SetParamNames("\"", "\"", 1, []string{"arena_id"}),
+				strmangle.WhereClause("\"", "\"", 2, voiceStreamPrimaryKeyColumns),
+			)
+			values := []interface{}{o.ID, rel.ID}
+
+			if boil.DebugMode {
+				fmt.Fprintln(boil.DebugWriter, updateQuery)
+				fmt.Fprintln(boil.DebugWriter, values)
+			}
+			if _, err = exec.Exec(updateQuery, values...); err != nil {
+				return errors.Wrap(err, "failed to update foreign table")
+			}
+
+			rel.ArenaID = o.ID
+		}
+	}
+
+	if o.R == nil {
+		o.R = &battleArenaR{
+			ArenaVoiceStreams: related,
+		}
+	} else {
+		o.R.ArenaVoiceStreams = append(o.R.ArenaVoiceStreams, related...)
+	}
+
+	for _, rel := range related {
+		if rel.R == nil {
+			rel.R = &voiceStreamR{
 				Arena: o,
 			}
 		} else {

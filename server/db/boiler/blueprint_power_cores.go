@@ -42,6 +42,9 @@ type BlueprintPowerCore struct {
 	BackgroundColor  null.String     `boiler:"background_color" boil:"background_color" json:"background_color,omitempty" toml:"background_color" yaml:"background_color,omitempty"`
 	AnimationURL     null.String     `boiler:"animation_url" boil:"animation_url" json:"animation_url,omitempty" toml:"animation_url" yaml:"animation_url,omitempty"`
 	YoutubeURL       null.String     `boiler:"youtube_url" boil:"youtube_url" json:"youtube_url,omitempty" toml:"youtube_url" yaml:"youtube_url,omitempty"`
+	WeaponShare      int             `boiler:"weapon_share" boil:"weapon_share" json:"weapon_share" toml:"weapon_share" yaml:"weapon_share"`
+	MovementShare    int             `boiler:"movement_share" boil:"movement_share" json:"movement_share" toml:"movement_share" yaml:"movement_share"`
+	UtilityShare     int             `boiler:"utility_share" boil:"utility_share" json:"utility_share" toml:"utility_share" yaml:"utility_share"`
 
 	R *blueprintPowerCoreR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L blueprintPowerCoreL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -66,6 +69,9 @@ var BlueprintPowerCoreColumns = struct {
 	BackgroundColor  string
 	AnimationURL     string
 	YoutubeURL       string
+	WeaponShare      string
+	MovementShare    string
+	UtilityShare     string
 }{
 	ID:               "id",
 	Collection:       "collection",
@@ -85,6 +91,9 @@ var BlueprintPowerCoreColumns = struct {
 	BackgroundColor:  "background_color",
 	AnimationURL:     "animation_url",
 	YoutubeURL:       "youtube_url",
+	WeaponShare:      "weapon_share",
+	MovementShare:    "movement_share",
+	UtilityShare:     "utility_share",
 }
 
 var BlueprintPowerCoreTableColumns = struct {
@@ -106,6 +115,9 @@ var BlueprintPowerCoreTableColumns = struct {
 	BackgroundColor  string
 	AnimationURL     string
 	YoutubeURL       string
+	WeaponShare      string
+	MovementShare    string
+	UtilityShare     string
 }{
 	ID:               "blueprint_power_cores.id",
 	Collection:       "blueprint_power_cores.collection",
@@ -125,6 +137,9 @@ var BlueprintPowerCoreTableColumns = struct {
 	BackgroundColor:  "blueprint_power_cores.background_color",
 	AnimationURL:     "blueprint_power_cores.animation_url",
 	YoutubeURL:       "blueprint_power_cores.youtube_url",
+	WeaponShare:      "blueprint_power_cores.weapon_share",
+	MovementShare:    "blueprint_power_cores.movement_share",
+	UtilityShare:     "blueprint_power_cores.utility_share",
 }
 
 // Generated where
@@ -148,6 +163,9 @@ var BlueprintPowerCoreWhere = struct {
 	BackgroundColor  whereHelpernull_String
 	AnimationURL     whereHelpernull_String
 	YoutubeURL       whereHelpernull_String
+	WeaponShare      whereHelperint
+	MovementShare    whereHelperint
+	UtilityShare     whereHelperint
 }{
 	ID:               whereHelperstring{field: "\"blueprint_power_cores\".\"id\""},
 	Collection:       whereHelperstring{field: "\"blueprint_power_cores\".\"collection\""},
@@ -167,18 +185,24 @@ var BlueprintPowerCoreWhere = struct {
 	BackgroundColor:  whereHelpernull_String{field: "\"blueprint_power_cores\".\"background_color\""},
 	AnimationURL:     whereHelpernull_String{field: "\"blueprint_power_cores\".\"animation_url\""},
 	YoutubeURL:       whereHelpernull_String{field: "\"blueprint_power_cores\".\"youtube_url\""},
+	WeaponShare:      whereHelperint{field: "\"blueprint_power_cores\".\"weapon_share\""},
+	MovementShare:    whereHelperint{field: "\"blueprint_power_cores\".\"movement_share\""},
+	UtilityShare:     whereHelperint{field: "\"blueprint_power_cores\".\"utility_share\""},
 }
 
 // BlueprintPowerCoreRels is where relationship names are stored.
 var BlueprintPowerCoreRels = struct {
-	BlueprintPowerCores string
+	PowerCoreBlueprintFiatProductItemBlueprints string
+	BlueprintPowerCores                         string
 }{
-	BlueprintPowerCores: "BlueprintPowerCores",
+	PowerCoreBlueprintFiatProductItemBlueprints: "PowerCoreBlueprintFiatProductItemBlueprints",
+	BlueprintPowerCores:                         "BlueprintPowerCores",
 }
 
 // blueprintPowerCoreR is where relationships are stored.
 type blueprintPowerCoreR struct {
-	BlueprintPowerCores PowerCoreSlice `boiler:"BlueprintPowerCores" boil:"BlueprintPowerCores" json:"BlueprintPowerCores" toml:"BlueprintPowerCores" yaml:"BlueprintPowerCores"`
+	PowerCoreBlueprintFiatProductItemBlueprints FiatProductItemBlueprintSlice `boiler:"PowerCoreBlueprintFiatProductItemBlueprints" boil:"PowerCoreBlueprintFiatProductItemBlueprints" json:"PowerCoreBlueprintFiatProductItemBlueprints" toml:"PowerCoreBlueprintFiatProductItemBlueprints" yaml:"PowerCoreBlueprintFiatProductItemBlueprints"`
+	BlueprintPowerCores                         PowerCoreSlice                `boiler:"BlueprintPowerCores" boil:"BlueprintPowerCores" json:"BlueprintPowerCores" toml:"BlueprintPowerCores" yaml:"BlueprintPowerCores"`
 }
 
 // NewStruct creates a new relationship struct
@@ -190,9 +214,9 @@ func (*blueprintPowerCoreR) NewStruct() *blueprintPowerCoreR {
 type blueprintPowerCoreL struct{}
 
 var (
-	blueprintPowerCoreAllColumns            = []string{"id", "collection", "label", "size", "capacity", "max_draw_rate", "recharge_rate", "armour", "max_hitpoints", "tier", "created_at", "image_url", "card_animation_url", "avatar_url", "large_image_url", "background_color", "animation_url", "youtube_url"}
+	blueprintPowerCoreAllColumns            = []string{"id", "collection", "label", "size", "capacity", "max_draw_rate", "recharge_rate", "armour", "max_hitpoints", "tier", "created_at", "image_url", "card_animation_url", "avatar_url", "large_image_url", "background_color", "animation_url", "youtube_url", "weapon_share", "movement_share", "utility_share"}
 	blueprintPowerCoreColumnsWithoutDefault = []string{"label"}
-	blueprintPowerCoreColumnsWithDefault    = []string{"id", "collection", "size", "capacity", "max_draw_rate", "recharge_rate", "armour", "max_hitpoints", "tier", "created_at", "image_url", "card_animation_url", "avatar_url", "large_image_url", "background_color", "animation_url", "youtube_url"}
+	blueprintPowerCoreColumnsWithDefault    = []string{"id", "collection", "size", "capacity", "max_draw_rate", "recharge_rate", "armour", "max_hitpoints", "tier", "created_at", "image_url", "card_animation_url", "avatar_url", "large_image_url", "background_color", "animation_url", "youtube_url", "weapon_share", "movement_share", "utility_share"}
 	blueprintPowerCorePrimaryKeyColumns     = []string{"id"}
 	blueprintPowerCoreGeneratedColumns      = []string{}
 )
@@ -439,6 +463,27 @@ func (q blueprintPowerCoreQuery) Exists(exec boil.Executor) (bool, error) {
 	return count > 0, nil
 }
 
+// PowerCoreBlueprintFiatProductItemBlueprints retrieves all the fiat_product_item_blueprint's FiatProductItemBlueprints with an executor via power_core_blueprint_id column.
+func (o *BlueprintPowerCore) PowerCoreBlueprintFiatProductItemBlueprints(mods ...qm.QueryMod) fiatProductItemBlueprintQuery {
+	var queryMods []qm.QueryMod
+	if len(mods) != 0 {
+		queryMods = append(queryMods, mods...)
+	}
+
+	queryMods = append(queryMods,
+		qm.Where("\"fiat_product_item_blueprints\".\"power_core_blueprint_id\"=?", o.ID),
+	)
+
+	query := FiatProductItemBlueprints(queryMods...)
+	queries.SetFrom(query.Query, "\"fiat_product_item_blueprints\"")
+
+	if len(queries.GetSelect(query.Query)) == 0 {
+		queries.SetSelect(query.Query, []string{"\"fiat_product_item_blueprints\".*"})
+	}
+
+	return query
+}
+
 // BlueprintPowerCores retrieves all the power_core's PowerCores with an executor via blueprint_id column.
 func (o *BlueprintPowerCore) BlueprintPowerCores(mods ...qm.QueryMod) powerCoreQuery {
 	var queryMods []qm.QueryMod
@@ -458,6 +503,104 @@ func (o *BlueprintPowerCore) BlueprintPowerCores(mods ...qm.QueryMod) powerCoreQ
 	}
 
 	return query
+}
+
+// LoadPowerCoreBlueprintFiatProductItemBlueprints allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for a 1-M or N-M relationship.
+func (blueprintPowerCoreL) LoadPowerCoreBlueprintFiatProductItemBlueprints(e boil.Executor, singular bool, maybeBlueprintPowerCore interface{}, mods queries.Applicator) error {
+	var slice []*BlueprintPowerCore
+	var object *BlueprintPowerCore
+
+	if singular {
+		object = maybeBlueprintPowerCore.(*BlueprintPowerCore)
+	} else {
+		slice = *maybeBlueprintPowerCore.(*[]*BlueprintPowerCore)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &blueprintPowerCoreR{}
+		}
+		args = append(args, object.ID)
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &blueprintPowerCoreR{}
+			}
+
+			for _, a := range args {
+				if queries.Equal(a, obj.ID) {
+					continue Outer
+				}
+			}
+
+			args = append(args, obj.ID)
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`fiat_product_item_blueprints`),
+		qm.WhereIn(`fiat_product_item_blueprints.power_core_blueprint_id in ?`, args...),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load fiat_product_item_blueprints")
+	}
+
+	var resultSlice []*FiatProductItemBlueprint
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice fiat_product_item_blueprints")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results in eager load on fiat_product_item_blueprints")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for fiat_product_item_blueprints")
+	}
+
+	if len(fiatProductItemBlueprintAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+	if singular {
+		object.R.PowerCoreBlueprintFiatProductItemBlueprints = resultSlice
+		for _, foreign := range resultSlice {
+			if foreign.R == nil {
+				foreign.R = &fiatProductItemBlueprintR{}
+			}
+			foreign.R.PowerCoreBlueprint = object
+		}
+		return nil
+	}
+
+	for _, foreign := range resultSlice {
+		for _, local := range slice {
+			if queries.Equal(local.ID, foreign.PowerCoreBlueprintID) {
+				local.R.PowerCoreBlueprintFiatProductItemBlueprints = append(local.R.PowerCoreBlueprintFiatProductItemBlueprints, foreign)
+				if foreign.R == nil {
+					foreign.R = &fiatProductItemBlueprintR{}
+				}
+				foreign.R.PowerCoreBlueprint = local
+				break
+			}
+		}
+	}
+
+	return nil
 }
 
 // LoadBlueprintPowerCores allows an eager lookup of values, cached into the
@@ -486,7 +629,7 @@ func (blueprintPowerCoreL) LoadBlueprintPowerCores(e boil.Executor, singular boo
 			}
 
 			for _, a := range args {
-				if queries.Equal(a, obj.ID) {
+				if a == obj.ID {
 					continue Outer
 				}
 			}
@@ -544,7 +687,7 @@ func (blueprintPowerCoreL) LoadBlueprintPowerCores(e boil.Executor, singular boo
 
 	for _, foreign := range resultSlice {
 		for _, local := range slice {
-			if queries.Equal(local.ID, foreign.BlueprintID) {
+			if local.ID == foreign.BlueprintID {
 				local.R.BlueprintPowerCores = append(local.R.BlueprintPowerCores, foreign)
 				if foreign.R == nil {
 					foreign.R = &powerCoreR{}
@@ -552,6 +695,131 @@ func (blueprintPowerCoreL) LoadBlueprintPowerCores(e boil.Executor, singular boo
 				foreign.R.Blueprint = local
 				break
 			}
+		}
+	}
+
+	return nil
+}
+
+// AddPowerCoreBlueprintFiatProductItemBlueprints adds the given related objects to the existing relationships
+// of the blueprint_power_core, optionally inserting them as new records.
+// Appends related to o.R.PowerCoreBlueprintFiatProductItemBlueprints.
+// Sets related.R.PowerCoreBlueprint appropriately.
+func (o *BlueprintPowerCore) AddPowerCoreBlueprintFiatProductItemBlueprints(exec boil.Executor, insert bool, related ...*FiatProductItemBlueprint) error {
+	var err error
+	for _, rel := range related {
+		if insert {
+			queries.Assign(&rel.PowerCoreBlueprintID, o.ID)
+			if err = rel.Insert(exec, boil.Infer()); err != nil {
+				return errors.Wrap(err, "failed to insert into foreign table")
+			}
+		} else {
+			updateQuery := fmt.Sprintf(
+				"UPDATE \"fiat_product_item_blueprints\" SET %s WHERE %s",
+				strmangle.SetParamNames("\"", "\"", 1, []string{"power_core_blueprint_id"}),
+				strmangle.WhereClause("\"", "\"", 2, fiatProductItemBlueprintPrimaryKeyColumns),
+			)
+			values := []interface{}{o.ID, rel.ID}
+
+			if boil.DebugMode {
+				fmt.Fprintln(boil.DebugWriter, updateQuery)
+				fmt.Fprintln(boil.DebugWriter, values)
+			}
+			if _, err = exec.Exec(updateQuery, values...); err != nil {
+				return errors.Wrap(err, "failed to update foreign table")
+			}
+
+			queries.Assign(&rel.PowerCoreBlueprintID, o.ID)
+		}
+	}
+
+	if o.R == nil {
+		o.R = &blueprintPowerCoreR{
+			PowerCoreBlueprintFiatProductItemBlueprints: related,
+		}
+	} else {
+		o.R.PowerCoreBlueprintFiatProductItemBlueprints = append(o.R.PowerCoreBlueprintFiatProductItemBlueprints, related...)
+	}
+
+	for _, rel := range related {
+		if rel.R == nil {
+			rel.R = &fiatProductItemBlueprintR{
+				PowerCoreBlueprint: o,
+			}
+		} else {
+			rel.R.PowerCoreBlueprint = o
+		}
+	}
+	return nil
+}
+
+// SetPowerCoreBlueprintFiatProductItemBlueprints removes all previously related items of the
+// blueprint_power_core replacing them completely with the passed
+// in related items, optionally inserting them as new records.
+// Sets o.R.PowerCoreBlueprint's PowerCoreBlueprintFiatProductItemBlueprints accordingly.
+// Replaces o.R.PowerCoreBlueprintFiatProductItemBlueprints with related.
+// Sets related.R.PowerCoreBlueprint's PowerCoreBlueprintFiatProductItemBlueprints accordingly.
+func (o *BlueprintPowerCore) SetPowerCoreBlueprintFiatProductItemBlueprints(exec boil.Executor, insert bool, related ...*FiatProductItemBlueprint) error {
+	query := "update \"fiat_product_item_blueprints\" set \"power_core_blueprint_id\" = null where \"power_core_blueprint_id\" = $1"
+	values := []interface{}{o.ID}
+	if boil.DebugMode {
+		fmt.Fprintln(boil.DebugWriter, query)
+		fmt.Fprintln(boil.DebugWriter, values)
+	}
+	_, err := exec.Exec(query, values...)
+	if err != nil {
+		return errors.Wrap(err, "failed to remove relationships before set")
+	}
+
+	if o.R != nil {
+		for _, rel := range o.R.PowerCoreBlueprintFiatProductItemBlueprints {
+			queries.SetScanner(&rel.PowerCoreBlueprintID, nil)
+			if rel.R == nil {
+				continue
+			}
+
+			rel.R.PowerCoreBlueprint = nil
+		}
+
+		o.R.PowerCoreBlueprintFiatProductItemBlueprints = nil
+	}
+	return o.AddPowerCoreBlueprintFiatProductItemBlueprints(exec, insert, related...)
+}
+
+// RemovePowerCoreBlueprintFiatProductItemBlueprints relationships from objects passed in.
+// Removes related items from R.PowerCoreBlueprintFiatProductItemBlueprints (uses pointer comparison, removal does not keep order)
+// Sets related.R.PowerCoreBlueprint.
+func (o *BlueprintPowerCore) RemovePowerCoreBlueprintFiatProductItemBlueprints(exec boil.Executor, related ...*FiatProductItemBlueprint) error {
+	if len(related) == 0 {
+		return nil
+	}
+
+	var err error
+	for _, rel := range related {
+		queries.SetScanner(&rel.PowerCoreBlueprintID, nil)
+		if rel.R != nil {
+			rel.R.PowerCoreBlueprint = nil
+		}
+		if _, err = rel.Update(exec, boil.Whitelist("power_core_blueprint_id")); err != nil {
+			return err
+		}
+	}
+	if o.R == nil {
+		return nil
+	}
+
+	for _, rel := range related {
+		for i, ri := range o.R.PowerCoreBlueprintFiatProductItemBlueprints {
+			if rel != ri {
+				continue
+			}
+
+			ln := len(o.R.PowerCoreBlueprintFiatProductItemBlueprints)
+			if ln > 1 && i < ln-1 {
+				o.R.PowerCoreBlueprintFiatProductItemBlueprints[i] = o.R.PowerCoreBlueprintFiatProductItemBlueprints[ln-1]
+			}
+			o.R.PowerCoreBlueprintFiatProductItemBlueprints = o.R.PowerCoreBlueprintFiatProductItemBlueprints[:ln-1]
+			break
 		}
 	}
 
@@ -566,7 +834,7 @@ func (o *BlueprintPowerCore) AddBlueprintPowerCores(exec boil.Executor, insert b
 	var err error
 	for _, rel := range related {
 		if insert {
-			queries.Assign(&rel.BlueprintID, o.ID)
+			rel.BlueprintID = o.ID
 			if err = rel.Insert(exec, boil.Infer()); err != nil {
 				return errors.Wrap(err, "failed to insert into foreign table")
 			}
@@ -586,7 +854,7 @@ func (o *BlueprintPowerCore) AddBlueprintPowerCores(exec boil.Executor, insert b
 				return errors.Wrap(err, "failed to update foreign table")
 			}
 
-			queries.Assign(&rel.BlueprintID, o.ID)
+			rel.BlueprintID = o.ID
 		}
 	}
 
@@ -607,79 +875,6 @@ func (o *BlueprintPowerCore) AddBlueprintPowerCores(exec boil.Executor, insert b
 			rel.R.Blueprint = o
 		}
 	}
-	return nil
-}
-
-// SetBlueprintPowerCores removes all previously related items of the
-// blueprint_power_core replacing them completely with the passed
-// in related items, optionally inserting them as new records.
-// Sets o.R.Blueprint's BlueprintPowerCores accordingly.
-// Replaces o.R.BlueprintPowerCores with related.
-// Sets related.R.Blueprint's BlueprintPowerCores accordingly.
-func (o *BlueprintPowerCore) SetBlueprintPowerCores(exec boil.Executor, insert bool, related ...*PowerCore) error {
-	query := "update \"power_cores\" set \"blueprint_id\" = null where \"blueprint_id\" = $1"
-	values := []interface{}{o.ID}
-	if boil.DebugMode {
-		fmt.Fprintln(boil.DebugWriter, query)
-		fmt.Fprintln(boil.DebugWriter, values)
-	}
-	_, err := exec.Exec(query, values...)
-	if err != nil {
-		return errors.Wrap(err, "failed to remove relationships before set")
-	}
-
-	if o.R != nil {
-		for _, rel := range o.R.BlueprintPowerCores {
-			queries.SetScanner(&rel.BlueprintID, nil)
-			if rel.R == nil {
-				continue
-			}
-
-			rel.R.Blueprint = nil
-		}
-
-		o.R.BlueprintPowerCores = nil
-	}
-	return o.AddBlueprintPowerCores(exec, insert, related...)
-}
-
-// RemoveBlueprintPowerCores relationships from objects passed in.
-// Removes related items from R.BlueprintPowerCores (uses pointer comparison, removal does not keep order)
-// Sets related.R.Blueprint.
-func (o *BlueprintPowerCore) RemoveBlueprintPowerCores(exec boil.Executor, related ...*PowerCore) error {
-	if len(related) == 0 {
-		return nil
-	}
-
-	var err error
-	for _, rel := range related {
-		queries.SetScanner(&rel.BlueprintID, nil)
-		if rel.R != nil {
-			rel.R.Blueprint = nil
-		}
-		if _, err = rel.Update(exec, boil.Whitelist("blueprint_id")); err != nil {
-			return err
-		}
-	}
-	if o.R == nil {
-		return nil
-	}
-
-	for _, rel := range related {
-		for i, ri := range o.R.BlueprintPowerCores {
-			if rel != ri {
-				continue
-			}
-
-			ln := len(o.R.BlueprintPowerCores)
-			if ln > 1 && i < ln-1 {
-				o.R.BlueprintPowerCores[i] = o.R.BlueprintPowerCores[ln-1]
-			}
-			o.R.BlueprintPowerCores = o.R.BlueprintPowerCores[:ln-1]
-			break
-		}
-	}
-
 	return nil
 }
 

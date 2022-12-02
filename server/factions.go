@@ -13,9 +13,9 @@ type Faction struct {
 	Label           string `json:"label" db:"label"`
 	VotePrice       string `json:"vote_price" db:"vote_price"`
 	ContractReward  string `json:"contract_reward" db:"contract_reward"`
-	PrimaryColor    string `json:"primary_color"`
-	SecondaryColor  string `json:"secondary_color"`
-	BackgroundColor string `json:"background_color"`
+	PrimaryColor    string `json:"primary_color" db:"primary_color"`
+	SecondaryColor  string `json:"secondary_color" db:"secondary_color"`
+	BackgroundColor string `json:"background_color" db:"background_color"`
 }
 
 func (b *Faction) Scan(value interface{}) error {
@@ -44,43 +44,14 @@ var FactionUsers = map[string]string{
 	ZaibatsuFactionID:          ZaibatsuPlayerID,
 }
 
-func (f *Faction) ToBoilerFaction() *boiler.Faction {
-	newFaction := &boiler.Faction{
-		ID:             f.ID,
-		VotePrice:      f.VotePrice,
-		ContractReward: f.ContractReward,
-		Label:          f.Label,
-		//GuildID: , ?
-		//DeletedAt:,
-		//UpdatedAt:,
-		//CreatedAt:,
-		PrimaryColor:    f.PrimaryColor,
-		SecondaryColor:  f.SecondaryColor,
-		BackgroundColor: f.BackgroundColor,
-	}
-	return newFaction
-}
-
-func FactionFromBoiler(bf *boiler.Faction) *Faction {
-	return &Faction{
-		ID:              bf.ID,
-		Label:           bf.Label,
-		PrimaryColor:    bf.PrimaryColor,
-		SecondaryColor:  bf.SecondaryColor,
-		BackgroundColor: bf.BackgroundColor,
-		VotePrice:       bf.VotePrice,
-		ContractReward:  bf.ContractReward,
-	}
-}
-
 func (f *Faction) SetFromBoilerFaction(bf *boiler.Faction) error {
 	//f.LogoBlobID = bf. ?
 	//f.BackgroundBlobID = bf. ?
 	f.ID = bf.ID
 	f.Label = bf.Label
-	f.PrimaryColor = bf.PrimaryColor
-	f.SecondaryColor = bf.SecondaryColor
-	f.BackgroundColor = bf.BackgroundColor
+	f.PrimaryColor = bf.R.FactionPalette.Primary
+	f.SecondaryColor = bf.R.FactionPalette.Text
+	f.BackgroundColor = bf.R.FactionPalette.Background
 	f.VotePrice = bf.VotePrice
 	f.ContractReward = bf.ContractReward
 	return nil
@@ -134,4 +105,11 @@ const (
 type MechQueuePosition struct {
 	MechID   uuid.UUID `json:"mechID"`
 	Position int       `json:"position"`
+}
+
+type FactionStakedMechRepairBayResponse struct {
+	FactionID                   string `json:"faction_id"`
+	MechCount                   int    `json:"mech_count"`
+	TotalRequiredRepairedBlocks int    `json:"total_required_repaired_blocks"`
+	TotalRepairedBlocks         int    `json:"total_repaired_blocks"`
 }

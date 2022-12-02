@@ -5,6 +5,7 @@ import (
 	"encoding/csv"
 	"errors"
 	"fmt"
+	"github.com/stripe/stripe-go/v72"
 	"log"
 	"net/url"
 	"os/signal"
@@ -16,6 +17,7 @@ import (
 	"server/comms"
 	"server/db"
 	"server/db/boiler"
+	"server/discord"
 	"server/gamedb"
 	"server/gamelog"
 	"server/profanities"
@@ -25,6 +27,7 @@ import (
 	"server/sms"
 	"server/synctool"
 	"server/telegram"
+	"server/voice_chat"
 	"server/xsyn_rpcclient"
 	"server/zendesk"
 
@@ -34,6 +37,7 @@ import (
 
 	"github.com/gofrs/uuid"
 	"github.com/pemistahl/lingua-go"
+	"github.com/stripe/stripe-go/v72/client"
 	"github.com/urfave/cli/v2"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 
@@ -70,7 +74,7 @@ func main() {
 	runtime.GOMAXPROCS(2)
 	app := &cli.App{
 		Compiled: time.Now(),
-		Usage:    "Run the server server",
+		Usage:    "Run the game server",
 		Authors: []*cli.Author{
 			{
 				Name:  "Ninja Software",
@@ -139,6 +143,10 @@ func main() {
 					// telegram bot token
 					&cli.StringFlag{Name: "telegram_bot_token", Value: "", EnvVars: []string{envPrefix + "_TELEGRAM_BOT_TOKEN"}, Usage: "telegram bot token"},
 
+					// stripe stuff
+					&cli.StringFlag{Name: "stripe_webhook_secret", Value: "", EnvVars: []string{envPrefix + "_STRIPE_WEBHOOK_SECRET"}, Usage: "stripe payment webhook secret key"},
+					&cli.StringFlag{Name: "stripe_secret_key", Value: "", EnvVars: []string{envPrefix + "_STRIPE_SECRET_KEY"}, Usage: "stripe payment api secret key"},
+
 					// TODO: clear up token
 					&cli.BoolFlag{Name: "jwt_encrypt", Value: true, EnvVars: []string{envPrefix + "_JWT_ENCRYPT", "JWT_ENCRYPT"}, Usage: "set if to encrypt jwt tokens or not"},
 					&cli.StringFlag{Name: "jwt_encrypt_key", Value: "ITF1vauAxvJlF0PLNY9btOO9ZzbUmc6X", EnvVars: []string{envPrefix + "_JWT_KEY", "JWT_KEY"}, Usage: "supports key sizes of 16, 24 or 32 bytes"},
@@ -177,6 +185,10 @@ func main() {
 
 					// Crypto signatures for battle histories
 					&cli.StringFlag{Name: "private_key_signer_hex", Value: "0x5f3b57101caf01c3d91e50809e70d84fcc404dd108aa8a9aa3e1a6c482267f48", EnvVars: []string{envPrefix + "_PRIVATE_KEY_SIGNER_HEX"}, Usage: "Private key for signing battle records (default is testnet dev private key)"},
+					&cli.StringFlag{Name: "ovenmedia_signed_key", Value: "aKq#1kj", EnvVars: []string{envPrefix + "_OVENMEDIA_SIGNED_KEY"}, Usage: "Ovenmedia secret sign key"},
+
+					&cli.StringFlag{Name: "discord_auth_token", Value: "", EnvVars: []string{envPrefix + "_DISCORD_AUTH_TOKEN"}, Usage: "Discord bot auth token"},
+					&cli.StringFlag{Name: "discord_app_id", Value: "", EnvVars: []string{envPrefix + "_DISCORD_APP_ID"}, Usage: "Discord bot app id"},
 				},
 				Usage: "run server",
 				Action: func(c *cli.Context) error {
@@ -206,6 +218,8 @@ func main() {
 
 					telegramBotToken := c.String("telegram_bot_token")
 
+					stripeSecretKey := c.String("stripe_secret_key")
+
 					passportAddr := c.String("passport_addr")
 					passportClientToken := c.String("passport_server_token")
 
@@ -216,7 +230,11 @@ func main() {
 					defer cancel()
 					environment := c.String("environment")
 
+					discordAuthToken := c.String("discord_auth_token")
+					discordAppID := c.String("discord_app_id")
+
 					replay.OvenMediaAuthKey = c.String("ovenmedia_auth_key")
+					voice_chat.VoiceChatSecretKey = c.String("ovenmedia_signed_key")
 					slack.ModToolsAppToken = c.String("slack_auth_token")
 
 					server.SetEnv(environment)
@@ -345,9 +363,21 @@ func main() {
 					if err != nil {
 						return terror.Error(err, "Telegram init failed")
 					}
+
 					gamelog.L.Info().Msgf("Telegram took %s", time.Since(start))
+
+					// initialise discord bot
+					discordBot, err := discord.NewDiscordBot(discordAuthToken, discordAppID, !server.IsDevelopmentEnv())
+					if err != nil {
+						return terror.Error(err, "Discord init failed")
+					}
+
 					start = time.Now()
-					//initialize lingua language detector
+					// initialise stripe
+					stripeClient := &client.API{}
+					stripeClient.Init(stripeSecretKey, nil)
+					stripe.Key = stripeSecretKey
+					// initialise lingua language detector
 					languages := []lingua.Language{
 						lingua.English,
 						lingua.Tagalog,
@@ -423,7 +453,7 @@ func main() {
 					gamelog.L.Info().Msgf("Zendesk took %s", time.Since(start))
 
 					gamelog.L.Info().Msg("Setting up API")
-					api, err := SetupAPI(c, ctx, log_helpers.NamedLogger(gamelog.L, "API"), arenaManager, rpcClient, twilio, telebot, zendesk, detector, pm, staticDataURL, qm)
+					api, err := SetupAPI(c, ctx, log_helpers.NamedLogger(gamelog.L, "API"), arenaManager, rpcClient, twilio, telebot, discordBot, zendesk, detector, pm, stripeClient, staticDataURL, qm)
 					if err != nil {
 						fmt.Println(err)
 						os.Exit(1)
@@ -461,7 +491,7 @@ func main() {
 						stop := make(chan os.Signal)
 						signal.Notify(stop, os.Interrupt)
 						<-stop
-						err := replay.StopAllActiveRecording()
+						err = replay.StopAllActiveRecording()
 						if err != nil {
 							gamelog.L.Error().Err(err).Msg("Failed to stop all active recordings")
 						}
@@ -705,7 +735,7 @@ func UpdateKeycard(api *api.API, pp *xsyn_rpcclient.XsynXrpcClient, filePath str
 				factionID = uuid.Must(uuid.FromString(resp.FactionID.String))
 			}
 
-			err = api.UpsertPlayer(resp.UserID, null.StringFrom(resp.Username), resp.PublicAddress, null.StringFrom(factionID.String()), nil)
+			err = api.UpsertPlayer(resp.UserID, null.StringFrom(resp.Username), resp.PublicAddress, null.StringFrom(factionID.String()), "", nil, null.Bool{})
 			if err != nil {
 				gamelog.L.Error().Err(err).Str("public_address", keycardAssets.PublicAddress).Str("factionID", factionID.String()).Str("resp.Username", resp.Username).Str("resp.UserID", resp.UserID).Msg("failed to register player")
 			}
@@ -720,7 +750,7 @@ func UpdateKeycard(api *api.API, pp *xsyn_rpcclient.XsynXrpcClient, filePath str
 				err := playerKeycard.Insert(gamedb.StdConn, boil.Infer())
 				if err != nil {
 					failed++
-					gamelog.L.Error().Interface("PlayerKeycard", playerKeycard).Err(err).Msg("failed to insert new player keycard")
+					gamelog.L.Error().Interface("PlayerKeycards", playerKeycard).Err(err).Msg("failed to insert new player keycard")
 					failedSync := &boiler.FailedPlayerKeycardsSync{
 						PublicAddress:      keycardAssets.PublicAddress,
 						BlueprintKeycardID: assetData.BlueprintID,
@@ -780,9 +810,11 @@ func SetupAPI(
 	passport *xsyn_rpcclient.XsynXrpcClient,
 	sms server.SMS,
 	telegram server.Telegram,
+	discord *discord.DiscordSession,
 	zendesk *zendesk.Zendesk,
 	languageDetector lingua.LanguageDetector,
 	pm *profanities.ProfanityManager,
+	stripeClient *client.API,
 	staticSyncURL string,
 	questManager *quest.System,
 ) (*api.API, error) {
@@ -791,6 +823,7 @@ func SetupAPI(
 	sentryServerName := ctxCLI.String("sentry_server_name")
 	sentryTraceRate := ctxCLI.Float64("sentry_sample_rate")
 	sentryRelease := fmt.Sprintf("%s@%s", SentryReleasePrefix, Version)
+	stripeWebhookSecret := ctxCLI.String("stripe_webhook_secret")
 	err := log_helpers.SentryInit(sentryDSNBackend, sentryServerName, sentryRelease, environment, sentryTraceRate, log)
 	switch errors.Unwrap(err) {
 	case log_helpers.ErrSentryInitEnvironment:
@@ -843,7 +876,7 @@ func SetupAPI(
 
 	// API Server
 	privateKeySignerHex := ctxCLI.String("private_key_signer_hex")
-	serverAPI, err := api.NewAPI(ctx, arenaManager, passport, HTMLSanitizePolicy, config, sms, telegram, zendesk, languageDetector, pm, syncConfig, questManager, privateKeySignerHex)
+	serverAPI, err := api.NewAPI(ctx, arenaManager, passport, HTMLSanitizePolicy, stripeClient, stripeWebhookSecret, config, sms, telegram, discord, zendesk, languageDetector, pm, syncConfig, questManager, privateKeySignerHex)
 	if err != nil {
 		return nil, err
 	}

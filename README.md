@@ -20,6 +20,8 @@ export GAMESERVER_DATABASE_PORT= - postgres database port
 export GAMESERVER_TWITCH_EXTENSION_SECRET="" - in your twitch dev console
 export GAMESERVER_GAMECLIENT_BUILD_NO="" - you must set this to the current build number for prod
 export GAMESERVER_TELEGRAM_BOT_TOKEN= (in 1Password)
+export GAMESERVER_STRIPE_SECRET_KEY= (in 1Password)
+export GAMESERVER_STRIPE_WEBHOOK_SECRET= (in 1Password)
 ```
 
 ### For spinup
@@ -112,6 +114,18 @@ The game client will require these headers to connect.
 
 ```shell
 Sec-WebSocket-Protocol: gameserver-v1
+```
+
+### Fiat Stripe Setup
+
+To handle payments for Stripe:
+
+First install `stripe-cli` (see https://stripe.com/docs/stripe-cli#install)
+
+And then run the following:
+
+```
+make serve-stripe-webhook
 ```
 
 #### From Codi

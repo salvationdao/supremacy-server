@@ -192,17 +192,20 @@ var BlueprintAmmoWhere = struct {
 
 // BlueprintAmmoRels is where relationship names are stored.
 var BlueprintAmmoRels = struct {
-	BlueprintAmmos string
-	WeaponAmmos    string
+	BlueprintAmmos                         string
+	AmmoBlueprintFiatProductItemBlueprints string
+	WeaponAmmos                            string
 }{
-	BlueprintAmmos: "BlueprintAmmos",
-	WeaponAmmos:    "WeaponAmmos",
+	BlueprintAmmos:                         "BlueprintAmmos",
+	AmmoBlueprintFiatProductItemBlueprints: "AmmoBlueprintFiatProductItemBlueprints",
+	WeaponAmmos:                            "WeaponAmmos",
 }
 
 // blueprintAmmoR is where relationships are stored.
 type blueprintAmmoR struct {
-	BlueprintAmmos AmmoSlice       `boiler:"BlueprintAmmos" boil:"BlueprintAmmos" json:"BlueprintAmmos" toml:"BlueprintAmmos" yaml:"BlueprintAmmos"`
-	WeaponAmmos    WeaponAmmoSlice `boiler:"WeaponAmmos" boil:"WeaponAmmos" json:"WeaponAmmos" toml:"WeaponAmmos" yaml:"WeaponAmmos"`
+	BlueprintAmmos                         AmmoSlice                     `boiler:"BlueprintAmmos" boil:"BlueprintAmmos" json:"BlueprintAmmos" toml:"BlueprintAmmos" yaml:"BlueprintAmmos"`
+	AmmoBlueprintFiatProductItemBlueprints FiatProductItemBlueprintSlice `boiler:"AmmoBlueprintFiatProductItemBlueprints" boil:"AmmoBlueprintFiatProductItemBlueprints" json:"AmmoBlueprintFiatProductItemBlueprints" toml:"AmmoBlueprintFiatProductItemBlueprints" yaml:"AmmoBlueprintFiatProductItemBlueprints"`
+	WeaponAmmos                            WeaponAmmoSlice               `boiler:"WeaponAmmos" boil:"WeaponAmmos" json:"WeaponAmmos" toml:"WeaponAmmos" yaml:"WeaponAmmos"`
 }
 
 // NewStruct creates a new relationship struct
@@ -484,6 +487,27 @@ func (o *BlueprintAmmo) BlueprintAmmos(mods ...qm.QueryMod) ammoQuery {
 	return query
 }
 
+// AmmoBlueprintFiatProductItemBlueprints retrieves all the fiat_product_item_blueprint's FiatProductItemBlueprints with an executor via ammo_blueprint_id column.
+func (o *BlueprintAmmo) AmmoBlueprintFiatProductItemBlueprints(mods ...qm.QueryMod) fiatProductItemBlueprintQuery {
+	var queryMods []qm.QueryMod
+	if len(mods) != 0 {
+		queryMods = append(queryMods, mods...)
+	}
+
+	queryMods = append(queryMods,
+		qm.Where("\"fiat_product_item_blueprints\".\"ammo_blueprint_id\"=?", o.ID),
+	)
+
+	query := FiatProductItemBlueprints(queryMods...)
+	queries.SetFrom(query.Query, "\"fiat_product_item_blueprints\"")
+
+	if len(queries.GetSelect(query.Query)) == 0 {
+		queries.SetSelect(query.Query, []string{"\"fiat_product_item_blueprints\".*"})
+	}
+
+	return query
+}
+
 // WeaponAmmos retrieves all the weapon_ammo's WeaponAmmos with an executor.
 func (o *BlueprintAmmo) WeaponAmmos(mods ...qm.QueryMod) weaponAmmoQuery {
 	var queryMods []qm.QueryMod
@@ -595,6 +619,104 @@ func (blueprintAmmoL) LoadBlueprintAmmos(e boil.Executor, singular bool, maybeBl
 					foreign.R = &ammoR{}
 				}
 				foreign.R.Blueprint = local
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
+// LoadAmmoBlueprintFiatProductItemBlueprints allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for a 1-M or N-M relationship.
+func (blueprintAmmoL) LoadAmmoBlueprintFiatProductItemBlueprints(e boil.Executor, singular bool, maybeBlueprintAmmo interface{}, mods queries.Applicator) error {
+	var slice []*BlueprintAmmo
+	var object *BlueprintAmmo
+
+	if singular {
+		object = maybeBlueprintAmmo.(*BlueprintAmmo)
+	} else {
+		slice = *maybeBlueprintAmmo.(*[]*BlueprintAmmo)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &blueprintAmmoR{}
+		}
+		args = append(args, object.ID)
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &blueprintAmmoR{}
+			}
+
+			for _, a := range args {
+				if queries.Equal(a, obj.ID) {
+					continue Outer
+				}
+			}
+
+			args = append(args, obj.ID)
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`fiat_product_item_blueprints`),
+		qm.WhereIn(`fiat_product_item_blueprints.ammo_blueprint_id in ?`, args...),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load fiat_product_item_blueprints")
+	}
+
+	var resultSlice []*FiatProductItemBlueprint
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice fiat_product_item_blueprints")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results in eager load on fiat_product_item_blueprints")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for fiat_product_item_blueprints")
+	}
+
+	if len(fiatProductItemBlueprintAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+	if singular {
+		object.R.AmmoBlueprintFiatProductItemBlueprints = resultSlice
+		for _, foreign := range resultSlice {
+			if foreign.R == nil {
+				foreign.R = &fiatProductItemBlueprintR{}
+			}
+			foreign.R.AmmoBlueprint = object
+		}
+		return nil
+	}
+
+	for _, foreign := range resultSlice {
+		for _, local := range slice {
+			if queries.Equal(local.ID, foreign.AmmoBlueprintID) {
+				local.R.AmmoBlueprintFiatProductItemBlueprints = append(local.R.AmmoBlueprintFiatProductItemBlueprints, foreign)
+				if foreign.R == nil {
+					foreign.R = &fiatProductItemBlueprintR{}
+				}
+				foreign.R.AmmoBlueprint = local
 				break
 			}
 		}
@@ -750,6 +872,131 @@ func (o *BlueprintAmmo) AddBlueprintAmmos(exec boil.Executor, insert bool, relat
 			rel.R.Blueprint = o
 		}
 	}
+	return nil
+}
+
+// AddAmmoBlueprintFiatProductItemBlueprints adds the given related objects to the existing relationships
+// of the blueprint_ammo, optionally inserting them as new records.
+// Appends related to o.R.AmmoBlueprintFiatProductItemBlueprints.
+// Sets related.R.AmmoBlueprint appropriately.
+func (o *BlueprintAmmo) AddAmmoBlueprintFiatProductItemBlueprints(exec boil.Executor, insert bool, related ...*FiatProductItemBlueprint) error {
+	var err error
+	for _, rel := range related {
+		if insert {
+			queries.Assign(&rel.AmmoBlueprintID, o.ID)
+			if err = rel.Insert(exec, boil.Infer()); err != nil {
+				return errors.Wrap(err, "failed to insert into foreign table")
+			}
+		} else {
+			updateQuery := fmt.Sprintf(
+				"UPDATE \"fiat_product_item_blueprints\" SET %s WHERE %s",
+				strmangle.SetParamNames("\"", "\"", 1, []string{"ammo_blueprint_id"}),
+				strmangle.WhereClause("\"", "\"", 2, fiatProductItemBlueprintPrimaryKeyColumns),
+			)
+			values := []interface{}{o.ID, rel.ID}
+
+			if boil.DebugMode {
+				fmt.Fprintln(boil.DebugWriter, updateQuery)
+				fmt.Fprintln(boil.DebugWriter, values)
+			}
+			if _, err = exec.Exec(updateQuery, values...); err != nil {
+				return errors.Wrap(err, "failed to update foreign table")
+			}
+
+			queries.Assign(&rel.AmmoBlueprintID, o.ID)
+		}
+	}
+
+	if o.R == nil {
+		o.R = &blueprintAmmoR{
+			AmmoBlueprintFiatProductItemBlueprints: related,
+		}
+	} else {
+		o.R.AmmoBlueprintFiatProductItemBlueprints = append(o.R.AmmoBlueprintFiatProductItemBlueprints, related...)
+	}
+
+	for _, rel := range related {
+		if rel.R == nil {
+			rel.R = &fiatProductItemBlueprintR{
+				AmmoBlueprint: o,
+			}
+		} else {
+			rel.R.AmmoBlueprint = o
+		}
+	}
+	return nil
+}
+
+// SetAmmoBlueprintFiatProductItemBlueprints removes all previously related items of the
+// blueprint_ammo replacing them completely with the passed
+// in related items, optionally inserting them as new records.
+// Sets o.R.AmmoBlueprint's AmmoBlueprintFiatProductItemBlueprints accordingly.
+// Replaces o.R.AmmoBlueprintFiatProductItemBlueprints with related.
+// Sets related.R.AmmoBlueprint's AmmoBlueprintFiatProductItemBlueprints accordingly.
+func (o *BlueprintAmmo) SetAmmoBlueprintFiatProductItemBlueprints(exec boil.Executor, insert bool, related ...*FiatProductItemBlueprint) error {
+	query := "update \"fiat_product_item_blueprints\" set \"ammo_blueprint_id\" = null where \"ammo_blueprint_id\" = $1"
+	values := []interface{}{o.ID}
+	if boil.DebugMode {
+		fmt.Fprintln(boil.DebugWriter, query)
+		fmt.Fprintln(boil.DebugWriter, values)
+	}
+	_, err := exec.Exec(query, values...)
+	if err != nil {
+		return errors.Wrap(err, "failed to remove relationships before set")
+	}
+
+	if o.R != nil {
+		for _, rel := range o.R.AmmoBlueprintFiatProductItemBlueprints {
+			queries.SetScanner(&rel.AmmoBlueprintID, nil)
+			if rel.R == nil {
+				continue
+			}
+
+			rel.R.AmmoBlueprint = nil
+		}
+
+		o.R.AmmoBlueprintFiatProductItemBlueprints = nil
+	}
+	return o.AddAmmoBlueprintFiatProductItemBlueprints(exec, insert, related...)
+}
+
+// RemoveAmmoBlueprintFiatProductItemBlueprints relationships from objects passed in.
+// Removes related items from R.AmmoBlueprintFiatProductItemBlueprints (uses pointer comparison, removal does not keep order)
+// Sets related.R.AmmoBlueprint.
+func (o *BlueprintAmmo) RemoveAmmoBlueprintFiatProductItemBlueprints(exec boil.Executor, related ...*FiatProductItemBlueprint) error {
+	if len(related) == 0 {
+		return nil
+	}
+
+	var err error
+	for _, rel := range related {
+		queries.SetScanner(&rel.AmmoBlueprintID, nil)
+		if rel.R != nil {
+			rel.R.AmmoBlueprint = nil
+		}
+		if _, err = rel.Update(exec, boil.Whitelist("ammo_blueprint_id")); err != nil {
+			return err
+		}
+	}
+	if o.R == nil {
+		return nil
+	}
+
+	for _, rel := range related {
+		for i, ri := range o.R.AmmoBlueprintFiatProductItemBlueprints {
+			if rel != ri {
+				continue
+			}
+
+			ln := len(o.R.AmmoBlueprintFiatProductItemBlueprints)
+			if ln > 1 && i < ln-1 {
+				o.R.AmmoBlueprintFiatProductItemBlueprints[i] = o.R.AmmoBlueprintFiatProductItemBlueprints[ln-1]
+			}
+			o.R.AmmoBlueprintFiatProductItemBlueprints = o.R.AmmoBlueprintFiatProductItemBlueprints[:ln-1]
+			break
+		}
+	}
+
 	return nil
 }
 

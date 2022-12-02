@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"net/http"
 	"server"
+	"server/asset"
 	"server/db"
 	"server/db/boiler"
 	"server/gamedb"
@@ -22,10 +23,8 @@ import (
 	"github.com/go-chi/chi/v5"
 
 	"github.com/gofrs/uuid"
-	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/ninja-software/terror/v2"
 	"github.com/ninja-syndicate/ws"
-	"github.com/rs/zerolog"
 	"github.com/shopspring/decimal"
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
@@ -34,9 +33,7 @@ import (
 )
 
 type PlayerController struct {
-	Conn *pgxpool.Pool
-	Log  *zerolog.Logger
-	API  *API
+	API *API
 }
 
 func NewPlayerController(api *API) *PlayerController {
@@ -46,6 +43,8 @@ func NewPlayerController(api *API) *PlayerController {
 
 	api.SecureUserCommand(HubKeyPlayerUpdateSettings, pc.PlayerUpdateSettingsHandler)
 	api.SecureUserCommand(HubKeyPlayerGetSettings, pc.PlayerGetSettingsHandler)
+
+	api.SecureUserCommand(server.HubKeyPlayerMarketingPreferencesUpdate, pc.PlayerMarketingPreferencesUpdateHandler)
 
 	api.SecureUserCommand(HubKeyPlayerPreferencesGet, pc.PlayerPreferencesGetHandler)
 
@@ -66,8 +65,6 @@ func NewPlayerController(api *API) *PlayerController {
 
 	api.SecureUserCommand(HubKeyGameUserOnline, pc.UserOnline)
 
-	api.SecureUserCommand(HubKeyPlayerQueueStatus, pc.PlayerQueueStatusHandler)
-
 	// user profile commands
 	api.Command(HubKeyPlayerProfileGet, pc.PlayerProfileGetHandler)
 	api.SecureUserCommand(HubKeyPlayerUpdateUsername, pc.PlayerUpdateUsernameHandler)
@@ -86,6 +83,8 @@ func NewPlayerController(api *API) *PlayerController {
 
 	api.SecureUserFactionCommand(HubKeyPlayerSearch, pc.PlayerSearch)
 
+	api.SecureUserFactionCommand(HubKeyPlayerFriendSearch, pc.PlayerFriendSearch)
+
 	return pc
 }
 
@@ -97,22 +96,75 @@ type PlayerQueueStatus struct {
 const HubKeyPlayerQueueStatus = "PLAYER:QUEUE:STATUS"
 
 func (pc *PlayerController) PlayerQueueStatusHandler(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
-	queued, err := db.GetPlayerQueueCount(user.ID)
-	if err != nil {
-		return terror.Error(err, "Failed to get player queue status.")
+	resp := &server.PlayerQueueStatus{
+		TotalQueued: 0,
+		QueueLimit:  db.GetIntWithDefault(db.KeyPlayerQueueLimit, 10),
 	}
 
-	reply(&PlayerQueueStatus{
-		TotalQueued: queued,
-		QueueLimit:  int64(db.GetIntWithDefault(db.KeyPlayerQueueLimit, 10)),
-	})
+	blms, err := boiler.BattleLobbiesMechs(
+		boiler.BattleLobbiesMechWhere.QueuedByID.EQ(user.ID),
+		boiler.BattleLobbiesMechWhere.RefundTXID.IsNull(),
+		boiler.BattleLobbiesMechWhere.EndedAt.IsNull(),
+	).All(gamedb.StdConn)
+	if err != nil {
+		gamelog.L.Error().Str("player id", user.ID).Err(err).Msg("Failed to load player battle queue mechs")
+		return terror.Error(err, "Failed to load player battle queue mechs")
+	}
+
+	if blms != nil {
+		resp.TotalQueued = len(blms)
+	}
+
+	reply(resp)
 	return nil
 }
 
-type UserUpdatedRequest struct {
+// PlayerMarketingPreferencesUpdateRequest updates a player's marketing preferences
+type PlayerMarketingPreferencesUpdateRequest struct {
 	Payload struct {
-		ID string `json:"id"`
+		NewEmail         string `json:"new_email"`
+		AcceptsMarketing bool   `json:"accepts_marketing"`
 	} `json:"payload"`
+}
+
+func (pc *PlayerController) PlayerMarketingPreferencesUpdateHandler(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
+	req := &PlayerMarketingPreferencesUpdateRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return terror.Error(err, "Invalid request received.")
+	}
+
+	tx, err := gamedb.StdConn.Begin()
+	if err != nil {
+		return terror.Error(err, "Failed to update player's marketing preferences.")
+	}
+	defer tx.Rollback()
+
+	user.AcceptsMarketing = null.BoolFrom(req.Payload.AcceptsMarketing)
+	_, err = user.Update(tx, boil.Whitelist(boiler.PlayerColumns.AcceptsMarketing))
+	if err != nil {
+		return terror.Error(err, "Failed to update player's marketing preferences.")
+	}
+
+	err = pc.API.Passport.UserMarketingUpdate(user.ID, user.AcceptsMarketing.Bool, req.Payload.NewEmail)
+	if err != nil {
+		return terror.Error(err, "Failed to update player's marketing preferences.")
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		return terror.Error(err, "Failed to update player's marketing preferences.")
+	}
+
+	err = user.L.LoadRole(gamedb.StdConn, true, user, nil)
+	if err != nil {
+		return terror.Error(err, "Failed to update player's marketing preferences.")
+	}
+
+	ws.PublishMessage(fmt.Sprintf("/secure/user/%s", user.ID), server.HubKeyUserSubscribe, server.PlayerFromBoiler(user))
+
+	reply(true)
+	return nil
 }
 
 // FactionEnlistRequest enlist a faction
@@ -165,50 +217,9 @@ func (pc *PlayerController) PlayerFactionEnlistHandler(ctx context.Context, user
 	}
 
 	if !server.IsProductionEnv() {
-		// assign mechs base on player's faction
-		labelList := []string{}
-		switch user.FactionID.String {
-		case server.RedMountainFactionID:
-			labelList = []string{
-				"Red Mountain Olympus Mons LY07 Villain Chassis",
-				"Red Mountain Olympus Mons LY07 Evo Chassis",
-				"Red Mountain Olympus Mons LY07 Red Blue Chassis",
-			}
-		case server.BostonCyberneticsFactionID:
-			labelList = []string{
-				"Boston Cybernetics Law Enforcer X-1000 White Blue Chassis",
-				"Boston Cybernetics Law Enforcer X-1000 BioHazard Chassis",
-				"Boston Cybernetics Law Enforcer X-1000 Crystal Blue Chassis",
-			}
-
-		case server.ZaibatsuFactionID:
-			labelList = []string{
-				"Zaibatsu Tenshi Mk1 White Neon Chassis",
-				"Zaibatsu Tenshi Mk1 Destroyer Chassis",
-				"Zaibatsu Tenshi Mk1 Evangelica Chassis",
-			}
-		}
-
-		templateIDS := []string{}
-		templates, err := boiler.Templates(
-			boiler.TemplateWhere.Label.IN(labelList),
-		).All(tx)
+		err := asset.GiveUserAllAssets(user, pc.API.Passport)
 		if err != nil {
-			return terror.Error(err, "Failed to sync passport db")
-		}
-
-		for i := 0; i < 3; i++ {
-			for _, tmpl := range templates {
-				templateIDS = append(templateIDS, tmpl.ID)
-			}
-		}
-
-		err = pc.API.Passport.AssignTemplateToUser(&xsyn_rpcclient.AssignTemplateReq{
-			TemplateIDs: templateIDS,
-			UserID:      user.ID,
-		})
-		if err != nil {
-			return terror.Error(err, "Failed to sync passport db")
+			return terror.Error(err, "Failed to assign assets.")
 		}
 	}
 
@@ -300,7 +311,7 @@ type PlayerGetSettingsRequest struct {
 
 const HubKeyPlayerGetSettings = "PLAYER:GET_SETTINGS"
 
-//PlayerGetSettingsHandler gets settings based on key, sends settings value back as json
+// PlayerGetSettingsHandler gets settings based on key, sends settings value back as json
 func (pc *PlayerController) PlayerGetSettingsHandler(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
 	errMsg := "Issue getting settings, try again or contact support."
 	req := &PlayerGetSettingsRequest{}
@@ -474,7 +485,8 @@ func (pc *PlayerController) PlayerActiveCheckHandler(ctx context.Context, user *
 
 type PlayerSearchRequest struct {
 	Payload struct {
-		Search string `json:"search"`
+		Search            string   `json:"search"`
+		ExcludedPlayerIDs []string `json:"excluded_player_ids"`
 	} `json:"payload"`
 }
 
@@ -510,6 +522,50 @@ func (pc *PlayerController) FactionPlayerSearch(ctx context.Context, user *boile
 			"%"+strings.ToLower(search)+"%",
 		),
 		qm.Limit(5),
+	).All(gamedb.StdConn)
+	if err != nil {
+		return terror.Error(err, "Failed to search players from db")
+	}
+
+	reply(ps)
+	return nil
+}
+
+const HubKeyPlayerSearch = "PLAYER:SEARCH"
+
+// PlayerSearch return up to 10 players base on the given text
+func (pc *PlayerController) PlayerSearch(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
+	req := &PlayerSearchRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return terror.Error(err, "Invalid request received")
+	}
+
+	if user.RoleID == server.UserRolePlayer.String() || user.RoleID == "" {
+		return terror.Error(err, "User is not an admin")
+	}
+
+	search := strings.TrimSpace(req.Payload.Search)
+	if search == "" {
+		return terror.Error(terror.ErrInvalidInput, "search key should not be empty")
+	}
+
+	ps, err := boiler.Players(
+		qm.Select(
+			boiler.PlayerColumns.ID,
+			boiler.PlayerColumns.Username,
+			boiler.PlayerColumns.Gid,
+		),
+		boiler.PlayerWhere.IsAi.EQ(false),
+		boiler.PlayerWhere.ID.NEQ(user.ID),
+		qm.Where(
+			fmt.Sprintf("LOWER(%s||'#'||%s::TEXT) LIKE ?",
+				qm.Rels(boiler.TableNames.Players, boiler.PlayerColumns.Username),
+				qm.Rels(boiler.TableNames.Players, boiler.PlayerColumns.Gid),
+			),
+			"%"+strings.ToLower(search)+"%",
+		),
+		qm.Limit(10),
 	).All(gamedb.StdConn)
 	if err != nil {
 		return terror.Error(err, "Failed to search players from db")
@@ -568,50 +624,6 @@ type PunishVoteInstantPassRequest struct {
 	Payload struct {
 		PunishVoteID string `json:"punish_vote_id"`
 	} `json:"payload"`
-}
-
-const HubKeyPlayerSearch = "PLAYER:SEARCH"
-
-// PlayerSearch return up to 10 players base on the given text
-func (pc *PlayerController) PlayerSearch(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
-	req := &PlayerSearchRequest{}
-	err := json.Unmarshal(payload, req)
-	if err != nil {
-		return terror.Error(err, "Invalid request received")
-	}
-
-	if user.RoleID == server.UserRolePlayer.String() || user.RoleID == "" {
-		return terror.Error(err, "User is not an admin")
-	}
-
-	search := strings.TrimSpace(req.Payload.Search)
-	if search == "" {
-		return terror.Error(terror.ErrInvalidInput, "search key should not be empty")
-	}
-
-	ps, err := boiler.Players(
-		qm.Select(
-			boiler.PlayerColumns.ID,
-			boiler.PlayerColumns.Username,
-			boiler.PlayerColumns.Gid,
-		),
-		boiler.PlayerWhere.IsAi.EQ(false),
-		boiler.PlayerWhere.ID.NEQ(user.ID),
-		qm.Where(
-			fmt.Sprintf("LOWER(%s||'#'||%s::TEXT) LIKE ?",
-				qm.Rels(boiler.TableNames.Players, boiler.PlayerColumns.Username),
-				qm.Rels(boiler.TableNames.Players, boiler.PlayerColumns.Gid),
-			),
-			"%"+strings.ToLower(search)+"%",
-		),
-		qm.Limit(10),
-	).All(gamedb.StdConn)
-	if err != nil {
-		return terror.Error(err, "Failed to search players from db")
-	}
-
-	reply(ps)
-	return nil
 }
 
 const HubKeyInstantPassPunishVote = "PUNISH:VOTE:INSTANT:PASS"
@@ -1550,6 +1562,55 @@ func (pc *PlayerController) PlayerQuestProgressions(ctx context.Context, user *b
 		return err
 	}
 	reply(result)
+
+	return nil
+}
+
+const HubKeyPlayerFriendSearch = "PLAYER:FRIEND:SEARCH"
+
+func (pc *PlayerController) PlayerFriendSearch(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
+	req := &PlayerSearchRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return terror.Error(err, "Invalid request received")
+	}
+
+	search := strings.TrimSpace(req.Payload.Search)
+	if search == "" {
+		return terror.Error(terror.ErrInvalidInput, "search key should not be empty")
+	}
+
+	excludedPlayerIDs := []string{user.ID}
+	if req.Payload.ExcludedPlayerIDs != nil && len(req.Payload.ExcludedPlayerIDs) > 0 {
+		excludedPlayerIDs = append(excludedPlayerIDs, req.Payload.ExcludedPlayerIDs...)
+	}
+
+	// TODO: integrate friend system to search players' friends only
+
+	ps, err := boiler.Players(
+		qm.Select(
+			boiler.PlayerColumns.ID,
+			boiler.PlayerColumns.Username,
+			boiler.PlayerColumns.Gid,
+			boiler.PlayerColumns.FactionID,
+		),
+		boiler.PlayerWhere.IsAi.EQ(false),
+		boiler.PlayerWhere.ID.NIN(excludedPlayerIDs),
+		boiler.PlayerWhere.FactionID.IsNotNull(),
+		qm.Where(
+			fmt.Sprintf("LOWER(%s||'#'||%s::TEXT) LIKE ?",
+				qm.Rels(boiler.TableNames.Players, boiler.PlayerColumns.Username),
+				qm.Rels(boiler.TableNames.Players, boiler.PlayerColumns.Gid),
+			),
+			"%"+strings.ToLower(search)+"%",
+		),
+		qm.Limit(5),
+	).All(gamedb.StdConn)
+	if err != nil {
+		return terror.Error(err, "Failed to search players from db")
+	}
+
+	reply(ps)
 
 	return nil
 }

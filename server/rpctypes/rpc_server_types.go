@@ -97,5 +97,5 @@ type XsynAsset struct {
 	UnlockedAt       time.Time   `json:"unlocked_at,omitempty"`
 	MintedAt         null.Time   `json:"minted_at,omitempty"`
 	OnChainStatus    string      `json:"on_chain_status,omitempty"`
-	XsynLocked       bool        `json:"xsyn_locked,omitempty"`
+	Service          string                 `json:"xsyn_locked"`
 }

@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/gofrs/uuid"
+	"github.com/shopspring/decimal"
 	"github.com/volatiletech/sqlboiler/v4/types"
 )
 
@@ -109,3 +110,17 @@ type SyndicateLiquidateReq struct {
 	RemainUserIDs []string `json:"remain_user_ids"`
 }
 type SyndicateLiquidateResp struct{}
+
+type GetCurrentSupPriceReq struct{}
+
+type GetCurrentSupPriceResp struct {
+	PriceUSD decimal.Decimal `json:"price_usd"`
+}
+
+type GetExchangeRatesReq struct{}
+
+type GetExchangeRatesResp struct {
+	SUPtoUSD decimal.Decimal `json:"sup_to_usd"`
+	ETHtoUSD decimal.Decimal `json:"eth_to_usd"`
+	BNBtoUSD decimal.Decimal `json:"bnb_to_usd"`
+}

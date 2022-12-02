@@ -364,6 +364,8 @@ UPDATE chassis_skin
 SET label = 'Gumdan'
 WHERE label = 'Gundam';
 
+UPDATE chassis_skin SET label = 'White Blue' WHERE label = 'Blue White';
+
 UPDATE chassis_skin ms
 SET blueprint_id = (SELECT id
                     FROM blueprint_mech_skin bms

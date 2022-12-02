@@ -303,7 +303,7 @@ func TopMechKillPlayers(questEventID null.String) ([]*PlayerMechKills, error) {
 		) p ON p.%[10]s = mkc.%[1]s
 		ORDER BY mkc.mech_kill_count DESC;
 	`,
-		boiler.BattleMechColumns.OwnerID,            // 1
+		boiler.BattleMechColumns.PilotedByID,        // 1
 		boiler.BattleMechColumns.MechID,             // 2
 		boiler.TableNames.BattleHistory,             // 3
 		boiler.TableNames.BattleMechs,               // 4

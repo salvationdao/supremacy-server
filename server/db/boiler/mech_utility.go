@@ -23,20 +23,18 @@ import (
 
 // MechUtility is an object representing the database table.
 type MechUtility struct {
-	ID         string    `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
-	ChassisID  string    `boiler:"chassis_id" boil:"chassis_id" json:"chassis_id" toml:"chassis_id" yaml:"chassis_id"`
-	UtilityID  string    `boiler:"utility_id" boil:"utility_id" json:"utility_id" toml:"utility_id" yaml:"utility_id"`
-	SlotNumber int       `boiler:"slot_number" boil:"slot_number" json:"slot_number" toml:"slot_number" yaml:"slot_number"`
-	DeletedAt  null.Time `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
-	UpdatedAt  time.Time `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
-	CreatedAt  time.Time `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
+	ChassisID  string      `boiler:"chassis_id" boil:"chassis_id" json:"chassis_id" toml:"chassis_id" yaml:"chassis_id"`
+	UtilityID  null.String `boiler:"utility_id" boil:"utility_id" json:"utility_id,omitempty" toml:"utility_id" yaml:"utility_id,omitempty"`
+	SlotNumber int         `boiler:"slot_number" boil:"slot_number" json:"slot_number" toml:"slot_number" yaml:"slot_number"`
+	DeletedAt  null.Time   `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
+	UpdatedAt  time.Time   `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
+	CreatedAt  time.Time   `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
 
 	R *mechUtilityR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L mechUtilityL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 }
 
 var MechUtilityColumns = struct {
-	ID         string
 	ChassisID  string
 	UtilityID  string
 	SlotNumber string
@@ -44,7 +42,6 @@ var MechUtilityColumns = struct {
 	UpdatedAt  string
 	CreatedAt  string
 }{
-	ID:         "id",
 	ChassisID:  "chassis_id",
 	UtilityID:  "utility_id",
 	SlotNumber: "slot_number",
@@ -54,7 +51,6 @@ var MechUtilityColumns = struct {
 }
 
 var MechUtilityTableColumns = struct {
-	ID         string
 	ChassisID  string
 	UtilityID  string
 	SlotNumber string
@@ -62,7 +58,6 @@ var MechUtilityTableColumns = struct {
 	UpdatedAt  string
 	CreatedAt  string
 }{
-	ID:         "mech_utility.id",
 	ChassisID:  "mech_utility.chassis_id",
 	UtilityID:  "mech_utility.utility_id",
 	SlotNumber: "mech_utility.slot_number",
@@ -74,17 +69,15 @@ var MechUtilityTableColumns = struct {
 // Generated where
 
 var MechUtilityWhere = struct {
-	ID         whereHelperstring
 	ChassisID  whereHelperstring
-	UtilityID  whereHelperstring
+	UtilityID  whereHelpernull_String
 	SlotNumber whereHelperint
 	DeletedAt  whereHelpernull_Time
 	UpdatedAt  whereHelpertime_Time
 	CreatedAt  whereHelpertime_Time
 }{
-	ID:         whereHelperstring{field: "\"mech_utility\".\"id\""},
 	ChassisID:  whereHelperstring{field: "\"mech_utility\".\"chassis_id\""},
-	UtilityID:  whereHelperstring{field: "\"mech_utility\".\"utility_id\""},
+	UtilityID:  whereHelpernull_String{field: "\"mech_utility\".\"utility_id\""},
 	SlotNumber: whereHelperint{field: "\"mech_utility\".\"slot_number\""},
 	DeletedAt:  whereHelpernull_Time{field: "\"mech_utility\".\"deleted_at\""},
 	UpdatedAt:  whereHelpertime_Time{field: "\"mech_utility\".\"updated_at\""},
@@ -115,10 +108,10 @@ func (*mechUtilityR) NewStruct() *mechUtilityR {
 type mechUtilityL struct{}
 
 var (
-	mechUtilityAllColumns            = []string{"id", "chassis_id", "utility_id", "slot_number", "deleted_at", "updated_at", "created_at"}
-	mechUtilityColumnsWithoutDefault = []string{"chassis_id", "utility_id", "slot_number"}
-	mechUtilityColumnsWithDefault    = []string{"id", "deleted_at", "updated_at", "created_at"}
-	mechUtilityPrimaryKeyColumns     = []string{"id"}
+	mechUtilityAllColumns            = []string{"chassis_id", "utility_id", "slot_number", "deleted_at", "updated_at", "created_at"}
+	mechUtilityColumnsWithoutDefault = []string{"chassis_id", "slot_number"}
+	mechUtilityColumnsWithDefault    = []string{"utility_id", "deleted_at", "updated_at", "created_at"}
+	mechUtilityPrimaryKeyColumns     = []string{"chassis_id", "slot_number"}
 	mechUtilityGeneratedColumns      = []string{}
 )
 
@@ -516,7 +509,9 @@ func (mechUtilityL) LoadUtility(e boil.Executor, singular bool, maybeMechUtility
 		if object.R == nil {
 			object.R = &mechUtilityR{}
 		}
-		args = append(args, object.UtilityID)
+		if !queries.IsNil(object.UtilityID) {
+			args = append(args, object.UtilityID)
+		}
 
 	} else {
 	Outer:
@@ -526,12 +521,14 @@ func (mechUtilityL) LoadUtility(e boil.Executor, singular bool, maybeMechUtility
 			}
 
 			for _, a := range args {
-				if a == obj.UtilityID {
+				if queries.Equal(a, obj.UtilityID) {
 					continue Outer
 				}
 			}
 
-			args = append(args, obj.UtilityID)
+			if !queries.IsNil(obj.UtilityID) {
+				args = append(args, obj.UtilityID)
+			}
 
 		}
 	}
@@ -590,7 +587,7 @@ func (mechUtilityL) LoadUtility(e boil.Executor, singular bool, maybeMechUtility
 
 	for _, local := range slice {
 		for _, foreign := range resultSlice {
-			if local.UtilityID == foreign.ID {
+			if queries.Equal(local.UtilityID, foreign.ID) {
 				local.R.Utility = foreign
 				if foreign.R == nil {
 					foreign.R = &utilityR{}
@@ -620,7 +617,7 @@ func (o *MechUtility) SetChassis(exec boil.Executor, insert bool, related *Mech)
 		strmangle.SetParamNames("\"", "\"", 1, []string{"chassis_id"}),
 		strmangle.WhereClause("\"", "\"", 2, mechUtilityPrimaryKeyColumns),
 	)
-	values := []interface{}{related.ID, o.ID}
+	values := []interface{}{related.ID, o.ChassisID, o.SlotNumber}
 
 	if boil.DebugMode {
 		fmt.Fprintln(boil.DebugWriter, updateQuery)
@@ -666,7 +663,7 @@ func (o *MechUtility) SetUtility(exec boil.Executor, insert bool, related *Utili
 		strmangle.SetParamNames("\"", "\"", 1, []string{"utility_id"}),
 		strmangle.WhereClause("\"", "\"", 2, mechUtilityPrimaryKeyColumns),
 	)
-	values := []interface{}{related.ID, o.ID}
+	values := []interface{}{related.ID, o.ChassisID, o.SlotNumber}
 
 	if boil.DebugMode {
 		fmt.Fprintln(boil.DebugWriter, updateQuery)
@@ -676,7 +673,7 @@ func (o *MechUtility) SetUtility(exec boil.Executor, insert bool, related *Utili
 		return errors.Wrap(err, "failed to update local table")
 	}
 
-	o.UtilityID = related.ID
+	queries.Assign(&o.UtilityID, related.ID)
 	if o.R == nil {
 		o.R = &mechUtilityR{
 			Utility: related,
@@ -696,6 +693,28 @@ func (o *MechUtility) SetUtility(exec boil.Executor, insert bool, related *Utili
 	return nil
 }
 
+// RemoveUtility relationship.
+// Sets o.R.Utility to nil.
+// Removes o from all passed in related items' relationships struct (Optional).
+func (o *MechUtility) RemoveUtility(exec boil.Executor, related *Utility) error {
+	var err error
+
+	queries.SetScanner(&o.UtilityID, nil)
+	if _, err = o.Update(exec, boil.Whitelist("utility_id")); err != nil {
+		return errors.Wrap(err, "failed to update local table")
+	}
+
+	if o.R != nil {
+		o.R.Utility = nil
+	}
+	if related == nil || related.R == nil {
+		return nil
+	}
+
+	related.R.MechUtility = nil
+	return nil
+}
+
 // MechUtilities retrieves all the records using an executor.
 func MechUtilities(mods ...qm.QueryMod) mechUtilityQuery {
 	mods = append(mods, qm.From("\"mech_utility\""), qmhelper.WhereIsNull("\"mech_utility\".\"deleted_at\""))
@@ -704,7 +723,7 @@ func MechUtilities(mods ...qm.QueryMod) mechUtilityQuery {
 
 // FindMechUtility retrieves a single record by ID with an executor.
 // If selectCols is empty Find will return all columns.
-func FindMechUtility(exec boil.Executor, iD string, selectCols ...string) (*MechUtility, error) {
+func FindMechUtility(exec boil.Executor, chassisID string, slotNumber int, selectCols ...string) (*MechUtility, error) {
 	mechUtilityObj := &MechUtility{}
 
 	sel := "*"
@@ -712,10 +731,10 @@ func FindMechUtility(exec boil.Executor, iD string, selectCols ...string) (*Mech
 		sel = strings.Join(strmangle.IdentQuoteSlice(dialect.LQ, dialect.RQ, selectCols), ",")
 	}
 	query := fmt.Sprintf(
-		"select %s from \"mech_utility\" where \"id\"=$1 and \"deleted_at\" is null", sel,
+		"select %s from \"mech_utility\" where \"chassis_id\"=$1 AND \"slot_number\"=$2 and \"deleted_at\" is null", sel,
 	)
 
-	q := queries.Raw(query, iD)
+	q := queries.Raw(query, chassisID, slotNumber)
 
 	err := q.Bind(nil, exec, mechUtilityObj)
 	if err != nil {
@@ -1086,12 +1105,12 @@ func (o *MechUtility) Delete(exec boil.Executor, hardDelete bool) (int64, error)
 	)
 	if hardDelete {
 		args = queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(o)), mechUtilityPrimaryKeyMapping)
-		sql = "DELETE FROM \"mech_utility\" WHERE \"id\"=$1"
+		sql = "DELETE FROM \"mech_utility\" WHERE \"chassis_id\"=$1 AND \"slot_number\"=$2"
 	} else {
 		currTime := time.Now().In(boil.GetLocation())
 		o.DeletedAt = null.TimeFrom(currTime)
 		wl := []string{"deleted_at"}
-		sql = fmt.Sprintf("UPDATE \"mech_utility\" SET %s WHERE \"id\"=$2",
+		sql = fmt.Sprintf("UPDATE \"mech_utility\" SET %s WHERE \"chassis_id\"=$2 AND \"slot_number\"=$3",
 			strmangle.SetParamNames("\"", "\"", 1, wl),
 		)
 		valueMapping, err := queries.BindMapping(mechUtilityType, mechUtilityMapping, append(wl, mechUtilityPrimaryKeyColumns...))
@@ -1216,7 +1235,7 @@ func (o MechUtilitySlice) DeleteAll(exec boil.Executor, hardDelete bool) (int64,
 // Reload refetches the object from the database
 // using the primary keys with an executor.
 func (o *MechUtility) Reload(exec boil.Executor) error {
-	ret, err := FindMechUtility(exec, o.ID)
+	ret, err := FindMechUtility(exec, o.ChassisID, o.SlotNumber)
 	if err != nil {
 		return err
 	}
@@ -1256,15 +1275,15 @@ func (o *MechUtilitySlice) ReloadAll(exec boil.Executor) error {
 }
 
 // MechUtilityExists checks if the MechUtility row exists.
-func MechUtilityExists(exec boil.Executor, iD string) (bool, error) {
+func MechUtilityExists(exec boil.Executor, chassisID string, slotNumber int) (bool, error) {
 	var exists bool
-	sql := "select exists(select 1 from \"mech_utility\" where \"id\"=$1 and \"deleted_at\" is null limit 1)"
+	sql := "select exists(select 1 from \"mech_utility\" where \"chassis_id\"=$1 AND \"slot_number\"=$2 and \"deleted_at\" is null limit 1)"
 
 	if boil.DebugMode {
 		fmt.Fprintln(boil.DebugWriter, sql)
-		fmt.Fprintln(boil.DebugWriter, iD)
+		fmt.Fprintln(boil.DebugWriter, chassisID, slotNumber)
 	}
-	row := exec.QueryRow(sql, iD)
+	row := exec.QueryRow(sql, chassisID, slotNumber)
 
 	err := row.Scan(&exists)
 	if err != nil {

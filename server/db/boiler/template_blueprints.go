@@ -29,6 +29,7 @@ type TemplateBlueprint struct {
 	BlueprintID    string      `boiler:"blueprint_id" boil:"blueprint_id" json:"blueprint_id" toml:"blueprint_id" yaml:"blueprint_id"`
 	CreatedAt      time.Time   `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
 	BlueprintIDOld null.String `boiler:"blueprint_id_old" boil:"blueprint_id_old" json:"blueprint_id_old,omitempty" toml:"blueprint_id_old" yaml:"blueprint_id_old,omitempty"`
+	DeletedAt      null.Time   `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
 
 	R *templateBlueprintR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L templateBlueprintL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -41,6 +42,7 @@ var TemplateBlueprintColumns = struct {
 	BlueprintID    string
 	CreatedAt      string
 	BlueprintIDOld string
+	DeletedAt      string
 }{
 	ID:             "id",
 	TemplateID:     "template_id",
@@ -48,6 +50,7 @@ var TemplateBlueprintColumns = struct {
 	BlueprintID:    "blueprint_id",
 	CreatedAt:      "created_at",
 	BlueprintIDOld: "blueprint_id_old",
+	DeletedAt:      "deleted_at",
 }
 
 var TemplateBlueprintTableColumns = struct {
@@ -57,6 +60,7 @@ var TemplateBlueprintTableColumns = struct {
 	BlueprintID    string
 	CreatedAt      string
 	BlueprintIDOld string
+	DeletedAt      string
 }{
 	ID:             "template_blueprints.id",
 	TemplateID:     "template_blueprints.template_id",
@@ -64,6 +68,7 @@ var TemplateBlueprintTableColumns = struct {
 	BlueprintID:    "template_blueprints.blueprint_id",
 	CreatedAt:      "template_blueprints.created_at",
 	BlueprintIDOld: "template_blueprints.blueprint_id_old",
+	DeletedAt:      "template_blueprints.deleted_at",
 }
 
 // Generated where
@@ -75,6 +80,7 @@ var TemplateBlueprintWhere = struct {
 	BlueprintID    whereHelperstring
 	CreatedAt      whereHelpertime_Time
 	BlueprintIDOld whereHelpernull_String
+	DeletedAt      whereHelpernull_Time
 }{
 	ID:             whereHelperstring{field: "\"template_blueprints\".\"id\""},
 	TemplateID:     whereHelperstring{field: "\"template_blueprints\".\"template_id\""},
@@ -82,6 +88,7 @@ var TemplateBlueprintWhere = struct {
 	BlueprintID:    whereHelperstring{field: "\"template_blueprints\".\"blueprint_id\""},
 	CreatedAt:      whereHelpertime_Time{field: "\"template_blueprints\".\"created_at\""},
 	BlueprintIDOld: whereHelpernull_String{field: "\"template_blueprints\".\"blueprint_id_old\""},
+	DeletedAt:      whereHelpernull_Time{field: "\"template_blueprints\".\"deleted_at\""},
 }
 
 // TemplateBlueprintRels is where relationship names are stored.
@@ -105,9 +112,9 @@ func (*templateBlueprintR) NewStruct() *templateBlueprintR {
 type templateBlueprintL struct{}
 
 var (
-	templateBlueprintAllColumns            = []string{"id", "template_id", "type", "blueprint_id", "created_at", "blueprint_id_old"}
+	templateBlueprintAllColumns            = []string{"id", "template_id", "type", "blueprint_id", "created_at", "blueprint_id_old", "deleted_at"}
 	templateBlueprintColumnsWithoutDefault = []string{"template_id", "type", "blueprint_id"}
-	templateBlueprintColumnsWithDefault    = []string{"id", "created_at", "blueprint_id_old"}
+	templateBlueprintColumnsWithDefault    = []string{"id", "created_at", "blueprint_id_old", "deleted_at"}
 	templateBlueprintPrimaryKeyColumns     = []string{"id"}
 	templateBlueprintGeneratedColumns      = []string{}
 )
@@ -522,7 +529,7 @@ func (o *TemplateBlueprint) SetTemplate(exec boil.Executor, insert bool, related
 
 // TemplateBlueprints retrieves all the records using an executor.
 func TemplateBlueprints(mods ...qm.QueryMod) templateBlueprintQuery {
-	mods = append(mods, qm.From("\"template_blueprints\""))
+	mods = append(mods, qm.From("\"template_blueprints\""), qmhelper.WhereIsNull("\"template_blueprints\".\"deleted_at\""))
 	return templateBlueprintQuery{NewQuery(mods...)}
 }
 
@@ -536,7 +543,7 @@ func FindTemplateBlueprint(exec boil.Executor, iD string, selectCols ...string) 
 		sel = strings.Join(strmangle.IdentQuoteSlice(dialect.LQ, dialect.RQ, selectCols), ",")
 	}
 	query := fmt.Sprintf(
-		"select %s from \"template_blueprints\" where \"id\"=$1", sel,
+		"select %s from \"template_blueprints\" where \"id\"=$1 and \"deleted_at\" is null", sel,
 	)
 
 	q := queries.Raw(query, iD)
@@ -887,7 +894,7 @@ func (o *TemplateBlueprint) Upsert(exec boil.Executor, updateOnConflict bool, co
 
 // Delete deletes a single TemplateBlueprint record with an executor.
 // Delete will match against the primary key column to find the record to delete.
-func (o *TemplateBlueprint) Delete(exec boil.Executor) (int64, error) {
+func (o *TemplateBlueprint) Delete(exec boil.Executor, hardDelete bool) (int64, error) {
 	if o == nil {
 		return 0, errors.New("boiler: no TemplateBlueprint provided for delete")
 	}
@@ -896,8 +903,26 @@ func (o *TemplateBlueprint) Delete(exec boil.Executor) (int64, error) {
 		return 0, err
 	}
 
-	args := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(o)), templateBlueprintPrimaryKeyMapping)
-	sql := "DELETE FROM \"template_blueprints\" WHERE \"id\"=$1"
+	var (
+		sql  string
+		args []interface{}
+	)
+	if hardDelete {
+		args = queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(o)), templateBlueprintPrimaryKeyMapping)
+		sql = "DELETE FROM \"template_blueprints\" WHERE \"id\"=$1"
+	} else {
+		currTime := time.Now().In(boil.GetLocation())
+		o.DeletedAt = null.TimeFrom(currTime)
+		wl := []string{"deleted_at"}
+		sql = fmt.Sprintf("UPDATE \"template_blueprints\" SET %s WHERE \"id\"=$2",
+			strmangle.SetParamNames("\"", "\"", 1, wl),
+		)
+		valueMapping, err := queries.BindMapping(templateBlueprintType, templateBlueprintMapping, append(wl, templateBlueprintPrimaryKeyColumns...))
+		if err != nil {
+			return 0, err
+		}
+		args = queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(o)), valueMapping)
+	}
 
 	if boil.DebugMode {
 		fmt.Fprintln(boil.DebugWriter, sql)
@@ -921,12 +946,17 @@ func (o *TemplateBlueprint) Delete(exec boil.Executor) (int64, error) {
 }
 
 // DeleteAll deletes all matching rows.
-func (q templateBlueprintQuery) DeleteAll(exec boil.Executor) (int64, error) {
+func (q templateBlueprintQuery) DeleteAll(exec boil.Executor, hardDelete bool) (int64, error) {
 	if q.Query == nil {
 		return 0, errors.New("boiler: no templateBlueprintQuery provided for delete all")
 	}
 
-	queries.SetDelete(q.Query)
+	if hardDelete {
+		queries.SetDelete(q.Query)
+	} else {
+		currTime := time.Now().In(boil.GetLocation())
+		queries.SetUpdate(q.Query, M{"deleted_at": currTime})
+	}
 
 	result, err := q.Query.Exec(exec)
 	if err != nil {
@@ -942,7 +972,7 @@ func (q templateBlueprintQuery) DeleteAll(exec boil.Executor) (int64, error) {
 }
 
 // DeleteAll deletes all rows in the slice, using an executor.
-func (o TemplateBlueprintSlice) DeleteAll(exec boil.Executor) (int64, error) {
+func (o TemplateBlueprintSlice) DeleteAll(exec boil.Executor, hardDelete bool) (int64, error) {
 	if len(o) == 0 {
 		return 0, nil
 	}
@@ -955,14 +985,31 @@ func (o TemplateBlueprintSlice) DeleteAll(exec boil.Executor) (int64, error) {
 		}
 	}
 
-	var args []interface{}
-	for _, obj := range o {
-		pkeyArgs := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(obj)), templateBlueprintPrimaryKeyMapping)
-		args = append(args, pkeyArgs...)
+	var (
+		sql  string
+		args []interface{}
+	)
+	if hardDelete {
+		for _, obj := range o {
+			pkeyArgs := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(obj)), templateBlueprintPrimaryKeyMapping)
+			args = append(args, pkeyArgs...)
+		}
+		sql = "DELETE FROM \"template_blueprints\" WHERE " +
+			strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), 1, templateBlueprintPrimaryKeyColumns, len(o))
+	} else {
+		currTime := time.Now().In(boil.GetLocation())
+		for _, obj := range o {
+			pkeyArgs := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(obj)), templateBlueprintPrimaryKeyMapping)
+			args = append(args, pkeyArgs...)
+			obj.DeletedAt = null.TimeFrom(currTime)
+		}
+		wl := []string{"deleted_at"}
+		sql = fmt.Sprintf("UPDATE \"template_blueprints\" SET %s WHERE "+
+			strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), 2, templateBlueprintPrimaryKeyColumns, len(o)),
+			strmangle.SetParamNames("\"", "\"", 1, wl),
+		)
+		args = append([]interface{}{currTime}, args...)
 	}
-
-	sql := "DELETE FROM \"template_blueprints\" WHERE " +
-		strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), 1, templateBlueprintPrimaryKeyColumns, len(o))
 
 	if boil.DebugMode {
 		fmt.Fprintln(boil.DebugWriter, sql)
@@ -1016,7 +1063,8 @@ func (o *TemplateBlueprintSlice) ReloadAll(exec boil.Executor) error {
 	}
 
 	sql := "SELECT \"template_blueprints\".* FROM \"template_blueprints\" WHERE " +
-		strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), 1, templateBlueprintPrimaryKeyColumns, len(*o))
+		strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), 1, templateBlueprintPrimaryKeyColumns, len(*o)) +
+		"and \"deleted_at\" is null"
 
 	q := queries.Raw(sql, args...)
 
@@ -1033,7 +1081,7 @@ func (o *TemplateBlueprintSlice) ReloadAll(exec boil.Executor) error {
 // TemplateBlueprintExists checks if the TemplateBlueprint row exists.
 func TemplateBlueprintExists(exec boil.Executor, iD string) (bool, error) {
 	var exists bool
-	sql := "select exists(select 1 from \"template_blueprints\" where \"id\"=$1 limit 1)"
+	sql := "select exists(select 1 from \"template_blueprints\" where \"id\"=$1 and \"deleted_at\" is null limit 1)"
 
 	if boil.DebugMode {
 		fmt.Fprintln(boil.DebugWriter, sql)

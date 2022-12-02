@@ -70,10 +70,6 @@ SET limited_release_token_id = limited_release.external_token_id
 FROM limited_release
 WHERE u.id = limited_release.utility_id;
 
--- ALTER TABLE utility
---     DROP COLUMN slug,
---     ALTER COLUMN owner_id SET NOT NULL;
-
 UPDATE utility
 SET type = 'SHIELD';
 ALTER TABLE blueprint_utility
@@ -168,7 +164,7 @@ WITH insrt AS (
                    new_ulti.shield_recharge_rate
             FROM new_ulti RETURNING id, max_shield, shield_recharge_rate)
 INSERT
-INTO blueprint_utility_shield (blueprint_utility_id, hitpoints, recharge_rate, recharge_energy_cost)
+INTO blueprint_utility_shield_old (blueprint_utility_id, hitpoints, recharge_rate, recharge_energy_cost)
 SELECT insrt.id, insrt.max_shield, insrt.shield_recharge_rate, 10
 FROM insrt;
 
@@ -183,37 +179,6 @@ FROM blueprint_chassis_blueprint_utility;
 ALTER TABLE blueprint_chassis_blueprint_utility
     DROP CONSTRAINT blueprint_chassis_blueprint_modules_blueprint_module_id_fkey,
     ADD CONSTRAINT blueprint_chassis_blueprint_utility_blueprint_module_id_fkey FOREIGN KEY (blueprint_utility_id) REFERENCES blueprint_utility (id);
-
--- create new joins between blueprint chassis and blueprint shields
-WITH bm AS (SELECT _c.id                   AS chassis_id,
-                   _b.faction_id           AS faction_id
-            FROM blueprint_chassis _c
-                     INNER JOIN brands _b ON _c.brand_id = _b.id)
-INSERT
-INTO blueprint_chassis_blueprint_utility (blueprint_chassis_id, blueprint_utility_id, slot_number)
-SELECT bm.chassis_id, '0551d044-b8ff-47ac-917e-80c3fce37378', 0
-FROM bm
-WHERE bm.faction_id = '98bf7bb3-1a7c-4f21-8843-458d62884060';
--- create new joins between blueprint chassis and blueprint shields
-WITH bm AS (SELECT _c.id                   AS chassis_id,
-                   _b.faction_id           AS faction_id
-            FROM blueprint_chassis _c
-                     INNER JOIN brands _b ON _c.brand_id = _b.id)
-INSERT
-INTO blueprint_chassis_blueprint_utility (blueprint_chassis_id, blueprint_utility_id, slot_number)
-SELECT bm.chassis_id, '1e9a8bd4-b6c3-4a46-86e9-4c68a95f09b8', 0
-FROM bm
-WHERE bm.faction_id = '880db344-e405-428d-84e5-6ebebab1fe6d';
--- create new joins between blueprint chassis and blueprint shields
-WITH bm AS (SELECT _c.id                   AS chassis_id,
-                   _b.faction_id           AS faction_id
-            FROM blueprint_chassis _c
-                     INNER JOIN brands _b ON _c.brand_id = _b.id)
-INSERT
-INTO blueprint_chassis_blueprint_utility (blueprint_chassis_id, blueprint_utility_id, slot_number)
-SELECT bm.chassis_id, 'd429be75-6f98-4231-8315-a86db8477d05', 0
-FROM bm
-WHERE bm.faction_id = '7c6dde21-b067-46cf-9e56-155c88a520e2';
 
 SELECT *
 FROM blueprint_chassis;
@@ -232,7 +197,7 @@ ALTER TABLE blueprint_chassis
 WITH shield AS (SELECT hitpoints, recharge_rate, utility_id FROM utility_shield)
 UPDATE utility
 SET blueprint_id = (SELECT blueprint_utility_id
-                    FROM blueprint_utility_shield _bus
+                    FROM blueprint_utility_shield_old _bus
                     WHERE _bus.recharge_rate = shield.recharge_rate
                       AND _bus.hitpoints = shield.hitpoints)
 FROM shield

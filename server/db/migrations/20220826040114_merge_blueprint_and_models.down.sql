@@ -16,7 +16,7 @@ WHERE id NOT IN (
     );
 
 
-UPDATE blueprint_utility_shield
+UPDATE blueprint_utility_shield_old
 SET deleted_at = NULL
 WHERE blueprint_utility_id NOT IN (
                                    'd429be75-6f98-4231-8315-a86db8477d05',

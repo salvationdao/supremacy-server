@@ -16,12 +16,7 @@ func BlueprintUtilities(ids []string) ([]*server.BlueprintUtility, error) {
 		for _, bp := range boilerBlueprintUtilities {
 			if bp.ID == id {
 				switch bp.Type {
-				case boiler.UtilityTypeSHIELD:
-					shield, err := boiler.BlueprintUtilityShields(boiler.BlueprintUtilityShieldWhere.BlueprintUtilityID.EQ(bp.ID)).One(gamedb.StdConn)
-					if err != nil {
-						return nil, err
-					}
-					blueprintUtilities = append(blueprintUtilities, server.BlueprintUtilityShieldFromBoiler(bp, shield))
+
 				}
 			}
 		}
