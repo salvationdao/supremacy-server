@@ -712,6 +712,24 @@ func (api *API) BattleLobbyJoin(ctx context.Context, user *boiler.Player, factio
 					return terror.Error(err, "Failed to insert new system battle lobby.")
 				}
 
+				// set default lobby
+				amount := db.GetDecimalWithDefault(db.KeySystemLobbyDefaultExtraReward, decimal.New(100, 18))
+
+				if amount.GreaterThan(decimal.Zero) {
+					blr := &boiler.BattleLobbyExtraSupsReward{
+						BattleLobbyID: newBattleLobby.ID,
+						OfferedByID:   server.SupremacyBattleUserID,
+						Amount:        amount,
+						PaidTXID:      "SYSTEM_DEFAULT_REWARD",
+					}
+
+					err = blr.Insert(tx, boil.Infer())
+					if err != nil {
+						gamelog.L.Error().Err(err).Interface("battle lobby reward", blr).Msg("Failed to add battle lobby reward.")
+						return terror.Error(err, "Failed to insert default system reward.")
+					}
+				}
+
 				affectedLobbyIDs = append(affectedLobbyIDs, newBattleLobby.ID)
 			}
 
