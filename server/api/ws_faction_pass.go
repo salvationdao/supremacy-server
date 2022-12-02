@@ -115,7 +115,6 @@ func NewFactionPassController(api *API) {
 type FactionPassPurchaseSupsRequest struct {
 	Payload struct {
 		FactionPassID string `json:"faction_pass_id"`
-		PaymentType   string `json:"payment_type"`
 	} `json:"payload"`
 }
 
@@ -169,54 +168,42 @@ func (api *API) FactionPassSupsPurchase(ctx context.Context, user *boiler.Player
 		return terror.Error(err, "Failed to update the expiry date of faction pass.")
 	}
 
+	supsCost := fp.SupsPrice
+	actualPrice := supsCost.Mul(decimal.NewFromInt(100).Sub(fp.DiscountPercentage).Div(decimal.NewFromInt(100)))
+
+	// refund reward
+	paidTXID, err := api.Passport.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
+		FromUserID:           uuid.FromStringOrNil(user.ID),
+		ToUserID:             uuid.UUID(server.XsynTreasuryUserID),
+		Amount:               actualPrice.String(),
+		TransactionReference: server.TransactionReference(fmt.Sprintf("purchase_faction_pass|%s|%d", fp.ID, time.Now().UnixNano())),
+		Group:                string(server.TransactionGroupSupremacy),
+		SubGroup:             string(server.TransactionGroupFactionPass),
+		Description:          fmt.Sprintf("purchase a '%s' faction.", fp.Label),
+	})
+
 	refund := func() {
-		return
+		_, err = api.Passport.RefundSupsMessage(paidTXID)
+		if err != nil {
+			l.Error().Err(err).Msg("Failed to refund purchase faction pass.")
+		}
 	}
 
-	switch req.Payload.PaymentType {
-	case boiler.PaymentMethodsSups:
-		supsCost := fp.SupsPrice
-		actualPrice := supsCost.Mul(decimal.NewFromInt(100).Sub(fp.DiscountPercentage).Div(decimal.NewFromInt(100)))
+	// record faction pass log
+	fpl := boiler.FactionPassPurchaseLog{
+		FactionPassID:         fp.ID,
+		PurchasedByID:         user.ID,
+		PurchaseMethod:        boiler.PaymentMethodsSups,
+		ExpendFactionPassDays: fp.LastForDays,
+		SupsPaid:              actualPrice,
+		SupsPurchaseTXID:      null.StringFrom(paidTXID),
+		PaymentStatus:         PaymentStatusSuccess,
+	}
 
-		// refund reward
-		paidTXID, err := api.Passport.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
-			FromUserID:           uuid.FromStringOrNil(user.ID),
-			ToUserID:             uuid.UUID(server.XsynTreasuryUserID),
-			Amount:               actualPrice.String(),
-			TransactionReference: server.TransactionReference(fmt.Sprintf("purchase_faction_pass|%s|%d", fp.ID, time.Now().UnixNano())),
-			Group:                string(server.TransactionGroupSupremacy),
-			SubGroup:             string(server.TransactionGroupFactionPass),
-			Description:          fmt.Sprintf("purchase a '%s' faction.", fp.Label),
-		})
-
-		refund = func() {
-			_, err = api.Passport.RefundSupsMessage(paidTXID)
-			if err != nil {
-				l.Error().Err(err).Msg("Failed to refund purchase faction pass.")
-			}
-		}
-
-		// record faction pass log
-		fpl := boiler.FactionPassPurchaseLog{
-			FactionPassID:         fp.ID,
-			PurchasedByID:         user.ID,
-			PurchaseMethod:        boiler.PaymentMethodsSups,
-			ExpendFactionPassDays: fp.LastForDays,
-			SupsPaid:              actualPrice,
-			SupsPurchaseTXID:      null.StringFrom(paidTXID),
-			PaymentStatus:         PaymentStatusSuccess,
-		}
-
-		err = fpl.Insert(tx, boil.Infer())
-		if err != nil {
-			l.Error().Err(err).Msg("Failed to record faction pass log")
-			return terror.Error(err, "Failed to purchase faction pass.")
-		}
-
-	case boiler.PaymentMethodsStripe:
-	case boiler.PaymentMethodsEth:
-	default:
-		return terror.Error(fmt.Errorf("payment type does not exist"), "Payment type does not exist")
+	err = fpl.Insert(tx, boil.Infer())
+	if err != nil {
+		l.Error().Err(err).Msg("Failed to record faction pass log")
+		return terror.Error(err, "Failed to purchase faction pass.")
 	}
 
 	err = tx.Commit()

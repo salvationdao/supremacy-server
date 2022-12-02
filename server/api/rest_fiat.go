@@ -3,6 +3,7 @@ package api
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/ninja-syndicate/ws"
 	"github.com/volatiletech/null/v8"
 	"io/ioutil"
 	"net/http"
@@ -112,6 +113,7 @@ func (f *FiatController) StripeWebhook(w http.ResponseWriter, r *http.Request) (
 				return http.StatusInternalServerError, terror.Error(err, "Failed to update player faction pass expiry date.")
 			}
 
+			ws.PublishMessage(fmt.Sprintf("/secure/user/%s/faction_pass_expiry_date", player.ID), HubKeyPlayerFactionPassExpiryDate, player.FactionPassExpiresAt)
 		}
 
 	case "invoice.paid":
