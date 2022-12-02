@@ -43,8 +43,6 @@ func (f *FiatController) StripeWebhook(w http.ResponseWriter, r *http.Request) (
 		return http.StatusOK, terror.Error(err)
 	}
 
-	l.Info().Interface("event", event).Msg("Event")
-
 	// Unmarshal the event data into an appropriate struct depending on its Type
 	switch event.Type {
 	case "charge.succeeded":
