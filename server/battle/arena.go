@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"github.com/shopspring/decimal"
 	"math"
 	"math/rand"
 	"net"
@@ -1193,10 +1194,10 @@ type BattleWMDestroyedPayload struct {
 	KilledByWarMachineHash  string `json:"killed_by_war_machine_hash"`
 	RelatedEventIDString    string `json:"related_event_id_string"`
 	DamageHistory           []struct {
-		Amount         int    `json:"amount"`
-		InstigatorHash string `json:"instigator_hash"`
-		SourceHash     string `json:"source_hash"`
-		SourceName     string `json:"source_name"`
+		Amount         decimal.Decimal `json:"amount"`
+		InstigatorHash string          `json:"instigator_hash"`
+		SourceHash     string          `json:"source_hash"`
+		SourceName     string          `json:"source_name"`
 	} `json:"damage_history"`
 	KilledBy      string `json:"killed_by"`
 	ParticipantID int    `json:"participant_id"`

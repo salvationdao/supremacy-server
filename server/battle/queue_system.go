@@ -582,16 +582,6 @@ func (am *ArenaManager) DefaultPublicLobbiesCheck() error {
 		return terror.Error(err, "Failed to load active public battle lobbies.")
 	}
 
-	// Stop filling process
-	//for _, bl := range bls {
-	//	if bl.R == nil || bl.R.BattleLobbiesMechs == nil || len(bl.R.BattleLobbiesMechs) == 0 {
-	//		continue
-	//	}
-	//
-	//	// restart the filling process
-	//	am.AddAIMechFillingProcess(bl.ID)
-	//}
-
 	count := len(bls)
 
 	if count >= publicLobbiesCount {
@@ -647,6 +637,8 @@ func (am *ArenaManager) DefaultPublicLobbiesCheck() error {
 			}
 		}
 	}
+
+	am.KickFactionLobbyChecker()
 
 	return nil
 }
@@ -1203,4 +1195,106 @@ func broadcastBattleMechAlert(lobbyID string) {
 			Data:  ub.battleLobbyAlert,
 		})
 	}
+}
+
+func (am *ArenaManager) KickFactionLobbyChecker() {
+	go am.FactionBattleLobbyMechsChecker(server.RedMountainFactionID)
+	go am.FactionBattleLobbyMechsChecker(server.BostonCyberneticsFactionID)
+	go am.FactionBattleLobbyMechsChecker(server.ZaibatsuFactionID)
+}
+
+// FactionBattleLobbyMechsChecker check the faction of the
+func (am *ArenaManager) FactionBattleLobbyMechsChecker(factionID string) {
+	am.BattleQueueFuncMx.Lock()
+	defer am.BattleQueueFuncMx.Unlock()
+
+	queries := []qm.QueryMod{
+		qm.Select(boiler.BattleLobbyTableColumns.ID),
+		qm.From(fmt.Sprintf(
+			"(SELECT * FROM %s WHERE %s = TRUE AND %s ISNULL AND %s ISNULL) %s",
+			boiler.TableNames.BattleLobbies,
+			boiler.BattleLobbyTableColumns.GeneratedBySystem,
+			boiler.BattleLobbyTableColumns.ReadyAt,
+			boiler.BattleLobbyTableColumns.DeletedAt,
+			boiler.TableNames.BattleLobbies,
+		)),
+
+		qm.LeftOuterJoin(fmt.Sprintf(
+			"%s ON %s = %s AND %s = '%s' AND %s ISNULL AND %s ISNULL",
+			boiler.TableNames.BattleLobbiesMechs,
+			boiler.BattleLobbiesMechTableColumns.BattleLobbyID,
+			boiler.BattleLobbyTableColumns.ID,
+			boiler.BattleLobbiesMechTableColumns.FactionID,
+			factionID,
+			boiler.BattleLobbiesMechTableColumns.RefundTXID,
+			boiler.BattleLobbiesMechTableColumns.DeletedAt,
+		)),
+
+		qm.GroupBy(boiler.BattleLobbyTableColumns.ID + "," + boiler.BattleLobbyTableColumns.EachFactionMechAmount),
+		qm.Having(fmt.Sprintf("COUNT(%s) < %s", boiler.BattleLobbiesMechTableColumns.ID, boiler.BattleLobbyTableColumns.EachFactionMechAmount)),
+		qm.Limit(1),
+	}
+	availableLobbyID := ""
+	err := boiler.NewQuery(queries...).QueryRow(gamedb.StdConn).Scan(&availableLobbyID)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		gamelog.L.Error().Err(err).Msg("Failed to check faction queue lobby")
+		return
+	}
+
+	// skip, if there still lobby available
+	if availableLobbyID != "" {
+		return
+	}
+
+	// generate a new system lobby
+
+	bl := &boiler.BattleLobby{
+		Name:                  helpers.GenerateAdjectiveName(),
+		HostByID:              server.SupremacyBattleUserID,
+		EntryFee:              decimal.Zero, // free to join
+		FirstFactionCut:       decimal.NewFromFloat(0.75),
+		SecondFactionCut:      decimal.NewFromFloat(0.25),
+		ThirdFactionCut:       decimal.Zero,
+		EachFactionMechAmount: 3,
+		GeneratedBySystem:     true,
+	}
+
+	err = bl.Insert(gamedb.StdConn, boil.Infer())
+	if err != nil {
+		gamelog.L.Error().Err(err).Msg("Failed to insert public battle lobbies.")
+		return
+	}
+
+	amount := db.GetDecimalWithDefault(db.KeySystemLobbyDefaultExtraReward, decimal.New(100, 18))
+
+	if amount.GreaterThan(decimal.Zero) {
+		paidTXID, err := am.RPCClient.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
+			FromUserID:           uuid.UUID(server.XsynTreasuryUserID),
+			ToUserID:             uuid.FromStringOrNil(server.SupremacyBattleUserID),
+			Amount:               amount.StringFixed(0),
+			TransactionReference: server.TransactionReference(fmt.Sprintf("top_up_system_lobby_default_reward|%s|%d", bl.ID, time.Now().UnixNano())),
+			Group:                string(server.TransactionGroupSupremacy),
+			SubGroup:             string(server.TransactionGroupBattle),
+			Description:          fmt.Sprintf("top up system lobby default reward %s.", bl.ID),
+		})
+		if err != nil {
+			return
+		}
+
+		blr := &boiler.BattleLobbyExtraSupsReward{
+			BattleLobbyID: bl.ID,
+			OfferedByID:   server.SupremacyBattleUserID,
+			Amount:        amount,
+			PaidTXID:      paidTXID,
+		}
+
+		err = blr.Insert(gamedb.StdConn, boil.Infer())
+		if err != nil {
+			gamelog.L.Error().Err(err).Interface("battle lobby reward", blr).Msg("Failed to add battle lobby reward.")
+			return
+		}
+	}
+
+	// broadcast battle lobby
+	am.BattleLobbyDebounceBroadcastChan <- []string{bl.ID}
 }

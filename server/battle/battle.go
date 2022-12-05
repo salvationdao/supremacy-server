@@ -2295,20 +2295,22 @@ func (btl *Battle) Destroyed(dp *BattleWMDestroyedPayload) {
 		totalDamage := 0
 		newDamageHistory := []*DamageHistory{}
 		for _, damage := range dp.DamageHistory {
-			totalDamage += damage.Amount
+			damageAmount := int(damage.Amount.IntPart())
+
+			totalDamage += damageAmount
 			// check instigator token id exist in the list
 			if damage.InstigatorHash != "" {
 				exists := false
 				for _, hist := range newDamageHistory {
 					if hist.InstigatorHash == damage.InstigatorHash {
-						hist.Amount += damage.Amount
+						hist.Amount += damageAmount
 						exists = true
 						break
 					}
 				}
 				if !exists {
 					newDamageHistory = append(newDamageHistory, &DamageHistory{
-						Amount:         damage.Amount,
+						Amount:         damageAmount,
 						InstigatorHash: damage.InstigatorHash,
 						SourceName:     damage.SourceName,
 						SourceHash:     damage.SourceHash,
@@ -2320,14 +2322,14 @@ func (btl *Battle) Destroyed(dp *BattleWMDestroyedPayload) {
 			exists := false
 			for _, hist := range newDamageHistory {
 				if hist.SourceName == damage.SourceName {
-					hist.Amount += damage.Amount
+					hist.Amount += damageAmount
 					exists = true
 					break
 				}
 			}
 			if !exists {
 				newDamageHistory = append(newDamageHistory, &DamageHistory{
-					Amount:         damage.Amount,
+					Amount:         damageAmount,
 					InstigatorHash: damage.InstigatorHash,
 					SourceName:     damage.SourceName,
 					SourceHash:     damage.SourceHash,

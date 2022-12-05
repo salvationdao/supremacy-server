@@ -755,18 +755,9 @@ func (api *API) BattleLobbyJoin(ctx context.Context, user *boiler.Player, factio
 			return terror.Error(err, "Failed to queue your mech.")
 		}
 
-		// stop filling process
-		//if bl.GeneratedBySystem {
-		//	if !lobbyReady {
-		//		// trigger auto-filling process if lobby is not ready
-		//		api.ArenaManager.AddAIMechFillingProcess(bl.ID)
-		//
-		//	} else {
-		//		// terminate the auto-filling process if the lobby is ready
-		//		api.ArenaManager.TerminateAIMechFillingProcess(bl.ID)
-		//
-		//	}
-		//}
+		if bl.GeneratedBySystem {
+			go api.ArenaManager.FactionBattleLobbyMechsChecker(factionID)
+		}
 
 		if len(deployedMechIDs) > 0 {
 			// pause mechs repair case
