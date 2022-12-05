@@ -1279,13 +1279,9 @@ func broadcastBattleMechAlert(lobbyID string) {
 	}
 
 	for _, ub := range ubs {
-		b, err := json.Marshal(ub.battleLobbyAlert)
-		if err != nil {
-			return
-		}
 		ws.PublishMessage(fmt.Sprintf("/secure/user/%s/browser_alert", ub.userID), server.HubKeyPlayerBrowserAlert, &server.PlayerBrowserAlertStruct{
 			Title: "MECH_IN_BATTLE",
-			Data:  b,
+			Data:  ub.battleLobbyAlert,
 		})
 	}
 }

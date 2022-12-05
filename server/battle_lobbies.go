@@ -648,8 +648,8 @@ func BattleLobbyInfoFilter(bl *BattleLobby, keepDataForFactionID string, keepAcc
 }
 
 type PlayerBrowserAlertStruct struct {
-	Title string `json:"title"`
-	Data  []byte `json:"data"`
+	Title string      `json:"title"`
+	Data  interface{} `json:"data"`
 }
 
 type BattleLobbyMechsAlert struct {

@@ -1821,11 +1821,12 @@ func (api *API) PlayerBrowserAlert(ctx context.Context, user *boiler.Player, key
 			),
 		),
 		qm.From(fmt.Sprintf(
-			"(SELECT * FROM %s WHERE %s NOTNULL AND %s ISNULL AND %s ISNULL)",
+			"(SELECT * FROM %s WHERE %s NOTNULL AND %s ISNULL AND %s ISNULL) %s",
 			boiler.TableNames.BattleLobbies,
 			boiler.BattleLobbyTableColumns.AssignedToArenaID,
 			boiler.BattleLobbyTableColumns.EndedAt,
 			boiler.BattleLobbyTableColumns.DeletedAt,
+			boiler.TableNames.BattleLobbies,
 		)),
 		qm.InnerJoin(fmt.Sprintf(
 			"%s ON %s = %s AND %s ISNULL AND %s ISNULL",
@@ -1861,14 +1862,14 @@ func (api *API) PlayerBrowserAlert(ctx context.Context, user *boiler.Player, key
 		mechID := ""
 		mechName := ""
 		queuedByID := ""
-		mechOwnerID := ""
+		mechOwnerID := null.String{}
 
 		err = rows.Scan(&arenaID, &mechLabel, &mechID, &mechName, &queuedByID, &mechOwnerID)
 		if err != nil {
 			return terror.Error(err, "Failed to scan battle lobby mech")
 		}
 
-		if queuedByID != user.ID && mechOwnerID != user.ID {
+		if queuedByID != user.ID && (!mechOwnerID.Valid || mechOwnerID.String != user.ID) {
 			continue
 		}
 
@@ -1899,18 +1900,12 @@ func (api *API) PlayerBrowserAlert(ctx context.Context, user *boiler.Player, key
 
 			data[index].MechAlerts = append(data[index].MechAlerts, ma)
 		}
-
 	}
 
 	if len(data) > 0 {
-		b, err := json.Marshal(data)
-		if err != nil {
-			return terror.Error(err, "Failed to marshal mech data")
-		}
-
 		reply(&server.PlayerBrowserAlertStruct{
 			Title: "MECH_IN_BATTLE",
-			Data:  b,
+			Data:  data,
 		})
 	}
 

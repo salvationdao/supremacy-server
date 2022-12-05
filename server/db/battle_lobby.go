@@ -268,10 +268,11 @@ func GetMechsInLobby(lobbyID string) ([]*MechInLobby, error) {
 			),
 		),
 		qm.From(fmt.Sprintf(
-			"(SELECT * FROM %s WHERE %s = '%s')",
+			"(SELECT * FROM %s WHERE %s = '%s') %s",
 			boiler.TableNames.BattleLobbies,
 			boiler.BattleLobbyTableColumns.ID,
 			lobbyID,
+			boiler.TableNames.BattleLobbies,
 		)),
 		qm.InnerJoin(fmt.Sprintf(
 			"%s ON %s = %s AND %s ISNULL AND %s ISNULL",
