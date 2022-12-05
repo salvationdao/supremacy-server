@@ -1129,7 +1129,7 @@ func (btl *Battle) RewardMechOwner(
 			}
 			battleLobbiesMech.PayoutTXID = null.StringFrom(payoutTXID)
 			updateCols = append(updateCols, boiler.BattleLobbiesMechColumns.PayoutTXID)
-		} else {
+		} else if !isAFK {
 			// otherwise, pay battle reward to the actual player
 			payoutTXID, err := btl.arena.Manager.RPCClient.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
 				FromUserID:           uuid.Must(uuid.FromString(server.SupremacyBattleUserID)),
