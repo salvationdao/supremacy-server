@@ -1810,6 +1810,7 @@ type PlayerBrowserAlertStruct struct {
 
 type BattleLobbyMechsAlert struct {
 	ArenaID    string       `json:"arena_id"`
+	ArenaName  string       `json:"arena_name"`
 	MechAlerts []*MechAlert `json:"mech_alerts"`
 }
 
@@ -1889,8 +1890,14 @@ func (api *API) PlayerBrowserAlert(ctx context.Context, user *boiler.Player, key
 
 		index := slices.IndexFunc(data, func(bla *BattleLobbyMechsAlert) bool { return bla.ArenaID == arenaID })
 		if index == -1 {
+			arena, err := api.ArenaManager.GetArena(arenaID)
+			if err != nil {
+				continue
+			}
+
 			data = append(data, &BattleLobbyMechsAlert{
-				ArenaID:    arenaID,
+				ArenaID:    arena.ID,
+				ArenaName:  arena.Name,
 				MechAlerts: []*MechAlert{},
 			})
 
