@@ -1803,22 +1803,6 @@ func MechAuthorisationFilter(player *boiler.Player, factionID string, mechIDs []
 	return availableList, nil
 }
 
-type PlayerBrowserAlertStruct struct {
-	Title string `json:"title"`
-	Data  []byte `json:"data"`
-}
-
-type BattleLobbyMechsAlert struct {
-	ArenaID    string       `json:"arena_id"`
-	ArenaName  string       `json:"arena_name"`
-	MechAlerts []*MechAlert `json:"mech_alerts"`
-}
-
-type MechAlert struct {
-	ID   string `json:"id"`
-	Name string `json:"name"`
-}
-
 func (api *API) PlayerBrowserAlert(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
 	// send battle lobby mechs for now
 	queries := []qm.QueryMod{
@@ -1870,7 +1854,7 @@ func (api *API) PlayerBrowserAlert(ctx context.Context, user *boiler.Player, key
 		return terror.Error(err, "Failed to load battle lobby mechs")
 	}
 
-	data := []*BattleLobbyMechsAlert{}
+	data := []*server.BattleLobbyMechsAlert{}
 	for rows.Next() {
 		arenaID := ""
 		mechLabel := ""
@@ -1888,24 +1872,24 @@ func (api *API) PlayerBrowserAlert(ctx context.Context, user *boiler.Player, key
 			continue
 		}
 
-		index := slices.IndexFunc(data, func(bla *BattleLobbyMechsAlert) bool { return bla.ArenaID == arenaID })
+		index := slices.IndexFunc(data, func(bla *server.BattleLobbyMechsAlert) bool { return bla.ArenaID == arenaID })
 		if index == -1 {
 			arena, err := api.ArenaManager.GetArena(arenaID)
 			if err != nil {
 				continue
 			}
 
-			data = append(data, &BattleLobbyMechsAlert{
+			data = append(data, &server.BattleLobbyMechsAlert{
 				ArenaID:    arena.ID,
 				ArenaName:  arena.Name,
-				MechAlerts: []*MechAlert{},
+				MechAlerts: []*server.MechAlert{},
 			})
 
 			index = len(data) - 1
 		}
 
-		if slices.IndexFunc(data[index].MechAlerts, func(ma *MechAlert) bool { return ma.ID == mechID }) == -1 {
-			ma := &MechAlert{
+		if slices.IndexFunc(data[index].MechAlerts, func(ma *server.MechAlert) bool { return ma.ID == mechID }) == -1 {
+			ma := &server.MechAlert{
 				ID:   mechID,
 				Name: mechName,
 			}
@@ -1924,7 +1908,7 @@ func (api *API) PlayerBrowserAlert(ctx context.Context, user *boiler.Player, key
 			return terror.Error(err, "Failed to marshal mech data")
 		}
 
-		reply(&PlayerBrowserAlertStruct{
+		reply(&server.PlayerBrowserAlertStruct{
 			Title: "MECH_IN_BATTLE",
 			Data:  b,
 		})

@@ -1213,3 +1213,79 @@ func (am *ArenaManager) AddAIMechFillingProcess(battleLobbyID string) {
 		}
 	}(am, afp, timer)
 }
+
+type UserBattleMechAlert struct {
+	userID           string
+	battleLobbyAlert *server.BattleLobbyMechsAlert
+}
+
+func broadcastBattleMechAlert(lobbyID string) {
+	mib, err := db.GetMechsInLobby(lobbyID)
+	if err != nil {
+		return
+	}
+
+	var ubs []*UserBattleMechAlert
+	for _, data := range mib {
+		// queued by mech data
+		queuedByIndex := slices.IndexFunc(ubs, func(ub *UserBattleMechAlert) bool { return ub.userID == data.QueuedByID })
+		if queuedByIndex == -1 {
+			ubs = append(ubs, &UserBattleMechAlert{data.QueuedByID, &server.BattleLobbyMechsAlert{
+				ArenaID:    data.ArenaID,
+				MechAlerts: []*server.MechAlert{},
+			}})
+			queuedByIndex = len(ubs) - 1
+		}
+
+		if slices.IndexFunc(ubs[queuedByIndex].battleLobbyAlert.MechAlerts, func(ma *server.MechAlert) bool { return ma.ID == data.MechID }) == -1 {
+			ma := &server.MechAlert{
+				ID:   data.MechID,
+				Name: data.MechName,
+			}
+
+			if ma.Name == "" {
+				ma.Name = data.MechLabel
+			}
+
+			ubs[queuedByIndex].battleLobbyAlert.MechAlerts = append(ubs[queuedByIndex].battleLobbyAlert.MechAlerts, ma)
+		}
+
+		// add alert for staked mech owners
+		if data.StakedMechOwnerID.Valid {
+			queuedByIndex = slices.IndexFunc(ubs, func(ub *UserBattleMechAlert) bool { return ub.userID == data.StakedMechOwnerID.String })
+			if queuedByIndex == -1 {
+				ubs = append(ubs, &UserBattleMechAlert{
+					data.StakedMechOwnerID.String,
+					&server.BattleLobbyMechsAlert{
+						ArenaID:    data.ArenaID,
+						MechAlerts: []*server.MechAlert{},
+					}})
+				queuedByIndex = len(ubs) - 1
+			}
+
+			if slices.IndexFunc(ubs[queuedByIndex].battleLobbyAlert.MechAlerts, func(ma *server.MechAlert) bool { return ma.ID == data.MechID }) == -1 {
+				ma := &server.MechAlert{
+					ID:   data.MechID,
+					Name: data.MechName,
+				}
+
+				if ma.Name == "" {
+					ma.Name = data.MechLabel
+				}
+
+				ubs[queuedByIndex].battleLobbyAlert.MechAlerts = append(ubs[queuedByIndex].battleLobbyAlert.MechAlerts, ma)
+			}
+		}
+	}
+
+	for _, ub := range ubs {
+		b, err := json.Marshal(ub.battleLobbyAlert)
+		if err != nil {
+			return
+		}
+		ws.PublishMessage(fmt.Sprintf("/secure/user/%s/browser_alert", ub.userID), server.HubKeyPlayerBrowserAlert, &server.PlayerBrowserAlertStruct{
+			Title: "MECH_IN_BATTLE",
+			Data:  b,
+		})
+	}
+}

@@ -2201,6 +2201,9 @@ func (arena *Arena) BeginBattle() {
 	// broadcast battle lobby change
 	arena.Manager.BattleLobbyDebounceBroadcastChan <- []string{battleLobby.ID}
 
+	// send nex battle mech alert
+	broadcastBattleMechAlert(battleLobby.ID)
+
 	btl := &Battle{
 		arena:   arena,
 		Battle:  battle,
