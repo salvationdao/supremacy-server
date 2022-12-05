@@ -1802,3 +1802,126 @@ func MechAuthorisationFilter(player *boiler.Player, factionID string, mechIDs []
 	}
 	return availableList, nil
 }
+
+type PlayerBrowserAlertStruct struct {
+	Title string `json:"title"`
+	Data  []byte `json:"data"`
+}
+
+type BattleLobbyMechsAlert struct {
+	ArenaID    string       `json:"arena_id"`
+	MechAlerts []*MechAlert `json:"mech_alerts"`
+}
+
+type MechAlert struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
+}
+
+func (api *API) PlayerBrowserAlert(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
+	// send battle lobby mechs for now
+	queries := []qm.QueryMod{
+		qm.Select(
+			boiler.BattleLobbyTableColumns.AssignedToArenaID,
+			boiler.BlueprintMechTableColumns.Label,
+			boiler.MechTableColumns.ID,
+			boiler.MechTableColumns.Name,
+			boiler.BattleLobbiesMechTableColumns.QueuedByID,
+			fmt.Sprintf(
+				"(SELECT %s FROM %s WHERE %s = %s) AS stake_mech_owner_id",
+				boiler.StakedMechTableColumns.OwnerID,
+				boiler.TableNames.StakedMechs,
+				boiler.StakedMechTableColumns.MechID,
+				boiler.MechTableColumns.ID,
+			),
+		),
+		qm.From(fmt.Sprintf(
+			"(SELECT * FROM %s WHERE %s NOTNULL AND %s ISNULL AND %s ISNULL)",
+			boiler.TableNames.BattleLobbies,
+			boiler.BattleLobbyTableColumns.AssignedToArenaID,
+			boiler.BattleLobbyTableColumns.EndedAt,
+			boiler.BattleLobbyTableColumns.DeletedAt,
+		)),
+		qm.InnerJoin(fmt.Sprintf(
+			"%s ON %s = %s AND %s ISNULL AND %s ISNULL",
+			boiler.TableNames.BattleLobbiesMechs,
+			boiler.BattleLobbiesMechTableColumns.BattleLobbyID,
+			boiler.BattleLobbyTableColumns.ID,
+			boiler.BattleLobbiesMechTableColumns.RefundTXID,
+			boiler.BattleLobbiesMechTableColumns.DeletedAt,
+		)),
+		qm.InnerJoin(fmt.Sprintf(
+			"%s ON %s = %s",
+			boiler.TableNames.Mechs,
+			boiler.MechTableColumns.ID,
+			boiler.BattleLobbiesMechTableColumns.MechID,
+		)),
+		qm.InnerJoin(fmt.Sprintf(
+			"%s ON %s = %s",
+			boiler.TableNames.BlueprintMechs,
+			boiler.BlueprintMechTableColumns.ID,
+			boiler.MechTableColumns.BlueprintID,
+		)),
+	}
+
+	rows, err := boiler.NewQuery(queries...).Query(gamedb.StdConn)
+	if err != nil {
+		return terror.Error(err, "Failed to load battle lobby mechs")
+	}
+
+	data := []*BattleLobbyMechsAlert{}
+	for rows.Next() {
+		arenaID := ""
+		mechLabel := ""
+		mechID := ""
+		mechName := ""
+		queuedByID := ""
+		mechOwnerID := ""
+
+		err = rows.Scan(&arenaID, &mechLabel, &mechID, &mechName, &queuedByID, &mechOwnerID)
+		if err != nil {
+			return terror.Error(err, "Failed to scan battle lobby mech")
+		}
+
+		if queuedByID != user.ID && mechOwnerID != user.ID {
+			continue
+		}
+
+		index := slices.IndexFunc(data, func(bla *BattleLobbyMechsAlert) bool { return bla.ArenaID == arenaID })
+		if index == -1 {
+			data = append(data, &BattleLobbyMechsAlert{
+				ArenaID:    arenaID,
+				MechAlerts: []*MechAlert{},
+			})
+
+			index = len(data) - 1
+		}
+
+		if slices.IndexFunc(data[index].MechAlerts, func(ma *MechAlert) bool { return ma.ID == mechID }) == -1 {
+			ma := &MechAlert{
+				ID:   mechID,
+				Name: mechName,
+			}
+			if ma.Name == "" {
+				ma.Name = mechLabel
+			}
+
+			data[index].MechAlerts = append(data[index].MechAlerts, ma)
+		}
+
+	}
+
+	if len(data) > 0 {
+		b, err := json.Marshal(data)
+		if err != nil {
+			return terror.Error(err, "Failed to marshal mech data")
+		}
+
+		reply(&PlayerBrowserAlertStruct{
+			Title: "MECH_IN_BATTLE",
+			Data:  b,
+		})
+	}
+
+	return nil
+}
