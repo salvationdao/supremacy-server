@@ -241,3 +241,77 @@ func playersInLobbies(battleLobbyIDs []string) ([]string, error) {
 
 	return players, nil
 }
+
+type MechInLobby struct {
+	ArenaID           string
+	MechLabel         string
+	MechID            string
+	MechName          string
+	QueuedByID        string
+	StakedMechOwnerID null.String
+}
+
+func GetMechsInLobby(lobbyID string) ([]*MechInLobby, error) {
+	queries := []qm.QueryMod{
+		qm.Select(
+			boiler.BattleLobbyTableColumns.AssignedToArenaID,
+			boiler.BlueprintMechTableColumns.Label,
+			boiler.MechTableColumns.ID,
+			boiler.MechTableColumns.Name,
+			boiler.BattleLobbiesMechTableColumns.QueuedByID,
+			fmt.Sprintf(
+				"(SELECT %s FROM %s WHERE %s = %s) AS stake_mech_owner_id",
+				boiler.StakedMechTableColumns.OwnerID,
+				boiler.TableNames.StakedMechs,
+				boiler.StakedMechTableColumns.MechID,
+				boiler.MechTableColumns.ID,
+			),
+		),
+		qm.From(fmt.Sprintf(
+			"(SELECT * FROM %s WHERE %s = '%s') %s",
+			boiler.TableNames.BattleLobbies,
+			boiler.BattleLobbyTableColumns.ID,
+			lobbyID,
+			boiler.TableNames.BattleLobbies,
+		)),
+		qm.InnerJoin(fmt.Sprintf(
+			"%s ON %s = %s AND %s ISNULL AND %s ISNULL",
+			boiler.TableNames.BattleLobbiesMechs,
+			boiler.BattleLobbiesMechTableColumns.BattleLobbyID,
+			boiler.BattleLobbyTableColumns.ID,
+			boiler.BattleLobbiesMechTableColumns.RefundTXID,
+			boiler.BattleLobbiesMechTableColumns.DeletedAt,
+		)),
+		qm.InnerJoin(fmt.Sprintf(
+			"%s ON %s = %s",
+			boiler.TableNames.Mechs,
+			boiler.MechTableColumns.ID,
+			boiler.BattleLobbiesMechTableColumns.MechID,
+		)),
+		qm.InnerJoin(fmt.Sprintf(
+			"%s ON %s = %s",
+			boiler.TableNames.BlueprintMechs,
+			boiler.BlueprintMechTableColumns.ID,
+			boiler.MechTableColumns.BlueprintID,
+		)),
+	}
+
+	rows, err := boiler.NewQuery(queries...).Query(gamedb.StdConn)
+	if err != nil {
+		return nil, terror.Error(err, "Failed to load battle lobby mechs")
+	}
+
+	data := []*MechInLobby{}
+	for rows.Next() {
+		mib := &MechInLobby{}
+
+		err = rows.Scan(&mib.ArenaID, &mib.MechLabel, &mib.MechID, &mib.MechName, &mib.QueuedByID, &mib.StakedMechOwnerID)
+		if err != nil {
+			return nil, terror.Error(err, "Failed to scan battle lobby mech")
+		}
+
+		data = append(data, mib)
+	}
+
+	return data, nil
+}
