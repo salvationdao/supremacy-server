@@ -24,7 +24,6 @@ import (
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
-	"go.uber.org/atomic"
 	"golang.org/x/exp/slices"
 )
 
@@ -106,9 +105,6 @@ func (am *ArenaManager) broadcastBattleLobbyUpdate(battleLobbyIDs ...string) {
 
 	// broadcast to individual
 	for _, bl := range battleLobbies {
-		// set AI mech fill_at field
-		bl.FillAt = am.GetAIMechFillingProcessTime(bl.ID)
-
 		// build public/private lobby list
 		if !bl.AccessCode.Valid {
 			// append public lobbies
@@ -566,7 +562,7 @@ func (am *ArenaManager) ExpiredExhibitionLobbyCleanUp() error {
 // DefaultPublicLobbiesCheck check there are enough public lobbies
 func (am *ArenaManager) DefaultPublicLobbiesCheck() error {
 	// load default public lobbies amount
-	publicLobbiesCount := db.GetIntWithDefault(db.KeyDefaultPublicLobbyCount, 20)
+	publicLobbiesCount := db.GetIntWithDefault(db.KeyDefaultPublicLobbyCount, 1)
 
 	// lock queue func
 	am.BattleQueueFuncMx.Lock()
@@ -586,14 +582,15 @@ func (am *ArenaManager) DefaultPublicLobbiesCheck() error {
 		return terror.Error(err, "Failed to load active public battle lobbies.")
 	}
 
-	for _, bl := range bls {
-		if bl.R == nil || bl.R.BattleLobbiesMechs == nil || len(bl.R.BattleLobbiesMechs) == 0 {
-			continue
-		}
-
-		// restart the filling process
-		am.AddAIMechFillingProcess(bl.ID)
-	}
+	// Stop filling process
+	//for _, bl := range bls {
+	//	if bl.R == nil || bl.R.BattleLobbiesMechs == nil || len(bl.R.BattleLobbiesMechs) == 0 {
+	//		continue
+	//	}
+	//
+	//	// restart the filling process
+	//	am.AddAIMechFillingProcess(bl.ID)
+	//}
 
 	count := len(bls)
 
@@ -861,355 +858,277 @@ func GenerateAIDrivenBattle() (*boiler.BattleLobby, error) {
 	return bl, nil
 }
 
-// SystemLobbyFillingProcess record the next filling time of the
-type SystemLobbyFillingProcess struct {
-	Map map[string]*AIMechFillingProcess
-	deadlock.RWMutex
-}
-
-type AIMechFillingProcess struct {
-	FillAt       time.Time
-	isTerminated *atomic.Bool
-}
-
-func (am *ArenaManager) GetAIMechFillingProcessTime(battleLobbyID string) null.Time {
-	am.SystemLobbyFillingProcess.RLock()
-	defer am.SystemLobbyFillingProcess.RUnlock()
-
-	sfp, ok := am.SystemLobbyFillingProcess.Map[battleLobbyID]
-	if !ok {
-		return null.TimeFromPtr(nil)
-	}
-
-	return null.TimeFrom(sfp.FillAt)
-}
-
-// TerminateAIMechFillingProcess terminate system lobby filling process
+// AIMechFillingProcess fill up the lobby with AI mechs
 // IMPORTANT: this function MUST be wrapped inside the "ArenaManager.SendBattleQueueFunc()" function
-func (am *ArenaManager) TerminateAIMechFillingProcess(battleLobbyID string) {
-	am.SystemLobbyFillingProcess.Lock()
-	defer am.SystemLobbyFillingProcess.Unlock()
-
-	sfp, ok := am.SystemLobbyFillingProcess.Map[battleLobbyID]
-	if !ok || sfp.isTerminated.Load() {
+func (am *ArenaManager) AIMechFillingProcess(battleLobbyID string) {
+	// load AI mechs
+	cis, err := boiler.CollectionItems(
+		boiler.CollectionItemWhere.ItemType.EQ(boiler.ItemTypeMech),
+		qm.Where(fmt.Sprintf(
+			"EXISTS (SELECT 1 FROM %s WHERE %s = %s AND %s = TRUE)",
+			boiler.TableNames.Players,
+			boiler.PlayerTableColumns.ID,
+			boiler.CollectionItemTableColumns.OwnerID,
+			boiler.PlayerTableColumns.IsAi,
+		)),
+		qm.Load(boiler.CollectionItemRels.Owner),
+	).All(gamedb.StdConn)
+	if err != nil {
+		gamelog.L.Error().Err(err).Msg("Failed to load AI mechs.")
 		return
 	}
 
-	sfp.isTerminated.Store(true)
-	delete(am.SystemLobbyFillingProcess.Map, battleLobbyID)
-}
-
-// AddAIMechFillingProcess system lobby to the filling map
-// IMPORTANT: this function MUST be wrapped inside the "ArenaManager.SendBattleQueueFunc()" function
-func (am *ArenaManager) AddAIMechFillingProcess(battleLobbyID string) {
-	duration := time.Duration(db.GetIntWithDefault(db.KeyAutoFillLobbyAfterDurationSecond, 120)) * time.Second
-	am.SystemLobbyFillingProcess.Lock()
-	defer am.SystemLobbyFillingProcess.Unlock()
-	_, ok := am.SystemLobbyFillingProcess.Map[battleLobbyID]
-
-	// skip, if the filling process of the lobby is already set
-	if ok {
+	// load the battle lobby and its queued mechs
+	bl, err := boiler.BattleLobbies(
+		boiler.BattleLobbyWhere.ID.EQ(battleLobbyID),
+		qm.Load(boiler.BattleLobbyRels.BattleLobbiesMechs),
+	).One(gamedb.StdConn)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		gamelog.L.Error().Err(err).Str("battle lobby id", battleLobbyID).Msg("Failed to load battle lobby")
 		return
 	}
 
-	now := time.Now()
-	timer := time.NewTimer(duration)
-
-	afp := &AIMechFillingProcess{
-		FillAt:       now.Add(duration),
-		isTerminated: atomic.NewBool(false),
+	// terminate the process if the lobby is not exists
+	if bl == nil {
+		return
 	}
 
-	am.SystemLobbyFillingProcess.Map[battleLobbyID] = afp
+	// terminate the process if there is no mech queued in the lobby
+	if bl.R == nil || bl.R.BattleLobbiesMechs == nil || len(bl.R.BattleLobbiesMechs) == 0 {
+		return
+	}
 
-	go func(am *ArenaManager, fillingProcess *AIMechFillingProcess, timer *time.Timer) {
-		// load AI mechs
-		cis, err := boiler.CollectionItems(
-			boiler.CollectionItemWhere.ItemType.EQ(boiler.ItemTypeMech),
-			qm.Where(fmt.Sprintf(
-				"EXISTS (SELECT 1 FROM %s WHERE %s = %s AND %s = TRUE)",
-				boiler.TableNames.Players,
-				boiler.PlayerTableColumns.ID,
-				boiler.CollectionItemTableColumns.OwnerID,
-				boiler.PlayerTableColumns.IsAi,
-			)),
-			qm.Load(boiler.CollectionItemRels.Owner),
-		).All(gamedb.StdConn)
-		if err != nil {
-			gamelog.L.Error().Err(err).Msg("Failed to load AI mechs.")
+	// terminate the process if the lobby is full
+	if len(bl.R.BattleLobbiesMechs) == bl.EachFactionMechAmount*3 {
+		return
+	}
+
+	// fill the lobby with staked mechs
+	factionSlots := []struct {
+		factionID      string
+		availableSlots int
+	}{
+		{server.RedMountainFactionID, bl.EachFactionMechAmount},
+		{server.BostonCyberneticsFactionID, bl.EachFactionMechAmount},
+		{server.ZaibatsuFactionID, bl.EachFactionMechAmount},
+	}
+
+	lobbyMechIDs := []string{}
+	for _, blm := range bl.R.BattleLobbiesMechs {
+		lobbyMechIDs = append(lobbyMechIDs, blm.MechID)
+		// find faction slot
+		index := slices.IndexFunc(factionSlots, func(fs struct {
+			factionID      string
+			availableSlots int
+		}) bool {
+			return fs.factionID == blm.FactionID
+		})
+		// should never happen, but just in case.
+		if index == -1 {
+			gamelog.L.Error().Str("faction id", blm.FactionID).Msg("Detect a faction id that is not exist in the system!!!")
 			return
 		}
 
-		// wait until the time is up,
-		<-timer.C
+		factionSlots[index].availableSlots -= 1
+	}
 
-		// start filling AI mechs
-		err = am.SendBattleQueueFunc(func() error {
-			// exit, if it is terminated
-			if fillingProcess.isTerminated.Load() {
-				return nil
-			}
+	var insertRows []string
+	for _, factionSlot := range factionSlots {
+		if factionSlot.availableSlots <= 0 {
+			continue
+		}
 
-			// load the battle lobby and its queued mechs
-			bl, err := boiler.BattleLobbies(
-				boiler.BattleLobbyWhere.ID.EQ(battleLobbyID),
-				qm.Load(boiler.BattleLobbyRels.BattleLobbiesMechs),
-			).One(gamedb.StdConn)
-			if err != nil && !errors.Is(err, sql.ErrNoRows) {
-				gamelog.L.Error().Err(err).Str("battle lobby id", battleLobbyID).Msg("Failed to load battle lobby")
-				return terror.Error(err, "Failed to load battle lobby")
-			}
+		// queued by faction AI player
+		queuedByID := ""
+		switch factionSlot.factionID {
+		case server.RedMountainFactionID:
+			queuedByID = server.RedMountainPlayerID
+		case server.BostonCyberneticsFactionID:
+			queuedByID = server.BostonCyberneticsPlayerID
+		case server.ZaibatsuFactionID:
+			queuedByID = server.ZaibatsuPlayerID
+		}
 
-			// terminate the process if the lobby is not exists
-			if bl == nil {
-				return nil
-			}
-
-			// terminate the process if there is no mech queued in the lobby
-			if bl.R == nil || bl.R.BattleLobbiesMechs == nil || len(bl.R.BattleLobbiesMechs) == 0 {
-				return nil
-			}
-
-			// terminate the process if the lobby is full
-			if len(bl.R.BattleLobbiesMechs) == bl.EachFactionMechAmount*3 {
-				return nil
-			}
-
-			// fill the lobby with staked mechs
-			factionSlots := []struct {
-				factionID      string
-				availableSlots int
-			}{
-				{server.RedMountainFactionID, bl.EachFactionMechAmount},
-				{server.BostonCyberneticsFactionID, bl.EachFactionMechAmount},
-				{server.ZaibatsuFactionID, bl.EachFactionMechAmount},
-			}
-
-			lobbyMechIDs := []string{}
-			for _, blm := range bl.R.BattleLobbiesMechs {
-				lobbyMechIDs = append(lobbyMechIDs, blm.MechID)
-				// find faction slot
-				index := slices.IndexFunc(factionSlots, func(fs struct {
-					factionID      string
-					availableSlots int
-				}) bool {
-					return fs.factionID == blm.FactionID
-				})
-				// should never happen, but just in case.
-				if index == -1 {
-					gamelog.L.Error().Str("faction id", blm.FactionID).Msg("Detect a faction id that is not exist in the system!!!")
-					return terror.Error(err, "Unexpected faction id occur.")
-				}
-
-				factionSlots[index].availableSlots -= 1
-			}
-
-			var insertRows []string
-			for _, factionSlot := range factionSlots {
-				if factionSlot.availableSlots <= 0 {
-					continue
-				}
-
-				// queued by faction AI player
-				queuedByID := ""
-				switch factionSlot.factionID {
-				case server.RedMountainFactionID:
-					queuedByID = server.RedMountainPlayerID
-				case server.BostonCyberneticsFactionID:
-					queuedByID = server.BostonCyberneticsPlayerID
-				case server.ZaibatsuFactionID:
-					queuedByID = server.ZaibatsuPlayerID
-				}
-
-				// load available staked mechs
-				sms, err := boiler.StakedMechs(
-					boiler.StakedMechWhere.FactionID.EQ(factionSlot.factionID),
-					qm.Where(fmt.Sprintf(
-						"NOT EXISTS (SELECT 1 FROM %s WHERE %s = %s AND %s ISNULL AND %s ISNULL AND %s ISNULL)",
-						boiler.TableNames.BattleLobbiesMechs,
-						boiler.BattleLobbiesMechTableColumns.MechID,
-						boiler.StakedMechTableColumns.MechID,
-						boiler.BattleLobbiesMechTableColumns.EndedAt,
-						boiler.BattleLobbiesMechTableColumns.RefundTXID,
-						boiler.BattleLobbiesMechTableColumns.DeletedAt,
-					)),
-					// no AI mechs
-					qm.Where(fmt.Sprintf(
-						"EXISTS (SELECT 1 FROM %s WHERE %s = %s AND %s = FALSE)",
-						boiler.TableNames.Players,
-						boiler.PlayerTableColumns.ID,
-						boiler.StakedMechTableColumns.OwnerID,
-						boiler.PlayerTableColumns.IsAi,
-					)),
-					// no damaged mech
-					qm.Where(fmt.Sprintf(
-						"NOT EXISTS (SELECT 1 FROM %s WHERE %s = %s AND %s ISNULL)",
-						boiler.TableNames.RepairCases,
-						boiler.RepairCaseTableColumns.MechID,
-						boiler.StakedMechTableColumns.MechID,
-						boiler.RepairCaseTableColumns.CompletedAt,
-					)),
-					qm.Limit(factionSlot.availableSlots),
-				).All(gamedb.StdConn)
-				if err != nil {
-					gamelog.L.Error().Err(err).Msg("Failed to load staked mech.")
-				}
-
-				var mechIDs []string
-				for _, sm := range sms {
-					mechIDs = append(mechIDs, sm.MechID)
-				}
-				for _, ci := range cis {
-					// skip, if the faction id not match
-					if ci.R == nil || ci.R.Owner == nil || ci.R.Owner.FactionID.String != factionSlot.factionID {
-						continue
-					}
-					mechIDs = append(mechIDs, ci.ItemID)
-				}
-
-				// generate insert rows
-				for _, mechID := range mechIDs {
-					// fill AI mechs into the slots
-					insertRows = append(insertRows, fmt.Sprintf(
-						"('%s', '%s', '%s', '%s')",
-						battleLobbyID,
-						mechID,
-						queuedByID,
-						factionSlot.factionID,
-					))
-
-					factionSlot.availableSlots -= 1
-
-					// break, no available slot
-					if factionSlot.availableSlots == 0 {
-						break
-					}
-				}
-			}
-
-			if len(insertRows) == 0 {
-				return nil
-			}
-
-			// insert AI mech into the lobby
-			q := fmt.Sprintf(
-				"INSERT INTO %s (%s, %s, %s, %s)  VALUES ",
+		// load available staked mechs
+		sms, err := boiler.StakedMechs(
+			boiler.StakedMechWhere.FactionID.EQ(factionSlot.factionID),
+			qm.Where(fmt.Sprintf(
+				"NOT EXISTS (SELECT 1 FROM %s WHERE %s = %s AND %s ISNULL AND %s ISNULL AND %s ISNULL)",
 				boiler.TableNames.BattleLobbiesMechs,
-				boiler.BattleLobbiesMechColumns.BattleLobbyID,
-				boiler.BattleLobbiesMechColumns.MechID,
-				boiler.BattleLobbiesMechColumns.QueuedByID,
-				boiler.BattleLobbiesMechColumns.FactionID,
-			)
+				boiler.BattleLobbiesMechTableColumns.MechID,
+				boiler.StakedMechTableColumns.MechID,
+				boiler.BattleLobbiesMechTableColumns.EndedAt,
+				boiler.BattleLobbiesMechTableColumns.RefundTXID,
+				boiler.BattleLobbiesMechTableColumns.DeletedAt,
+			)),
+			// no AI mechs
+			qm.Where(fmt.Sprintf(
+				"EXISTS (SELECT 1 FROM %s WHERE %s = %s AND %s = FALSE)",
+				boiler.TableNames.Players,
+				boiler.PlayerTableColumns.ID,
+				boiler.StakedMechTableColumns.OwnerID,
+				boiler.PlayerTableColumns.IsAi,
+			)),
+			// no damaged mech
+			qm.Where(fmt.Sprintf(
+				"NOT EXISTS (SELECT 1 FROM %s WHERE %s = %s AND %s ISNULL)",
+				boiler.TableNames.RepairCases,
+				boiler.RepairCaseTableColumns.MechID,
+				boiler.StakedMechTableColumns.MechID,
+				boiler.RepairCaseTableColumns.CompletedAt,
+			)),
+			qm.Limit(factionSlot.availableSlots),
+		).All(gamedb.StdConn)
+		if err != nil {
+			gamelog.L.Error().Err(err).Msg("Failed to load staked mech.")
+		}
 
-			for i, insertRow := range insertRows {
-				q += insertRow
-				if i < len(insertRows)-1 {
-					q += ","
-					continue
-				}
-				q += ";"
+		var mechIDs []string
+		for _, sm := range sms {
+			mechIDs = append(mechIDs, sm.MechID)
+		}
+		for _, ci := range cis {
+			// skip, if the faction id not match
+			if ci.R == nil || ci.R.Owner == nil || ci.R.Owner.FactionID.String != factionSlot.factionID {
+				continue
 			}
+			mechIDs = append(mechIDs, ci.ItemID)
+		}
 
-			tx, err := gamedb.StdConn.Begin()
-			if err != nil {
-				gamelog.L.Error().Err(err).Msg("Failed to start db transaction")
-				return terror.Error(err, "Failed to start db transaction.")
+		// generate insert rows
+		for _, mechID := range mechIDs {
+			// fill AI mechs into the slots
+			insertRows = append(insertRows, fmt.Sprintf(
+				"('%s', '%s', '%s', '%s')",
+				battleLobbyID,
+				mechID,
+				queuedByID,
+				factionSlot.factionID,
+			))
+
+			factionSlot.availableSlots -= 1
+
+			// break, no available slot
+			if factionSlot.availableSlots == 0 {
+				break
 			}
+		}
+	}
 
-			defer tx.Rollback()
+	if len(insertRows) == 0 {
+		return
+	}
 
-			_, err = tx.Exec(q)
-			if err != nil {
-				gamelog.L.Error().Err(err).Str("query", q).Msg("Failed to insert battle lobby mechs")
-				return terror.Error(err, "Failed to insert battle lobby mechs.")
-			}
+	// insert AI mech into the lobby
+	q := fmt.Sprintf(
+		"INSERT INTO %s (%s, %s, %s, %s)  VALUES ",
+		boiler.TableNames.BattleLobbiesMechs,
+		boiler.BattleLobbiesMechColumns.BattleLobbyID,
+		boiler.BattleLobbiesMechColumns.MechID,
+		boiler.BattleLobbiesMechColumns.QueuedByID,
+		boiler.BattleLobbiesMechColumns.FactionID,
+	)
 
-			bl.ReadyAt = null.TimeFrom(time.Now())
-			bl.AccessCode = null.StringFromPtr(nil)
-			_, err = bl.Update(tx, boil.Whitelist(boiler.BattleLobbyColumns.ReadyAt, boiler.BattleLobbyColumns.AccessCode))
-			if err != nil {
-				gamelog.L.Error().Interface("battle lobby", bl).Err(err).Msg("Failed to update battle lobby.")
-				return terror.Error(err, "Failed to update battle lobby.")
-			}
+	for i, insertRow := range insertRows {
+		q += insertRow
+		if i < len(insertRows)-1 {
+			q += ","
+			continue
+		}
+		q += ";"
+	}
 
-			_, err = bl.BattleLobbiesMechs(
-				boiler.BattleLobbiesMechWhere.RefundTXID.IsNull(),
-			).UpdateAll(tx, boiler.M{boiler.BattleLobbiesMechColumns.LockedAt: bl.ReadyAt})
-			if err != nil {
-				gamelog.L.Error().Interface("battle lobby", bl).Err(err).Msg("Failed to lock battle lobby mechs.")
-				return terror.Error(err, "Failed to lock battle lobby mechs.")
-			}
+	tx, err := gamedb.StdConn.Begin()
+	if err != nil {
+		gamelog.L.Error().Err(err).Msg("Failed to start db transaction")
+		return
+	}
 
-			// generate another system lobby
-			newBattleLobby := &boiler.BattleLobby{
-				Name:                  helpers.GenerateAdjectiveName(),
-				HostByID:              bl.HostByID,
-				EntryFee:              bl.EntryFee, // free to join
-				FirstFactionCut:       bl.FirstFactionCut,
-				SecondFactionCut:      bl.SecondFactionCut,
-				ThirdFactionCut:       bl.ThirdFactionCut,
-				EachFactionMechAmount: bl.EachFactionMechAmount,
-				GameMapID:             bl.GameMapID,
-				GeneratedBySystem:     true,
-			}
+	defer tx.Rollback()
 
-			err = newBattleLobby.Insert(tx, boil.Infer())
-			if err != nil {
-				gamelog.L.Error().Err(err).Msg("Failed to insert new battle lobby.")
-				return terror.Error(err, "Failed to insert new new battle lobby")
-			}
+	_, err = tx.Exec(q)
+	if err != nil {
+		gamelog.L.Error().Err(err).Str("query", q).Msg("Failed to insert battle lobby mechs")
+		return
+	}
 
-			amount := db.GetDecimalWithDefault(db.KeySystemLobbyDefaultExtraReward, decimal.New(100, 18))
+	bl.ReadyAt = null.TimeFrom(time.Now())
+	bl.AccessCode = null.StringFromPtr(nil)
+	_, err = bl.Update(tx, boil.Whitelist(boiler.BattleLobbyColumns.ReadyAt, boiler.BattleLobbyColumns.AccessCode))
+	if err != nil {
+		gamelog.L.Error().Interface("battle lobby", bl).Err(err).Msg("Failed to update battle lobby.")
+		return
+	}
 
-			if amount.GreaterThan(decimal.Zero) {
-				paidTXID, err := am.RPCClient.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
-					FromUserID:           uuid.UUID(server.XsynTreasuryUserID),
-					ToUserID:             uuid.FromStringOrNil(server.SupremacyBattleUserID),
-					Amount:               amount.StringFixed(0),
-					TransactionReference: server.TransactionReference(fmt.Sprintf("top_up_system_lobby_default_reward|%s|%d", newBattleLobby.ID, time.Now().UnixNano())),
-					Group:                string(server.TransactionGroupSupremacy),
-					SubGroup:             string(server.TransactionGroupBattle),
-					Description:          fmt.Sprintf("top up system lobby default reward %s.", newBattleLobby.ID),
-				})
-				if err != nil {
-					return terror.Error(err, "Failed to top up reward.")
-				}
+	_, err = bl.BattleLobbiesMechs(
+		boiler.BattleLobbiesMechWhere.RefundTXID.IsNull(),
+	).UpdateAll(tx, boiler.M{boiler.BattleLobbiesMechColumns.LockedAt: bl.ReadyAt})
+	if err != nil {
+		gamelog.L.Error().Interface("battle lobby", bl).Err(err).Msg("Failed to lock battle lobby mechs.")
+		return
+	}
 
-				blr := &boiler.BattleLobbyExtraSupsReward{
-					BattleLobbyID: newBattleLobby.ID,
-					OfferedByID:   server.SupremacyBattleUserID,
-					Amount:        amount,
-					PaidTXID:      paidTXID,
-				}
+	// generate another system lobby
+	newBattleLobby := &boiler.BattleLobby{
+		Name:                  helpers.GenerateAdjectiveName(),
+		HostByID:              bl.HostByID,
+		EntryFee:              bl.EntryFee, // free to join
+		FirstFactionCut:       bl.FirstFactionCut,
+		SecondFactionCut:      bl.SecondFactionCut,
+		ThirdFactionCut:       bl.ThirdFactionCut,
+		EachFactionMechAmount: bl.EachFactionMechAmount,
+		GameMapID:             bl.GameMapID,
+		GeneratedBySystem:     true,
+	}
 
-				err = blr.Insert(tx, boil.Infer())
-				if err != nil {
-					gamelog.L.Error().Err(err).Interface("battle lobby reward", blr).Msg("Failed to add battle lobby reward to systme lobby.")
-					return terror.Error(err, "Failed to add system lobby default reward")
-				}
-			}
+	err = newBattleLobby.Insert(tx, boil.Infer())
+	if err != nil {
+		gamelog.L.Error().Err(err).Msg("Failed to insert new battle lobby.")
+		return
+	}
 
-			err = tx.Commit()
-			if err != nil {
-				return terror.Error(err, "Failed to commit db transaction.")
-			}
+	amount := db.GetDecimalWithDefault(db.KeySystemLobbyDefaultExtraReward, decimal.New(100, 18))
 
-			// broadcast battle lobby
-			am.BattleLobbyDebounceBroadcastChan <- []string{newBattleLobby.ID, bl.ID}
-
-			// broadcast the status changes of the lobby mechs
-			am.MechDebounceBroadcastChan <- lobbyMechIDs
-
-			// update faction staked mech queue status
-			am.FactionStakedMechDashboardKeyChan <- []string{FactionStakedMechDashboardKeyQueue}
-
-			// Terminate filling process
-			am.TerminateAIMechFillingProcess(battleLobbyID)
-
-			return nil
+	if amount.GreaterThan(decimal.Zero) {
+		paidTXID, err := am.RPCClient.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
+			FromUserID:           uuid.UUID(server.XsynTreasuryUserID),
+			ToUserID:             uuid.FromStringOrNil(server.SupremacyBattleUserID),
+			Amount:               amount.StringFixed(0),
+			TransactionReference: server.TransactionReference(fmt.Sprintf("top_up_system_lobby_default_reward|%s|%d", newBattleLobby.ID, time.Now().UnixNano())),
+			Group:                string(server.TransactionGroupSupremacy),
+			SubGroup:             string(server.TransactionGroupBattle),
+			Description:          fmt.Sprintf("top up system lobby default reward %s.", newBattleLobby.ID),
 		})
 		if err != nil {
-			gamelog.L.Error().Err(err).Msg("Failed to fill AI mechs into system lobby.")
+			return
 		}
-	}(am, afp, timer)
+
+		blr := &boiler.BattleLobbyExtraSupsReward{
+			BattleLobbyID: newBattleLobby.ID,
+			OfferedByID:   server.SupremacyBattleUserID,
+			Amount:        amount,
+			PaidTXID:      paidTXID,
+		}
+
+		err = blr.Insert(tx, boil.Infer())
+		if err != nil {
+			gamelog.L.Error().Err(err).Interface("battle lobby reward", blr).Msg("Failed to add battle lobby reward to systme lobby.")
+			return
+		}
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		return
+	}
+
+	// broadcast battle lobby
+	am.BattleLobbyDebounceBroadcastChan <- []string{newBattleLobby.ID, bl.ID}
+
+	// broadcast the status changes of the lobby mechs
+	am.MechDebounceBroadcastChan <- lobbyMechIDs
+
+	// update faction staked mech queue status
+	am.FactionStakedMechDashboardKeyChan <- []string{FactionStakedMechDashboardKeyQueue}
+
 }

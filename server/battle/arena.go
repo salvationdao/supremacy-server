@@ -75,8 +75,6 @@ type ArenaManager struct {
 
 	RepairGameBlockMx deadlock.RWMutex
 
-	SystemLobbyFillingProcess *SystemLobbyFillingProcess
-
 	MechDebounceBroadcastChan         chan []string
 	FactionStakedMechDashboardKeyChan chan []string
 }
@@ -110,9 +108,6 @@ func NewArenaManager(opts *Opts) (*ArenaManager, error) {
 		BattleLobbyDebounceBroadcastChan: make(chan []string, 10),
 		LobbyFuncMx:                      &deadlock.Mutex{},
 		RepairGameBlockMx:                deadlock.RWMutex{},
-		SystemLobbyFillingProcess: &SystemLobbyFillingProcess{
-			Map: make(map[string]*AIMechFillingProcess),
-		},
 
 		MechDebounceBroadcastChan:         make(chan []string, 30),
 		FactionStakedMechDashboardKeyChan: make(chan []string, 30),
