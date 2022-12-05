@@ -202,11 +202,12 @@ func (am *ArenaManager) KickIdleArenas() {
 }
 
 type ArenaBrief struct {
-	ID         string                  `json:"id"`
-	Gid        int                     `json:"gid"`
-	Name       string                  `json:"name"`
-	Stage      string                  `json:"state"`
-	OvenStream *oven_stream.OvenStream `json:"oven_stream"`
+	ID          string                  `json:"id"`
+	Gid         int                     `json:"gid"`
+	Name        string                  `json:"name"`
+	Stage       string                  `json:"stage"`
+	BattleState string                  `json:"state"`
+	OvenStream  *oven_stream.OvenStream `json:"oven_stream"`
 }
 
 func (am *ArenaManager) AvailableBattleArenas() []*ArenaBrief {
@@ -216,13 +217,30 @@ func (am *ArenaManager) AvailableBattleArenas() []*ArenaBrief {
 	resp := []*ArenaBrief{}
 	for _, arena := range am.arenas {
 		if arena.Stage.Load() != ArenaStageHijacked && arena.connected.Load() {
-			resp = append(resp, &ArenaBrief{
-				ID:         arena.ID,
-				Gid:        arena.Gid,
-				Name:       arena.Name,
-				Stage:      arena.Stage.Load(),
-				OvenStream: oven_stream.GetStreamDetails(arena.Name, arena.ID),
-			})
+			ab := &ArenaBrief{
+				ID:          arena.ID,
+				Gid:         arena.Gid,
+				Name:        arena.Name,
+				Stage:       arena.Stage.Load(),
+				BattleState: "LOADING LOBBY",
+				OvenStream:  oven_stream.GetStreamDetails(arena.Name, arena.ID),
+			}
+
+			btl := arena.CurrentBattle()
+			if btl != nil {
+				switch arena.CurrentBattleState() {
+				case EndState:
+					ab.BattleState = "BATTLE ENDED"
+				case SetupState:
+					ab.BattleState = "PROCESSING"
+				case IntroState:
+					ab.BattleState = "BATTLE INTRO"
+				case BattlingState:
+					ab.BattleState = "BATTLING"
+				}
+			}
+
+			resp = append(resp, ab)
 		}
 	}
 	return resp
@@ -1347,6 +1365,7 @@ func (arena *Arena) GameClientJsonDataParser() {
 			}
 
 			arena.Manager.NewBattleChan <- &NewBattleChan{btl.ID, btl.BattleNumber}
+
 		case "BATTLE:INTRO_FINISHED":
 			if btl.replaySession.ReplaySession != nil {
 				btl.replaySession.ReplaySession.IntroEndedAt = null.TimeFrom(time.Now())
@@ -1356,6 +1375,9 @@ func (arena *Arena) GameClientJsonDataParser() {
 			btl.introEndedAt = time.Now()
 
 			btl.start()
+
+			// broadcast a new arena list to frontend
+			ws.PublishMessage("/public/arena_list", server.HubKeyBattleArenaListSubscribe, arena.Manager.AvailableBattleArenas())
 
 		case "BATTLE:WAR_MACHINE_DESTROYED":
 			var dataPayload BattleWMDestroyedPayload
@@ -1380,6 +1402,9 @@ func (arena *Arena) GameClientJsonDataParser() {
 
 			// reset war machine broadcast
 			btl.arena.WarMachineStatBroadcastResetChan <- true
+
+			// broadcast a new arena list to frontend
+			ws.PublishMessage("/public/arena_list", server.HubKeyBattleArenaListSubscribe, arena.Manager.AvailableBattleArenas())
 
 		case "BATTLE:OUTRO_FINISHED":
 			if btl.replaySession.ReplaySession != nil {
@@ -2201,6 +2226,9 @@ func (arena *Arena) BeginBattle() {
 	// broadcast battle lobby change
 	arena.Manager.BattleLobbyDebounceBroadcastChan <- []string{battleLobby.ID}
 
+	// send nex battle mech alert
+	broadcastBattleMechAlert(battleLobby.ID)
+
 	btl := &Battle{
 		arena:   arena,
 		Battle:  battle,
@@ -2355,6 +2383,8 @@ func (arena *Arena) BeginBattle() {
 
 	arena.Manager.FactionStakedMechDashboardKeyChan <- []string{FactionStakedMechDashboardKeyQueue}
 
+	// broadcast a new arena list to frontend
+	ws.PublishMessage("/public/arena_list", server.HubKeyBattleArenaListSubscribe, arena.Manager.AvailableBattleArenas())
 }
 
 type SystemMessageBattleStart struct {

@@ -971,6 +971,8 @@ func (btl *Battle) RewardBattleMechOwners(winningFactionOrder []string) {
 	// reward sups
 	taxRatio := db.GetDecimalWithDefault(db.KeyBattleRewardTaxRatio, decimal.NewFromFloat(0.025))
 
+	afkMechIDs := btl.AFKChecker()
+
 	for i, factionID := range winningFactionOrder {
 		switch i {
 		case 0: // winning faction
@@ -984,7 +986,7 @@ func (btl *Battle) RewardBattleMechOwners(winningFactionOrder []string) {
 						totalSups.Mul(btl.lobby.FirstFactionCut).Div(decimal.NewFromInt(3)),
 						taxRatio,
 						blm,
-						false,
+						slices.Index(afkMechIDs, blm.MechID) != -1,
 						false,
 					)
 				}
@@ -1001,7 +1003,7 @@ func (btl *Battle) RewardBattleMechOwners(winningFactionOrder []string) {
 						totalSups.Mul(btl.lobby.SecondFactionCut).Div(decimal.NewFromInt(3)),
 						taxRatio,
 						blm,
-						false,
+						slices.Index(afkMechIDs, blm.MechID) != -1,
 						false,
 					)
 				}
@@ -1018,7 +1020,7 @@ func (btl *Battle) RewardBattleMechOwners(winningFactionOrder []string) {
 						totalSups.Mul(btl.lobby.ThirdFactionCut).Div(decimal.NewFromInt(3)),
 						taxRatio,
 						blm,
-						false,
+						slices.Index(afkMechIDs, blm.MechID) != -1,
 						true,
 					)
 				}
@@ -1127,7 +1129,7 @@ func (btl *Battle) RewardMechOwner(
 			}
 			battleLobbiesMech.PayoutTXID = null.StringFrom(payoutTXID)
 			updateCols = append(updateCols, boiler.BattleLobbiesMechColumns.PayoutTXID)
-		} else {
+		} else if !isAFK {
 			// otherwise, pay battle reward to the actual player
 			payoutTXID, err := btl.arena.Manager.RPCClient.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
 				FromUserID:           uuid.Must(uuid.FromString(server.SupremacyBattleUserID)),

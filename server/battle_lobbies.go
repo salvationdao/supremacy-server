@@ -646,3 +646,19 @@ func BattleLobbyInfoFilter(bl *BattleLobby, keepDataForFactionID string, keepAcc
 	}
 	return battleLobby
 }
+
+type PlayerBrowserAlertStruct struct {
+	Title string      `json:"title"`
+	Data  interface{} `json:"data"`
+}
+
+type BattleLobbyMechsAlert struct {
+	ArenaID    string       `json:"arena_id"`
+	ArenaName  string       `json:"arena_name"`
+	MechAlerts []*MechAlert `json:"mech_alerts"`
+}
+
+type MechAlert struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
+}
