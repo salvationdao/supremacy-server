@@ -172,7 +172,7 @@ func GetNextBattleLobby(battleLobbyIDs []string) (*boiler.BattleLobby, bool, err
 	}
 
 	shouldFillAIMechs := false
-	// get the lobby which has the most queued mechs
+	// get the system lobby which has the most queued mechs
 	if bl == nil {
 		excludingPlayerQuery = ""
 		if len(excludingPlayerIDs) > 0 {
