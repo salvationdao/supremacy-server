@@ -119,10 +119,10 @@ func GetBattleLobbyViaAccessCode(accessCode string) (*boiler.BattleLobby, error)
 }
 
 // GetNextBattleLobby finds the next upcoming battle
-func GetNextBattleLobby(battleLobbyIDs []string) (*boiler.BattleLobby, error) {
+func GetNextBattleLobby(battleLobbyIDs []string) (*boiler.BattleLobby, bool, error) {
 	excludingPlayerIDs, err := playersInLobbies(battleLobbyIDs)
 	if err != nil {
-		return nil, err
+		return nil, false, err
 	}
 	// build excluding player query
 	excludingPlayerQuery := ""
@@ -168,9 +168,10 @@ func GetNextBattleLobby(battleLobbyIDs []string) (*boiler.BattleLobby, error) {
 		qm.Load(qm.Rels(boiler.BattleLobbyRels.BattleLobbySupporterOptIns, boiler.BattleLobbySupporterOptInRels.Supporter, boiler.PlayerRels.ProfileAvatar)),
 	).One(gamedb.StdConn)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
-		return nil, err
+		return nil, false, err
 	}
 
+	shouldFillAIMechs := false
 	// get the lobby which has the most queued mechs
 	if bl == nil {
 		excludingPlayerQuery = ""
@@ -230,7 +231,7 @@ func GetNextBattleLobby(battleLobbyIDs []string) (*boiler.BattleLobby, error) {
 		err = boiler.NewQuery(queries...).QueryRow(gamedb.StdConn).Scan(&battleLobbyID)
 		if err != nil && !errors.Is(err, sql.ErrNoRows) {
 			gamelog.L.Error().Err(err).Msg("Failed to load battle lobby.")
-			return nil, terror.Error(err, "Failed to load battle lobby")
+			return nil, false, terror.Error(err, "Failed to load battle lobby")
 		}
 
 		if battleLobbyID != "" {
@@ -240,12 +241,14 @@ func GetNextBattleLobby(battleLobbyIDs []string) (*boiler.BattleLobby, error) {
 				qm.Load(qm.Rels(boiler.BattleLobbyRels.BattleLobbySupporterOptIns, boiler.BattleLobbySupporterOptInRels.Supporter, boiler.PlayerRels.ProfileAvatar)),
 			).One(gamedb.StdConn)
 			if err != nil {
-				return nil, terror.Error(err, "Failed to load battle lobby.")
+				return nil, false, terror.Error(err, "Failed to load battle lobby.")
 			}
+
+			shouldFillAIMechs = true
 		}
 	}
 
-	return bl, nil
+	return bl, shouldFillAIMechs, nil
 }
 
 // PlayersInLobbies takes a list of battle lobby ids, and return a list of users in them battle lobbies (excluding AI player)

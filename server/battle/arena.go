@@ -1675,9 +1675,17 @@ func (arena *Arena) assignBattleLobby() {
 	L = L.With().Strs("battleLobbyIDs", battleLobbyIDs).Logger()
 
 	// get the next valid battle lobby
-	bl, err := db.GetNextBattleLobby(battleLobbyIDs)
+	bl, shouldFillAIMechs, err := db.GetNextBattleLobby(battleLobbyIDs)
 	if err != nil {
 		L.Error().Err(err).Msg("failed to get .")
+	}
+
+	// fill AI mechs, if needed
+	if bl != nil && shouldFillAIMechs {
+		arena.Manager.AIMechFillingProcess(bl.ID)
+
+		// check default public lobby count
+		go arena.Manager.DefaultPublicLobbiesCheck()
 	}
 
 	L = L.With().Interface("bl", bl).Logger()

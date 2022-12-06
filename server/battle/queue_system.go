@@ -851,8 +851,11 @@ func GenerateAIDrivenBattle() (*boiler.BattleLobby, error) {
 }
 
 // AIMechFillingProcess fill up the lobby with AI mechs
-// IMPORTANT: this function MUST be wrapped inside the "ArenaManager.SendBattleQueueFunc()" function
+// IMPORTANT: this function MUST NOT be wrapped inside the "ArenaManager.SendBattleQueueFunc()" function
 func (am *ArenaManager) AIMechFillingProcess(battleLobbyID string) {
+	am.BattleQueueFuncMx.Lock()
+	defer am.BattleQueueFuncMx.Unlock()
+
 	// load AI mechs
 	cis, err := boiler.CollectionItems(
 		boiler.CollectionItemWhere.ItemType.EQ(boiler.ItemTypeMech),
@@ -896,10 +899,11 @@ func (am *ArenaManager) AIMechFillingProcess(battleLobbyID string) {
 	}
 
 	// fill the lobby with staked mechs
-	factionSlots := []struct {
+	type factionAvailableSlots struct {
 		factionID      string
 		availableSlots int
-	}{
+	}
+	factionSlots := []*factionAvailableSlots{
 		{server.RedMountainFactionID, bl.EachFactionMechAmount},
 		{server.BostonCyberneticsFactionID, bl.EachFactionMechAmount},
 		{server.ZaibatsuFactionID, bl.EachFactionMechAmount},
@@ -908,13 +912,10 @@ func (am *ArenaManager) AIMechFillingProcess(battleLobbyID string) {
 	lobbyMechIDs := []string{}
 	for _, blm := range bl.R.BattleLobbiesMechs {
 		lobbyMechIDs = append(lobbyMechIDs, blm.MechID)
+
 		// find faction slot
-		index := slices.IndexFunc(factionSlots, func(fs struct {
-			factionID      string
-			availableSlots int
-		}) bool {
-			return fs.factionID == blm.FactionID
-		})
+		index := slices.IndexFunc(factionSlots, func(fs *factionAvailableSlots) bool { return fs.factionID == blm.FactionID })
+
 		// should never happen, but just in case.
 		if index == -1 {
 			gamelog.L.Error().Str("faction id", blm.FactionID).Msg("Detect a faction id that is not exist in the system!!!")
@@ -1060,62 +1061,13 @@ func (am *ArenaManager) AIMechFillingProcess(battleLobbyID string) {
 		return
 	}
 
-	// generate another system lobby
-	newBattleLobby := &boiler.BattleLobby{
-		Name:                  helpers.GenerateAdjectiveName(),
-		HostByID:              bl.HostByID,
-		EntryFee:              bl.EntryFee, // free to join
-		FirstFactionCut:       bl.FirstFactionCut,
-		SecondFactionCut:      bl.SecondFactionCut,
-		ThirdFactionCut:       bl.ThirdFactionCut,
-		EachFactionMechAmount: bl.EachFactionMechAmount,
-		GameMapID:             bl.GameMapID,
-		GeneratedBySystem:     true,
-	}
-
-	err = newBattleLobby.Insert(tx, boil.Infer())
-	if err != nil {
-		gamelog.L.Error().Err(err).Msg("Failed to insert new battle lobby.")
-		return
-	}
-
-	amount := db.GetDecimalWithDefault(db.KeySystemLobbyDefaultExtraReward, decimal.New(100, 18))
-
-	if amount.GreaterThan(decimal.Zero) {
-		paidTXID, err := am.RPCClient.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
-			FromUserID:           uuid.UUID(server.XsynTreasuryUserID),
-			ToUserID:             uuid.FromStringOrNil(server.SupremacyBattleUserID),
-			Amount:               amount.StringFixed(0),
-			TransactionReference: server.TransactionReference(fmt.Sprintf("top_up_system_lobby_default_reward|%s|%d", newBattleLobby.ID, time.Now().UnixNano())),
-			Group:                string(server.TransactionGroupSupremacy),
-			SubGroup:             string(server.TransactionGroupBattle),
-			Description:          fmt.Sprintf("top up system lobby default reward %s.", newBattleLobby.ID),
-		})
-		if err != nil {
-			return
-		}
-
-		blr := &boiler.BattleLobbyExtraSupsReward{
-			BattleLobbyID: newBattleLobby.ID,
-			OfferedByID:   server.SupremacyBattleUserID,
-			Amount:        amount,
-			PaidTXID:      paidTXID,
-		}
-
-		err = blr.Insert(tx, boil.Infer())
-		if err != nil {
-			gamelog.L.Error().Err(err).Interface("battle lobby reward", blr).Msg("Failed to add battle lobby reward to systme lobby.")
-			return
-		}
-	}
-
 	err = tx.Commit()
 	if err != nil {
 		return
 	}
 
 	// broadcast battle lobby
-	am.BattleLobbyDebounceBroadcastChan <- []string{newBattleLobby.ID, bl.ID}
+	am.BattleLobbyDebounceBroadcastChan <- []string{bl.ID}
 
 	// broadcast the status changes of the lobby mechs
 	am.MechDebounceBroadcastChan <- lobbyMechIDs
