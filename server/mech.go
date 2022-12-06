@@ -73,6 +73,9 @@ type Mech struct {
 	BoostedWalkSpeedModifier    decimal.Decimal `json:"boosted_walk_speed_modifier"`
 	SprintSpreadModifier        decimal.Decimal `json:"sprint_spread_modifier"`
 	BoostedSprintSpreadModifier decimal.Decimal `json:"boosted_sprint_spread_modifier"`
+	IdleDrain                   decimal.Decimal `json:"idle_drain"`
+	WalkDrain                   decimal.Decimal `json:"walk_drain"`
+	RunDrain                    decimal.Decimal `json:"run_drain"`
 
 	// state
 	QueuePosition null.Int    `json:"queue_position"`
