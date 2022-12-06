@@ -1554,7 +1554,7 @@ func (api *API) BattleLobbySupporterJoin(ctx context.Context, user *boiler.Playe
 
 			api.ArenaManager.BattleLobbyDebounceBroadcastChan <- []string{bl.ID}
 
-			api.ArenaManager.BroadcastLobbyUpdate(bl.AssignedToArenaID.String)
+			go api.ArenaManager.BroadcastLobbyUpdate(bl.AssignedToArenaID.String)
 
 			return nil
 		}
@@ -1572,7 +1572,7 @@ func (api *API) BattleLobbySupporterJoin(ctx context.Context, user *boiler.Playe
 
 		api.ArenaManager.BattleLobbyDebounceBroadcastChan <- []string{bl.ID}
 
-		api.ArenaManager.BroadcastLobbyUpdate(bl.AssignedToArenaID.String)
+		go api.ArenaManager.BroadcastLobbyUpdate(bl.AssignedToArenaID.String)
 
 		return nil
 	})
