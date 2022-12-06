@@ -771,7 +771,7 @@ func (api *API) BattleLobbyJoin(ctx context.Context, user *boiler.Player, factio
 
 		// kick
 		if lobbyReady {
-			api.ArenaManager.KickIdleArenas()
+			go api.ArenaManager.KickIdleArenas()
 
 			for _, lm := range battleLobbyMechs {
 				ws.PublishMessage(fmt.Sprintf("/faction/%s/queue/%s", factionID, lm.MechID), server.HubKeyPlayerAssetMechQueueSubscribe, &server.MechArenaInfo{
@@ -1252,6 +1252,10 @@ func (api *API) MechStake(ctx context.Context, user *boiler.Player, factionID st
 	}
 
 	l := gamelog.L.With().Str("func", "MechStake").Str("player id", user.ID).Strs("staked mech id list", req.Payload.MechIDs).Logger()
+
+	if !user.FactionPassExpiresAt.Valid || user.FactionPassExpiresAt.Time.Before(time.Now()) {
+		return terror.Error(fmt.Errorf("required faction pass"), "Faction pass is required.")
+	}
 
 	mqas, err := db.MechsQueueAuthorisationDataGet(req.Payload.MechIDs)
 	if err != nil {

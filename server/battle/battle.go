@@ -1487,7 +1487,7 @@ func (btl *Battle) end(payload *BattleEndPayload) {
 	gamelog.L.Info().Msgf("battle has been cleaned up, sending broadcast %s", btl.ID)
 
 	// reactivate idle arenas
-	btl.arena.Manager.KickIdleArenas()
+	go btl.arena.Manager.KickIdleArenas()
 
 	btl.arena.Manager.FactionStakedMechDashboardKeyChan <- []string{FactionStakedMechDashboardKeyQueue, FactionStakedMechDashboardKeyMVP}
 }

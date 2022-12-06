@@ -1682,7 +1682,7 @@ func (arena *Arena) assignBattleLobby() {
 
 	// fill AI mechs, if needed
 	if bl != nil && shouldFillAIMechs {
-		arena.Manager.AIMechFillingProcess(bl.ID)
+		go arena.Manager.AIMechFillingProcess(bl.ID)
 
 		// check default public lobby count
 		go arena.Manager.DefaultPublicLobbiesCheck()

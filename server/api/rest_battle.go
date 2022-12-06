@@ -236,7 +236,7 @@ func (api *API) FillUpIncompleteLobbies(w http.ResponseWriter, r *http.Request) 
 		return http.StatusInternalServerError, err
 	}
 
-	api.ArenaManager.KickIdleArenas()
+	go api.ArenaManager.KickIdleArenas()
 
 	return http.StatusOK, nil
 }
