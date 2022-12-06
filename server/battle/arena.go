@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"github.com/shopspring/decimal"
 	"math"
 	"math/rand"
 	"net"
@@ -75,8 +76,6 @@ type ArenaManager struct {
 
 	RepairGameBlockMx deadlock.RWMutex
 
-	SystemLobbyFillingProcess *SystemLobbyFillingProcess
-
 	MechDebounceBroadcastChan         chan []string
 	FactionStakedMechDashboardKeyChan chan []string
 }
@@ -110,9 +109,6 @@ func NewArenaManager(opts *Opts) (*ArenaManager, error) {
 		BattleLobbyDebounceBroadcastChan: make(chan []string, 10),
 		LobbyFuncMx:                      &deadlock.Mutex{},
 		RepairGameBlockMx:                deadlock.RWMutex{},
-		SystemLobbyFillingProcess: &SystemLobbyFillingProcess{
-			Map: make(map[string]*AIMechFillingProcess),
-		},
 
 		MechDebounceBroadcastChan:         make(chan []string, 30),
 		FactionStakedMechDashboardKeyChan: make(chan []string, 30),
@@ -202,11 +198,12 @@ func (am *ArenaManager) KickIdleArenas() {
 }
 
 type ArenaBrief struct {
-	ID         string                  `json:"id"`
-	Gid        int                     `json:"gid"`
-	Name       string                  `json:"name"`
-	Stage      string                  `json:"state"`
-	OvenStream *oven_stream.OvenStream `json:"oven_stream"`
+	ID          string                  `json:"id"`
+	Gid         int                     `json:"gid"`
+	Name        string                  `json:"name"`
+	Stage       string                  `json:"stage"`
+	BattleState string                  `json:"state"`
+	OvenStream  *oven_stream.OvenStream `json:"oven_stream"`
 }
 
 func (am *ArenaManager) AvailableBattleArenas() []*ArenaBrief {
@@ -216,13 +213,30 @@ func (am *ArenaManager) AvailableBattleArenas() []*ArenaBrief {
 	resp := []*ArenaBrief{}
 	for _, arena := range am.arenas {
 		if arena.Stage.Load() != ArenaStageHijacked && arena.connected.Load() {
-			resp = append(resp, &ArenaBrief{
-				ID:         arena.ID,
-				Gid:        arena.Gid,
-				Name:       arena.Name,
-				Stage:      arena.Stage.Load(),
-				OvenStream: oven_stream.GetStreamDetails(arena.Name, arena.ID),
-			})
+			ab := &ArenaBrief{
+				ID:          arena.ID,
+				Gid:         arena.Gid,
+				Name:        arena.Name,
+				Stage:       arena.Stage.Load(),
+				BattleState: "LOADING LOBBY",
+				OvenStream:  oven_stream.GetStreamDetails(arena.Name, arena.ID),
+			}
+
+			btl := arena.CurrentBattle()
+			if btl != nil {
+				switch arena.CurrentBattleState() {
+				case EndState:
+					ab.BattleState = "BATTLE ENDED"
+				case SetupState:
+					ab.BattleState = "PROCESSING"
+				case IntroState:
+					ab.BattleState = "BATTLE INTRO"
+				case BattlingState:
+					ab.BattleState = "BATTLING"
+				}
+			}
+
+			resp = append(resp, ab)
 		}
 	}
 	return resp
@@ -1180,10 +1194,10 @@ type BattleWMDestroyedPayload struct {
 	KilledByWarMachineHash  string `json:"killed_by_war_machine_hash"`
 	RelatedEventIDString    string `json:"related_event_id_string"`
 	DamageHistory           []struct {
-		Amount         int    `json:"amount"`
-		InstigatorHash string `json:"instigator_hash"`
-		SourceHash     string `json:"source_hash"`
-		SourceName     string `json:"source_name"`
+		Amount         decimal.Decimal `json:"amount"`
+		InstigatorHash string          `json:"instigator_hash"`
+		SourceHash     string          `json:"source_hash"`
+		SourceName     string          `json:"source_name"`
 	} `json:"damage_history"`
 	KilledBy      string `json:"killed_by"`
 	ParticipantID int    `json:"participant_id"`
@@ -1347,6 +1361,7 @@ func (arena *Arena) GameClientJsonDataParser() {
 			}
 
 			arena.Manager.NewBattleChan <- &NewBattleChan{btl.ID, btl.BattleNumber}
+
 		case "BATTLE:INTRO_FINISHED":
 			if btl.replaySession.ReplaySession != nil {
 				btl.replaySession.ReplaySession.IntroEndedAt = null.TimeFrom(time.Now())
@@ -1356,6 +1371,9 @@ func (arena *Arena) GameClientJsonDataParser() {
 			btl.introEndedAt = time.Now()
 
 			btl.start()
+
+			// broadcast a new arena list to frontend
+			ws.PublishMessage("/public/arena_list", server.HubKeyBattleArenaListSubscribe, arena.Manager.AvailableBattleArenas())
 
 		case "BATTLE:WAR_MACHINE_DESTROYED":
 			var dataPayload BattleWMDestroyedPayload
@@ -1380,6 +1398,9 @@ func (arena *Arena) GameClientJsonDataParser() {
 
 			// reset war machine broadcast
 			btl.arena.WarMachineStatBroadcastResetChan <- true
+
+			// broadcast a new arena list to frontend
+			ws.PublishMessage("/public/arena_list", server.HubKeyBattleArenaListSubscribe, arena.Manager.AvailableBattleArenas())
 
 		case "BATTLE:OUTRO_FINISHED":
 			if btl.replaySession.ReplaySession != nil {
@@ -1654,9 +1675,17 @@ func (arena *Arena) assignBattleLobby() {
 	L = L.With().Strs("battleLobbyIDs", battleLobbyIDs).Logger()
 
 	// get the next valid battle lobby
-	bl, err := db.GetNextBattleLobby(battleLobbyIDs)
+	bl, shouldFillAIMechs, err := db.GetNextBattleLobby(battleLobbyIDs)
 	if err != nil {
 		L.Error().Err(err).Msg("failed to get .")
+	}
+
+	// fill AI mechs, if needed
+	if bl != nil && shouldFillAIMechs {
+		arena.Manager.AIMechFillingProcess(bl.ID)
+
+		// check default public lobby count
+		go arena.Manager.DefaultPublicLobbiesCheck()
 	}
 
 	L = L.With().Interface("bl", bl).Logger()
@@ -1674,6 +1703,9 @@ func (arena *Arena) assignBattleLobby() {
 	// assign battle lobby
 	arena.currentLobbyID.Store(bl.ID)
 	arena.Stage.Store(ArenaStageProcessing)
+
+	// clean up empty system lobby
+	go arena.Manager.EmptySystemLobbyRemover()
 }
 
 type UpcomingBattleResponse struct {
@@ -2201,6 +2233,9 @@ func (arena *Arena) BeginBattle() {
 	// broadcast battle lobby change
 	arena.Manager.BattleLobbyDebounceBroadcastChan <- []string{battleLobby.ID}
 
+	// send nex battle mech alert
+	broadcastBattleMechAlert(battleLobby.ID)
+
 	btl := &Battle{
 		arena:   arena,
 		Battle:  battle,
@@ -2355,6 +2390,8 @@ func (arena *Arena) BeginBattle() {
 
 	arena.Manager.FactionStakedMechDashboardKeyChan <- []string{FactionStakedMechDashboardKeyQueue}
 
+	// broadcast a new arena list to frontend
+	ws.PublishMessage("/public/arena_list", server.HubKeyBattleArenaListSubscribe, arena.Manager.AvailableBattleArenas())
 }
 
 type SystemMessageBattleStart struct {

@@ -1071,8 +1071,8 @@ func SyncWeaponModel(f io.Reader, db *sql.DB) error {
 
 		weaponModel.DotTickDuration, err = strconv.Atoi(record[26])
 		if err != nil {
-			fmt.Println(err.Error()+weaponModel.ID, weaponModel.Label, weaponModel.WeaponType)
-
+			fmt.Println(err.Error(), weaponModel.ID, weaponModel.Label, weaponModel.WeaponType)
+			return err
 		}
 
 		WeaponModels = append(WeaponModels, *weaponModel)

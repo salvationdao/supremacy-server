@@ -561,9 +561,9 @@ func BattleLobbiesFromBoiler(bls []*boiler.BattleLobby) ([]*BattleLobby, error) 
 
 			bl.BattleLobbiesMechs = append(bl.BattleLobbiesMechs, blm)
 
-			// accumulate sups pool
-			bl.SupsPool = bl.SupsPool.Add(bl.EntryFee)
 		}
+		// accumulate sups pool
+		bl.SupsPool = bl.SupsPool.Add(bl.EntryFee.Mul(decimal.NewFromInt(int64(bl.EachFactionMechAmount) * 3)))
 	}
 
 	return resp, nil
@@ -645,4 +645,20 @@ func BattleLobbyInfoFilter(bl *BattleLobby, keepDataForFactionID string, keepAcc
 		battleLobby.SelectedZaiSupporters = bl.SelectedZaiSupporters
 	}
 	return battleLobby
+}
+
+type PlayerBrowserAlertStruct struct {
+	Title string      `json:"title"`
+	Data  interface{} `json:"data"`
+}
+
+type BattleLobbyMechsAlert struct {
+	ArenaID    string       `json:"arena_id"`
+	ArenaName  string       `json:"arena_name"`
+	MechAlerts []*MechAlert `json:"mech_alerts"`
+}
+
+type MechAlert struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
 }

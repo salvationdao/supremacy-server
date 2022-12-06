@@ -968,27 +968,10 @@ func (btl *Battle) RewardBattleMechOwners(winningFactionOrder []string) {
 		totalSups = totalSups.Add(ebr.Amount)
 	}
 
-	// get players per faction
-	playerPerFaction := make(map[string]decimal.Decimal)
-	for _, blm := range blms {
-		if _, ok := playerPerFaction[blm.FactionID]; !ok {
-			playerPerFaction[blm.FactionID] = decimal.Zero
-		}
-
-		// if owner is not AI
-		if blm.R != nil && blm.R.QueuedBy != nil {
-
-			// skip AI player, when it is in production
-			if server.IsProductionEnv() && blm.R.QueuedBy.IsAi {
-				continue
-			}
-
-			playerPerFaction[blm.FactionID] = playerPerFaction[blm.FactionID].Add(decimal.NewFromInt(1))
-		}
-	}
-
 	// reward sups
 	taxRatio := db.GetDecimalWithDefault(db.KeyBattleRewardTaxRatio, decimal.NewFromFloat(0.025))
+
+	afkMechIDs := btl.AFKChecker()
 
 	for i, factionID := range winningFactionOrder {
 		switch i {
@@ -996,18 +979,14 @@ func (btl *Battle) RewardBattleMechOwners(winningFactionOrder []string) {
 			for _, blm := range blms {
 				if blm.FactionID == factionID && blm.R != nil && blm.R.QueuedBy != nil {
 					player := blm.R.QueuedBy
-					// skip AI player, when it is in production
-					if server.IsProductionEnv() && player.IsAi {
-						continue
-					}
 					btl.RewardMechOwner(
 						blm.MechID,
 						player,
 						"FIRST",
-						totalSups.Mul(btl.lobby.FirstFactionCut).Div(playerPerFaction[blm.FactionID]),
+						totalSups.Mul(btl.lobby.FirstFactionCut).Div(decimal.NewFromInt(3)),
 						taxRatio,
 						blm,
-						false,
+						slices.Index(afkMechIDs, blm.MechID) != -1,
 						false,
 					)
 				}
@@ -1017,18 +996,14 @@ func (btl *Battle) RewardBattleMechOwners(winningFactionOrder []string) {
 			for _, blm := range blms {
 				if blm.FactionID == factionID && blm.R != nil && blm.R.QueuedBy != nil {
 					player := blm.R.QueuedBy
-					// skip AI player, when it is in production
-					if server.IsProductionEnv() && player.IsAi {
-						continue
-					}
 					btl.RewardMechOwner(
 						blm.MechID,
 						player,
 						"SECOND",
-						totalSups.Mul(btl.lobby.SecondFactionCut).Div(playerPerFaction[blm.FactionID]),
+						totalSups.Mul(btl.lobby.SecondFactionCut).Div(decimal.NewFromInt(3)),
 						taxRatio,
 						blm,
-						false,
+						slices.Index(afkMechIDs, blm.MechID) != -1,
 						false,
 					)
 				}
@@ -1038,20 +1013,14 @@ func (btl *Battle) RewardBattleMechOwners(winningFactionOrder []string) {
 			for _, blm := range blms {
 				if blm.FactionID == factionID && blm.R != nil && blm.R.QueuedBy != nil {
 					player := blm.R.QueuedBy
-
-					// skip AI player, when it is in production
-					if server.IsProductionEnv() && player.IsAi {
-						continue
-					}
-
 					btl.RewardMechOwner(
 						blm.MechID,
 						player,
 						"THIRD",
-						totalSups.Mul(btl.lobby.ThirdFactionCut).Div(playerPerFaction[blm.FactionID]),
+						totalSups.Mul(btl.lobby.ThirdFactionCut).Div(decimal.NewFromInt(3)),
 						taxRatio,
 						blm,
-						false,
+						slices.Index(afkMechIDs, blm.MechID) != -1,
 						true,
 					)
 				}
@@ -1160,7 +1129,7 @@ func (btl *Battle) RewardMechOwner(
 			}
 			battleLobbiesMech.PayoutTXID = null.StringFrom(payoutTXID)
 			updateCols = append(updateCols, boiler.BattleLobbiesMechColumns.PayoutTXID)
-		} else {
+		} else if !isAFK {
 			// otherwise, pay battle reward to the actual player
 			payoutTXID, err := btl.arena.Manager.RPCClient.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
 				FromUserID:           uuid.Must(uuid.FromString(server.SupremacyBattleUserID)),
@@ -2326,20 +2295,22 @@ func (btl *Battle) Destroyed(dp *BattleWMDestroyedPayload) {
 		totalDamage := 0
 		newDamageHistory := []*DamageHistory{}
 		for _, damage := range dp.DamageHistory {
-			totalDamage += damage.Amount
+			damageAmount := int(damage.Amount.IntPart())
+
+			totalDamage += damageAmount
 			// check instigator token id exist in the list
 			if damage.InstigatorHash != "" {
 				exists := false
 				for _, hist := range newDamageHistory {
 					if hist.InstigatorHash == damage.InstigatorHash {
-						hist.Amount += damage.Amount
+						hist.Amount += damageAmount
 						exists = true
 						break
 					}
 				}
 				if !exists {
 					newDamageHistory = append(newDamageHistory, &DamageHistory{
-						Amount:         damage.Amount,
+						Amount:         damageAmount,
 						InstigatorHash: damage.InstigatorHash,
 						SourceName:     damage.SourceName,
 						SourceHash:     damage.SourceHash,
@@ -2351,14 +2322,14 @@ func (btl *Battle) Destroyed(dp *BattleWMDestroyedPayload) {
 			exists := false
 			for _, hist := range newDamageHistory {
 				if hist.SourceName == damage.SourceName {
-					hist.Amount += damage.Amount
+					hist.Amount += damageAmount
 					exists = true
 					break
 				}
 			}
 			if !exists {
 				newDamageHistory = append(newDamageHistory, &DamageHistory{
-					Amount:         damage.Amount,
+					Amount:         damageAmount,
 					InstigatorHash: damage.InstigatorHash,
 					SourceName:     damage.SourceName,
 					SourceHash:     damage.SourceHash,

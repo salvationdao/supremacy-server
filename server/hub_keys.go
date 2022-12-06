@@ -112,6 +112,8 @@ const HubKeyVoiceStreamGetListeners = "VOICE:STREAM:GET:LISTENERS"
 
 // battle queue
 
+const HubKeyPlayerBrowserAlert = "PLAYER:BROWSER:ALERT"
+
 const HubKeyPlayerOwnedMechs = "PLAYER:OWNED:MECHS"
 const HubKeyPlayerOwnedWeapons = "PLAYER:OWNED:WEAPONS"
 const HubKeyPlayerOwnedMechSkins = "PLAYER:OWNED:MECH:SKINS"
