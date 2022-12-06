@@ -1703,6 +1703,9 @@ func (arena *Arena) assignBattleLobby() {
 	// assign battle lobby
 	arena.currentLobbyID.Store(bl.ID)
 	arena.Stage.Store(ArenaStageProcessing)
+
+	// clean up empty system lobby
+	go arena.Manager.EmptySystemLobbyRemover()
 }
 
 type UpcomingBattleResponse struct {

@@ -571,11 +571,6 @@ func (am *ArenaManager) DefaultPublicLobbiesCheck() error {
 	bls, err := boiler.BattleLobbies(
 		boiler.BattleLobbyWhere.ReadyAt.IsNull(),
 		boiler.BattleLobbyWhere.GeneratedBySystem.EQ(true),
-		qm.Load(
-			boiler.BattleLobbyRels.BattleLobbiesMechs,
-			boiler.BattleLobbiesMechWhere.RefundTXID.IsNull(),
-			boiler.BattleLobbiesMechWhere.DeletedAt.IsNull(),
-		),
 	).All(gamedb.StdConn)
 	if err != nil {
 		gamelog.L.Error().Err(err).Msg("Failed to load active public battle lobbies.")
@@ -641,6 +636,132 @@ func (am *ArenaManager) DefaultPublicLobbiesCheck() error {
 	am.KickFactionLobbyChecker()
 
 	return nil
+}
+
+// EmptySystemLobbyRemover delete any empty lobby and left one available
+func (am *ArenaManager) EmptySystemLobbyRemover() {
+	// load default public lobbies amount
+	publicLobbiesCount := db.GetIntWithDefault(db.KeyDefaultPublicLobbyCount, 1)
+
+	// lock queue func
+	am.BattleQueueFuncMx.Lock()
+	defer am.BattleQueueFuncMx.Unlock()
+
+	now := time.Now()
+
+	bls, err := boiler.BattleLobbies(
+		boiler.BattleLobbyWhere.GeneratedBySystem.EQ(true),
+		boiler.BattleLobbyWhere.ReadyAt.IsNull(),
+		qm.Where(fmt.Sprintf(
+			"NOT EXISTS (SELECT 1 FROM %s WHERE %s = %s AND %s ISNULL AND %s ISNULL)",
+			boiler.TableNames.BattleLobbiesMechs,
+			boiler.BattleLobbiesMechTableColumns.BattleLobbyID,
+			boiler.BattleLobbyTableColumns.ID,
+			boiler.BattleLobbiesMechTableColumns.RefundTXID,
+			boiler.BattleLobbiesMechTableColumns.DeletedAt,
+		)),
+		qm.OrderBy(boiler.BattleLobbyTableColumns.CreatedAt),
+
+		qm.Load(boiler.BattleLobbyRels.BattleLobbyExtraSupsRewards),
+	).All(gamedb.StdConn)
+	if err != nil {
+		gamelog.L.Error().Err(err).Msg("Failed to load empty battle lobbies.")
+		return
+	}
+
+	if len(bls) <= publicLobbiesCount {
+		return
+	}
+
+	// preserve lobbies
+	bls = slices.Delete(bls, 0, publicLobbiesCount)
+
+	tx, err := gamedb.StdConn.Begin()
+	if err != nil {
+		gamelog.L.Error().Err(err).Msg("Failed to begin db transaction.")
+		return
+	}
+
+	defer tx.Rollback()
+
+	// soft delete the rest of the system lobbies
+	_, err = bls.UpdateAll(tx, boiler.M{
+		boiler.BattleLobbyColumns.EndedAt:   null.TimeFrom(now),
+		boiler.BattleLobbyColumns.DeletedAt: null.TimeFrom(now),
+	})
+	if err != nil {
+		gamelog.L.Error().Err(err).Msg("Failed to soft delete redundant system lobbies.")
+		return
+	}
+
+	// generate deleted lobbies
+	var deletedLobbies []*server.BattleLobby
+
+	var refundFns []func()
+	refund := func() {
+		for _, fn := range refundFns {
+			fn()
+		}
+	}
+
+	// refund extra reward and
+	for _, bl := range bls {
+		if bl.R != nil {
+			for _, er := range bl.R.BattleLobbyExtraSupsRewards {
+				// refund the payment
+				refundTXID, err := am.RPCClient.RefundSupsMessage(er.PaidTXID)
+				if err != nil {
+					refund()
+					gamelog.L.Error().Err(err).Msg("Failed to refund lobby extra sups")
+					return
+				}
+
+				// append refund function
+				refundFns = append(refundFns, func() {
+					txID, err := am.RPCClient.RefundSupsMessage(refundTXID)
+					if err != nil {
+						gamelog.L.Error().Err(err).Str("tx id", txID).Msg("Failed to refund the refund")
+						return
+					}
+				})
+
+				// update refund
+				er.RefundedTXID = null.StringFrom(refundTXID)
+				_, err = er.Update(tx, boil.Whitelist(boiler.BattleLobbyExtraSupsRewardColumns.RefundedTXID))
+				if err != nil {
+					refund()
+					gamelog.L.Error().Err(err).Interface("extra reward", er).Msg("Failed to update refund tx id of lobby extra reward.")
+					return
+				}
+
+			}
+		}
+
+		deletedLobbies = append(deletedLobbies, &server.BattleLobby{
+			BattleLobby: &boiler.BattleLobby{
+				ID:        bl.ID,
+				DeletedAt: null.TimeFrom(time.Now()),
+			},
+		})
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		refund()
+		gamelog.L.Error().Err(err).Msg("Failed to commit db transaction.")
+		return
+	}
+
+	// broadcast deleted lobbies
+	go ws.PublishMessage(fmt.Sprintf("/faction/%s/battle_lobbies", server.RedMountainFactionID), server.HubKeyBattleLobbyListUpdate, deletedLobbies)
+	go ws.PublishMessage(fmt.Sprintf("/faction/%s/battle_lobbies", server.BostonCyberneticsFactionID), server.HubKeyBattleLobbyListUpdate, deletedLobbies)
+	go ws.PublishMessage(fmt.Sprintf("/faction/%s/battle_lobbies", server.ZaibatsuFactionID), server.HubKeyBattleLobbyListUpdate, deletedLobbies)
+
+	// free up lobbies
+	bls = nil
+	refundFns = nil
+	refund = nil
+	deletedLobbies = nil
 }
 
 func BroadcastPlayerQueueStatus(playerID string) {
