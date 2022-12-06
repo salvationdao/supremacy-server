@@ -20,9 +20,9 @@ type Weapon struct {
 	Damage                int                 `json:"damage"`
 	BlueprintID           string              `json:"blueprint_id"`
 	EquippedOn            null.String         `json:"equipped_on,omitempty"`
-	DefaultDamageType     string              `json:"default_damage_type"`
 	GenesisTokenID        null.Int64          `json:"genesis_token_id,omitempty"`
 	LimitedReleaseTokenID null.Int64          `json:"limited_release_token_id,omitempty"`
+	DefaultDamageType     string              `json:"default_damage_type"`
 	WeaponType            string              `json:"weapon_type"`
 	DamageFalloff         null.Int            `json:"damage_falloff,omitempty"`
 	BoostedDamageFalloff  null.Int            `json:"boosted_damage_falloff,omitempty"`
@@ -34,19 +34,25 @@ type Weapon struct {
 	RadiusDamageFalloff   null.Int            `json:"radius_damage_falloff,omitempty"`
 	ProjectileSpeed       decimal.NullDecimal `json:"projectile_speed,omitempty"`
 	PowerCost             decimal.NullDecimal `json:"power_cost,omitempty"`
-	MaxAmmo               null.Int            `json:"max_ammo,omitempty"`
-	EquippedWeaponSkinID  string              `json:"equipped_weapon_skin_id,omitempty"`
-	ItemSaleID            null.String         `json:"item_sale_id,omitempty"`
+	PowerInstantDrain     null.Bool           `json:"power_instant_drain,omitempty"`
 	IsMelee               bool                `json:"is_melee"`
+	MaxAmmo               null.Int            `json:"max_ammo,omitempty"`
 	ProjectileAmount      null.Int            `json:"projectile_amount,omitempty"`
 	DotTickDamage         decimal.NullDecimal `json:"dot_tick_damage,omitempty"`
 	DotMaxTicks           null.Int            `json:"dot_max_ticks,omitempty"`
 	IsArced               null.Bool           `json:"is_arced,omitempty"`
 	ChargeTimeSeconds     decimal.NullDecimal `json:"charge_time_seconds,omitempty"`
 	BurstRateOfFire       decimal.NullDecimal `json:"burst_rate_of_fire,omitempty"`
-	LockedToMech          bool                `json:"locked_to_mech"`
-	SlotNumber            null.Int            `json:"slot_number,omitempty"`
-	InheritSkin           bool                `json:"inherit_skin"`
+	DotTickDuration       int                 `json:"dot_tick_duration"`
+	ProjectileLifeSpan    int                 `json:"projectile_life_span"`
+	RecoilForce           decimal.Decimal     `json:"recoil_force"`
+	IdlePowerCost         int                 `json:"idle_power_cost"`
+
+	EquippedWeaponSkinID string      `json:"equipped_weapon_skin_id,omitempty"`
+	ItemSaleID           null.String `json:"item_sale_id,omitempty"`
+	LockedToMech         bool        `json:"locked_to_mech"`
+	SlotNumber           null.Int    `json:"slot_number,omitempty"`
+	InheritSkin          bool        `json:"inherit_skin"`
 
 	WeaponSkin *WeaponSkin `json:"weapon_skin,omitempty"`
 	// TODO: AMMO //BlueprintAmmo []*
@@ -190,7 +196,19 @@ func WeaponFromBoiler(weapon *boiler.Weapon, collection *boiler.CollectionItem, 
 		RadiusDamageFalloff: weapon.R.Blueprint.RadiusDamageFalloff,
 		ProjectileSpeed:     weapon.R.Blueprint.ProjectileSpeed,
 		PowerCost:           weapon.R.Blueprint.PowerCost,
+		PowerInstantDrain:   weapon.R.Blueprint.PowerInstantDrain,
+		IsMelee:             weapon.R.Blueprint.IsMelee,
 		MaxAmmo:             weapon.R.Blueprint.MaxAmmo,
+		ProjectileAmount:    weapon.R.Blueprint.ProjectileAmount,
+		DotTickDamage:       weapon.R.Blueprint.DotTickDamage,
+		DotMaxTicks:         weapon.R.Blueprint.DotMaxTicks,
+		IsArced:             weapon.R.Blueprint.IsArced,
+		ChargeTimeSeconds:   weapon.R.Blueprint.ChargeTimeSeconds,
+		BurstRateOfFire:     weapon.R.Blueprint.BurstRateOfFire,
+		DotTickDuration:     weapon.R.Blueprint.DotTickDuration,
+		ProjectileLifeSpan:  weapon.R.Blueprint.ProjectileLifeSpan,
+		RecoilForce:         weapon.R.Blueprint.RecoilForce,
+		IdlePowerCost:       weapon.R.Blueprint.IdlePowerCost,
 
 		UpdatedAt:            weapon.UpdatedAt,
 		CreatedAt:            weapon.CreatedAt,
