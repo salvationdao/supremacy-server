@@ -771,7 +771,7 @@ func (api *API) BattleLobbyJoin(ctx context.Context, user *boiler.Player, factio
 
 		// kick
 		if lobbyReady {
-			api.ArenaManager.KickIdleArenas()
+			go api.ArenaManager.KickIdleArenas()
 
 			for _, lm := range battleLobbyMechs {
 				ws.PublishMessage(fmt.Sprintf("/faction/%s/queue/%s", factionID, lm.MechID), server.HubKeyPlayerAssetMechQueueSubscribe, &server.MechArenaInfo{
