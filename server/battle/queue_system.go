@@ -695,7 +695,7 @@ func (am *ArenaManager) EmptySystemLobbyRemover() {
 	}
 
 	// generate deleted lobbies
-	var deletedLobbies []*server.BattleLobby
+	var deletedLobbyIDs []string
 
 	var refundFns []func()
 	refund := func() {
@@ -737,12 +737,7 @@ func (am *ArenaManager) EmptySystemLobbyRemover() {
 			}
 		}
 
-		deletedLobbies = append(deletedLobbies, &server.BattleLobby{
-			BattleLobby: &boiler.BattleLobby{
-				ID:        bl.ID,
-				DeletedAt: null.TimeFrom(time.Now()),
-			},
-		})
+		deletedLobbyIDs = append(deletedLobbyIDs, bl.ID)
 	}
 
 	err = tx.Commit()
@@ -753,15 +748,13 @@ func (am *ArenaManager) EmptySystemLobbyRemover() {
 	}
 
 	// broadcast deleted lobbies
-	go ws.PublishMessage(fmt.Sprintf("/faction/%s/battle_lobbies", server.RedMountainFactionID), server.HubKeyBattleLobbyListUpdate, deletedLobbies)
-	go ws.PublishMessage(fmt.Sprintf("/faction/%s/battle_lobbies", server.BostonCyberneticsFactionID), server.HubKeyBattleLobbyListUpdate, deletedLobbies)
-	go ws.PublishMessage(fmt.Sprintf("/faction/%s/battle_lobbies", server.ZaibatsuFactionID), server.HubKeyBattleLobbyListUpdate, deletedLobbies)
+	am.BattleLobbyDebounceBroadcastChan <- deletedLobbyIDs
 
 	// free up lobbies
 	bls = nil
 	refundFns = nil
 	refund = nil
-	deletedLobbies = nil
+	deletedLobbyIDs = nil
 }
 
 func BroadcastPlayerQueueStatus(playerID string) {
