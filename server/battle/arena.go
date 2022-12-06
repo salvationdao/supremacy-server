@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"github.com/shopspring/decimal"
 	"math"
 	"math/rand"
 	"net"
@@ -75,8 +76,6 @@ type ArenaManager struct {
 
 	RepairGameBlockMx deadlock.RWMutex
 
-	SystemLobbyFillingProcess *SystemLobbyFillingProcess
-
 	MechDebounceBroadcastChan         chan []string
 	FactionStakedMechDashboardKeyChan chan []string
 }
@@ -110,9 +109,6 @@ func NewArenaManager(opts *Opts) (*ArenaManager, error) {
 		BattleLobbyDebounceBroadcastChan: make(chan []string, 10),
 		LobbyFuncMx:                      &deadlock.Mutex{},
 		RepairGameBlockMx:                deadlock.RWMutex{},
-		SystemLobbyFillingProcess: &SystemLobbyFillingProcess{
-			Map: make(map[string]*AIMechFillingProcess),
-		},
 
 		MechDebounceBroadcastChan:         make(chan []string, 30),
 		FactionStakedMechDashboardKeyChan: make(chan []string, 30),
@@ -1198,10 +1194,10 @@ type BattleWMDestroyedPayload struct {
 	KilledByWarMachineHash  string `json:"killed_by_war_machine_hash"`
 	RelatedEventIDString    string `json:"related_event_id_string"`
 	DamageHistory           []struct {
-		Amount         int    `json:"amount"`
-		InstigatorHash string `json:"instigator_hash"`
-		SourceHash     string `json:"source_hash"`
-		SourceName     string `json:"source_name"`
+		Amount         decimal.Decimal `json:"amount"`
+		InstigatorHash string          `json:"instigator_hash"`
+		SourceHash     string          `json:"source_hash"`
+		SourceName     string          `json:"source_name"`
 	} `json:"damage_history"`
 	KilledBy      string `json:"killed_by"`
 	ParticipantID int    `json:"participant_id"`
@@ -1679,9 +1675,17 @@ func (arena *Arena) assignBattleLobby() {
 	L = L.With().Strs("battleLobbyIDs", battleLobbyIDs).Logger()
 
 	// get the next valid battle lobby
-	bl, err := db.GetNextBattleLobby(battleLobbyIDs)
+	bl, shouldFillAIMechs, err := db.GetNextBattleLobby(battleLobbyIDs)
 	if err != nil {
 		L.Error().Err(err).Msg("failed to get .")
+	}
+
+	// fill AI mechs, if needed
+	if bl != nil && shouldFillAIMechs {
+		arena.Manager.AIMechFillingProcess(bl.ID)
+
+		// check default public lobby count
+		go arena.Manager.DefaultPublicLobbiesCheck()
 	}
 
 	L = L.With().Interface("bl", bl).Logger()
@@ -1699,6 +1703,9 @@ func (arena *Arena) assignBattleLobby() {
 	// assign battle lobby
 	arena.currentLobbyID.Store(bl.ID)
 	arena.Stage.Store(ArenaStageProcessing)
+
+	// clean up empty system lobby
+	go arena.Manager.EmptySystemLobbyRemover()
 }
 
 type UpcomingBattleResponse struct {

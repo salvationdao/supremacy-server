@@ -756,15 +756,7 @@ func (api *API) BattleLobbyJoin(ctx context.Context, user *boiler.Player, factio
 		}
 
 		if bl.GeneratedBySystem {
-			if !lobbyReady {
-				// trigger auto-filling process if lobby is not ready
-				api.ArenaManager.AddAIMechFillingProcess(bl.ID)
-
-			} else {
-				// terminate the auto-filling process if the lobby is ready
-				api.ArenaManager.TerminateAIMechFillingProcess(bl.ID)
-
-			}
+			go api.ArenaManager.FactionBattleLobbyMechsChecker(factionID)
 		}
 
 		if len(deployedMechIDs) > 0 {
@@ -1055,11 +1047,6 @@ func (api *API) BattleLobbyLeave(ctx context.Context, user *boiler.Player, facti
 		for _, bl := range bls {
 			lobbyIDs = append(lobbyIDs, bl.ID)
 
-			// clean up the filling process of system battle lobby
-			if bl.GeneratedBySystem && (bl.R == nil || bl.R.BattleLobbiesMechs == nil || len(bl.R.BattleLobbiesMechs) == 0) {
-				api.ArenaManager.TerminateAIMechFillingProcess(bl.ID)
-			}
-
 			// skip, if the player is the host of the lobby
 			if bl.HostByID == user.ID {
 				continue
@@ -1184,10 +1171,6 @@ func (api *API) BattleLobbyListUpdate(ctx context.Context, user *boiler.Player, 
 	resp, err := server.BattleLobbiesFromBoiler(bls)
 	if err != nil {
 		return err
-	}
-
-	for _, bl := range resp {
-		bl.FillAt = api.ArenaManager.GetAIMechFillingProcessTime(bl.ID)
 	}
 
 	reply(server.BattleLobbiesFactionFilter(resp, factionID, false))

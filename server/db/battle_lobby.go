@@ -119,10 +119,10 @@ func GetBattleLobbyViaAccessCode(accessCode string) (*boiler.BattleLobby, error)
 }
 
 // GetNextBattleLobby finds the next upcoming battle
-func GetNextBattleLobby(battleLobbyIDs []string) (*boiler.BattleLobby, error) {
+func GetNextBattleLobby(battleLobbyIDs []string) (*boiler.BattleLobby, bool, error) {
 	excludingPlayerIDs, err := playersInLobbies(battleLobbyIDs)
 	if err != nil {
-		return nil, err
+		return nil, false, err
 	}
 	// build excluding player query
 	excludingPlayerQuery := ""
@@ -168,10 +168,87 @@ func GetNextBattleLobby(battleLobbyIDs []string) (*boiler.BattleLobby, error) {
 		qm.Load(qm.Rels(boiler.BattleLobbyRels.BattleLobbySupporterOptIns, boiler.BattleLobbySupporterOptInRels.Supporter, boiler.PlayerRels.ProfileAvatar)),
 	).One(gamedb.StdConn)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
-		return nil, err
+		return nil, false, err
 	}
 
-	return bl, nil
+	shouldFillAIMechs := false
+	// get the lobby which has the most queued mechs
+	if bl == nil {
+		excludingPlayerQuery = ""
+		if len(excludingPlayerIDs) > 0 {
+			excludingPlayerQuery += fmt.Sprintf(
+				"AND NOT EXISTS (SELECT 1 FROM %s WHERE %s = %s AND %s IN ( ",
+				boiler.TableNames.BattleLobbiesMechs,
+				boiler.BattleLobbiesMechTableColumns.BattleLobbyID,
+				boiler.BattleLobbyTableColumns.ID,
+				boiler.BattleLobbiesMechTableColumns.QueuedByID,
+			)
+			for i, id := range excludingPlayerIDs {
+				excludingPlayerQuery += "'" + id + "'"
+
+				if i < len(excludingPlayerIDs)-1 {
+					excludingPlayerQuery += ","
+					continue
+				}
+
+				excludingPlayerQuery += ")"
+			}
+			excludingPlayerQuery += ")"
+		}
+
+		queries := []qm.QueryMod{
+			qm.Select(boiler.BattleLobbyTableColumns.ID),
+			qm.From(fmt.Sprintf(
+				`(
+					SELECT * FROM %s 
+					WHERE 
+						%s = TRUE AND 
+						%s ISNULL AND 
+						%s ISNULL 
+						%s
+				) %s`,
+				boiler.TableNames.BattleLobbies,
+				boiler.BattleLobbyTableColumns.GeneratedBySystem,
+				boiler.BattleLobbyTableColumns.ReadyAt,
+				boiler.BattleLobbyTableColumns.DeletedAt,
+				excludingPlayerQuery,
+				boiler.TableNames.BattleLobbies,
+			)),
+			qm.InnerJoin(fmt.Sprintf(
+				"%s ON %s = %s AND %s ISNULL AND %s ISNULL",
+				boiler.TableNames.BattleLobbiesMechs,
+				boiler.BattleLobbiesMechTableColumns.BattleLobbyID,
+				boiler.BattleLobbyTableColumns.ID,
+				boiler.BattleLobbiesMechTableColumns.RefundTXID,
+				boiler.BattleLobbiesMechTableColumns.DeletedAt,
+			)),
+
+			qm.GroupBy(boiler.BattleLobbyTableColumns.ID + "," + boiler.BattleLobbyTableColumns.CreatedAt),
+			qm.OrderBy(fmt.Sprintf("COUNT(%s) DESC, %s", boiler.BattleLobbiesMechTableColumns.ID, boiler.BattleLobbyTableColumns.CreatedAt)),
+			qm.Limit(1),
+		}
+		battleLobbyID := ""
+		err = boiler.NewQuery(queries...).QueryRow(gamedb.StdConn).Scan(&battleLobbyID)
+		if err != nil && !errors.Is(err, sql.ErrNoRows) {
+			gamelog.L.Error().Err(err).Msg("Failed to load battle lobby.")
+			return nil, false, terror.Error(err, "Failed to load battle lobby")
+		}
+
+		if battleLobbyID != "" {
+			bl, err = boiler.BattleLobbies(
+				boiler.BattleLobbyWhere.ID.EQ(battleLobbyID),
+				qm.Load(qm.Rels(boiler.BattleLobbyRels.BattleLobbySupporters, boiler.BattleLobbySupporterRels.Supporter, boiler.PlayerRels.ProfileAvatar)),
+				qm.Load(qm.Rels(boiler.BattleLobbyRels.BattleLobbySupporterOptIns, boiler.BattleLobbySupporterOptInRels.Supporter, boiler.PlayerRels.ProfileAvatar)),
+			).One(gamedb.StdConn)
+			if err != nil {
+				return nil, false, terror.Error(err, "Failed to load battle lobby.")
+			}
+
+			shouldFillAIMechs = true
+		}
+	}
+
+	return bl, shouldFillAIMechs, nil
 }
 
 // PlayersInLobbies takes a list of battle lobby ids, and return a list of users in them battle lobbies (excluding AI player)

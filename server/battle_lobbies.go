@@ -561,9 +561,9 @@ func BattleLobbiesFromBoiler(bls []*boiler.BattleLobby) ([]*BattleLobby, error) 
 
 			bl.BattleLobbiesMechs = append(bl.BattleLobbiesMechs, blm)
 
-			// accumulate sups pool
-			bl.SupsPool = bl.SupsPool.Add(bl.EntryFee)
 		}
+		// accumulate sups pool
+		bl.SupsPool = bl.SupsPool.Add(bl.EntryFee.Mul(decimal.NewFromInt(int64(bl.EachFactionMechAmount) * 3)))
 	}
 
 	return resp, nil
