@@ -22,114 +22,128 @@ import (
 
 // FactionPalette is an object representing the database table.
 type FactionPalette struct {
-	FactionID  string `boiler:"faction_id" boil:"faction_id" json:"faction_id" toml:"faction_id" yaml:"faction_id"`
-	Primary    string `boiler:"primary" boil:"primary" json:"primary" toml:"primary" yaml:"primary"`
-	Text       string `boiler:"text" boil:"text" json:"text" toml:"text" yaml:"text"`
-	Background string `boiler:"background" boil:"background" json:"background" toml:"background" yaml:"background"`
-	S100       string `boiler:"s100" boil:"s100" json:"s100" toml:"s100" yaml:"s100"`
-	S200       string `boiler:"s200" boil:"s200" json:"s200" toml:"s200" yaml:"s200"`
-	S300       string `boiler:"s300" boil:"s300" json:"s300" toml:"s300" yaml:"s300"`
-	S400       string `boiler:"s400" boil:"s400" json:"s400" toml:"s400" yaml:"s400"`
-	S500       string `boiler:"s500" boil:"s500" json:"s500" toml:"s500" yaml:"s500"`
-	S600       string `boiler:"s600" boil:"s600" json:"s600" toml:"s600" yaml:"s600"`
-	S700       string `boiler:"s700" boil:"s700" json:"s700" toml:"s700" yaml:"s700"`
-	S800       string `boiler:"s800" boil:"s800" json:"s800" toml:"s800" yaml:"s800"`
-	S900       string `boiler:"s900" boil:"s900" json:"s900" toml:"s900" yaml:"s900"`
+	FactionID          string `boiler:"faction_id" boil:"faction_id" json:"faction_id" toml:"faction_id" yaml:"faction_id"`
+	Primary            string `boiler:"primary" boil:"primary" json:"primary" toml:"primary" yaml:"primary"`
+	Text               string `boiler:"text" boil:"text" json:"text" toml:"text" yaml:"text"`
+	Background         string `boiler:"background" boil:"background" json:"background" toml:"background" yaml:"background"`
+	S100               string `boiler:"s100" boil:"s100" json:"s100" toml:"s100" yaml:"s100"`
+	S200               string `boiler:"s200" boil:"s200" json:"s200" toml:"s200" yaml:"s200"`
+	S300               string `boiler:"s300" boil:"s300" json:"s300" toml:"s300" yaml:"s300"`
+	S400               string `boiler:"s400" boil:"s400" json:"s400" toml:"s400" yaml:"s400"`
+	S500               string `boiler:"s500" boil:"s500" json:"s500" toml:"s500" yaml:"s500"`
+	S600               string `boiler:"s600" boil:"s600" json:"s600" toml:"s600" yaml:"s600"`
+	S700               string `boiler:"s700" boil:"s700" json:"s700" toml:"s700" yaml:"s700"`
+	S800               string `boiler:"s800" boil:"s800" json:"s800" toml:"s800" yaml:"s800"`
+	S900               string `boiler:"s900" boil:"s900" json:"s900" toml:"s900" yaml:"s900"`
+	ContrastPrimary    string `boiler:"contrast_primary" boil:"contrast_primary" json:"contrast_primary" toml:"contrast_primary" yaml:"contrast_primary"`
+	ContrastBackground string `boiler:"contrast_background" boil:"contrast_background" json:"contrast_background" toml:"contrast_background" yaml:"contrast_background"`
 
 	R *factionPaletteR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L factionPaletteL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 }
 
 var FactionPaletteColumns = struct {
-	FactionID  string
-	Primary    string
-	Text       string
-	Background string
-	S100       string
-	S200       string
-	S300       string
-	S400       string
-	S500       string
-	S600       string
-	S700       string
-	S800       string
-	S900       string
+	FactionID          string
+	Primary            string
+	Text               string
+	Background         string
+	S100               string
+	S200               string
+	S300               string
+	S400               string
+	S500               string
+	S600               string
+	S700               string
+	S800               string
+	S900               string
+	ContrastPrimary    string
+	ContrastBackground string
 }{
-	FactionID:  "faction_id",
-	Primary:    "primary",
-	Text:       "text",
-	Background: "background",
-	S100:       "s100",
-	S200:       "s200",
-	S300:       "s300",
-	S400:       "s400",
-	S500:       "s500",
-	S600:       "s600",
-	S700:       "s700",
-	S800:       "s800",
-	S900:       "s900",
+	FactionID:          "faction_id",
+	Primary:            "primary",
+	Text:               "text",
+	Background:         "background",
+	S100:               "s100",
+	S200:               "s200",
+	S300:               "s300",
+	S400:               "s400",
+	S500:               "s500",
+	S600:               "s600",
+	S700:               "s700",
+	S800:               "s800",
+	S900:               "s900",
+	ContrastPrimary:    "contrast_primary",
+	ContrastBackground: "contrast_background",
 }
 
 var FactionPaletteTableColumns = struct {
-	FactionID  string
-	Primary    string
-	Text       string
-	Background string
-	S100       string
-	S200       string
-	S300       string
-	S400       string
-	S500       string
-	S600       string
-	S700       string
-	S800       string
-	S900       string
+	FactionID          string
+	Primary            string
+	Text               string
+	Background         string
+	S100               string
+	S200               string
+	S300               string
+	S400               string
+	S500               string
+	S600               string
+	S700               string
+	S800               string
+	S900               string
+	ContrastPrimary    string
+	ContrastBackground string
 }{
-	FactionID:  "faction_palettes.faction_id",
-	Primary:    "faction_palettes.primary",
-	Text:       "faction_palettes.text",
-	Background: "faction_palettes.background",
-	S100:       "faction_palettes.s100",
-	S200:       "faction_palettes.s200",
-	S300:       "faction_palettes.s300",
-	S400:       "faction_palettes.s400",
-	S500:       "faction_palettes.s500",
-	S600:       "faction_palettes.s600",
-	S700:       "faction_palettes.s700",
-	S800:       "faction_palettes.s800",
-	S900:       "faction_palettes.s900",
+	FactionID:          "faction_palettes.faction_id",
+	Primary:            "faction_palettes.primary",
+	Text:               "faction_palettes.text",
+	Background:         "faction_palettes.background",
+	S100:               "faction_palettes.s100",
+	S200:               "faction_palettes.s200",
+	S300:               "faction_palettes.s300",
+	S400:               "faction_palettes.s400",
+	S500:               "faction_palettes.s500",
+	S600:               "faction_palettes.s600",
+	S700:               "faction_palettes.s700",
+	S800:               "faction_palettes.s800",
+	S900:               "faction_palettes.s900",
+	ContrastPrimary:    "faction_palettes.contrast_primary",
+	ContrastBackground: "faction_palettes.contrast_background",
 }
 
 // Generated where
 
 var FactionPaletteWhere = struct {
-	FactionID  whereHelperstring
-	Primary    whereHelperstring
-	Text       whereHelperstring
-	Background whereHelperstring
-	S100       whereHelperstring
-	S200       whereHelperstring
-	S300       whereHelperstring
-	S400       whereHelperstring
-	S500       whereHelperstring
-	S600       whereHelperstring
-	S700       whereHelperstring
-	S800       whereHelperstring
-	S900       whereHelperstring
+	FactionID          whereHelperstring
+	Primary            whereHelperstring
+	Text               whereHelperstring
+	Background         whereHelperstring
+	S100               whereHelperstring
+	S200               whereHelperstring
+	S300               whereHelperstring
+	S400               whereHelperstring
+	S500               whereHelperstring
+	S600               whereHelperstring
+	S700               whereHelperstring
+	S800               whereHelperstring
+	S900               whereHelperstring
+	ContrastPrimary    whereHelperstring
+	ContrastBackground whereHelperstring
 }{
-	FactionID:  whereHelperstring{field: "\"faction_palettes\".\"faction_id\""},
-	Primary:    whereHelperstring{field: "\"faction_palettes\".\"primary\""},
-	Text:       whereHelperstring{field: "\"faction_palettes\".\"text\""},
-	Background: whereHelperstring{field: "\"faction_palettes\".\"background\""},
-	S100:       whereHelperstring{field: "\"faction_palettes\".\"s100\""},
-	S200:       whereHelperstring{field: "\"faction_palettes\".\"s200\""},
-	S300:       whereHelperstring{field: "\"faction_palettes\".\"s300\""},
-	S400:       whereHelperstring{field: "\"faction_palettes\".\"s400\""},
-	S500:       whereHelperstring{field: "\"faction_palettes\".\"s500\""},
-	S600:       whereHelperstring{field: "\"faction_palettes\".\"s600\""},
-	S700:       whereHelperstring{field: "\"faction_palettes\".\"s700\""},
-	S800:       whereHelperstring{field: "\"faction_palettes\".\"s800\""},
-	S900:       whereHelperstring{field: "\"faction_palettes\".\"s900\""},
+	FactionID:          whereHelperstring{field: "\"faction_palettes\".\"faction_id\""},
+	Primary:            whereHelperstring{field: "\"faction_palettes\".\"primary\""},
+	Text:               whereHelperstring{field: "\"faction_palettes\".\"text\""},
+	Background:         whereHelperstring{field: "\"faction_palettes\".\"background\""},
+	S100:               whereHelperstring{field: "\"faction_palettes\".\"s100\""},
+	S200:               whereHelperstring{field: "\"faction_palettes\".\"s200\""},
+	S300:               whereHelperstring{field: "\"faction_palettes\".\"s300\""},
+	S400:               whereHelperstring{field: "\"faction_palettes\".\"s400\""},
+	S500:               whereHelperstring{field: "\"faction_palettes\".\"s500\""},
+	S600:               whereHelperstring{field: "\"faction_palettes\".\"s600\""},
+	S700:               whereHelperstring{field: "\"faction_palettes\".\"s700\""},
+	S800:               whereHelperstring{field: "\"faction_palettes\".\"s800\""},
+	S900:               whereHelperstring{field: "\"faction_palettes\".\"s900\""},
+	ContrastPrimary:    whereHelperstring{field: "\"faction_palettes\".\"contrast_primary\""},
+	ContrastBackground: whereHelperstring{field: "\"faction_palettes\".\"contrast_background\""},
 }
 
 // FactionPaletteRels is where relationship names are stored.
@@ -153,9 +167,9 @@ func (*factionPaletteR) NewStruct() *factionPaletteR {
 type factionPaletteL struct{}
 
 var (
-	factionPaletteAllColumns            = []string{"faction_id", "primary", "text", "background", "s100", "s200", "s300", "s400", "s500", "s600", "s700", "s800", "s900"}
+	factionPaletteAllColumns            = []string{"faction_id", "primary", "text", "background", "s100", "s200", "s300", "s400", "s500", "s600", "s700", "s800", "s900", "contrast_primary", "contrast_background"}
 	factionPaletteColumnsWithoutDefault = []string{"faction_id", "primary", "text", "background", "s100", "s200", "s300", "s400", "s500", "s600", "s700", "s800", "s900"}
-	factionPaletteColumnsWithDefault    = []string{}
+	factionPaletteColumnsWithDefault    = []string{"contrast_primary", "contrast_background"}
 	factionPalettePrimaryKeyColumns     = []string{"faction_id"}
 	factionPaletteGeneratedColumns      = []string{}
 )

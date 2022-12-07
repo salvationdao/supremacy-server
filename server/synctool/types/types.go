@@ -53,19 +53,21 @@ type Faction struct {
 }
 
 type FactionPalette struct {
-	FactionID  string `json:"faction_id"`
-	Primary    string `json:"primary"`
-	Text       string `json:"text"`
-	Background string `json:"background"`
-	S100       string `json:"s100"`
-	S200       string `json:"s200"`
-	S300       string `json:"s300"`
-	S400       string `json:"s400"`
-	S500       string `json:"s500"`
-	S600       string `json:"s600"`
-	S700       string `json:"s700"`
-	S800       string `json:"s800"`
-	S900       string `json:"s900"`
+	FactionID          string `json:"faction_id"`
+	Primary            string `json:"primary"`
+	Text               string `json:"text"`
+	Background         string `json:"background"`
+	S100               string `json:"s100"`
+	S200               string `json:"s200"`
+	S300               string `json:"s300"`
+	S400               string `json:"s400"`
+	S500               string `json:"s500"`
+	S600               string `json:"s600"`
+	S700               string `json:"s700"`
+	S800               string `json:"s800"`
+	S900               string `json:"s900"`
+	ContrastPrimary    string `json:"contrast_primary"`
+	ContrastBackground string `json:"contrast_background"`
 }
 
 type FactionPass struct {

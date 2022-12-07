@@ -6,7 +6,6 @@ import (
 	"database/sql"
 	"encoding/csv"
 	"fmt"
-	"github.com/shopspring/decimal"
 	"io"
 	"log"
 	"net/http"
@@ -16,6 +15,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/shopspring/decimal"
 
 	"github.com/volatiletech/null/v8"
 
@@ -765,19 +766,21 @@ func SyncFactionPalettes(f io.Reader, db *sql.DB) error {
 	var factionPalettes []types.FactionPalette
 	for _, record := range records {
 		fp := &types.FactionPalette{
-			FactionID:  record[0],
-			Primary:    record[1],
-			Text:       record[2],
-			Background: record[3],
-			S100:       record[4],
-			S200:       record[5],
-			S300:       record[6],
-			S400:       record[7],
-			S500:       record[8],
-			S600:       record[9],
-			S700:       record[10],
-			S800:       record[11],
-			S900:       record[12],
+			FactionID:          record[0],
+			Primary:            record[1],
+			Text:               record[2],
+			Background:         record[3],
+			S100:               record[4],
+			S200:               record[5],
+			S300:               record[6],
+			S400:               record[7],
+			S500:               record[8],
+			S600:               record[9],
+			S700:               record[10],
+			S800:               record[11],
+			S900:               record[12],
+			ContrastPrimary:    record[13],
+			ContrastBackground: record[14],
 		}
 
 		factionPalettes = append(factionPalettes, *fp)
@@ -785,8 +788,8 @@ func SyncFactionPalettes(f io.Reader, db *sql.DB) error {
 
 	for _, fp := range factionPalettes {
 		_, err = db.Exec(`
-		INSERT INTO faction_palettes (faction_id, "primary", "text", background, s100, s200, s300, s400, s500, s600, s700, s800, s900)
-			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+		INSERT INTO faction_palettes (faction_id, "primary", "text", background, s100, s200, s300, s400, s500, s600, s700, s800, s900, contrast_primary, contrast_background)
+			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
 		ON CONFLICT (faction_id)
 			DO UPDATE SET
 				faction_id = $1,
@@ -801,21 +804,25 @@ func SyncFactionPalettes(f io.Reader, db *sql.DB) error {
 				s600 = $10,
 				s700 = $11,
 				s800 = $12,
-				s900 = $13;	
+				s900 = $13,
+				contrast_primary = $14,
+				contrast_background = $15;	
 		`,
-			fp.FactionID,  // $1
-			fp.Primary,    // $2
-			fp.Text,       // $3
-			fp.Background, // $4
-			fp.S100,       // $5
-			fp.S200,       // $6
-			fp.S300,       // $7
-			fp.S400,       // $8
-			fp.S500,       // $9
-			fp.S600,       // $10
-			fp.S700,       // $11
-			fp.S800,       // $12
-			fp.S900,       // $13
+			fp.FactionID,          // $1
+			fp.Primary,            // $2
+			fp.Text,               // $3
+			fp.Background,         // $4
+			fp.S100,               // $5
+			fp.S200,               // $6
+			fp.S300,               // $7
+			fp.S400,               // $8
+			fp.S500,               // $9
+			fp.S600,               // $10
+			fp.S700,               // $11
+			fp.S800,               // $12
+			fp.S900,               // $13
+			fp.ContrastPrimary,    // $14
+			fp.ContrastBackground, // $15
 		)
 		if err != nil {
 			fmt.Println(err.Error()+fp.FactionID, "color palette")
