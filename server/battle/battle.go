@@ -1029,8 +1029,11 @@ func (btl *Battle) RewardBattleMechOwners(winningFactionOrder []string) {
 	}
 }
 
+// AFKChecker return a list of id of the AFK mechs
 func (btl *Battle) AFKChecker() []string {
-	minimumMechActionCount := db.GetIntWithDefault(db.KeyMinimumMechActionCount, 5)
+	minimumMechActionCountStrict := db.GetIntWithDefault(db.KeyMinimumMechActionCountStrict, 5)
+	minimumMechActionCountMild := db.GetIntWithDefault(db.KeyMinimumMechActionCountMild, 3)
+	minimumMechActionCountLoose := db.GetIntWithDefault(db.KeyMinimumMechActionCountLoose, 2)
 
 	// get mech command
 	mcs, err := boiler.MechMoveCommandLogs(
@@ -1043,33 +1046,60 @@ func (btl *Battle) AFKChecker() []string {
 	}
 
 	bas, err := boiler.BattleAbilityTriggers(
-		boiler.BattleAbilityTriggerWhere.OnMechID.IsNotNull(),
 		boiler.BattleAbilityTriggerWhere.BattleID.EQ(btl.ID),
-		boiler.BattleAbilityTriggerWhere.TriggerType.EQ(boiler.AbilityTriggerTypeMECH_ABILITY),
 	).All(gamedb.StdConn)
 	if err != nil {
 		gamelog.L.Error().Err(err).Msg("Failed to load battle ability triggers.")
 		return []string{}
 	}
 
+	// collect afk mech id
 	afkMechIDs := []string{}
-	for _, mechID := range btl.warMachineIDs {
+	for _, wm := range btl.WarMachines {
 
-		count := 0
+		// record ident
+		mechID := wm.ID
+		pilotID := wm.OwnedByID
+
+		// count the amount of mechs the player is piloting in the match
+		pilotedMechAmount := 0
+		for _, mech := range btl.WarMachines {
+			if mech.OwnedByID != pilotID {
+				continue
+			}
+			pilotedMechAmount += 1
+		}
+
+		// set min action criteria base on the amount of piloted mechs
+		minActionCount := minimumMechActionCountStrict
+		switch pilotedMechAmount {
+		case 1:
+			minActionCount = minimumMechActionCountStrict
+		case 2:
+			minActionCount = minimumMechActionCountMild
+		default:
+			minActionCount = minimumMechActionCountLoose
+		}
+
+		// accumulate the times of actions the player has triggered in the match
+		actionCount := 0
+
+		// count the number of mech move command
 		for _, mc := range mcs {
 			if mc.MechID == mechID {
-				count += 1
+				actionCount += 1
 			}
 		}
 
+		// count the number of triggered abilities
 		for _, ba := range bas {
-			if ba.OnMechID.String == mechID {
-				count += 1
+			if ba.PlayerID.String == pilotID {
+				actionCount += 1
 			}
 		}
 
-		// if mech does not
-		if count < minimumMechActionCount {
+		// append the mech to the AFK list, if it does not meet the criteria
+		if actionCount < minActionCount {
 			afkMechIDs = append(afkMechIDs, mechID)
 		}
 	}

@@ -87,7 +87,9 @@ const KeySlackDevChannelID KVKey = "slack_dev_channel_id"
 const KeyAutoRepairSlotCount KVKey = "auto_repair_slot_count"
 const KeyAutoRepairDurationSeconds KVKey = "auto_repair_duration_seconds"
 
-const KeyMinimumMechActionCount KVKey = "minimum_mech_action_count"
+const KeyMinimumMechActionCountStrict KVKey = "minimum_mech_action_count_strict"
+const KeyMinimumMechActionCountMild KVKey = "minimum_mech_action_count_mild"
+const KeyMinimumMechActionCountLoose KVKey = "minimum_mech_action_count_loose"
 
 const KeyFiatToSUPCut KVKey = "fiat_to_sup_cut" // TODO: find better name to describe: "20% cheaper than fiat pricing"
 
