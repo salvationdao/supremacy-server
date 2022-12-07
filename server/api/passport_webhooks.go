@@ -71,10 +71,7 @@ func (pc *PassportWebhookController) UserUpdated(w http.ResponseWriter, r *http.
 		if err != nil {
 			return http.StatusInternalServerError, terror.Error(err, "faction not found")
 		}
-		err = req.User.Faction.SetFromBoilerFaction(faction)
-		if err != nil {
-			return http.StatusInternalServerError, terror.Error(err, "Unable to convert faction, contact support or try again.")
-		}
+		req.User.Faction.SetFromBoilerFaction(faction)
 	}
 
 	req.User.Gid = player.Gid
@@ -168,10 +165,7 @@ func (pc *PassportWebhookController) UserEnlistFaction(w http.ResponseWriter, r 
 		user.Faction = &server.Faction{}
 	}
 
-	err = user.Faction.SetFromBoilerFaction(faction)
-	if err != nil {
-		return http.StatusInternalServerError, terror.Error(err, "Unable to convert faction, contact support or try again.")
-	}
+	user.Faction.SetFromBoilerFaction(faction)
 
 	err = player.L.LoadRole(gamedb.StdConn, true, player, nil)
 	if err != nil {
