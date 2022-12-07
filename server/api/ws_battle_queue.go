@@ -1272,7 +1272,7 @@ func (api *API) MechStake(ctx context.Context, user *boiler.Player, factionID st
 
 	stakedMechIDs := []string{}
 	for _, mqa := range mqas {
-		if mqa.OwnerID != user.ID || mqa.StakedOnFactionID.Valid || mqa.XsynLocked || mqa.LockedToMarketplace || mqa.MarketLocked || !mqa.PowerCoreID.Valid || !mqa.HasWeapon {
+		if mqa.OwnerID != user.ID || mqa.StakedOnFactionID.Valid || mqa.XsynLocked || mqa.LockedToMarketplace || !mqa.PowerCoreID.Valid || !mqa.HasWeapon {
 			continue
 		}
 
@@ -1741,11 +1741,6 @@ func MechAuthorisationFilter(player *boiler.Player, factionID string, mechIDs []
 	availableList := []string{}
 	for _, mqa := range mqas {
 		if mqa.LockedToMarketplace {
-			l.Debug().Err(err).Msg("mech is locked in market place")
-			continue
-		}
-
-		if mqa.MarketLocked {
 			l.Debug().Err(err).Msg("mech is locked in market place")
 			continue
 		}
