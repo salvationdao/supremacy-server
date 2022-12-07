@@ -1082,24 +1082,24 @@ func (btl *Battle) AFKChecker() []string {
 		}
 
 		// accumulate the times of actions the player has triggered in the match
-		count := 0
+		actionCount := 0
 
 		// count the number of mech move command
 		for _, mc := range mcs {
 			if mc.MechID == mechID {
-				count += 1
+				actionCount += 1
 			}
 		}
 
 		// count the number of triggered abilities
 		for _, ba := range bas {
 			if ba.PlayerID.String == pilotID {
-				count += 1
+				actionCount += 1
 			}
 		}
 
 		// append the mech to the AFK list, if it does not meet the criteria
-		if count < minActionCount {
+		if actionCount < minActionCount {
 			afkMechIDs = append(afkMechIDs, mechID)
 		}
 	}
