@@ -2542,6 +2542,8 @@ func (btl *Battle) Load(battleLobby *boiler.BattleLobby) error {
 	// override owner with the players who queue
 	ps, err := boiler.Players(
 		boiler.PlayerWhere.ID.IN(involvedPlayerIDs),
+		qm.Load(boiler.PlayerRels.Faction),
+		qm.Load(qm.Rels(boiler.PlayerRels.Faction, boiler.FactionRels.FactionPalette)),
 	).All(gamedb.StdConn)
 	if err != nil {
 		gamelog.L.Error().Strs("player id list", involvedPlayerIDs).Err(err).Msg("Failed to players")
@@ -2568,6 +2570,9 @@ func (btl *Battle) Load(battleLobby *boiler.BattleLobby) error {
 			Gid:      queuedBy.Gid,
 		}
 
+		// overwrite the faction of the mech with the faction of the player who queue it
+		mech.FactionID = queuedBy.FactionID
+		mech.Faction.SetFromBoilerFaction(queuedBy.R.Faction)
 	}
 
 	btl.WarMachines = btl.MechsToWarMachines(mechs)

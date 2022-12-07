@@ -44,17 +44,19 @@ var FactionUsers = map[string]string{
 	ZaibatsuFactionID:          ZaibatsuPlayerID,
 }
 
-func (f *Faction) SetFromBoilerFaction(bf *boiler.Faction) error {
+func (f *Faction) SetFromBoilerFaction(bf *boiler.Faction) {
 	//f.LogoBlobID = bf. ?
 	//f.BackgroundBlobID = bf. ?
 	f.ID = bf.ID
 	f.Label = bf.Label
-	f.PrimaryColor = bf.R.FactionPalette.Primary
-	f.SecondaryColor = bf.R.FactionPalette.Text
-	f.BackgroundColor = bf.R.FactionPalette.Background
 	f.VotePrice = bf.VotePrice
 	f.ContractReward = bf.ContractReward
-	return nil
+
+	if bf.R != nil && bf.R.FactionPalette != nil {
+		f.PrimaryColor = bf.R.FactionPalette.Primary
+		f.SecondaryColor = bf.R.FactionPalette.Text
+		f.BackgroundColor = bf.R.FactionPalette.Background
+	}
 }
 
 type FactionBrief struct {
