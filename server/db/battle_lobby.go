@@ -9,6 +9,7 @@ import (
 	"server/gamedb"
 	"server/gamelog"
 	"strconv"
+	"time"
 
 	"github.com/bwmarrin/discordgo"
 	embed "github.com/clinet/discordgo-embed"
@@ -522,7 +523,7 @@ func GetDiscordEmbedMessage(battleLobbyID string) (*discordgo.MessageEmbed, []di
 	canJoin := true
 	colour := "efab00"
 
-	if battleLobby.ReadyAt.Valid && battleLobby.AssignedToBattleID.Valid {
+	if battleLobby.ReadyAt.Valid && !battleLobby.AssignedToBattleID.Valid {
 		canJoin = false
 		status = DISCORD_BATTLE_LOBBY_QUEUE
 	} else if battleLobby.AssignedToBattleID.Valid && !battleLobby.EndedAt.Valid {
@@ -532,6 +533,10 @@ func GetDiscordEmbedMessage(battleLobbyID string) (*discordgo.MessageEmbed, []di
 	} else if battleLobby.EndedAt.Valid {
 		canJoin = false
 		status = DISCORD_BATTLE_LOBBY_END
+		colour = "89e740"
+	} else if battleLobby.ExpiresAt.Valid && battleLobby.ExpiresAt.Time.Before(time.Now()) {
+		canJoin = false
+		status = "Expired"
 		colour = "89e740"
 	}
 
