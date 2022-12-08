@@ -1165,6 +1165,8 @@ func PlayerWeapons(playerID string, weaponIDs ...string) ([]*server.Weapon, erro
 			boiler.BlueprintWeaponTableColumns.ProjectileSpeed,
 			boiler.BlueprintWeaponTableColumns.PowerCost,
 
+			fmt.Sprintf("to_json(%s) as brand", boiler.TableNames.Brands),
+
 			fmt.Sprintf(
 				"(SELECT %s FROM %s WHERE %s = %s AND %s ISNULL AND %s ISNULL AND %s > NOW()) AS is_on_sales",
 				boiler.ItemSaleTableColumns.ID,
@@ -1197,6 +1199,11 @@ func PlayerWeapons(playerID string, weaponIDs ...string) ([]*server.Weapon, erro
 			boiler.TableNames.BlueprintWeapons,
 			boiler.BlueprintWeaponTableColumns.ID,
 			boiler.WeaponTableColumns.BlueprintID,
+		)),
+		qm.InnerJoin(fmt.Sprintf("%s ON %s = %s",
+			boiler.TableNames.Brands,
+			boiler.BrandTableColumns.ID,
+			boiler.BlueprintWeaponTableColumns.BrandID,
 		)),
 		qm.InnerJoin(fmt.Sprintf(
 			"%s ON %s = %s",
@@ -1265,6 +1272,8 @@ func PlayerWeapons(playerID string, weaponIDs ...string) ([]*server.Weapon, erro
 			&weapon.RateOfFire,
 			&weapon.ProjectileSpeed,
 			&weapon.PowerCost,
+
+			&weapon.Brand,
 
 			&weapon.ItemSaleID,
 		)
