@@ -36,6 +36,7 @@ type Brands struct {
 	ID        string `json:"id"`
 	FactionID string `json:"faction_id"`
 	Label     string `json:"label"`
+	LogoURL   string `json:"logo_url"`
 }
 
 type Faction struct {

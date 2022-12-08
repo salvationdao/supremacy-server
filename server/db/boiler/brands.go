@@ -29,6 +29,7 @@ type Brand struct {
 	DeletedAt null.Time `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
 	UpdatedAt time.Time `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
 	CreatedAt time.Time `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
+	LogoURL   string    `boiler:"logo_url" boil:"logo_url" json:"logo_url" toml:"logo_url" yaml:"logo_url"`
 
 	R *brandR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L brandL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -41,6 +42,7 @@ var BrandColumns = struct {
 	DeletedAt string
 	UpdatedAt string
 	CreatedAt string
+	LogoURL   string
 }{
 	ID:        "id",
 	FactionID: "faction_id",
@@ -48,6 +50,7 @@ var BrandColumns = struct {
 	DeletedAt: "deleted_at",
 	UpdatedAt: "updated_at",
 	CreatedAt: "created_at",
+	LogoURL:   "logo_url",
 }
 
 var BrandTableColumns = struct {
@@ -57,6 +60,7 @@ var BrandTableColumns = struct {
 	DeletedAt string
 	UpdatedAt string
 	CreatedAt string
+	LogoURL   string
 }{
 	ID:        "brands.id",
 	FactionID: "brands.faction_id",
@@ -64,6 +68,7 @@ var BrandTableColumns = struct {
 	DeletedAt: "brands.deleted_at",
 	UpdatedAt: "brands.updated_at",
 	CreatedAt: "brands.created_at",
+	LogoURL:   "brands.logo_url",
 }
 
 // Generated where
@@ -75,6 +80,7 @@ var BrandWhere = struct {
 	DeletedAt whereHelpernull_Time
 	UpdatedAt whereHelpertime_Time
 	CreatedAt whereHelpertime_Time
+	LogoURL   whereHelperstring
 }{
 	ID:        whereHelperstring{field: "\"brands\".\"id\""},
 	FactionID: whereHelperstring{field: "\"brands\".\"faction_id\""},
@@ -82,6 +88,7 @@ var BrandWhere = struct {
 	DeletedAt: whereHelpernull_Time{field: "\"brands\".\"deleted_at\""},
 	UpdatedAt: whereHelpertime_Time{field: "\"brands\".\"updated_at\""},
 	CreatedAt: whereHelpertime_Time{field: "\"brands\".\"created_at\""},
+	LogoURL:   whereHelperstring{field: "\"brands\".\"logo_url\""},
 }
 
 // BrandRels is where relationship names are stored.
@@ -120,9 +127,9 @@ func (*brandR) NewStruct() *brandR {
 type brandL struct{}
 
 var (
-	brandAllColumns            = []string{"id", "faction_id", "label", "deleted_at", "updated_at", "created_at"}
+	brandAllColumns            = []string{"id", "faction_id", "label", "deleted_at", "updated_at", "created_at", "logo_url"}
 	brandColumnsWithoutDefault = []string{"faction_id", "label"}
-	brandColumnsWithDefault    = []string{"id", "deleted_at", "updated_at", "created_at"}
+	brandColumnsWithDefault    = []string{"id", "deleted_at", "updated_at", "created_at", "logo_url"}
 	brandPrimaryKeyColumns     = []string{"id"}
 	brandGeneratedColumns      = []string{}
 )

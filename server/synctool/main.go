@@ -923,6 +923,7 @@ func SyncBrands(f io.Reader, db *sql.DB) error {
 			ID:        record[0],
 			FactionID: record[1],
 			Label:     record[2],
+			LogoURL:   record[6],
 		}
 
 		Brands = append(Brands, *brand)
@@ -930,18 +931,18 @@ func SyncBrands(f io.Reader, db *sql.DB) error {
 
 	for _, brand := range Brands {
 		_, err = db.Exec(`
-			INSERT INTO brands(id, label, faction_id)
-			VALUES ($1,$2,$3)
+			INSERT INTO brands(id, label, faction_id, logo_url)
+			VALUES ($1,$2,$3,$4)
 			ON CONFLICT (id)
 			DO
-				UPDATE SET id=$1, label=$2, faction_id=$3;
-		`, brand.ID, brand.Label, brand.FactionID)
+				UPDATE SET id=$1, label=$2, faction_id=$3, logo_url=$4;
+		`, brand.ID, brand.Label, brand.FactionID, brand.LogoURL)
 		if err != nil {
-			fmt.Println(err.Error()+brand.ID, brand.Label, brand.FactionID)
+			fmt.Println(err.Error()+brand.ID, brand.Label, brand.FactionID, brand.LogoURL)
 			return err
 		}
 
-		fmt.Println("UPDATED: "+brand.ID, brand.Label, brand.FactionID)
+		fmt.Println("UPDATED: "+brand.ID, brand.Label, brand.FactionID, brand.LogoURL)
 	}
 
 	fmt.Println("Finish syncing brands")
