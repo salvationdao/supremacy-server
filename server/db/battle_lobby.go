@@ -542,7 +542,7 @@ func GetDiscordEmbedMessage(battleLobbyID, lobbyStatus string) (*discordgo.Messa
 			URL:   fmt.Sprintf("%s/lobbies?join=%s", battleArenaBaseUrl, battleLobbyID),
 		},
 		discordgo.Button{
-			Label:    "Join Lobby",
+			Label:    "Follow Lobby",
 			Style:    discordgo.PrimaryButton,
 			CustomID: "follow-lobby",
 			Disabled: !canJoin,
