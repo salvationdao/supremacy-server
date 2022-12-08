@@ -179,7 +179,7 @@ func (s *DiscordSession) SendBattleLobbyCreateMessage(battleLobbyID string) erro
 		return nil
 	}
 
-	messageEmbed, messageComponent, err := db.GetDiscordEmbedMessage(battleLobbyID, db.DISCORD_BATTLE_LOBBY_WAITING)
+	messageEmbed, messageComponent, err := db.GetDiscordEmbedMessage(battleLobbyID)
 	if err != nil {
 		return err
 	}
@@ -211,12 +211,12 @@ func (s *DiscordSession) SendBattleLobbyCreateMessage(battleLobbyID string) erro
 	return nil
 }
 
-func (s *DiscordSession) SendBattleLobbyEditMessage(battleLobbyID, lobbyStatus, arenaName string) error {
+func (s *DiscordSession) SendBattleLobbyEditMessage(battleLobbyID, arenaName string) error {
 	if !s.IsActive {
 		return nil
 	}
 
-	messageEmbed, _, err := db.GetDiscordEmbedMessage(battleLobbyID, lobbyStatus)
+	messageEmbed, _, err := db.GetDiscordEmbedMessage(battleLobbyID)
 	if err != nil {
 		return err
 	}
@@ -234,7 +234,7 @@ func (s *DiscordSession) SendBattleLobbyEditMessage(battleLobbyID, lobbyStatus, 
 		return err
 	}
 
-	if lobbyStatus == db.DISCORD_BATTLE_LOBBY_BATTLE {
+	if annoucement.R.BattleLobby.AssignedToBattleID.Valid && !annoucement.R.BattleLobby.EndedAt.Valid {
 		go func(annoucement *boiler.DiscordLobbyAnnoucement) {
 			allFollowers, err := boiler.DiscordLobbyFollowers(
 				boiler.DiscordLobbyFollowerWhere.DiscordLobbyAnnoucementsID.EQ(annoucement.ID),

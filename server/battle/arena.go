@@ -2394,7 +2394,7 @@ func (arena *Arena) BeginBattle() {
 
 	go arena.NotifyUpcomingWarMachines()
 
-	go arena.Manager.DiscordSession.SendBattleLobbyEditMessage(arena._currentBattle.lobby.ID, db.DISCORD_BATTLE_LOBBY_BATTLE, arena.Name)
+	go arena.Manager.DiscordSession.SendBattleLobbyEditMessage(arena._currentBattle.lobby.ID, arena.Name)
 
 	arena.Manager.FactionStakedMechDashboardKeyChan <- []string{FactionStakedMechDashboardKeyQueue}
 

@@ -408,7 +408,7 @@ var DISCORD_BATTLE_LOBBY_QUEUE = "In Queue"
 var DISCORD_BATTLE_LOBBY_BATTLE = "In Battle"
 var DISCORD_BATTLE_LOBBY_END = "Battle Ended"
 
-func GetDiscordEmbedMessage(battleLobbyID, lobbyStatus string) (*discordgo.MessageEmbed, []discordgo.MessageComponent, error) {
+func GetDiscordEmbedMessage(battleLobbyID string) (*discordgo.MessageEmbed, []discordgo.MessageComponent, error) {
 	battleLobby, err := boiler.BattleLobbies(
 		boiler.BattleLobbyWhere.ID.EQ(battleLobbyID),
 		qm.Load(boiler.BattleLobbyRels.HostBy),
@@ -488,22 +488,22 @@ func GetDiscordEmbedMessage(battleLobbyID, lobbyStatus string) (*discordgo.Messa
 		},
 		{
 			Name:   "1st",
-			Value:  battleLobby.FirstFactionCut.Div(decimal.NewFromInt(3)).String(),
+			Value:  battleLobby.FirstFactionCut.Mul(decimal.NewFromInt(100)).String() + "%",
 			Inline: true,
 		},
 		{
 			Name:   "2nd",
-			Value:  battleLobby.SecondFactionCut.Div(decimal.NewFromInt(3)).String(),
+			Value:  battleLobby.SecondFactionCut.Mul(decimal.NewFromInt(100)).String() + "%",
 			Inline: true,
 		},
 		{
 			Name:   "3rd",
-			Value:  battleLobby.ThirdFactionCut.Div(decimal.NewFromInt(3)).String(),
+			Value:  battleLobby.ThirdFactionCut.Mul(decimal.NewFromInt(100)).String() + "%",
 			Inline: true,
 		},
 		{
 			Name:   "Reward Pool",
-			Value:  totalSups.Div(decimal.NewFromInt(3)).String(),
+			Value:  totalSups.Div(decimal.New(1, 18)).String() + " SUPS",
 			Inline: false,
 		},
 		{
@@ -521,15 +521,15 @@ func GetDiscordEmbedMessage(battleLobbyID, lobbyStatus string) (*discordgo.Messa
 	status := fmt.Sprintf("%s %d/9", DISCORD_BATTLE_LOBBY_WAITING, battleLobbyMechCount)
 	canJoin := true
 	colour := "efab00"
-	switch lobbyStatus {
-	case DISCORD_BATTLE_LOBBY_QUEUE:
+
+	if battleLobby.ReadyAt.Valid && battleLobby.AssignedToBattleID.Valid {
 		canJoin = false
 		status = DISCORD_BATTLE_LOBBY_QUEUE
-	case DISCORD_BATTLE_LOBBY_BATTLE:
+	} else if battleLobby.AssignedToBattleID.Valid && !battleLobby.EndedAt.Valid {
 		canJoin = false
 		status = DISCORD_BATTLE_LOBBY_BATTLE
 		colour = "951515"
-	case DISCORD_BATTLE_LOBBY_END:
+	} else if battleLobby.EndedAt.Valid {
 		canJoin = false
 		status = DISCORD_BATTLE_LOBBY_END
 		colour = "89e740"

@@ -786,7 +786,7 @@ func (api *API) BattleLobbyJoin(ctx context.Context, user *boiler.Player, factio
 			}
 
 			if !bl.GeneratedBySystem && !bl.AccessCode.Valid {
-				go api.Discord.SendBattleLobbyEditMessage(bl.ID, db.DISCORD_BATTLE_LOBBY_QUEUE, "")
+				go api.Discord.SendBattleLobbyEditMessage(bl.ID, "")
 			}
 		}
 
@@ -1724,7 +1724,7 @@ func (api *API) BattleLobbyTopUpReward(ctx context.Context, user *boiler.Player,
 		}
 
 		api.ArenaManager.BattleLobbyDebounceBroadcastChan <- []string{bl.ID}
-
+		go api.Discord.SendBattleLobbyEditMessage(bl.ID, "")
 		return nil
 	})
 
