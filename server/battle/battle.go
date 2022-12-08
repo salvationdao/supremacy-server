@@ -1519,6 +1519,8 @@ func (btl *Battle) end(payload *BattleEndPayload) {
 	// reactivate idle arenas
 	go btl.arena.Manager.KickIdleArenas()
 
+	go btl.arena.Manager.DiscordSession.SendBattleLobbyEditMessage(btl.arena._currentBattle.lobby.ID, db.DISCORD_BATTLE_LOBBY_END, btl.arena.Name)
+
 	btl.arena.Manager.FactionStakedMechDashboardKeyChan <- []string{FactionStakedMechDashboardKeyQueue, FactionStakedMechDashboardKeyMVP}
 }
 

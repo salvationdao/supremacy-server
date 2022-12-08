@@ -1,15 +1,21 @@
 package db
 
 import (
+	"context"
 	"database/sql"
 	"errors"
 	"fmt"
-	"github.com/ninja-software/terror/v2"
-	"github.com/volatiletech/null/v8"
-	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
+	"strconv"
+
+	"github.com/bwmarrin/discordgo"
+	embed "github.com/clinet/discordgo-embed"
+	"github.com/ninja-software/terror/v2"
+	"github.com/shopspring/decimal"
+	"github.com/volatiletech/null/v8"
+	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 )
 
 func GetBattleLobbyViaIDs(lobbyIDs []string) ([]*boiler.BattleLobby, error) {
@@ -391,4 +397,174 @@ func GetMechsInLobby(lobbyID string) ([]*MechInLobby, error) {
 	}
 
 	return data, nil
+}
+
+type TotalAmountExtraSups struct {
+	Total decimal.Decimal `json:"total"`
+}
+
+var DISCORD_BATTLE_LOBBY_WAITING = "Waiting"
+var DISCORD_BATTLE_LOBBY_QUEUE = "In Queue"
+var DISCORD_BATTLE_LOBBY_BATTLE = "In Battle"
+var DISCORD_BATTLE_LOBBY_END = "Battle Ended"
+
+func GetDiscordEmbedMessage(battleLobbyID, lobbyStatus string) (*discordgo.MessageEmbed, []discordgo.MessageComponent, error) {
+	battleLobby, err := boiler.BattleLobbies(
+		boiler.BattleLobbyWhere.ID.EQ(battleLobbyID),
+		qm.Load(boiler.BattleLobbyRels.HostBy),
+		qm.Load(boiler.BattleLobbyRels.GameMap),
+	).One(gamedb.StdConn)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	if battleLobby.R == nil || battleLobby.R.HostBy == nil {
+		return nil, nil, errors.New("failed to load battle lobby rels")
+	}
+
+	battleArenaBaseUrl := GetStrWithDefault(KeyBattleArenaWebURL, "https://play.supremacy.game")
+
+	battleLobbyMechCount, err := boiler.BattleLobbiesMechs(
+		boiler.BattleLobbiesMechWhere.BattleLobbyID.EQ(battleLobbyID),
+		boiler.BattleLobbiesMechWhere.DeletedAt.IsNotNull(),
+	).Count(gamedb.StdConn)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return nil, nil, err
+	}
+
+	totalSups := battleLobby.EntryFee.Mul(decimal.NewFromInt(battleLobbyMechCount))
+
+	extraSups := &TotalAmountExtraSups{}
+
+	err = boiler.BattleLobbyExtraSupsRewards(
+		qm.Select(fmt.Sprintf("SUM (%s) as total", boiler.BattleLobbyExtraSupsRewardTableColumns.Amount)),
+		boiler.BattleLobbyExtraSupsRewardWhere.RefundedTXID.IsNull(),
+		boiler.BattleLobbyExtraSupsRewardWhere.BattleLobbyID.EQ(battleLobbyID),
+	).Bind(context.Background(), gamedb.StdConn, extraSups)
+	if err != nil {
+		gamelog.L.Error().Err(err).Msg("Failed to load extra battle reward.")
+		return nil, nil, err
+	}
+
+	totalSups = totalSups.Add(extraSups.Total)
+
+	lobbySupporters, err := boiler.BattleLobbySupporters(
+		boiler.BattleLobbySupporterWhere.BattleLobbyID.EQ(battleLobbyID),
+		boiler.BattleLobbySupporterWhere.DeletedAt.IsNotNull(),
+		qm.Load(boiler.BattleLobbySupporterRels.Faction),
+		qm.Load(boiler.BattleLobbySupporterRels.Supporter),
+	).All(gamedb.StdConn)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return nil, nil, err
+	}
+
+	supportersField := ""
+
+	if len(lobbySupporters) > 0 {
+		for _, supporter := range lobbySupporters {
+			if supporter.R == nil || supporter.R.Faction == nil || supporter.R.Supporter == nil {
+				return nil, nil, errors.New("failed to laod supporters")
+			}
+
+			supportersField = fmt.Sprintf("%s%s#%d (%s)\n", supportersField, supporter.R.Supporter.Username.String, supporter.R.Supporter.Gid, supporter.R.Faction.Label)
+		}
+	} else {
+		supportersField = "None"
+	}
+
+	gameMap := "Random"
+
+	if battleLobby.GameMapID.Valid {
+		if battleLobby.R.GameMap != nil {
+			gameMap = battleLobby.R.GameMap.Name
+		}
+	}
+
+	fields := []*discordgo.MessageEmbedField{
+		{
+			Name:   "Reward Split",
+			Value:  "In Percentage (%)",
+			Inline: true,
+		},
+		{
+			Name:   "1st",
+			Value:  battleLobby.FirstFactionCut.Div(decimal.NewFromInt(3)).String(),
+			Inline: true,
+		},
+		{
+			Name:   "2nd",
+			Value:  battleLobby.SecondFactionCut.Div(decimal.NewFromInt(3)).String(),
+			Inline: true,
+		},
+		{
+			Name:   "3rd",
+			Value:  battleLobby.ThirdFactionCut.Div(decimal.NewFromInt(3)).String(),
+			Inline: true,
+		},
+		{
+			Name:   "Reward Pool",
+			Value:  totalSups.Div(decimal.NewFromInt(3)).String(),
+			Inline: false,
+		},
+		{
+			Name:   "Map",
+			Value:  gameMap,
+			Inline: false,
+		},
+		{
+			Name:   "Supporters",
+			Value:  supportersField,
+			Inline: false,
+		},
+	}
+
+	status := fmt.Sprintf("%s %d/9", DISCORD_BATTLE_LOBBY_WAITING, battleLobbyMechCount)
+	canJoin := true
+	colour := "efab00"
+	switch lobbyStatus {
+	case DISCORD_BATTLE_LOBBY_QUEUE:
+		canJoin = false
+		status = DISCORD_BATTLE_LOBBY_QUEUE
+	case DISCORD_BATTLE_LOBBY_BATTLE:
+		canJoin = false
+		status = DISCORD_BATTLE_LOBBY_BATTLE
+		colour = "951515"
+	case DISCORD_BATTLE_LOBBY_END:
+		canJoin = false
+		status = DISCORD_BATTLE_LOBBY_END
+		colour = "89e740"
+	}
+
+	messageComponents := []discordgo.MessageComponent{
+		discordgo.Button{
+			Label: "Join Lobby",
+			Style: discordgo.LinkButton,
+			URL:   fmt.Sprintf("%s/lobbies?join=%s", battleArenaBaseUrl, battleLobbyID),
+		},
+		discordgo.Button{
+			Label:    "Join Lobby",
+			Style:    discordgo.PrimaryButton,
+			CustomID: "follow-lobby",
+			Disabled: !canJoin,
+		},
+	}
+
+	embedMessage := embed.NewEmbed()
+
+	colourInt, err := strconv.ParseInt(colour, 16, 64)
+	if err == nil {
+		embedMessage.Color = int(colourInt)
+	} else {
+		gamelog.L.Err(err).Msg("Failed to parse colour")
+	}
+
+	embedMessage.Title = battleLobby.Name
+	embedMessage.Author = &discordgo.MessageEmbedAuthor{
+		Name: fmt.Sprintf("Hosted By: %s#%d", battleLobby.R.HostBy.Username.String, battleLobby.R.HostBy.Gid),
+	}
+	embedMessage.Description = fmt.Sprintf("Status: %s", status)
+	embedMessage.Fields = fields
+	embedMessage.URL = fmt.Sprintf("%s/lobbies?join=%s", battleArenaBaseUrl, battleLobbyID)
+
+	return embedMessage.MessageEmbed, messageComponents, nil
 }

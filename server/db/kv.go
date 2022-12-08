@@ -109,6 +109,8 @@ const KeyLobbyHostingMaximumAmount KVKey = "lobby_hosting_maximum_amount"
 
 const KeyLivestreamURL KVKey = "livestream_url"
 
+const KeyBattleArenaWebURL KVKey = "battle_arena_web_url"
+
 func get(key KVKey) string {
 	kv, err := boiler.KVS(boiler.KVWhere.Key.EQ(string(key))).One(gamedb.StdConn)
 	if err != nil {
