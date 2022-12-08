@@ -371,7 +371,7 @@ func (api *API) BattleLobbyCreate(ctx context.Context, user *boiler.Player, fact
 
 		api.ArenaManager.BattleLobbyDebounceBroadcastChan <- []string{bl.ID}
 
-		if !bl.AccessCode.Valid {
+		if !bl.AccessCode.Valid && !bl.GeneratedBySystem {
 			go api.Discord.SendBattleLobbyCreateMessage(bl.ID)
 		}
 
