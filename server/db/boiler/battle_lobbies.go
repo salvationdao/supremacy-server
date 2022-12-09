@@ -214,6 +214,7 @@ var BattleLobbyRels = struct {
 	BattleLobbyExtraSupsRewards string
 	BattleLobbySupporterOptIns  string
 	BattleLobbySupporters       string
+	DiscordLobbyAnnoucements    string
 }{
 	AssignedToArena:             "AssignedToArena",
 	AssignedToBattle:            "AssignedToBattle",
@@ -223,6 +224,7 @@ var BattleLobbyRels = struct {
 	BattleLobbyExtraSupsRewards: "BattleLobbyExtraSupsRewards",
 	BattleLobbySupporterOptIns:  "BattleLobbySupporterOptIns",
 	BattleLobbySupporters:       "BattleLobbySupporters",
+	DiscordLobbyAnnoucements:    "DiscordLobbyAnnoucements",
 }
 
 // battleLobbyR is where relationships are stored.
@@ -235,6 +237,7 @@ type battleLobbyR struct {
 	BattleLobbyExtraSupsRewards BattleLobbyExtraSupsRewardSlice `boiler:"BattleLobbyExtraSupsRewards" boil:"BattleLobbyExtraSupsRewards" json:"BattleLobbyExtraSupsRewards" toml:"BattleLobbyExtraSupsRewards" yaml:"BattleLobbyExtraSupsRewards"`
 	BattleLobbySupporterOptIns  BattleLobbySupporterOptInSlice  `boiler:"BattleLobbySupporterOptIns" boil:"BattleLobbySupporterOptIns" json:"BattleLobbySupporterOptIns" toml:"BattleLobbySupporterOptIns" yaml:"BattleLobbySupporterOptIns"`
 	BattleLobbySupporters       BattleLobbySupporterSlice       `boiler:"BattleLobbySupporters" boil:"BattleLobbySupporters" json:"BattleLobbySupporters" toml:"BattleLobbySupporters" yaml:"BattleLobbySupporters"`
+	DiscordLobbyAnnoucements    DiscordLobbyAnnoucementSlice    `boiler:"DiscordLobbyAnnoucements" boil:"DiscordLobbyAnnoucements" json:"DiscordLobbyAnnoucements" toml:"DiscordLobbyAnnoucements" yaml:"DiscordLobbyAnnoucements"`
 }
 
 // NewStruct creates a new relationship struct
@@ -636,6 +639,27 @@ func (o *BattleLobby) BattleLobbySupporters(mods ...qm.QueryMod) battleLobbySupp
 
 	if len(queries.GetSelect(query.Query)) == 0 {
 		queries.SetSelect(query.Query, []string{"\"battle_lobby_supporters\".*"})
+	}
+
+	return query
+}
+
+// DiscordLobbyAnnoucements retrieves all the discord_lobby_annoucement's DiscordLobbyAnnoucements with an executor.
+func (o *BattleLobby) DiscordLobbyAnnoucements(mods ...qm.QueryMod) discordLobbyAnnoucementQuery {
+	var queryMods []qm.QueryMod
+	if len(mods) != 0 {
+		queryMods = append(queryMods, mods...)
+	}
+
+	queryMods = append(queryMods,
+		qm.Where("\"discord_lobby_annoucements\".\"battle_lobby_id\"=?", o.ID),
+	)
+
+	query := DiscordLobbyAnnoucements(queryMods...)
+	queries.SetFrom(query.Query, "\"discord_lobby_annoucements\"")
+
+	if len(queries.GetSelect(query.Query)) == 0 {
+		queries.SetSelect(query.Query, []string{"\"discord_lobby_annoucements\".*"})
 	}
 
 	return query
@@ -1467,6 +1491,104 @@ func (battleLobbyL) LoadBattleLobbySupporters(e boil.Executor, singular bool, ma
 	return nil
 }
 
+// LoadDiscordLobbyAnnoucements allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for a 1-M or N-M relationship.
+func (battleLobbyL) LoadDiscordLobbyAnnoucements(e boil.Executor, singular bool, maybeBattleLobby interface{}, mods queries.Applicator) error {
+	var slice []*BattleLobby
+	var object *BattleLobby
+
+	if singular {
+		object = maybeBattleLobby.(*BattleLobby)
+	} else {
+		slice = *maybeBattleLobby.(*[]*BattleLobby)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &battleLobbyR{}
+		}
+		args = append(args, object.ID)
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &battleLobbyR{}
+			}
+
+			for _, a := range args {
+				if a == obj.ID {
+					continue Outer
+				}
+			}
+
+			args = append(args, obj.ID)
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`discord_lobby_annoucements`),
+		qm.WhereIn(`discord_lobby_annoucements.battle_lobby_id in ?`, args...),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load discord_lobby_annoucements")
+	}
+
+	var resultSlice []*DiscordLobbyAnnoucement
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice discord_lobby_annoucements")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results in eager load on discord_lobby_annoucements")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for discord_lobby_annoucements")
+	}
+
+	if len(discordLobbyAnnoucementAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+	if singular {
+		object.R.DiscordLobbyAnnoucements = resultSlice
+		for _, foreign := range resultSlice {
+			if foreign.R == nil {
+				foreign.R = &discordLobbyAnnoucementR{}
+			}
+			foreign.R.BattleLobby = object
+		}
+		return nil
+	}
+
+	for _, foreign := range resultSlice {
+		for _, local := range slice {
+			if local.ID == foreign.BattleLobbyID {
+				local.R.DiscordLobbyAnnoucements = append(local.R.DiscordLobbyAnnoucements, foreign)
+				if foreign.R == nil {
+					foreign.R = &discordLobbyAnnoucementR{}
+				}
+				foreign.R.BattleLobby = local
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
 // SetAssignedToArena of the battleLobby to the related item.
 // Sets o.R.AssignedToArena to related.
 // Adds o to related.R.AssignedToArenaBattleLobbies.
@@ -1949,6 +2071,58 @@ func (o *BattleLobby) AddBattleLobbySupporters(exec boil.Executor, insert bool, 
 	for _, rel := range related {
 		if rel.R == nil {
 			rel.R = &battleLobbySupporterR{
+				BattleLobby: o,
+			}
+		} else {
+			rel.R.BattleLobby = o
+		}
+	}
+	return nil
+}
+
+// AddDiscordLobbyAnnoucements adds the given related objects to the existing relationships
+// of the battle_lobby, optionally inserting them as new records.
+// Appends related to o.R.DiscordLobbyAnnoucements.
+// Sets related.R.BattleLobby appropriately.
+func (o *BattleLobby) AddDiscordLobbyAnnoucements(exec boil.Executor, insert bool, related ...*DiscordLobbyAnnoucement) error {
+	var err error
+	for _, rel := range related {
+		if insert {
+			rel.BattleLobbyID = o.ID
+			if err = rel.Insert(exec, boil.Infer()); err != nil {
+				return errors.Wrap(err, "failed to insert into foreign table")
+			}
+		} else {
+			updateQuery := fmt.Sprintf(
+				"UPDATE \"discord_lobby_annoucements\" SET %s WHERE %s",
+				strmangle.SetParamNames("\"", "\"", 1, []string{"battle_lobby_id"}),
+				strmangle.WhereClause("\"", "\"", 2, discordLobbyAnnoucementPrimaryKeyColumns),
+			)
+			values := []interface{}{o.ID, rel.ID}
+
+			if boil.DebugMode {
+				fmt.Fprintln(boil.DebugWriter, updateQuery)
+				fmt.Fprintln(boil.DebugWriter, values)
+			}
+			if _, err = exec.Exec(updateQuery, values...); err != nil {
+				return errors.Wrap(err, "failed to update foreign table")
+			}
+
+			rel.BattleLobbyID = o.ID
+		}
+	}
+
+	if o.R == nil {
+		o.R = &battleLobbyR{
+			DiscordLobbyAnnoucements: related,
+		}
+	} else {
+		o.R.DiscordLobbyAnnoucements = append(o.R.DiscordLobbyAnnoucements, related...)
+	}
+
+	for _, rel := range related {
+		if rel.R == nil {
+			rel.R = &discordLobbyAnnoucementR{
 				BattleLobby: o,
 			}
 		} else {

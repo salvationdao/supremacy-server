@@ -371,6 +371,10 @@ func (api *API) BattleLobbyCreate(ctx context.Context, user *boiler.Player, fact
 
 		api.ArenaManager.BattleLobbyDebounceBroadcastChan <- []string{bl.ID}
 
+		if !bl.AccessCode.Valid && !bl.GeneratedBySystem {
+			go api.Discord.SendBattleLobbyCreateMessage(bl.ID)
+		}
+
 		// send invitations
 		if len(req.Payload.InvitedUserIDs) > 0 {
 			go func(host *boiler.Player, battleLobby *boiler.BattleLobby, invitedPlayerIDs []string) {
@@ -779,6 +783,10 @@ func (api *API) BattleLobbyJoin(ctx context.Context, user *boiler.Player, factio
 					CanDeploy:           false,
 					BattleLobbyIsLocked: true,
 				})
+			}
+
+			if !bl.GeneratedBySystem && !bl.AccessCode.Valid {
+				go api.Discord.SendBattleLobbyEditMessage(bl.ID, "")
 			}
 		}
 
@@ -1716,7 +1724,7 @@ func (api *API) BattleLobbyTopUpReward(ctx context.Context, user *boiler.Player,
 		}
 
 		api.ArenaManager.BattleLobbyDebounceBroadcastChan <- []string{bl.ID}
-
+		go api.Discord.SendBattleLobbyEditMessage(bl.ID, "")
 		return nil
 	})
 

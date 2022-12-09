@@ -5,7 +5,6 @@ import (
 	"encoding/csv"
 	"errors"
 	"fmt"
-	"github.com/stripe/stripe-go/v72"
 	"log"
 	"net/url"
 	"os/signal"
@@ -30,6 +29,8 @@ import (
 	"server/voice_chat"
 	"server/xsyn_rpcclient"
 	"server/zendesk"
+
+	"github.com/stripe/stripe-go/v72"
 
 	"github.com/volatiletech/null/v8"
 
@@ -435,6 +436,7 @@ func main() {
 						Telegram:                 telebot,
 						GameClientMinimumBuildNo: gameClientMinimumBuildNo,
 						QuestManager:             qm,
+						DiscordSession:           discordBot,
 					})
 					if err != nil {
 						return terror.Error(err, "Arena Manager init failed")
