@@ -97,7 +97,7 @@ func NewDiscordBot(token, appID string, isBotBinary bool) (*DiscordSession, erro
 
 		newFollower := &boiler.DiscordLobbyFollower{
 			DiscordMemberID:            i.Member.User.ID,
-			DiscordLobbyAnnoucementsID: discordAnnouncementFollower.ID,
+			DiscordLobbyAnnoucementsID: messageAnnouncement.ID,
 		}
 
 		err = newFollower.Insert(gamedb.StdConn, boil.Infer())
