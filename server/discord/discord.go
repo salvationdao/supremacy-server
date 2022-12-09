@@ -191,8 +191,11 @@ func (s *DiscordSession) SendBattleLobbyCreateMessage(battleLobbyID string) erro
 		Embeds: []*discordgo.MessageEmbed{
 			messageEmbed,
 		},
-		TTS:        false,
-		Components: messageComponent,
+		TTS: false,
+		Components: []discordgo.MessageComponent{
+			discordgo.ActionsRow{
+				Components: messageComponent},
+		},
 	}
 
 	battleArenaChannelID := db.GetStrWithDefault(db.KeyDiscordBattleArenaChannelID, "973800997128392785")
