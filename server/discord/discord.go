@@ -199,7 +199,7 @@ func (s *DiscordSession) SendBattleLobbyCreateMessage(battleLobbyID string) erro
 
 	message, err := s.s.ChannelMessageSendComplex(battleArenaChannelID, dataSend)
 	if err != nil {
-		gamelog.L.Err(err).Msg("Failed to send discord message for creating lobby")
+		gamelog.L.Err(err).Interface("component", messageComponent).Interface("embed", messageEmbed).Msg("Failed to send discord message for creating lobby")
 		return err
 	}
 

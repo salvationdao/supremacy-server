@@ -557,9 +557,10 @@ func GetDiscordEmbedMessage(battleLobbyID string) (*discordgo.MessageEmbed, []di
 
 	messageComponents := []discordgo.MessageComponent{
 		discordgo.Button{
-			Label: "Join Lobby",
-			Style: discordgo.LinkButton,
-			URL:   fmt.Sprintf("%s/lobbies?join=%s", battleArenaBaseUrl, battleLobbyID),
+			Label:    "Join Lobby",
+			Style:    discordgo.LinkButton,
+			URL:      fmt.Sprintf("%s/lobbies?join=%s", battleArenaBaseUrl, battleLobbyID),
+			Disabled: !canJoin,
 		},
 		discordgo.Button{
 			Label:    "Follow Lobby",
