@@ -125,12 +125,6 @@ func NewDiscordBot(token, appID string, isBotBinary bool) (*DiscordSession, erro
 		gamelog.L.Info().Msg("Discord session ready")
 	})
 
-	err = session.s.Open()
-	if err != nil {
-		gamelog.L.Err(err).Msg("Discord session failed to open")
-		return nil, err
-	}
-
 	session.s.AddHandler(func(DiscordSession *discordgo.Session, r *discordgo.Ready) {
 		gamelog.L.Info().Msg("Discord session ready")
 	})
