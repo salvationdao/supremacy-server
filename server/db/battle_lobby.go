@@ -427,7 +427,8 @@ func GetDiscordEmbedMessage(battleLobbyID string) (*discordgo.MessageEmbed, []di
 
 	battleLobbyMechCount, err := boiler.BattleLobbiesMechs(
 		boiler.BattleLobbiesMechWhere.BattleLobbyID.EQ(battleLobbyID),
-		boiler.BattleLobbiesMechWhere.DeletedAt.IsNotNull(),
+		boiler.BattleLobbiesMechWhere.DeletedAt.IsNull(),
+		boiler.BattleLobbiesMechWhere.RefundTXID.IsNull(),
 	).Count(gamedb.StdConn)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return nil, nil, err
@@ -576,7 +577,7 @@ func GetDiscordEmbedMessage(battleLobbyID string) (*discordgo.MessageEmbed, []di
 		gamelog.L.Err(err).Msg("Failed to parse colour")
 	}
 
-	embedMessage.Title = battleLobby.Name
+	embedMessage.Title = fmt.Sprintf("Lobby Name: %s", battleLobby.Name)
 	embedMessage.Author = &discordgo.MessageEmbedAuthor{
 		Name: fmt.Sprintf("Hosted By: %s#%d", battleLobby.R.HostBy.Username.String, battleLobby.R.HostBy.Gid),
 	}
