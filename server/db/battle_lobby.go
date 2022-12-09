@@ -564,7 +564,6 @@ func GetDiscordEmbedMessage(battleLobbyID string) (*discordgo.MessageEmbed, []di
 		},
 		discordgo.Button{
 			Label:    "Follow Lobby",
-			Style:    discordgo.PrimaryButton,
 			CustomID: "follow-lobby",
 			Disabled: !canJoin,
 		},
