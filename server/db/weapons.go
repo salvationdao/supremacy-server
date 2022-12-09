@@ -34,6 +34,12 @@ func getDefaultWeaponQueryMods() []qm.QueryMod {
 			qm.Rels(boiler.TableNames.BlueprintWeapons, boiler.BlueprintWeaponColumns.ID),
 			qm.Rels(boiler.TableNames.Weapons, boiler.WeaponColumns.BlueprintID),
 		)),
+		// join weapon brand
+		qm.InnerJoin(fmt.Sprintf("%s ON %s = %s",
+			boiler.TableNames.Brands,
+			qm.Rels(boiler.TableNames.Brands, boiler.BrandColumns.ID),
+			qm.Rels(boiler.TableNames.BlueprintWeapons, boiler.BlueprintWeaponColumns.BrandID),
+		)),
 		// join weapon skin
 		qm.InnerJoin(fmt.Sprintf("%s ON %s = %s",
 			boiler.TableNames.WeaponSkin,
@@ -178,6 +184,11 @@ func Weapon(tx boil.Executor, id string) (*server.Weapon, error) {
 		return nil, err
 	}
 
+	boilerBrand, err := boiler.FindBrand(tx, boilerWeapon.R.Blueprint.BrandID.String)
+	if err != nil {
+		return nil, err
+	}
+
 	itemSale, err := boiler.ItemSales(
 		boiler.ItemSaleWhere.CollectionItemID.EQ(boilerMechCollectionDetails.ID),
 		boiler.ItemSaleWhere.SoldAt.IsNull(),
@@ -191,7 +202,7 @@ func Weapon(tx boil.Executor, id string) (*server.Weapon, error) {
 	if itemSale != nil {
 		itemSaleID = null.StringFrom(itemSale.ID)
 	}
-	return server.WeaponFromBoiler(boilerWeapon, boilerMechCollectionDetails, weaponSkin, itemSaleID), nil
+	return server.WeaponFromBoiler(boilerWeapon, boilerMechCollectionDetails, weaponSkin, itemSaleID, server.BrandFromBoiler(boilerBrand)), nil
 }
 
 // AttachWeaponToMech attaches a Weapon to a mech
@@ -786,6 +797,8 @@ func WeaponListDetailed(opts *WeaponListOpts) (int64, []*server.Weapon, error) {
 			boiler.WeaponSkinTableColumns.BlueprintID,
 			boiler.WeaponSkinTableColumns.EquippedOn,
 			boiler.WeaponSkinTableColumns.CreatedAt,
+			// Brand
+			fmt.Sprintf("to_json(%s) as brand", boiler.TableNames.Brands),
 			// Other fields
 			boiler.CollectionItemTableColumns.ID,
 			boiler.WeaponTableColumns.ID,
@@ -917,6 +930,7 @@ func WeaponListDetailed(opts *WeaponListOpts) (int64, []*server.Weapon, error) {
 			&w.WeaponSkin.BlueprintID,
 			&w.WeaponSkin.EquippedOn,
 			&w.WeaponSkin.CreatedAt,
+			&w.Brand,
 			&w.CollectionItemID,
 			&w.ID,
 			&w.Label,
@@ -1151,6 +1165,8 @@ func PlayerWeapons(playerID string, weaponIDs ...string) ([]*server.Weapon, erro
 			boiler.BlueprintWeaponTableColumns.ProjectileSpeed,
 			boiler.BlueprintWeaponTableColumns.PowerCost,
 
+			fmt.Sprintf("to_json(%s) as brand", boiler.TableNames.Brands),
+
 			fmt.Sprintf(
 				"(SELECT %s FROM %s WHERE %s = %s AND %s ISNULL AND %s ISNULL AND %s > NOW()) AS is_on_sales",
 				boiler.ItemSaleTableColumns.ID,
@@ -1183,6 +1199,11 @@ func PlayerWeapons(playerID string, weaponIDs ...string) ([]*server.Weapon, erro
 			boiler.TableNames.BlueprintWeapons,
 			boiler.BlueprintWeaponTableColumns.ID,
 			boiler.WeaponTableColumns.BlueprintID,
+		)),
+		qm.InnerJoin(fmt.Sprintf("%s ON %s = %s",
+			boiler.TableNames.Brands,
+			boiler.BrandTableColumns.ID,
+			boiler.BlueprintWeaponTableColumns.BrandID,
 		)),
 		qm.InnerJoin(fmt.Sprintf(
 			"%s ON %s = %s",
@@ -1251,6 +1272,8 @@ func PlayerWeapons(playerID string, weaponIDs ...string) ([]*server.Weapon, erro
 			&weapon.RateOfFire,
 			&weapon.ProjectileSpeed,
 			&weapon.PowerCost,
+
+			&weapon.Brand,
 
 			&weapon.ItemSaleID,
 		)

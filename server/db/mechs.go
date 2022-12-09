@@ -1687,6 +1687,8 @@ type MechBrief struct {
 	WeaponSlots []*server.WeaponSlot  `json:"weapon_slots"`
 	Utilities   []*server.UtilitySlot `json:"utilities"`
 
+	Brand *server.Brand `json:"brand"`
+
 	HasRepairOffer         bool        `json:"has_repair_offer" db:"has_repair_offer"`
 	PlayerMechRepairSlotID null.String `json:"player_mech_repair_slot_id" db:"player_mech_repair_slot_id"`
 }
@@ -1769,7 +1771,7 @@ func LobbyMechsBrief(playerID string, mechIDs ...string) ([]*MechBrief, error) {
 			fmt.Sprintf("_blm.%s", boiler.BattleLobbiesMechColumns.LockedAt),
 			fmt.Sprintf("_blm.%s", boiler.BattleLobbiesMechColumns.AssignedToBattleID),
 			fmt.Sprintf("_blm.%s", boiler.BattleLobbyColumns.Number),
-			fmt.Sprintf("TO_JSON( _pc )"),
+			"TO_JSON( _pc )",
 			fmt.Sprintf(
 				"COALESCE((_rc.%s - _rc.%s), 0) AS damaged_blocks",
 				boiler.RepairCaseColumns.BlocksRequiredRepair,
@@ -1810,6 +1812,8 @@ func LobbyMechsBrief(playerID string, mechIDs ...string) ([]*MechBrief, error) {
 				boiler.RepairOfferTableColumns.OfferedByID,
 			),
 			fmt.Sprintf(boiler.PlayerMechRepairSlotTableColumns.ID),
+
+			"to_json(_br) as brand",
 		),
 
 		qm.From(fmt.Sprintf(
@@ -1853,6 +1857,12 @@ func LobbyMechsBrief(playerID string, mechIDs ...string) ([]*MechBrief, error) {
 			boiler.TableNames.BlueprintMechs,
 			boiler.BlueprintMechColumns.ID,
 			boiler.MechColumns.BlueprintID,
+		)),
+
+		qm.InnerJoin(fmt.Sprintf("%s _br ON _br.%s = _bm.%s",
+			boiler.TableNames.Brands,
+			boiler.BrandColumns.ID,
+			boiler.BlueprintMechColumns.BrandID,
 		)),
 
 		qm.InnerJoin(fmt.Sprintf(
@@ -2033,6 +2043,8 @@ func LobbyMechsBrief(playerID string, mechIDs ...string) ([]*MechBrief, error) {
 
 			&mb.HasRepairOffer,
 			&mb.PlayerMechRepairSlotID,
+
+			&mb.Brand,
 		)
 		if err != nil {
 			gamelog.L.Error().Err(err).Msg("Failed to scan player battle spectated from db.")
