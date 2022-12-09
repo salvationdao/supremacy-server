@@ -787,10 +787,6 @@ func (api *API) BattleLobbyJoin(ctx context.Context, user *boiler.Player, factio
 					BattleLobbyIsLocked: true,
 				})
 			}
-
-			if !bl.GeneratedBySystem && !bl.AccessCode.Valid {
-				go api.Discord.SendBattleLobbyEditMessage(bl.ID, "")
-			}
 		}
 
 		api.ArenaManager.MechDebounceBroadcastChan <- deployedMechIDs
@@ -915,6 +911,10 @@ func (api *API) BattleLobbyJoin(ctx context.Context, user *boiler.Player, factio
 	})
 	if err != nil {
 		return err
+	}
+
+	if !bl.AccessCode.Valid && !bl.IsAiDrivenMatch {
+		go api.Discord.SendBattleLobbyEditMessage(bl.ID, "")
 	}
 
 	reply(true)
@@ -1523,10 +1523,12 @@ func (api *API) BattleLobbySupporterJoin(ctx context.Context, user *boiler.Playe
 
 	l = l.With().Interface("payload", req.Payload).Logger()
 
+	bl := &boiler.BattleLobby{}
+
 	// add support to battle lobby
 	err = api.ArenaManager.SendBattleQueueFunc(func() error {
 		// check lobby exists
-		bl, err := db.GetBattleLobbyViaID(req.Payload.BattleLobbyID)
+		bl, err = db.GetBattleLobbyViaID(req.Payload.BattleLobbyID)
 		if err != nil {
 			return err
 		}
@@ -1589,6 +1591,13 @@ func (api *API) BattleLobbySupporterJoin(ctx context.Context, user *boiler.Playe
 	})
 	if err != nil {
 		return err
+	}
+
+	if bl != nil {
+		if !bl.AccessCode.Valid && !bl.IsAiDrivenMatch {
+			go api.Discord.SendBattleLobbyEditMessage(bl.ID, "")
+		}
+
 	}
 
 	reply(true)
