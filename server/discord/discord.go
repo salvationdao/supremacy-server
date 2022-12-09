@@ -238,7 +238,8 @@ func (s *DiscordSession) SendBattleLobbyEditMessage(battleLobbyID, arenaName str
 		return err
 	}
 
-	_, err = s.s.ChannelMessageEditEmbed("973800997128392785", annoucement.MessageID, messageEmbed)
+	battleArenaChannelID := db.GetStrWithDefault(db.KeyDiscordBattleArenaChannelID, "973800997128392785")
+	_, err = s.s.ChannelMessageEditEmbed(battleArenaChannelID, annoucement.MessageID, messageEmbed)
 	if err != nil {
 		return err
 	}

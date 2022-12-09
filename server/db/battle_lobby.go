@@ -500,7 +500,7 @@ func GetDiscordEmbedMessage(battleLobbyID string) (*discordgo.MessageEmbed, []di
 		{
 			Name:   "Reward Split",
 			Value:  "In Percentage (%)",
-			Inline: true,
+			Inline: false,
 		},
 		{
 			Name:   ":first_place: 1st",
