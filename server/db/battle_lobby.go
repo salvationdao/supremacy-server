@@ -437,14 +437,24 @@ func GetDiscordEmbedMessage(battleLobbyID string) (*discordgo.MessageEmbed, []di
 
 	extraSups := &TotalAmountExtraSups{}
 
-	err = boiler.BattleLobbyExtraSupsRewards(
-		qm.Select(fmt.Sprintf("SUM (%s) as total", boiler.BattleLobbyExtraSupsRewardColumns.Amount)),
+	extraSupsExist, err := boiler.BattleLobbyExtraSupsRewards(
 		boiler.BattleLobbyExtraSupsRewardWhere.RefundedTXID.IsNull(),
 		boiler.BattleLobbyExtraSupsRewardWhere.BattleLobbyID.EQ(battleLobbyID),
-	).Bind(context.Background(), gamedb.StdConn, extraSups)
+	).Exists(gamedb.StdConn)
 	if err != nil {
-		gamelog.L.Error().Err(err).Msg("Failed to load extra battle reward.")
 		return nil, nil, err
+	}
+
+	if extraSupsExist {
+		err = boiler.BattleLobbyExtraSupsRewards(
+			qm.Select(fmt.Sprintf("SUM (%s) as total", boiler.BattleLobbyExtraSupsRewardColumns.Amount)),
+			boiler.BattleLobbyExtraSupsRewardWhere.RefundedTXID.IsNull(),
+			boiler.BattleLobbyExtraSupsRewardWhere.BattleLobbyID.EQ(battleLobbyID),
+		).Bind(context.Background(), gamedb.StdConn, extraSups)
+		if err != nil {
+			gamelog.L.Error().Err(err).Msg("Failed to load extra battle reward.")
+			return nil, nil, err
+		}
 	}
 
 	totalSups = totalSups.Add(extraSups.Total)
