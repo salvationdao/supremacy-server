@@ -19,6 +19,7 @@ import (
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 )
 
+// Ivan was here :)
 func GetBattleLobbyViaIDs(lobbyIDs []string) ([]*boiler.BattleLobby, error) {
 	bls, err := boiler.BattleLobbies(
 		boiler.BattleLobbyWhere.ID.IN(lobbyIDs),
@@ -488,6 +489,9 @@ func GetDiscordEmbedMessage(battleLobbyID string) (*discordgo.MessageEmbed, []di
 	embedMessage := embed.NewEmbed()
 	gameMap := "Random"
 
+	embedMessage.Image = &discordgo.MessageEmbedImage{
+		URL: "https://afiles.ninja-cdn.com/supremacy/images/supremacy-cool-min.png",
+	}
 	if battleLobby.GameMapID.Valid {
 		if battleLobby.R.GameMap != nil {
 			gameMap = battleLobby.R.GameMap.Name
