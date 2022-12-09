@@ -490,7 +490,9 @@ func GetDiscordEmbedMessage(battleLobbyID string) (*discordgo.MessageEmbed, []di
 	if battleLobby.GameMapID.Valid {
 		if battleLobby.R.GameMap != nil {
 			gameMap = battleLobby.R.GameMap.Name
-			embedMessage.Image.URL = battleLobby.R.GameMap.BackgroundURL
+			embedMessage.Image = &discordgo.MessageEmbedImage{
+				URL: battleLobby.R.GameMap.BackgroundURL,
+			}
 		}
 	}
 
