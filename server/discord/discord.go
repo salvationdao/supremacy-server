@@ -182,6 +182,7 @@ func (s *DiscordSession) SendBattleLobbyCreateMessage(battleLobbyID string) erro
 
 	messageEmbed, messageComponent, err := db.GetDiscordEmbedMessage(battleLobbyID)
 	if err != nil {
+		gamelog.L.Err(err).Msg("Failed to get embed message for creating lobby")
 		return err
 	}
 
@@ -198,6 +199,7 @@ func (s *DiscordSession) SendBattleLobbyCreateMessage(battleLobbyID string) erro
 
 	message, err := s.s.ChannelMessageSendComplex(battleArenaChannelID, dataSend)
 	if err != nil {
+		gamelog.L.Err(err).Msg("Failed to send discord message for creating lobby")
 		return err
 	}
 
@@ -221,6 +223,7 @@ func (s *DiscordSession) SendBattleLobbyEditMessage(battleLobbyID, arenaName str
 
 	messageEmbed, _, err := db.GetDiscordEmbedMessage(battleLobbyID)
 	if err != nil {
+		gamelog.L.Err(err).Msg("Failed to get embed message for lobby update")
 		return err
 	}
 

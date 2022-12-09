@@ -157,6 +157,7 @@ func (api *API) BattleLobbyCreate(ctx context.Context, user *boiler.Player, fact
 		}
 	}
 
+	var bl *boiler.BattleLobby
 	// start process
 	err = api.ArenaManager.SendBattleQueueFunc(func() error {
 		// check user balance
@@ -208,7 +209,7 @@ func (api *API) BattleLobbyCreate(ctx context.Context, user *boiler.Player, fact
 
 		defer tx.Rollback()
 
-		bl := &boiler.BattleLobby{
+		bl = &boiler.BattleLobby{
 			HostByID:              user.ID,
 			Name:                  req.Payload.Name,
 			GameMapID:             req.Payload.GameMapID,
@@ -371,10 +372,6 @@ func (api *API) BattleLobbyCreate(ctx context.Context, user *boiler.Player, fact
 
 		api.ArenaManager.BattleLobbyDebounceBroadcastChan <- []string{bl.ID}
 
-		if !bl.AccessCode.Valid && !bl.GeneratedBySystem {
-			go api.Discord.SendBattleLobbyCreateMessage(bl.ID)
-		}
-
 		// send invitations
 		if len(req.Payload.InvitedUserIDs) > 0 {
 			go func(host *boiler.Player, battleLobby *boiler.BattleLobby, invitedPlayerIDs []string) {
@@ -410,6 +407,12 @@ func (api *API) BattleLobbyCreate(ctx context.Context, user *boiler.Player, fact
 	})
 	if err != nil {
 		return err
+	}
+
+	if bl != nil {
+		if !bl.AccessCode.Valid && !bl.GeneratedBySystem {
+			go api.Discord.SendBattleLobbyCreateMessage(bl.ID)
+		}
 	}
 
 	reply(true)
@@ -1676,9 +1679,8 @@ func (api *API) BattleLobbyTopUpReward(ctx context.Context, user *boiler.Player,
 	}
 
 	l := gamelog.L.With().Str("func", "BattleLobbyTopUpReward").Str("user id", user.ID).Str("battle lobby id", req.Payload.BattleLobbyID).Str("amount", req.Payload.Amount.Mul(decimal.New(1, 18)).String()).Logger()
-
+	var bl *boiler.BattleLobby
 	err = api.ArenaManager.SendBattleQueueFunc(func() error {
-		var bl *boiler.BattleLobby
 		bl, err = boiler.BattleLobbies(
 			boiler.BattleLobbyWhere.ID.EQ(req.Payload.BattleLobbyID),
 		).One(gamedb.StdConn)
@@ -1724,13 +1726,14 @@ func (api *API) BattleLobbyTopUpReward(ctx context.Context, user *boiler.Player,
 		}
 
 		api.ArenaManager.BattleLobbyDebounceBroadcastChan <- []string{bl.ID}
+		return nil
+	})
 
+	if bl != nil {
 		if !bl.AccessCode.Valid && !bl.IsAiDrivenMatch {
 			go api.Discord.SendBattleLobbyEditMessage(bl.ID, "")
 		}
-
-		return nil
-	})
+	}
 
 	reply(true)
 
