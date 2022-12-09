@@ -1724,7 +1724,11 @@ func (api *API) BattleLobbyTopUpReward(ctx context.Context, user *boiler.Player,
 		}
 
 		api.ArenaManager.BattleLobbyDebounceBroadcastChan <- []string{bl.ID}
-		go api.Discord.SendBattleLobbyEditMessage(bl.ID, "")
+
+		if !bl.AccessCode.Valid && !bl.IsAiDrivenMatch {
+			go api.Discord.SendBattleLobbyEditMessage(bl.ID, "")
+		}
+
 		return nil
 	})
 

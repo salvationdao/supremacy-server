@@ -2394,7 +2394,9 @@ func (arena *Arena) BeginBattle() {
 
 	go arena.NotifyUpcomingWarMachines()
 
-	go arena.Manager.DiscordSession.SendBattleLobbyEditMessage(arena._currentBattle.lobby.ID, arena.Name)
+	if !arena._currentBattle.lobby.IsAiDrivenMatch && !arena._currentBattle.lobby.AccessCode.Valid {
+		go arena.Manager.DiscordSession.SendBattleLobbyEditMessage(arena._currentBattle.lobby.ID, arena.Name)
+	}
 
 	arena.Manager.FactionStakedMechDashboardKeyChan <- []string{FactionStakedMechDashboardKeyQueue}
 
