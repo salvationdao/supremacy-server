@@ -452,6 +452,7 @@ func GetDiscordEmbedMessage(battleLobbyID string) (*discordgo.MessageEmbed, []di
 	lobbySupporters, err := boiler.BattleLobbySupporters(
 		boiler.BattleLobbySupporterWhere.BattleLobbyID.EQ(battleLobbyID),
 		boiler.BattleLobbySupporterWhere.DeletedAt.IsNotNull(),
+		qm.OrderBy(boiler.BattleLobbySupporterColumns.FactionID),
 		qm.Load(boiler.BattleLobbySupporterRels.Faction),
 		qm.Load(boiler.BattleLobbySupporterRels.Supporter),
 	).All(gamedb.StdConn)
@@ -473,11 +474,13 @@ func GetDiscordEmbedMessage(battleLobbyID string) (*discordgo.MessageEmbed, []di
 		supportersField = "None"
 	}
 
+	embedMessage := embed.NewEmbed()
 	gameMap := "Random"
 
 	if battleLobby.GameMapID.Valid {
 		if battleLobby.R.GameMap != nil {
 			gameMap = battleLobby.R.GameMap.Name
+			embedMessage.Image.URL = battleLobby.R.GameMap.BackgroundURL
 		}
 	}
 
@@ -488,27 +491,27 @@ func GetDiscordEmbedMessage(battleLobbyID string) (*discordgo.MessageEmbed, []di
 			Inline: true,
 		},
 		{
-			Name:   "1st",
+			Name:   ":first_place: 1st",
 			Value:  battleLobby.FirstFactionCut.Mul(decimal.NewFromInt(100)).String() + "%",
 			Inline: true,
 		},
 		{
-			Name:   "2nd",
+			Name:   ":second_place: 2nd",
 			Value:  battleLobby.SecondFactionCut.Mul(decimal.NewFromInt(100)).String() + "%",
 			Inline: true,
 		},
 		{
-			Name:   "3rd",
+			Name:   ":third_place: 3rd",
 			Value:  battleLobby.ThirdFactionCut.Mul(decimal.NewFromInt(100)).String() + "%",
 			Inline: true,
 		},
 		{
-			Name:   "Reward Pool",
+			Name:   ":moneybag: Reward Pool",
 			Value:  totalSups.Div(decimal.New(1, 18)).String() + " SUPS",
 			Inline: false,
 		},
 		{
-			Name:   "Map",
+			Name:   ":map: Map",
 			Value:  gameMap,
 			Inline: false,
 		},
@@ -553,8 +556,6 @@ func GetDiscordEmbedMessage(battleLobbyID string) (*discordgo.MessageEmbed, []di
 			Disabled: !canJoin,
 		},
 	}
-
-	embedMessage := embed.NewEmbed()
 
 	colourInt, err := strconv.ParseInt(colour, 16, 64)
 	if err == nil {

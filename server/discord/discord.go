@@ -66,6 +66,13 @@ func NewDiscordBot(token, appID string, isBotBinary bool) (*DiscordSession, erro
 			qm.Load(boiler.DiscordLobbyAnnoucementRels.BattleLobby),
 		).One(gamedb.StdConn)
 		if err != nil {
+			_ = s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+				Type: discordgo.InteractionResponseChannelMessageWithSource,
+				Data: &discordgo.InteractionResponseData{
+					Content: "Lobby not found",
+					Flags:   1 << 6,
+				},
+			})
 			return
 		}
 
@@ -193,7 +200,9 @@ func (s *DiscordSession) SendBattleLobbyCreateMessage(battleLobbyID string) erro
 		Components: messageComponent,
 	}
 
-	message, err := s.s.ChannelMessageSendComplex("973800997128392785", dataSend)
+	battleArenaChannelID := db.GetStrWithDefault(db.KeyDiscordBattleArenaChannelID, "973800997128392785")
+
+	message, err := s.s.ChannelMessageSendComplex(battleArenaChannelID, dataSend)
 	if err != nil {
 		return err
 	}
@@ -260,9 +269,10 @@ func (s *DiscordSession) SendBattleLobbyEditMessage(battleLobbyID, arenaName str
 				lobbyName = annoucement.R.BattleLobby.Name
 			}
 
-			message := fmt.Sprintf("%s\nLobby `%s` has entered the arena. Join the battle now at %s", peopleTag, lobbyName, battleURL)
+			message := fmt.Sprintf("%s\n\nLobby `%s` has entered the arena. Join your syndicate and fight now at %s", peopleTag, lobbyName, battleURL)
 
-			_, err = s.s.ChannelMessageSend("973800997128392785", message)
+			battleArenaChannelID := db.GetStrWithDefault(db.KeyDiscordBattleArenaChannelID, "973800997128392785")
+			_, err = s.s.ChannelMessageSend(battleArenaChannelID, message)
 			if err != nil {
 				return
 			}

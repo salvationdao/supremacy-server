@@ -101,6 +101,8 @@ const KeyOpenNewArenaEveryXAmountOfBattleLobbies KVKey = "open_new_arena_after_x
 const KeyDeductBlockCountFromBomb KVKey = "deduct_block_count_from_bomb"
 
 const KeyDiscordChannelID KVKey = "discord_channel_id"
+const KeyDiscordBattleArenaChannelID KVKey = "discord_battle_arena_channel_id"
+
 const KeyDiscordGuildID KVKey = "discord_guild_id"
 
 const KeyAutoFillLobbyAfterDurationSecond KVKey = "auto_fill_lobby_after_duration_second"
