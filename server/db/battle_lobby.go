@@ -19,7 +19,7 @@ import (
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 )
 
-// Ivan was here :)
+// Ivan Ng was here :)
 func GetBattleLobbyViaIDs(lobbyIDs []string) ([]*boiler.BattleLobby, error) {
 	bls, err := boiler.BattleLobbies(
 		boiler.BattleLobbyWhere.ID.IN(lobbyIDs),

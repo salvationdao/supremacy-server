@@ -907,14 +907,13 @@ func (api *API) BattleLobbyJoin(ctx context.Context, user *boiler.Player, factio
 			})
 		}(user.ID, deployedMechIDs)
 
+		if !bl.AccessCode.Valid && !bl.IsAiDrivenMatch {
+			go api.Discord.SendBattleLobbyEditMessage(bl.ID, "")
+		}
 		return nil
 	})
 	if err != nil {
 		return err
-	}
-
-	if !bl.AccessCode.Valid && !bl.IsAiDrivenMatch {
-		go api.Discord.SendBattleLobbyEditMessage(bl.ID, "")
 	}
 
 	reply(true)
@@ -1734,15 +1733,12 @@ func (api *API) BattleLobbyTopUpReward(ctx context.Context, user *boiler.Player,
 			return terror.Error(err, "Failed to add battle lobby reward.")
 		}
 
-		api.ArenaManager.BattleLobbyDebounceBroadcastChan <- []string{bl.ID}
-		return nil
-	})
-
-	if bl != nil {
 		if !bl.AccessCode.Valid && !bl.IsAiDrivenMatch {
 			go api.Discord.SendBattleLobbyEditMessage(bl.ID, "")
 		}
-	}
+		api.ArenaManager.BattleLobbyDebounceBroadcastChan <- []string{bl.ID}
+		return nil
+	})
 
 	reply(true)
 
