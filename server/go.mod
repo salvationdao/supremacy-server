@@ -58,6 +58,7 @@ require (
 	github.com/DataDog/datadog-go/v5 v5.1.0 // indirect
 	github.com/DataDog/sketches-go v1.4.1 // indirect
 	github.com/btcsuite/btcd v0.22.0-beta // indirect
+	github.com/clinet/discordgo-embed v0.0.0-20220113222025-bafe0c917646 // indirect
 	github.com/deckarep/golang-set v1.8.0 // indirect
 	github.com/dgraph-io/ristretto v0.1.0 // indirect
 	github.com/dustin/go-humanize v1.0.0 // indirect

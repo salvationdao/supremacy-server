@@ -157,6 +157,7 @@ func (api *API) BattleLobbyCreate(ctx context.Context, user *boiler.Player, fact
 		}
 	}
 
+	var bl *boiler.BattleLobby
 	// start process
 	err = api.ArenaManager.SendBattleQueueFunc(func() error {
 		// check user balance
@@ -208,7 +209,7 @@ func (api *API) BattleLobbyCreate(ctx context.Context, user *boiler.Player, fact
 
 		defer tx.Rollback()
 
-		bl := &boiler.BattleLobby{
+		bl = &boiler.BattleLobby{
 			HostByID:              user.ID,
 			Name:                  req.Payload.Name,
 			GameMapID:             req.Payload.GameMapID,
@@ -406,6 +407,12 @@ func (api *API) BattleLobbyCreate(ctx context.Context, user *boiler.Player, fact
 	})
 	if err != nil {
 		return err
+	}
+
+	if bl != nil {
+		if !bl.AccessCode.Valid && !bl.GeneratedBySystem {
+			go api.Discord.SendBattleLobbyCreateMessage(bl.ID)
+		}
 	}
 
 	reply(true)
@@ -900,6 +907,9 @@ func (api *API) BattleLobbyJoin(ctx context.Context, user *boiler.Player, factio
 			})
 		}(user.ID, deployedMechIDs)
 
+		if !bl.AccessCode.Valid && !bl.IsAiDrivenMatch {
+			go api.Discord.SendBattleLobbyEditMessage(bl.ID, "")
+		}
 		return nil
 	})
 	if err != nil {
@@ -1512,10 +1522,12 @@ func (api *API) BattleLobbySupporterJoin(ctx context.Context, user *boiler.Playe
 
 	l = l.With().Interface("payload", req.Payload).Logger()
 
+	bl := &boiler.BattleLobby{}
+
 	// add support to battle lobby
 	err = api.ArenaManager.SendBattleQueueFunc(func() error {
 		// check lobby exists
-		bl, err := db.GetBattleLobbyViaID(req.Payload.BattleLobbyID)
+		bl, err = db.GetBattleLobbyViaID(req.Payload.BattleLobbyID)
 		if err != nil {
 			return err
 		}
@@ -1578,6 +1590,13 @@ func (api *API) BattleLobbySupporterJoin(ctx context.Context, user *boiler.Playe
 	})
 	if err != nil {
 		return err
+	}
+
+	if bl != nil {
+		if !bl.AccessCode.Valid && !bl.IsAiDrivenMatch {
+			go api.Discord.SendBattleLobbyEditMessage(bl.ID, "")
+		}
+
 	}
 
 	reply(true)
@@ -1668,9 +1687,8 @@ func (api *API) BattleLobbyTopUpReward(ctx context.Context, user *boiler.Player,
 	}
 
 	l := gamelog.L.With().Str("func", "BattleLobbyTopUpReward").Str("user id", user.ID).Str("battle lobby id", req.Payload.BattleLobbyID).Str("amount", req.Payload.Amount.Mul(decimal.New(1, 18)).String()).Logger()
-
+	var bl *boiler.BattleLobby
 	err = api.ArenaManager.SendBattleQueueFunc(func() error {
-		var bl *boiler.BattleLobby
 		bl, err = boiler.BattleLobbies(
 			boiler.BattleLobbyWhere.ID.EQ(req.Payload.BattleLobbyID),
 		).One(gamedb.StdConn)
@@ -1715,8 +1733,10 @@ func (api *API) BattleLobbyTopUpReward(ctx context.Context, user *boiler.Player,
 			return terror.Error(err, "Failed to add battle lobby reward.")
 		}
 
+		if !bl.AccessCode.Valid && !bl.IsAiDrivenMatch {
+			go api.Discord.SendBattleLobbyEditMessage(bl.ID, "")
+		}
 		api.ArenaManager.BattleLobbyDebounceBroadcastChan <- []string{bl.ID}
-
 		return nil
 	})
 

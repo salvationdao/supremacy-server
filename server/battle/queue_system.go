@@ -4,7 +4,6 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
-	"github.com/gofrs/uuid"
 	"math/rand"
 	"server"
 	"server/db"
@@ -15,6 +14,8 @@ import (
 	"server/system_messages"
 	"server/xsyn_rpcclient"
 	"time"
+
+	"github.com/gofrs/uuid"
 
 	"github.com/friendsofgo/errors"
 	"github.com/ninja-software/terror/v2"
@@ -273,6 +274,7 @@ func (am *ArenaManager) ExpiredExhibitionLobbyCleanUp() error {
 	wg := deadlock.WaitGroup{}
 	for _, bl := range bls {
 		wg.Add(1)
+
 		go func(battleLobby *boiler.BattleLobby) {
 			l := gamelog.L.With().Str("func", "ExpiredExhibitionLobbyCleanUp").Interface("battle lobby", battleLobby).Logger()
 
@@ -552,6 +554,10 @@ func (am *ArenaManager) ExpiredExhibitionLobbyCleanUp() error {
 			am.MechDebounceBroadcastChan <- lobbyMechIDs
 
 		}(bl)
+
+		if !bl.AccessCode.Valid && !bl.IsAiDrivenMatch {
+			go am.DiscordSession.SendBattleLobbyEditMessage(bl.ID, "")
+		}
 	}
 
 	wg.Wait()
