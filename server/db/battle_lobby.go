@@ -546,13 +546,13 @@ func GetDiscordEmbedMessage(battleLobbyID string) (*discordgo.MessageEmbed, []di
 		canJoin = false
 		status = DISCORD_BATTLE_LOBBY_BATTLE
 		colour = "951515"
-	} else if battleLobby.EndedAt.Valid {
-		canJoin = false
-		status = DISCORD_BATTLE_LOBBY_END
-		colour = "89e740"
 	} else if battleLobby.ExpiresAt.Valid && battleLobby.ExpiresAt.Time.Before(time.Now()) {
 		canJoin = false
 		status = "Expired"
+		colour = "89e740"
+	} else if battleLobby.EndedAt.Valid {
+		canJoin = false
+		status = DISCORD_BATTLE_LOBBY_END
 		colour = "89e740"
 	}
 
