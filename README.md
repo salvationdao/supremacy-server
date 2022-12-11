@@ -6,6 +6,12 @@ Supremacy gameserver for communication between the game client and various front
 
 [CD Docs](.github/workflows/README.md)
 
+## To be open sourced
+
+- github.com/ninja-software/log_helpers -> github.com/salvationdao/log_helpers
+- github.com/ninja-software/terror/v2 -> github.com/salvationdao/terror/v2
+- github.com/ninja-syndicate/ws -> github.com/salvationdao/ws
+
 ### For go private modules
 
 ```shell
