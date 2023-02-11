@@ -52,7 +52,6 @@ import (
 	"github.com/microcosm-cc/bluemonday"
 	"github.com/ninja-software/log_helpers"
 	"github.com/rs/zerolog"
-	"gopkg.in/DataDog/dd-trace-go.v1/ddtrace/tracer"
 	"gopkg.in/DataDog/dd-trace-go.v1/profiler"
 
 	"context"
@@ -250,13 +249,13 @@ func main() {
 						SkipRateLimit: environment == "staging" || environment == "development",
 					})
 
-					tracer.Start(
-						tracer.WithEnv(environment),
-						tracer.WithService(envPrefix),
-						tracer.WithServiceVersion(Version),
-						tracer.WithLogger(gamelog.DatadogLog{L: gamelog.L}), // configure before profiler so profiler will use this logger
-					)
-					defer tracer.Stop()
+					// tracer.Start(
+					// 	tracer.WithEnv(environment),
+					// 	tracer.WithService(envPrefix),
+					// 	tracer.WithServiceVersion(Version),
+					// 	tracer.WithLogger(gamelog.DatadogLog{L: gamelog.L}), // configure before profiler so profiler will use this logger
+					// )
+					// defer tracer.Stop()
 
 					// Datadog Tracing an profiling
 					if c.Bool("pprof_datadog") {

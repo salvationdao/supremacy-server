@@ -125,7 +125,7 @@ func MustSecureFactionWithFeature(featureName string, fn SecureFactionCommandFun
 func Tracer(fn ws.CommandFunc, environment string) ws.CommandFunc {
 	return func(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
 		requestUri, _ := ctx.Value("Origin").(string)
-		if environment != "development" {
+		if false { // stop tracer via hardcode
 			span, augmentedCtx := tracer.StartSpanFromContext(
 				ctx,
 				"ws_handler",
@@ -145,7 +145,7 @@ func Tracer(fn ws.CommandFunc, environment string) ws.CommandFunc {
 func SecureUserTracer(fn SecureCommandFunc, environment string) SecureCommandFunc {
 	return func(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
 		requestUri, _ := ctx.Value("Origin").(string)
-		if environment != "development" {
+		if false { // stop tracer via hardcode
 			span, augmentedCtx := tracer.StartSpanFromContext(
 				ctx,
 				"ws_handler",
@@ -165,7 +165,7 @@ func SecureUserTracer(fn SecureCommandFunc, environment string) SecureCommandFun
 func SecureFactionTracer(fn SecureFactionCommandFunc, environment string) SecureFactionCommandFunc {
 	return func(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
 		requestUri, _ := ctx.Value("Origin").(string)
-		if environment != "development" {
+		if false { // stop tracer via hardcode
 			span, augmentedCtx := tracer.StartSpanFromContext(
 				ctx,
 				"ws_handler",
@@ -195,7 +195,7 @@ func RestDatadogTrace(environment string) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 
-			if environment != "development" {
+			if false { // stop tracer via hardcode
 				span, augmentedCtx := tracer.StartSpanFromContext(
 					r.Context(),
 					"http_handler",

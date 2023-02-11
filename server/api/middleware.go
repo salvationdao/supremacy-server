@@ -13,7 +13,6 @@ import (
 	"server/gamelog"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/ninja-software/terror/v2"
 	DatadogTracer "github.com/ninja-syndicate/hub/ext/datadog"
 )
 
@@ -37,12 +36,12 @@ func WithError(next func(w http.ResponseWriter, r *http.Request) (int, error)) f
 		r.Body = ioutil.NopCloser(bytes.NewReader(contents))
 		code, err := next(w, r)
 		if err != nil {
-			gamelog.L.Warn().Str("err", terror.Echo(err, false)).Msg("handler error")
+			gamelog.L.Warn().Str("err", err.Error()).Msg("handler error")
 			errObj := &ErrorObject{Message: err.Error()}
 			jsonErr, wErr := json.Marshal(errObj)
 			if wErr != nil {
 				DatadogTracer.HttpFinishSpan(r.Context(), code, wErr)
-				gamelog.L.Warn().Str("err", terror.Echo(err, false)).Msg("failed to marshal error middleware")
+				gamelog.L.Warn().Str("err", err.Error()).Msg("failed to marshal error middleware")
 				http.Error(w, `{"message":"JSON failed, please contact IT.","error_code":"00001"}`, code)
 				return
 			}
