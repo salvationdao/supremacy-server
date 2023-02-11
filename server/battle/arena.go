@@ -27,6 +27,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/rs/zerolog/log"
 	"github.com/shopspring/decimal"
 
 	"github.com/sasha-s/go-deadlock"
@@ -1392,21 +1393,30 @@ func (arena *Arena) GameClientJsonDataParser() {
 			arena.Manager.BattleLobbyDebounceBroadcastChan <- []string{btl.lobby.ID}
 
 		case "BATTLE:END":
+			sublogger := log.With().
+				Str("case", "battle_end").
+				Str("battle_id", btl.ID).
+				Logger()
+			sublogger.Debug().Msg("store end state")
 			btl.state.Store(EndState)
 
 			var dataPayload *BattleEndPayload
 			if err = json.Unmarshal(msg.Payload, &dataPayload); err != nil {
-				L.Warn().Err(err).Msg("unable to unmarshal battle message warmachine destroyed payload")
+				sublogger.Warn().Err(err).Msg("unable to unmarshal battle message warmachine destroyed payload")
 				continue
 			}
 
+			sublogger.Debug().Interface("battle_end_payload", dataPayload).Msg("clean up battle")
 			btl.end(dataPayload)
 
 			// reset war machine broadcast
+			sublogger.Debug().Str("chan", "WarMachineStatBroadcastResetChan").Msg("start broadcast reset")
 			btl.arena.WarMachineStatBroadcastResetChan <- true
-
+			sublogger.Debug().Str("chan", "WarMachineStatBroadcastResetChan").Msg("finish broadcast reset")
 			// broadcast a new arena list to frontend
+			sublogger.Debug().Str("hub_key", "HubKeyBattleArenaListSubscribe").Interface("available_arenas", arena.Manager.AvailableBattleArenas()).Msg("start broadcast of arena list")
 			ws.PublishMessage("/public/arena_list", server.HubKeyBattleArenaListSubscribe, arena.Manager.AvailableBattleArenas())
+			sublogger.Debug().Str("chan", "WarMachineStatBroadcastResetChan").Msg("finish broadcast of arena list")
 
 		case "BATTLE:OUTRO_FINISHED":
 			if btl.replaySession.ReplaySession != nil {

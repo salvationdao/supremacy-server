@@ -5,15 +5,16 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/go-chi/chi/v5"
-	"github.com/ninja-software/terror/v2"
-	DatadogTracer "github.com/ninja-syndicate/hub/ext/datadog"
 	"io/ioutil"
 	"net"
 	"net/http"
 	"server"
 	"server/db"
 	"server/gamelog"
+
+	"github.com/go-chi/chi/v5"
+	"github.com/ninja-software/terror/v2"
+	DatadogTracer "github.com/ninja-syndicate/hub/ext/datadog"
 )
 
 type ErrorMessage string
@@ -36,12 +37,12 @@ func WithError(next func(w http.ResponseWriter, r *http.Request) (int, error)) f
 		r.Body = ioutil.NopCloser(bytes.NewReader(contents))
 		code, err := next(w, r)
 		if err != nil {
-			terror.Echo(err)
+			gamelog.L.Warn().Str("err", terror.Echo(err, false)).Msg("handler error")
 			errObj := &ErrorObject{Message: err.Error()}
 			jsonErr, wErr := json.Marshal(errObj)
 			if wErr != nil {
 				DatadogTracer.HttpFinishSpan(r.Context(), code, wErr)
-				terror.Echo(wErr)
+				gamelog.L.Warn().Str("err", terror.Echo(err, false)).Msg("failed to marshal error middleware")
 				http.Error(w, `{"message":"JSON failed, please contact IT.","error_code":"00001"}`, code)
 				return
 			}
@@ -96,7 +97,6 @@ func WithPassportSecret(secret string, next func(w http.ResponseWriter, r *http.
 	}
 	return fn
 }
-
 
 func (api *API) AuthWS(userIDMustMatch bool) func(next http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {

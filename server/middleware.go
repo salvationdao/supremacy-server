@@ -3,13 +3,14 @@ package server
 import (
 	"context"
 	"fmt"
+	"net/http"
+	"server/db/boiler"
+	"server/gamedb"
+
 	"github.com/ninja-software/terror/v2"
 	"github.com/ninja-syndicate/ws"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 	"gopkg.in/DataDog/dd-trace-go.v1/ddtrace/tracer"
-	"net/http"
-	"server/db/boiler"
-	"server/gamedb"
 )
 
 type SecureCommandFunc func(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error
@@ -145,15 +146,15 @@ func SecureUserTracer(fn SecureCommandFunc, environment string) SecureCommandFun
 	return func(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
 		requestUri, _ := ctx.Value("Origin").(string)
 		if environment != "development" {
-			span, augmentedCtx := tracer.StartSpanFromContext(
-				ctx,
-				"ws_handler",
-				tracer.ResourceName(key),
-				tracer.Tag("ws_key", key),
-				tracer.Tag("env", environment),
-				tracer.Tag("origin", requestUri),
-			)
-			defer span.Finish()
+			// span, augmentedCtx := tracer.StartSpanFromContext(
+			// 	ctx,
+			// 	"ws_handler",
+			// 	tracer.ResourceName(key),
+			// 	tracer.Tag("ws_key", key),
+			// 	tracer.Tag("env", environment),
+			// 	tracer.Tag("origin", requestUri),
+			// )
+			// defer span.Finish()
 			ctx = augmentedCtx
 		}
 		return fn(ctx, user, key, payload, reply)
