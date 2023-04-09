@@ -1549,7 +1549,7 @@ func (btl *Battle) end(payload *BattleEndPayload) {
 
 	if !btl.arena._currentBattle.lobby.IsAiDrivenMatch && !btl.arena._currentBattle.lobby.AccessCode.Valid {
 		sublogger.Debug().Msg("notify discord")
-		go btl.arena.Manager.DiscordSession.SendBattleLobbyEditMessage(btl.arena._currentBattle.lobby.ID, btl.arena.Name)
+		// go btl.arena.Manager.DiscordSession.SendBattleLobbyEditMessage(btl.arena._currentBattle.lobby.ID, btl.arena.Name)
 	}
 
 	sublogger.Debug().Msg("send message to faction stakers")

@@ -16,7 +16,6 @@ import (
 	"server/comms"
 	"server/db"
 	"server/db/boiler"
-	"server/discord"
 	"server/gamedb"
 	"server/gamelog"
 	"server/profanities"
@@ -187,8 +186,9 @@ func main() {
 					&cli.StringFlag{Name: "private_key_signer_hex", Value: "0x5f3b57101caf01c3d91e50809e70d84fcc404dd108aa8a9aa3e1a6c482267f48", EnvVars: []string{envPrefix + "_PRIVATE_KEY_SIGNER_HEX"}, Usage: "Private key for signing battle records (default is testnet dev private key)"},
 					&cli.StringFlag{Name: "ovenmedia_signed_key", Value: "aKq#1kj", EnvVars: []string{envPrefix + "_OVENMEDIA_SIGNED_KEY"}, Usage: "Ovenmedia secret sign key"},
 
-					&cli.StringFlag{Name: "discord_auth_token", Value: "", EnvVars: []string{envPrefix + "_DISCORD_AUTH_TOKEN"}, Usage: "Discord bot auth token"},
-					&cli.StringFlag{Name: "discord_app_id", Value: "", EnvVars: []string{envPrefix + "_DISCORD_APP_ID"}, Usage: "Discord bot app id"},
+					// &cli.StringFlag{Name: "discord_auth_token", Value: "", EnvVars: []string{envPrefix + "_DISCORD_AUTH_TOKEN"}, Usage: "Discord bot auth token"},
+					// &cli.StringFlag{Name: "discord_app_id", Value: "", EnvVars: []string{envPrefix + "_DISCORD_APP_ID"}, Usage: "Discord bot app id"},
+					// &cli.BoolFlag{Name: "discord_bot_enabled", Value: false, EnvVars: []string{envPrefix + "_DISCORD_BOT_ENABLED"}, Usage: "Discord bot enabled"},
 				},
 				Usage: "run server",
 				Action: func(c *cli.Context) error {
@@ -230,8 +230,8 @@ func main() {
 					defer cancel()
 					environment := c.String("environment")
 
-					discordAuthToken := c.String("discord_auth_token")
-					discordAppID := c.String("discord_app_id")
+					// discordAuthToken := c.String("discord_auth_token")
+					// discordAppID := c.String("discord_app_id")
 
 					replay.OvenMediaAuthKey = c.String("ovenmedia_auth_key")
 					voice_chat.VoiceChatSecretKey = c.String("ovenmedia_signed_key")
@@ -367,10 +367,10 @@ func main() {
 					gamelog.L.Info().Msgf("Telegram took %s", time.Since(start))
 
 					// initialise discord bot
-					discordBot, err := discord.NewDiscordBot(discordAuthToken, discordAppID, !server.IsDevelopmentEnv())
-					if err != nil {
-						return terror.Error(err, "Discord init failed")
-					}
+					// discordBot, err := discord.NewDiscordBot(discordAuthToken, discordAppID, !server.IsDevelopmentEnv())
+					// if err != nil {
+					// 	return terror.Error(err, "Discord init failed")
+					// }
 
 					start = time.Now()
 					// initialise stripe
@@ -435,7 +435,7 @@ func main() {
 						Telegram:                 telebot,
 						GameClientMinimumBuildNo: gameClientMinimumBuildNo,
 						QuestManager:             qm,
-						DiscordSession:           discordBot,
+						// DiscordSession:           discordBot,
 					})
 					if err != nil {
 						return terror.Error(err, "Arena Manager init failed")
@@ -454,7 +454,20 @@ func main() {
 					gamelog.L.Info().Msgf("Zendesk took %s", time.Since(start))
 
 					gamelog.L.Info().Msg("Setting up API")
-					api, err := SetupAPI(c, ctx, log_helpers.NamedLogger(gamelog.L, "API"), arenaManager, rpcClient, twilio, telebot, discordBot, zendesk, detector, pm, stripeClient, staticDataURL, qm)
+					api, err := SetupAPI(c,
+						ctx,
+						log_helpers.NamedLogger(gamelog.L, "API"),
+						arenaManager,
+						rpcClient,
+						twilio,
+						telebot,
+						// discordBot,
+						zendesk,
+						detector,
+						pm,
+						stripeClient,
+						staticDataURL,
+						qm)
 					if err != nil {
 						fmt.Println(err)
 						os.Exit(1)
@@ -811,7 +824,7 @@ func SetupAPI(
 	passport *xsyn_rpcclient.XsynXrpcClient,
 	sms server.SMS,
 	telegram server.Telegram,
-	discord *discord.DiscordSession,
+	// discord *discord.DiscordSession,
 	zendesk *zendesk.Zendesk,
 	languageDetector lingua.LanguageDetector,
 	pm *profanities.ProfanityManager,
@@ -877,7 +890,24 @@ func SetupAPI(
 
 	// API Server
 	privateKeySignerHex := ctxCLI.String("private_key_signer_hex")
-	serverAPI, err := api.NewAPI(ctx, arenaManager, passport, HTMLSanitizePolicy, stripeClient, stripeWebhookSecret, config, sms, telegram, discord, zendesk, languageDetector, pm, syncConfig, questManager, privateKeySignerHex)
+	serverAPI, err := api.NewAPI(
+		ctx,
+		arenaManager,
+		passport,
+		HTMLSanitizePolicy,
+		stripeClient,
+		stripeWebhookSecret,
+		config,
+		sms,
+		telegram,
+		// discord,
+		zendesk,
+		languageDetector,
+		pm,
+		syncConfig,
+		questManager,
+		privateKeySignerHex,
+	)
 	if err != nil {
 		return nil, err
 	}

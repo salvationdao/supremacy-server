@@ -8,7 +8,6 @@ import (
 	"server"
 	"server/battle"
 	"server/db"
-	"server/discord"
 	"server/fiat"
 	"server/gamelog"
 	"server/marketplace"
@@ -41,17 +40,17 @@ import (
 
 // API server
 type API struct {
-	ctx                      context.Context
-	server                   *http.Server
-	Routes                   chi.Router
-	ArenaManager             *battle.ArenaManager
-	HTMLSanitize             *bluemonday.Policy
-	StripeClient             *client.API
-	StripeWebhookSecret      string
-	SMS                      server.SMS
-	Passport                 *xsyn_rpcclient.XsynXrpcClient
-	Telegram                 server.Telegram
-	Discord                  *discord.DiscordSession
+	ctx                 context.Context
+	server              *http.Server
+	Routes              chi.Router
+	ArenaManager        *battle.ArenaManager
+	HTMLSanitize        *bluemonday.Policy
+	StripeClient        *client.API
+	StripeWebhookSecret string
+	SMS                 server.SMS
+	Passport            *xsyn_rpcclient.XsynXrpcClient
+	Telegram            server.Telegram
+	// Discord                  *discord.DiscordSession
 	Zendesk                  *zendesk.Zendesk
 	LanguageDetector         lingua.LanguageDetector
 	Cookie                   *securebytes.SecureBytes
@@ -108,7 +107,7 @@ func NewAPI(
 	config *server.Config,
 	sms server.SMS,
 	telegram server.Telegram,
-	discord *discord.DiscordSession,
+	// discord *discord.DiscordSession,
 	zendesk *zendesk.Zendesk,
 	languageDetector lingua.LanguageDetector,
 	pm *profanities.ProfanityManager,
@@ -124,15 +123,15 @@ func NewAPI(
 	}
 	// initialise api
 	api := &API{
-		Config:                   config,
-		ctx:                      ctx,
-		Routes:                   chi.NewRouter(),
-		HTMLSanitize:             HTMLSanitize,
-		ArenaManager:             arenaManager,
-		Passport:                 pp,
-		SMS:                      sms,
-		Telegram:                 telegram,
-		Discord:                  discord,
+		Config:       config,
+		ctx:          ctx,
+		Routes:       chi.NewRouter(),
+		HTMLSanitize: HTMLSanitize,
+		ArenaManager: arenaManager,
+		Passport:     pp,
+		SMS:          sms,
+		Telegram:     telegram,
+		// Discord:                  discord,
 		StripeClient:             stripeClient,
 		StripeWebhookSecret:      stripeWebhookSecret,
 		Zendesk:                  zendesk,

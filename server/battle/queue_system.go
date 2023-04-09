@@ -556,7 +556,7 @@ func (am *ArenaManager) ExpiredExhibitionLobbyCleanUp() error {
 		}(bl)
 
 		if !bl.AccessCode.Valid && !bl.IsAiDrivenMatch {
-			go am.DiscordSession.SendBattleLobbyEditMessage(bl.ID, "")
+			// go am.DiscordSession.SendBattleLobbyEditMessage(bl.ID, "")
 		}
 	}
 

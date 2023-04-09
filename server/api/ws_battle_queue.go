@@ -411,7 +411,7 @@ func (api *API) BattleLobbyCreate(ctx context.Context, user *boiler.Player, fact
 
 	if bl != nil {
 		if !bl.AccessCode.Valid && !bl.GeneratedBySystem {
-			go api.Discord.SendBattleLobbyCreateMessage(bl.ID)
+			// go api.Discord.SendBattleLobbyCreateMessage(bl.ID)
 		}
 	}
 
@@ -908,7 +908,7 @@ func (api *API) BattleLobbyJoin(ctx context.Context, user *boiler.Player, factio
 		}(user.ID, deployedMechIDs)
 
 		if !bl.AccessCode.Valid && !bl.IsAiDrivenMatch {
-			go api.Discord.SendBattleLobbyEditMessage(bl.ID, "")
+			// go api.Discord.SendBattleLobbyEditMessage(bl.ID, "")
 		}
 		return nil
 	})
@@ -1594,7 +1594,7 @@ func (api *API) BattleLobbySupporterJoin(ctx context.Context, user *boiler.Playe
 
 	if bl != nil {
 		if !bl.AccessCode.Valid && !bl.IsAiDrivenMatch {
-			go api.Discord.SendBattleLobbyEditMessage(bl.ID, "")
+			// go api.Discord.SendBattleLobbyEditMessage(bl.ID, "")
 		}
 
 	}
@@ -1734,7 +1734,7 @@ func (api *API) BattleLobbyTopUpReward(ctx context.Context, user *boiler.Player,
 		}
 
 		if !bl.AccessCode.Valid && !bl.IsAiDrivenMatch {
-			go api.Discord.SendBattleLobbyEditMessage(bl.ID, "")
+			// go api.Discord.SendBattleLobbyEditMessage(bl.ID, "")
 		}
 		api.ArenaManager.BattleLobbyDebounceBroadcastChan <- []string{bl.ID}
 		return nil

@@ -200,12 +200,12 @@ func (api *API) ModToolBanUser(ctx context.Context, user *boiler.Player, key str
 			gamelog.L.Err(err).Msg("Failed to send slack notification for banning user")
 		}
 
-		channelID := db.GetStrWithDefault(db.KeyDiscordChannelID, "946873011368251412")
+		// channelID := db.GetStrWithDefault(db.KeyDiscordChannelID, "946873011368251412")
 		// send discord notif
-		err = api.Discord.SendDiscordMessage(channelID, slackMessage)
-		if err != nil {
-			gamelog.L.Err(err).Msg("Failed to send discord notification for banning user")
-		}
+		// err = api.Discord.SendDiscordMessage(channelID, slackMessage)
+		// if err != nil {
+		// 	gamelog.L.Err(err).Msg("Failed to send discord notification for banning user")
+		// }
 
 		gamelog.L.Info().Str("Mod Action", "Ban").Interface("Mod Audit", audit).Msg("Mod tool event")
 

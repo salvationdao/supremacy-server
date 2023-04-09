@@ -12,7 +12,6 @@ import (
 	"server"
 	"server/db"
 	"server/db/boiler"
-	"server/discord"
 	"server/gamedb"
 	"server/gamelog"
 	"server/helpers"
@@ -82,7 +81,7 @@ type ArenaManager struct {
 	MechDebounceBroadcastChan         chan []string
 	FactionStakedMechDashboardKeyChan chan []string
 
-	DiscordSession *discord.DiscordSession
+	// DiscordSession *discord.DiscordSession
 }
 
 type Opts struct {
@@ -94,7 +93,7 @@ type Opts struct {
 	Telegram                 *telegram.Telegram
 	SystemMessagingManager   *system_messages.SystemMessagingManager
 	QuestManager             *quest.System
-	DiscordSession           *discord.DiscordSession
+	// DiscordSession           *discord.DiscordSession
 }
 
 func NewArenaManager(opts *Opts) (*ArenaManager, error) {
@@ -118,7 +117,7 @@ func NewArenaManager(opts *Opts) (*ArenaManager, error) {
 
 		MechDebounceBroadcastChan:         make(chan []string, 30),
 		FactionStakedMechDashboardKeyChan: make(chan []string, 30),
-		DiscordSession:                    opts.DiscordSession,
+		// DiscordSession:                    opts.DiscordSession,
 	}
 
 	am.server = &http.Server{
@@ -2405,7 +2404,7 @@ func (arena *Arena) BeginBattle() {
 	go arena.NotifyUpcomingWarMachines()
 
 	if !arena._currentBattle.lobby.IsAiDrivenMatch && !arena._currentBattle.lobby.AccessCode.Valid {
-		go arena.Manager.DiscordSession.SendBattleLobbyEditMessage(arena._currentBattle.lobby.ID, arena.Name)
+		// go arena.Manager.DiscordSession.SendBattleLobbyEditMessage(arena._currentBattle.lobby.ID, arena.Name)
 	}
 
 	arena.Manager.FactionStakedMechDashboardKeyChan <- []string{FactionStakedMechDashboardKeyQueue}
